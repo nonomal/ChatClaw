@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io/fs"
 
-	"willchat/internal/services/agents"
 	"willchat/internal/define"
+	"willchat/internal/services/agents"
 	appservice "willchat/internal/services/app"
 	"willchat/internal/services/browser"
 	"willchat/internal/services/greet"
@@ -13,6 +13,7 @@ import (
 	"willchat/internal/services/library"
 	"willchat/internal/services/providers"
 	"willchat/internal/services/settings"
+	"willchat/internal/services/textselection"
 	"willchat/internal/services/tray"
 	"willchat/internal/services/windows"
 	"willchat/internal/services/winsnapchat"
@@ -99,6 +100,12 @@ func NewApp(opts Options) (*application.App, error) {
 	// winsnap AI chat stream service
 	app.RegisterService(application.NewService(winsnapchat.NewWinsnapChatService(app)))
 
+	// 创建划词弹窗服务
+	textSelectionService := textselection.NewWithSnapStateGetter(func() windows.SnapState {
+		return snapService.GetStatus().State
+	})
+	app.RegisterService(application.NewService(textSelectionService))
+
 	// 创建系统托盘
 	systrayMenu := app.NewMenu()
 	systrayMenu.Add(i18n.T("systray.show")).OnClick(func(ctx *application.Context) {
@@ -118,6 +125,33 @@ func NewApp(opts Options) (*application.App, error) {
 		trayService.InitFromSettings()
 		// 根据 settings 中的开关状态启动/停止吸附功能
 		_, _ = snapService.SyncFromSettings()
+		// 根据 settings 中的开关状态启动/停止划词功能
+		textSelectionService.Attach(app, mainWindow, application.WebviewWindowOptions{
+			Name:                       textselection.WindowTextSelection,
+			Title:                      "TextSelection",
+			Width:                      140,
+			Height:                     50,
+			Hidden:                     true,
+			Frameless:                  true,
+			AlwaysOnTop:                true,
+			DisableResize:              true,
+			BackgroundType:             application.BackgroundTypeTransparent,
+			DefaultContextMenuDisabled: true,
+			InitialPosition:            application.WindowXY,
+			URL:                        "/selection.html",
+			// Windows specific: hide from taskbar
+			Windows: application.WindowsWindow{
+				HiddenOnTaskbar: true,
+			},
+			Mac: application.MacWindow{
+				Backdrop:    application.MacBackdropTransparent,
+				WindowLevel: application.MacWindowLevelFloating,
+				CollectionBehavior: application.MacWindowCollectionBehaviorCanJoinAllSpaces |
+					application.MacWindowCollectionBehaviorTransient |
+					application.MacWindowCollectionBehaviorIgnoresCycle,
+			},
+		})
+		_, _ = textSelectionService.SyncFromSettings()
 	})
 
 	// 监听主窗口关闭事件，实现"关闭时最小化"

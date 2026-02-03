@@ -1,4 +1,4 @@
-//go:build darwin
+//go:build darwin && cgo
 
 package winsnap
 
@@ -35,13 +35,13 @@ typedef struct WinsnapFollower {
 	uint64_t frameGen;
 	uint64_t appliedGen;
 	bool applyScheduled;
-	
+
 	// Cached coordinate conversion constants (to avoid recomputing on every update)
 	CGFloat axOriginX;
 	CGFloat axOriginY;
 	CGFloat selfWidth;
 	CGFloat selfHeight;
-	
+
 	// Last applied position (for threshold filtering)
 	CGPoint lastAppliedOrigin;
 } WinsnapFollower;
@@ -374,13 +374,13 @@ static WinsnapFollower* winsnap_follower_create(void *selfWindow, pid_t pid, int
 	f->runLoop = NULL;
 	f->stopping = false;
 	f->lock = OS_UNFAIR_LOCK_INIT;
-	
+
 	// Cache coordinate conversion constants and self window size.
 	NSWindow *selfWin = (__bridge NSWindow *)selfWindow;
 	NSRect selfFrame = [selfWin frame];
 	f->selfWidth = selfFrame.size.width;
 	f->selfHeight = selfFrame.size.height;
-	
+
 	// 优先使用 Wails Screen API 提供的屏幕信息
 	if (screenInfo != NULL && screenInfo->width > 0 && screenInfo->height > 0) {
 		f->axOriginX = (CGFloat)screenInfo->x;
@@ -393,7 +393,7 @@ static WinsnapFollower* winsnap_follower_create(void *selfWindow, pid_t pid, int
 		f->axOriginX = primaryFrame.origin.x;
 		f->axOriginY = primaryFrame.origin.y + primaryFrame.size.height;
 	}
-	
+
 	f->lastAppliedOrigin = CGPointMake(-10000, -10000); // Invalid initial value
 
 	f->appElem = AXUIElementCreateApplication(pid);
@@ -495,12 +495,12 @@ func attachRightOfProcess(opts AttachOptions) (Controller, error) {
 	if opts.Window == nil {
 		return nil, errors.New("winsnap: Window is nil")
 	}
-	
+
 	selfHWND := uintptr(opts.Window.NativeWindow())
 	if selfHWND == 0 {
 		return nil, errors.New("winsnap: native window handle is 0")
 	}
-	
+
 	targetName := normalizeMacTargetName(opts.TargetProcessName)
 	if targetName == "" {
 		return nil, errors.New("winsnap: TargetProcessName is empty")

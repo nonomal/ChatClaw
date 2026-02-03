@@ -10,6 +10,9 @@ export default {
     placeholder: '请输入问题',
     thinking: '思考中...',
   },
+  selection: {
+    aiChat: 'AI 对话',
+  },
   nav: {
     assistant: 'AI助手',
     knowledge: '知识库',

@@ -408,17 +408,17 @@ func snapTargetsForKey(key string) []string {
 		// macOS / others: use app localized names where possible.
 		switch key {
 		case "snap_wechat":
-			return []string{"微信"}
+			return []string{"微信", "WeChat"}
 		case "snap_wecom":
-			return []string{"企业微信"}
+			return []string{"企业微信", "WeCom", "WeWork", "WXWork"}
 		case "snap_qq":
 			return []string{"QQ"}
 		case "snap_dingtalk":
-			return []string{"钉钉"}
+			return []string{"钉钉", "DingTalk"}
 		case "snap_feishu":
-			return []string{"飞书"}
+			return []string{"飞书", "Feishu", "Lark"}
 		case "snap_douyin":
-			return []string{"抖音"}
+			return []string{"抖音", "Douyin"}
 		default:
 			return nil
 		}

@@ -10,6 +10,9 @@ export default {
     placeholder: 'Type your question',
     thinking: 'Thinking...',
   },
+  selection: {
+    aiChat: 'AI Chat',
+  },
   nav: {
     assistant: 'AI Assistant',
     knowledge: 'Knowledge Base',

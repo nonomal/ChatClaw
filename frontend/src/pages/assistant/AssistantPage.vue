@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import IconAgentAdd from '@/assets/icons/agent-add.svg'
 import { cn } from '@/lib/utils'
@@ -11,6 +11,8 @@ import IconSettings from '@/assets/icons/settings.svg'
 import CreateAgentDialog from './components/CreateAgentDialog.vue'
 import AgentSettingsDialog from './components/AgentSettingsDialog.vue'
 import { AgentsService, type Agent } from '@bindings/willchat/internal/services/agents'
+import { Events } from '@wailsio/runtime'
+import { Send } from 'lucide-vue-next'
 
 type ListMode = 'personal' | 'team'
 
@@ -25,6 +27,9 @@ const createOpen = ref(false)
 const settingsOpen = ref(false)
 const settingsAgent = ref<Agent | null>(null)
 const loading = ref(false)
+
+// Mock input for text selection feature
+const inputText = ref('')
 
 const activeAgent = computed(() => {
   if (activeAgentId.value == null) return null
@@ -86,8 +91,36 @@ const handleDeleted = (id: number) => {
   }
 }
 
+// Mock send function (placeholder for future implementation)
+const handleSend = () => {
+  if (!inputText.value.trim()) return
+  toast.default(`发送消息: ${inputText.value.slice(0, 50)}...`)
+  inputText.value = ''
+}
+
+// Listen for text selection events
+let unsubscribeTextSelection: (() => void) | null = null
+
 onMounted(() => {
   loadAgents()
+
+  // Listen for text selection to send to assistant
+  unsubscribeTextSelection = Events.On('text-selection:send-to-assistant', (event: any) => {
+    const payload = Array.isArray(event?.data) ? event.data[0] : event?.data ?? event
+    const text = payload?.text ?? ''
+    if (text) {
+      inputText.value = text
+      // Auto-send after a short delay
+      setTimeout(() => {
+        handleSend()
+      }, 100)
+    }
+  })
+})
+
+onUnmounted(() => {
+  unsubscribeTextSelection?.()
+  unsubscribeTextSelection = null
 })
 </script>
 
@@ -177,14 +210,36 @@ onMounted(() => {
       </div>
     </aside>
 
-    <!-- 右侧：聊天区占位（先不做话题列表/聊天） -->
+    <!-- 右侧：聊天区（含模拟输入框） -->
     <section class="flex flex-1 flex-col overflow-hidden">
-      <div class="flex h-full flex-col items-center justify-center gap-2">
+      <div class="flex flex-1 flex-col items-center justify-center gap-2">
         <div class="text-lg font-semibold text-foreground">
           {{ activeAgent?.name ?? t('assistant.placeholders.noAgentSelected') }}
         </div>
         <div class="max-w-dialog-md px-6 text-center text-sm text-muted-foreground">
           {{ t('assistant.placeholders.chatComingSoon') }}
+        </div>
+      </div>
+
+      <!-- Mock input area for text selection feature -->
+      <div class="border-t border-border p-4">
+        <div class="mx-auto flex max-w-2xl items-end gap-2">
+          <div class="flex-1">
+            <textarea
+              v-model="inputText"
+              class="min-h-[60px] w-full resize-none rounded-lg border border-border bg-background p-3 text-sm outline-none transition-colors focus:border-primary"
+              :placeholder="t('winsnap.placeholder')"
+              @keydown.enter.exact.prevent="handleSend"
+            />
+          </div>
+          <Button
+            size="icon"
+            class="mb-1 shrink-0"
+            :disabled="!inputText.trim()"
+            @click="handleSend"
+          >
+            <Send class="size-4" />
+          </Button>
         </div>
       </div>
     </section>

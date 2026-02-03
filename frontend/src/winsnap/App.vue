@@ -4,10 +4,11 @@ import { useI18n } from 'vue-i18n'
 import { ChevronDown, FileText, Image as ImageIcon, Loader2, Paperclip, PenLine, PinOff, Plus, Send } from 'lucide-vue-next'
 import Logo from '@/assets/images/logo.svg'
 import { cn } from '@/lib/utils'
-import { Events } from '@wailsio/runtime'
+import { Events, System } from '@wailsio/runtime'
 import { SettingsService } from '@bindings/willchat/internal/services/settings'
 import { SnapService } from '@bindings/willchat/internal/services/windows'
 import { WinsnapChatService } from '@bindings/willchat/internal/services/winsnapchat'
+import { TextSelectionService } from '@bindings/willchat/internal/services/textselection'
 
 const { t } = useI18n()
 
@@ -267,7 +268,22 @@ const processStreamEvent = (requestId: string, eventName: string, data: any) => 
 }
 
 let unsubscribeWinsnapChat: (() => void) | null = null
+let unsubscribeTextSelection: (() => void) | null = null
+let onMouseUp: ((e: MouseEvent) => void) | null = null
 onMounted(() => {
+  // Listen for text selection action to set input text
+  unsubscribeTextSelection = Events.On('text-selection:send-to-snap', (event: any) => {
+    const payload = Array.isArray(event?.data) ? event.data[0] : event?.data ?? event
+    const text = payload?.text ?? ''
+    if (text) {
+      question.value = text
+      // Auto-send after a short delay
+      setTimeout(() => {
+        void handleSend()
+      }, 100)
+    }
+  })
+
   // Wails v3 CustomEvent: payload is inside event.data[0] (first argument passed to Emit)
   unsubscribeWinsnapChat = Events.On('winsnap:chat', (event: any) => {
     // Extract the StreamPayload from event
@@ -296,11 +312,29 @@ onMounted(() => {
       pendingEvents.value.push({ requestId, eventName, data })
     }
   })
+
+  // In-app text selection within winsnap window.
+  onMouseUp = (e: MouseEvent) => {
+    if (e.button !== 0) return
+    const sel = window.getSelection?.()
+    const text = sel?.toString?.().trim?.() ?? ''
+    if (!text) return
+    // macOS: backend mouse hook uses physical pixels; browser events are in CSS pixels (points).
+    const scale = System.IsMac() ? window.devicePixelRatio || 1 : 1
+    void TextSelectionService.ShowAtScreenPos(text, Math.round(e.screenX * scale), Math.round(e.screenY * scale))
+  }
+  window.addEventListener('mouseup', onMouseUp, true)
 })
 
 onUnmounted(() => {
   unsubscribeWinsnapChat?.()
   unsubscribeWinsnapChat = null
+  unsubscribeTextSelection?.()
+  unsubscribeTextSelection = null
+  if (onMouseUp) {
+    window.removeEventListener('mouseup', onMouseUp, true)
+    onMouseUp = null
+  }
   stopTyping()
 })
 </script>

@@ -78,6 +78,9 @@ type follower struct {
 	ready     chan struct{}
 	closed    bool
 	selfWidth int32 // 缓存自己的宽度
+	// Configure top-most only once, then keep z-order stable while moving,
+	// so other top-most windows (e.g. selection popup) can stay above.
+	topMostConfigured bool
 }
 
 func (f *follower) Stop() error {
@@ -223,8 +226,22 @@ func (f *follower) syncToTarget() error {
 		width = selfWin.Right - selfWin.Left
 	}
 
-	// Keep the winsnap window above other apps to avoid being covered.
-	return setWindowPosWithSizeTopMost(f.self, x, y, width, targetHeight)
+	// Keep winsnap in top-most group, but avoid stealing z-order repeatedly.
+	// Otherwise, it may cover other top-most windows (e.g. text selection popup).
+	f.mu.Lock()
+	needTopMost := !f.topMostConfigured
+	f.mu.Unlock()
+
+	if needTopMost {
+		if err := setWindowPosWithSizeTopMost(f.self, x, y, width, targetHeight); err != nil {
+			return err
+		}
+		f.mu.Lock()
+		f.topMostConfigured = true
+		f.mu.Unlock()
+		return nil
+	}
+	return setWindowPosWithSize(f.self, x, y, width, targetHeight)
 }
 
 func normalizeProcessName(name string) string {
