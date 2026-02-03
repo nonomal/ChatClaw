@@ -8,6 +8,7 @@ export default {
     assistantName: 'Soul Kitchen Assistant',
     cancelSnap: 'Cancel Snap',
     placeholder: 'Type your question',
+    thinking: 'Thinking...',
   },
   nav: {
     assistant: 'AI Assistant',

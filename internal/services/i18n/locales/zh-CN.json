@@ -41,5 +41,8 @@
   "error.browser_url_required": "缺少 URL",
   "error.browser_invalid_url": "URL 不合法",
   "error.browser_unsupported_url_scheme": "不支持的 URL 协议",
-  "error.browser_open_failed": "打开浏览器失败"
+  "error.browser_open_failed": "打开浏览器失败",
+
+  "error.question_required": "缺少问题内容",
+  "error.request_id_required": "缺少请求ID"
 }

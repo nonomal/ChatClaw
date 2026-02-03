@@ -12,6 +12,7 @@ import (
 	"willchat/internal/services/settings"
 	"willchat/internal/services/tray"
 	"willchat/internal/services/windows"
+	"willchat/internal/services/winsnapchat"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -70,6 +71,9 @@ func NewApp(opts Options) (*application.App, error) {
 		return nil, fmt.Errorf("init snap service: %w", err)
 	}
 	app.RegisterService(application.NewService(snapService))
+
+	// winsnap AI chat stream service
+	app.RegisterService(application.NewService(winsnapchat.NewWinsnapChatService(app)))
 
 	// 创建系统托盘
 	systrayMenu := app.NewMenu()

@@ -8,6 +8,7 @@ export default {
     assistantName: '灵魂厨房助手',
     cancelSnap: '取消吸附',
     placeholder: '请输入问题',
+    thinking: '思考中...',
   },
   nav: {
     assistant: 'AI助手',

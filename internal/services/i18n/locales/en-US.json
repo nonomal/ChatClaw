@@ -41,5 +41,8 @@
   "error.browser_url_required": "URL is required",
   "error.browser_invalid_url": "invalid URL",
   "error.browser_unsupported_url_scheme": "unsupported URL scheme",
-  "error.browser_open_failed": "failed to open browser"
+  "error.browser_open_failed": "failed to open browser",
+
+  "error.question_required": "question is required",
+  "error.request_id_required": "request ID is required"
 }
