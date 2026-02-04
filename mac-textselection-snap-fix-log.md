@@ -81,24 +81,23 @@ cgo: pkg/winsnap/winsnap_darwin.go:611:10: struct size calculation error off=8 b
 ### 1.5 划词弹窗位置不准确 & 点击无响应
 
 **问题描述：** 
-1. Mac 上划词弹窗位置不准确（如截图所示）
-2. 点击弹窗没有触发消息给吸附窗体或主窗体
+1. Mac 上划词弹窗位置不准确
+2. 点击弹窗区域没有触发消息给吸附窗体或主窗体
 
 **原因分析：**
-- Wails `SetPosition` 期望**逻辑像素**（点坐标），不是物理像素
-- Mouse hook 返回的是**物理像素**坐标
-- click outside 检测使用**物理像素**坐标
-- 必须分开处理：窗口定位用点坐标，检测用像素坐标
+1. **坐标系统问题**：尝试将像素坐标转换为点坐标传给 `SetPosition`，但效果不对
+2. **点击处理问题**：当点击在弹窗区域内时，willchat 只是 `return`，而 demo 项目会**主动调用** `handleButtonClick()`
 
-**修复方案：**
+**修复方案（与 demo 项目保持一致）：**
 1. `showAtScreenPosInternal` 中：
-   - 计算像素坐标 `pixelX, pixelY`（用于 click outside 检测）
-   - 存储到 `s.popX, s.popY`
-   - 转换为点坐标 `finalX, finalY`（除以 scale，用于 Wails SetPosition）
+   - 直接使用像素坐标作为 `finalX, finalY`（不做点坐标转换）
+   - 与 demo 项目行为一致
 2. `showPopupAt` 中：
-   - 接收点坐标 `x, y` 传给 `ensurePopWindow`
-   - 使用之前存储的像素坐标 `s.popX, s.popY` 设置 click outside rect
-   - 弹窗尺寸也转为像素坐标
+   - 统一使用传入的坐标（Mac 上是像素坐标）
+   - click outside rect 使用相同坐标系统
+3. `onDragStart` 回调中：
+   - 当点击在弹窗区域内时，**主动调用** `go s.handleButtonClick()`
+   - 这是 demo 项目的关键区别，确保点击弹窗能触发文本发送
 
 ### 2. 点击划词弹窗没触发程序唤醒
 

@@ -223,10 +223,9 @@ func (s *TextSelectionService) startWatcher() {
 		inPopup := mouseX >= int32(popX)-marginPx && mouseX <= int32(popX+popWPx)+marginPx &&
 			mouseY >= int32(popY)-marginPx && mouseY <= int32(popY+popHPx)+marginPx
 
-		// If click is inside popup, trigger button click
+		// If click is inside popup, trigger button click (matching demo project behavior)
 		if inPopup {
-			// Let the popup webview handle the click.
-			// Do NOT trigger send by coordinates to avoid "clicking invisible area" issues.
+			go s.handleButtonClick()
 			return
 		}
 
@@ -386,31 +385,22 @@ func (s *TextSelectionService) showAtScreenPosInternal(text string, screenX, scr
 	var finalX, finalY int
 
 	if runtime.GOOS == "darwin" {
-		// macOS coordinate handling:
+		// macOS coordinate handling (matching demo project approach):
 		// - Mouse hook (CGEventTap) returns physical pixels
-		// - Frontend mouseup event returns CSS pixels (points) * devicePixelRatio = physical pixels
-		// - Wails SetPosition expects logical points
-		// - click outside detection uses physical pixels
+		// - Use physical pixels consistently for both SetPosition and click detection
+		// Note: Despite Wails docs saying SetPosition uses logical points,
+		//       the demo project uses physical pixels and it works correctly.
 		scale := getDPIScale()
 
 		// screenX/screenY are in physical pixels
-		// Calculate popup position in pixels first
+		// Calculate popup position in pixels
 		popWidthPx := int(float64(s.popWidth) * scale)
 		popHeightPx := int(float64(s.popHeight) * scale)
 		offsetPx := int(10 * scale)
 
-		pixelX := screenX - popWidthPx/2
-		pixelY := screenY - popHeightPx - offsetPx
-
-		// Store pixel coordinates for click outside detection
-		s.mu.Lock()
-		s.popX = pixelX
-		s.popY = pixelY
-		s.mu.Unlock()
-
-		// Convert to logical points for Wails SetPosition
-		finalX = int(float64(pixelX) / scale)
-		finalY = int(float64(pixelY) / scale)
+		// Use pixel coordinates directly (same as demo project)
+		finalX = screenX - popWidthPx/2
+		finalY = screenY - popHeightPx - offsetPx
 	} else {
 		// Windows: use logical pixels
 		finalX = screenX - s.popWidth/2
@@ -437,38 +427,32 @@ func (s *TextSelectionService) showAtScreenPosInternal(text string, screenX, scr
 	s.showPopupAt(finalX, finalY)
 }
 
-// showPopupAt shows the popup at the specified screen position (in logical points).
-// On macOS, s.popX/s.popY are pre-set in pixel coordinates by showAtScreenPosInternal.
+// showPopupAt shows the popup at the specified screen position.
+// On macOS, x/y are in physical pixels. On Windows, they are in logical pixels.
 func (s *TextSelectionService) showPopupAt(x, y int) {
 	s.mu.Lock()
-	// On macOS, popX/popY are already set to pixel coordinates by showAtScreenPosInternal
-	// On Windows, set them here (same as x, y since no DPI scaling needed)
-	if runtime.GOOS != "darwin" {
-		s.popX = x
-		s.popY = y
-	}
+	s.popX = x
+	s.popY = y
 	s.popupActive = true
-	popX := s.popX
-	popY := s.popY
 	popW := s.popWidth
 	popH := s.popHeight
 	s.mu.Unlock()
 
-	// Pass logical points to Wails SetPosition
+	// Set window position
 	s.ensurePopWindow(x, y)
 
-	// Update click outside watcher's popup area (use pixel coordinates)
+	// Update click outside watcher's popup area
+	// On macOS, both x/y and click detection use physical pixels
 	if s.clickOutsideWatcher != nil {
 		rectW := popW
 		rectH := popH
 		if runtime.GOOS == "darwin" {
-			// popX, popY are already in physical pixels
 			// Convert popup size to physical pixels
 			scale := getDPIScale()
 			rectW = int(float64(popW) * scale)
 			rectH = int(float64(popH) * scale)
 		}
-		s.clickOutsideWatcher.SetPopupRect(int32(popX), int32(popY), int32(rectW), int32(rectH))
+		s.clickOutsideWatcher.SetPopupRect(int32(x), int32(y), int32(rectW), int32(rectH))
 	}
 }
 
