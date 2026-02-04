@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { MoreHorizontal, FileText, CheckCircle2, XCircle } from 'lucide-vue-next'
+import { MoreHorizontal, FileText, CheckCircle2, XCircle, AlertTriangle } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -33,6 +33,7 @@ export interface Document {
   progress?: number
   thumbIcon?: string // base64 data URI from backend
   errorMessage?: string
+  fileMissing?: boolean // 原始文件是否丢失
 }
 
 const props = defineProps<{
@@ -143,6 +144,8 @@ const FileIcon = computed(() => {
 
 // 错误提示显示状态
 const showErrorTip = ref(false)
+// 文件丢失提示显示状态
+const showFileMissingTip = ref(false)
 </script>
 
 <template>
@@ -155,11 +158,29 @@ const showErrorTip = ref(false)
         v-if="document.thumbIcon"
         :src="document.thumbIcon"
         class="size-full object-contain"
+        :class="{ 'opacity-50': document.fileMissing }"
         alt=""
       />
       <div v-else class="absolute inset-0 flex items-center justify-center">
         <IconDocumentCover class="size-10 translate-y-1 text-muted-foreground/40" />
       </div>
+      <!-- 文件丢失遮罩 -->
+      <div
+        v-if="document.fileMissing"
+        class="absolute inset-0 flex cursor-default items-center justify-center bg-background/60"
+        @mouseenter="showFileMissingTip = true"
+        @mouseleave="showFileMissingTip = false"
+      >
+        <AlertTriangle class="size-6 text-muted-foreground" />
+      </div>
+    </div>
+
+    <!-- 文件丢失浮层提示（放在缩略图区域外面避免被 overflow-hidden 截断） -->
+    <div
+      v-if="document.fileMissing && showFileMissingTip"
+      class="absolute left-1/2 top-[65px] z-50 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1.5 text-xs text-popover-foreground shadow-md"
+    >
+      {{ t('knowledge.content.fileMissing') }}
     </div>
 
     <!-- 状态徽章 -->

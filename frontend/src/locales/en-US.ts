@@ -359,6 +359,7 @@ export default {
         failed: 'Failed',
         pending: 'Pending',
       },
+      fileMissing: 'File missing',
       menu: {
         rename: 'Rename',
         delete: 'Delete',

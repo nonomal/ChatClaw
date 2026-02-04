@@ -144,7 +144,14 @@ func (s *DocumentService) ListDocuments(libraryID int64, keyword string) ([]Docu
 
 	out := make([]Document, 0, len(models))
 	for i := range models {
-		out = append(out, models[i].toDTO())
+		doc := models[i].toDTO()
+		// 检查本地文件是否存在
+		if doc.LocalPath != "" {
+			if _, err := os.Stat(doc.LocalPath); os.IsNotExist(err) {
+				doc.FileMissing = true
+			}
+		}
+		out = append(out, doc)
 	}
 	return out, nil
 }

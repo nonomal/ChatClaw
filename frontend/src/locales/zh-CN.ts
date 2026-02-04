@@ -357,6 +357,7 @@ export default {
         failed: '学习失败',
         pending: '待学习',
       },
+      fileMissing: '原始文件已丢失',
       menu: {
         rename: '重命名',
         delete: '删除',

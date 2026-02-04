@@ -99,6 +99,7 @@ const convertDocument = (doc: BackendDocument): Document => {
     progress,
     errorMessage,
     thumbIcon: doc.thumb_icon || undefined,
+    fileMissing: doc.file_missing || false,
   }
 }
 

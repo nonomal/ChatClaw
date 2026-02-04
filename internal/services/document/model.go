@@ -33,8 +33,9 @@ type Document struct {
 	MimeType   string `json:"mime_type"`
 	SourceType string `json:"source_type"` // local, web
 
-	LocalPath string `json:"local_path"`
-	WebURL    string `json:"web_url"`
+	LocalPath   string `json:"local_path"`
+	WebURL      string `json:"web_url"`
+	FileMissing bool   `json:"file_missing"` // 原始文件是否丢失（被用户手动删除）
 
 	ProcessingRunID string `json:"processing_run_id"`
 
