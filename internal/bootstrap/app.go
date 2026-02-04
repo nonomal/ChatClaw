@@ -35,9 +35,11 @@ func NewApp(opts Options) (*application.App, error) {
 
 	// 声明主窗口变量，用于单实例回调
 	var mainWindow *application.WebviewWindow
+	var floatingBallService *floatingball.FloatingBallService
+	var app *application.App
 
 	// 创建应用实例
-	app := application.New(application.Options{
+	app = application.New(application.Options{
 		Name:        "WillChat",
 		Description: "WillChat Desktop App",
 		Services: []application.Service{
@@ -59,6 +61,11 @@ func NewApp(opts Options) (*application.App, error) {
 					mainWindow.Restore()
 					mainWindow.Show()
 					mainWindow.Focus()
+				}
+				// 若悬浮球开关为开启，则在唤醒主窗口时恢复悬浮球
+				if floatingBallService != nil && settings.GetBool("show_floating_window", true) && !floatingBallService.IsVisible() {
+					app.Logger.Info("[floatingball] restore", "reason", "second_instance_launch")
+					_ = floatingBallService.SetVisible(true)
 				}
 			},
 		},
@@ -85,7 +92,7 @@ func NewApp(opts Options) (*application.App, error) {
 	mainWindow = windows.NewMainWindow(app)
 
 	// 创建悬浮球服务（独立 AlwaysOnTop 小窗）
-	floatingBallService := floatingball.NewFloatingBallService(app, mainWindow)
+	floatingBallService = floatingball.NewFloatingBallService(app, mainWindow)
 	app.RegisterService(application.NewService(floatingBallService))
 
 	// 创建子窗口服务
@@ -116,6 +123,11 @@ func NewApp(opts Options) (*application.App, error) {
 	systrayMenu.Add(i18n.T("systray.show")).OnClick(func(ctx *application.Context) {
 		mainWindow.Show()
 		mainWindow.Focus()
+		// 若悬浮球开关为开启，则在唤醒主窗口时恢复悬浮球
+		if settings.GetBool("show_floating_window", true) && !floatingBallService.IsVisible() {
+			app.Logger.Info("[floatingball] restore", "reason", "tray_show")
+			_ = floatingBallService.SetVisible(true)
+		}
 	})
 	systrayMenu.Add(i18n.T("systray.quit")).OnClick(func(ctx *application.Context) {
 		app.Quit()
@@ -172,11 +184,31 @@ func NewApp(opts Options) (*application.App, error) {
 		}
 	})
 
+	// 主窗口被唤醒/恢复/聚焦时：若悬浮球开关为开启，则恢复悬浮球
+	restoreFloatingBall := func(reason string) {
+		if floatingBallService == nil {
+			return
+		}
+		if !settings.GetBool("show_floating_window", true) {
+			return
+		}
+		if floatingBallService.IsVisible() {
+			return
+		}
+		app.Logger.Info("[floatingball] restore", "reason", reason)
+		_ = floatingBallService.SetVisible(true)
+	}
+	mainWindow.RegisterHook(events.Common.WindowShow, func(_ *application.WindowEvent) { restoreFloatingBall("main_window_show") })
+	mainWindow.RegisterHook(events.Common.WindowRestore, func(_ *application.WindowEvent) { restoreFloatingBall("main_window_restore") })
+	// NOTE: Don't restore on WindowFocus. Closing the floating ball shifts focus back to main window,
+	// which would immediately re-show the floating ball and make it impossible to close.
+
 	// 点击 Dock 图标时显示窗口
 	app.Event.OnApplicationEvent(events.Mac.ApplicationShouldHandleReopen, func(event *application.ApplicationEvent) {
 		mainWindow.UnMinimise()
 		mainWindow.Show()
 		mainWindow.Focus()
+		restoreFloatingBall("mac_reopen")
 	})
 
 	return app, nil
