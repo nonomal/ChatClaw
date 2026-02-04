@@ -147,16 +147,17 @@ const handleAddDocument = async () => {
     })
     if (result && result.length > 0) {
       // TODO: Handle file upload with the selected paths
-      console.log('Selected files:', result)
+      void result
     }
   } catch (error) {
-    console.error('Failed to open file dialog:', error)
+    // TODO: Handle open file dialog error
+    void error
   }
 }
 
 const handleRename = (doc: Document) => {
   // TODO: Implement rename dialog
-  console.log('Rename document:', doc)
+  void doc
 }
 
 const handleOpenDelete = (doc: Document) => {

@@ -47,7 +47,16 @@ watch(
  */
 let unsubscribeTextSelection: (() => void) | null = null
 let onMouseUp: ((e: MouseEvent) => void) | null = null
+
+/**
+ * 主题变化监听 - 当主题切换时更新所有 assistant 标签页的默认图标
+ * 精确检测 dark class 变化，避免其他 class 变化触发不必要的刷新
+ */
+let themeObserver: InstanceType<typeof window.MutationObserver> | null = null
+let wasDarkMode = document.documentElement.classList.contains('dark')
+
 onMounted(() => {
+  // Text selection event handling
   unsubscribeTextSelection = Events.On('text-selection:action', async (event: any) => {
     const payload = Array.isArray(event?.data) ? event.data[0] : event?.data ?? event
     const text = payload?.text ?? ''
@@ -94,6 +103,21 @@ onMounted(() => {
     void TextSelectionService.ShowAtScreenPos(text, Math.round(e.screenX * scale), Math.round(e.screenY * scale))
   }
   window.addEventListener('mouseup', onMouseUp, true)
+
+  // Theme change observer
+  themeObserver = new window.MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.attributeName === 'class') {
+        const isDarkMode = document.documentElement.classList.contains('dark')
+        // 只在 dark 模式实际切换时才刷新图标
+        if (wasDarkMode !== isDarkMode) {
+          wasDarkMode = isDarkMode
+          navigationStore.refreshAssistantDefaultIcons()
+        }
+      }
+    }
+  })
+  themeObserver.observe(document.documentElement, { attributes: true })
 })
 
 onUnmounted(() => {
@@ -103,6 +127,7 @@ onUnmounted(() => {
     window.removeEventListener('mouseup', onMouseUp, true)
     onMouseUp = null
   }
+  themeObserver?.disconnect()
 })
 </script>
 
