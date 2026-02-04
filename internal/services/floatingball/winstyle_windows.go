@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	gwlStyle int32 = -16
 	wsOverlappedWin = 0x00CF0000
 	wsPopup         = 0x80000000
 	swpNoMove       = 0x0002
@@ -39,7 +38,9 @@ func enableWindowsPopupStyle(win *application.WebviewWindow, s *FloatingBallServ
 
 	// WinAPI uses signed int index (GWL_STYLE = -16). When calling via uintptr args,
 	// pass the 32-bit two's-complement representation so the callee reads it as -16.
-	gwlStyleArg := uintptr(uint32(gwlStyle))
+	// IMPORTANT: Do this via a variable to avoid Go constant folding overflow errors on Windows builds.
+	idx := int32(-16) // GWL_STYLE
+	gwlStyleArg := uintptr(uint32(idx))
 	style, _, _ := procGetWindowLongPtr.Call(hwnd, gwlStyleArg)
 	newStyle := (style &^ wsOverlappedWin) | wsPopup
 	if newStyle != style {
