@@ -81,6 +81,13 @@ type FloatingBallService struct {
 	idleDockTimer   *time.Timer
 	repositionTimer *time.Timer
 	repositionTries int
+
+	// windows: enforce size after resize requests (webview2/frameless can lag)
+	sizeEnforceTimer *time.Timer
+	sizeEnforceW     int
+	sizeEnforceH     int
+	sizeEnforceTries int
+	sizeEnforceWhy   string
 }
 
 func (s *FloatingBallService) debugLog(msg string, fields map[string]any) {
@@ -468,6 +475,10 @@ func (s *FloatingBallService) ensureLocked() *application.WebviewWindow {
 		Title:         "WillChat",
 		Width:         ballSize,
 		Height:        ballSize,
+		MinWidth:      collapsedWidth,
+		MaxWidth:      ballSize,
+		MinHeight:     ballSize,
+		MaxHeight:     ballSize,
 		InitialPosition: application.WindowXY,
 		X:               x,
 		Y:               y,
@@ -817,6 +828,10 @@ func (s *FloatingBallService) stopTimersLocked() {
 		s.repositionTimer.Stop()
 		s.repositionTimer = nil
 	}
+	if s.sizeEnforceTimer != nil {
+		s.sizeEnforceTimer.Stop()
+		s.sizeEnforceTimer = nil
+	}
 }
 
 func (s *FloatingBallService) setPositionLocked(x, y int) {
@@ -839,12 +854,77 @@ func (s *FloatingBallService) setSizeLocked(width, height int) {
 	if s.win == nil {
 		return
 	}
-	// Windows: keep a fixed size so the window mask stays correct (ball shape)
-	if isWindowsFixedSize() {
-		return
-	}
 	s.ignoreMoveUntil = time.Now().Add(250 * time.Millisecond)
 	s.win.SetSize(width, height)
+	s.requestSizeEnforceLocked(width, height, "setSize")
+}
+
+func (s *FloatingBallService) requestSizeEnforceLocked(w, h int, why string) {
+	if !isWindows() || s.win == nil || !s.visible {
+		return
+	}
+	if s.sizeEnforceTimer != nil {
+		s.sizeEnforceTimer.Stop()
+		s.sizeEnforceTimer = nil
+	}
+	s.sizeEnforceW = w
+	s.sizeEnforceH = h
+	s.sizeEnforceTries = 0
+	s.sizeEnforceWhy = why
+	s.sizeEnforceTimer = time.AfterFunc(80*time.Millisecond, func() {
+		s.sizeEnforceTick()
+	})
+}
+
+func (s *FloatingBallService) sizeEnforceTick() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !isWindows() || s.win == nil || !s.visible {
+		return
+	}
+	s.sizeEnforceTries++
+	wantW, wantH := s.sizeEnforceW, s.sizeEnforceH
+	got := s.win.Bounds()
+	if abs(got.Width-wantW) <= 1 && abs(got.Height-wantH) <= 1 {
+		return
+	}
+	s.debugLog("size:enforce", map[string]any{
+		"why": s.sizeEnforceWhy,
+		"try": s.sizeEnforceTries,
+		"wantW": wantW, "wantH": wantH,
+		"gotW": got.Width, "gotH": got.Height,
+	})
+	s.ignoreMoveUntil = time.Now().Add(250 * time.Millisecond)
+	s.win.SetSize(wantW, wantH)
+
+	// Re-apply docked positioning using desired size.
+	work, ok := s.workAreaLocked()
+	if ok {
+		_, relY := s.safeRelativePositionLocked()
+		y := clamp(relY, 0, work.Height-wantH)
+		x := 0
+		switch s.dock {
+		case DockLeft:
+			if s.collapsed {
+				x = -(wantW - collapsedVisible)
+			} else {
+				x = 0
+			}
+		case DockRight:
+			if s.collapsed {
+				x = work.Width - collapsedVisible
+			} else {
+				x = work.Width - wantW
+			}
+		}
+		s.setRelativePositionLocked(x, y)
+	}
+
+	if s.sizeEnforceTries < 5 {
+		s.sizeEnforceTimer = time.AfterFunc(120*time.Millisecond, func() {
+			s.sizeEnforceTick()
+		})
+	}
 }
 
 func (s *FloatingBallService) expandToYLocked(y int) {
@@ -856,22 +936,22 @@ func (s *FloatingBallService) expandToYLocked(y int) {
 		return
 	}
 	s.collapsed = false
-	s.setSizeLocked(ballSize, ballSize)
+	desiredW, desiredH := ballSize, ballSize
+	s.setSizeLocked(desiredW, desiredH)
 	b := s.win.Bounds()
-	w := b.Width
-	h := b.Height
 
-	y = clamp(y, 0, work.Height-h)
+	y = clamp(y, 0, work.Height-desiredH)
 	x := 0
 	switch s.dock {
 	case DockLeft:
 		x = 0
 	case DockRight:
-		x = work.Width - w
+		x = work.Width - desiredW
 	}
 	s.debugLog("expand", map[string]any{
 		"dock": s.dock, "x": x, "y": y,
-		"boundsW": w, "boundsH": h,
+		"wantW": desiredW, "wantH": desiredH,
+		"boundsW": b.Width, "boundsH": b.Height,
 	})
 	s.setRelativePositionLocked(x, y)
 }
@@ -885,23 +965,22 @@ func (s *FloatingBallService) collapseToYLocked(y int) {
 		return
 	}
 	s.collapsed = true
-	// Windows keeps fixed size (mask). Other platforms resize.
-	s.setSizeLocked(collapsedWidth, ballSize)
+	desiredW, desiredH := collapsedWidth, ballSize
+	s.setSizeLocked(desiredW, desiredH)
 	b := s.win.Bounds()
-	w := b.Width
-	h := b.Height
 
-	y = clamp(y, 0, work.Height-h)
+	y = clamp(y, 0, work.Height-desiredH)
 	x := 0
 	switch s.dock {
 	case DockLeft:
-		x = -(w - collapsedVisible)
+		x = -(desiredW - collapsedVisible)
 	case DockRight:
 		x = work.Width - collapsedVisible
 	}
 	s.debugLog("collapse", map[string]any{
 		"dock": s.dock, "x": x, "y": y,
-		"boundsW": w, "boundsH": h,
+		"wantW": desiredW, "wantH": desiredH,
+		"boundsW": b.Width, "boundsH": b.Height,
 	})
 	s.setRelativePositionLocked(x, y)
 }
