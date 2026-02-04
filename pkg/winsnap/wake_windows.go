@@ -30,6 +30,20 @@ const (
 	swpNoActivateWake = 0x0010
 )
 
+// EnsureWindowVisible restores the window if it was minimized (e.g. by Win+D)
+// so it becomes visible again. Does not activate or steal focus.
+func EnsureWindowVisible(window *application.WebviewWindow) error {
+	if window == nil {
+		return errors.New("winsnap: Window is nil")
+	}
+	h := uintptr(window.NativeWindow())
+	if h == 0 {
+		return errors.New("winsnap: native window handle is 0")
+	}
+	procShowWindowWake.Call(h, swRestoreWake)
+	return nil
+}
+
 // WakeAttachedWindow brings the target window and the winsnap window to the front,
 // keeping winsnap ordered directly above the target (same-level behavior).
 func WakeAttachedWindow(self *application.WebviewWindow, targetProcessName string) error {

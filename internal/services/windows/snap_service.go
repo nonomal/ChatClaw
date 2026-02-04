@@ -278,6 +278,9 @@ func (s *SnapService) attachTo(w *application.WebviewWindow, targetProcess strin
 	}
 	s.mu.Unlock()
 
+	// Restore winsnap if it was minimized (e.g. by Win+D); when a target becomes visible again, show the snap window.
+	_ = winsnap.EnsureWindowVisible(w)
+
 	c, err := winsnap.AttachRightOfProcess(winsnap.AttachOptions{
 		TargetProcessName: targetProcess,
 		Gap:               0,

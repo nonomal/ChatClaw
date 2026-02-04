@@ -69,6 +69,11 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
+// EnsureWindowVisible is a no-op on macOS; visibility is handled by the window manager.
+func EnsureWindowVisible(_ *application.WebviewWindow) error {
+	return nil
+}
+
 // WakeAttachedWindow on macOS:
 // 1) Activate the target app so its window comes to front
 // 2) Activate current app again so the user can continue interacting with winsnap
