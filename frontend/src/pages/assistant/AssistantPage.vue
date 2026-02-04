@@ -109,6 +109,7 @@ const selectedModelKey = ref('')
 const conversationsByAgent = ref<Record<number, Conversation[]>>({})
 const conversationsLoadedByAgent = ref<Record<number, boolean>>({})
 const conversationsLoadingByAgent = ref<Record<number, boolean>>({})
+const conversationsStaleByAgent = ref<Record<number, boolean>>({})
 const activeConversationId = ref<number | null>(null)
 
 // Chat messages (for display)
@@ -123,13 +124,6 @@ const actionConversation = ref<Conversation | null>(null)
 const activeAgent = computed(() => {
   if (activeAgentId.value == null) return null
   return agents.value.find((a) => a.id === activeAgentId.value) ?? null
-})
-
-const activeConversation = computed(() => {
-  if (activeAgentId.value == null) return null
-  if (activeConversationId.value == null) return null
-  const list = conversationsByAgent.value[activeAgentId.value] ?? []
-  return list.find((c) => c.id === activeConversationId.value) ?? null
 })
 
 const canSend = computed(() => {
@@ -172,11 +166,6 @@ const loadAgents = async () => {
 
     // Update tab icon and title
     updateCurrentTab()
-
-    // Ensure current agent's conversations are available for sidebar/history UI
-    if (activeAgentId.value != null) {
-      void ensureConversationsLoaded(activeAgentId.value)
-    }
   } catch (error: unknown) {
     toast.error(getErrorMessage(error) || t('assistant.errors.loadFailed'))
   } finally {
@@ -200,6 +189,9 @@ type LoadConversationsOptions = {
 const loadConversations = async (agentId: number, opts: LoadConversationsOptions = {}) => {
   const preserveSelection = opts.preserveSelection ?? false
   const affectActiveSelection = opts.affectActiveSelection ?? true
+  const force = opts.force ?? false
+
+  if (!force && conversationsLoadingByAgent.value[agentId]) return
 
   setAgentLoading(agentId, true)
   const previousConversationId = activeConversationId.value
@@ -213,6 +205,10 @@ const loadConversations = async (agentId: number, opts: LoadConversationsOptions
     conversationsLoadedByAgent.value = {
       ...conversationsLoadedByAgent.value,
       [agentId]: true,
+    }
+    conversationsStaleByAgent.value = {
+      ...conversationsStaleByAgent.value,
+      [agentId]: false,
     }
 
     // Only adjust active selection when loading the active agent's list
@@ -240,14 +236,27 @@ const loadConversations = async (agentId: number, opts: LoadConversationsOptions
       ...conversationsLoadedByAgent.value,
       [agentId]: true,
     }
+    conversationsStaleByAgent.value = {
+      ...conversationsStaleByAgent.value,
+      [agentId]: false,
+    }
   } finally {
     setAgentLoading(agentId, false)
   }
 }
 
 const ensureConversationsLoaded = async (agentId: number) => {
-  if (conversationsLoadedByAgent.value[agentId]) return
-  await loadConversations(agentId, { affectActiveSelection: false })
+  const loaded = conversationsLoadedByAgent.value[agentId]
+  const stale = conversationsStaleByAgent.value[agentId]
+  if (loaded && !stale) return
+  await loadConversations(agentId, { affectActiveSelection: false, force: !!stale })
+}
+
+const markConversationsStale = (agentId: number) => {
+  conversationsStaleByAgent.value = {
+    ...conversationsStaleByAgent.value,
+    [agentId]: true,
+  }
 }
 
 const loadModels = async () => {
@@ -403,6 +412,20 @@ const handleNewConversation = () => {
   chatInput.value = ''
 }
 
+const handleNewConversationForAgent = (agentId: number) => {
+  if (activeAgentId.value !== agentId) {
+    activeAgentId.value = agentId
+  }
+  handleNewConversation()
+}
+
+const handleSelectConversationForAgent = (agentId: number, conversation: Conversation) => {
+  if (activeAgentId.value !== agentId) {
+    activeAgentId.value = agentId
+  }
+  handleSelectConversation(conversation)
+}
+
 const handleSend = async () => {
   if (!canSend.value || !activeAgentId.value) return
 
@@ -444,7 +467,18 @@ const handleSend = async () => {
           ...conversationsLoadedByAgent.value,
           [agentId]: true,
         }
+        conversationsStaleByAgent.value = {
+          ...conversationsStaleByAgent.value,
+          [agentId]: false,
+        }
         activeConversationId.value = newConversation.id
+
+        // Notify other assistant tabs to refresh.
+        Events.Emit('conversations:changed', {
+          agent_id: agentId,
+          sourceTabId: props.tabId,
+          action: 'created',
+        })
       }
     } catch (error: unknown) {
       toast.error(getErrorMessage(error) || t('assistant.errors.createConversationFailed'))
@@ -512,6 +546,13 @@ const handleTogglePin = async (conv: Conversation) => {
     if (activeAgentId.value) {
       await loadConversations(activeAgentId.value, { preserveSelection: true })
     }
+
+    // Notify other assistant tabs to refresh.
+    Events.Emit('conversations:changed', {
+      agent_id: conv.agent_id,
+      sourceTabId: props.tabId,
+      action: 'pin',
+    })
   } catch (error) {
     console.error('Failed to toggle pin:', error)
     toast.error(getErrorMessage(error) || t('assistant.errors.updateConversationFailed'))
@@ -540,6 +581,17 @@ const handleConversationUpdated = (updated: Conversation) => {
     ...conversationsLoadedByAgent.value,
     [agentId]: true,
   }
+  conversationsStaleByAgent.value = {
+    ...conversationsStaleByAgent.value,
+    [agentId]: false,
+  }
+
+  // Notify other assistant tabs to refresh.
+  Events.Emit('conversations:changed', {
+    agent_id: agentId,
+    sourceTabId: props.tabId,
+    action: 'updated',
+  })
 }
 
 const confirmDeleteConversation = async () => {
@@ -552,12 +604,27 @@ const confirmDeleteConversation = async () => {
       ...conversationsByAgent.value,
       [agentId]: current.filter((c) => c.id !== actionConversation.value?.id),
     }
+    conversationsLoadedByAgent.value = {
+      ...conversationsLoadedByAgent.value,
+      [agentId]: true,
+    }
+    conversationsStaleByAgent.value = {
+      ...conversationsStaleByAgent.value,
+      [agentId]: false,
+    }
     if (activeConversationId.value === actionConversation.value.id) {
       activeConversationId.value = null
       chatMessages.value = []
     }
     toast.success(t('assistant.conversation.delete.success'))
     deleteConversationOpen.value = false
+
+    // Notify other assistant tabs to refresh.
+    Events.Emit('conversations:changed', {
+      agent_id: agentId,
+      sourceTabId: props.tabId,
+      action: 'deleted',
+    })
   } catch (error) {
     console.error('Failed to delete conversation:', error)
     toast.error(getErrorMessage(error) || t('assistant.errors.deleteConversationFailed'))
@@ -602,21 +669,35 @@ const isTabActive = computed(() => navigationStore.activeTabId === props.tabId)
 // - 助手：其它标签页可能创建/更新/删除了助手
 watch(isTabActive, (active) => {
   if (active) {
-    loadModels()
-    loadAgents()
+    void (async () => {
+      await loadModels()
+      await loadAgents()
+
+      // Multi-tab reliability: always refresh conversations from DB when this tab becomes active.
+      if (activeAgentId.value != null) {
+        await loadConversations(activeAgentId.value, { preserveSelection: true, force: true })
+      }
+    })()
   }
 })
 
 // Listen for text selection events
 let unsubscribeTextSelection: (() => void) | null = null
+let unsubscribeConversationsChanged: (() => void) | null = null
 
 onMounted(() => {
-  loadAgents()
-  loadModels()
+  void (async () => {
+    await loadAgents()
+    await loadModels()
+
+    if (activeAgentId.value != null) {
+      await loadConversations(activeAgentId.value, { force: true })
+    }
+  })()
 
   // Listen for text selection to send to assistant
   unsubscribeTextSelection = Events.On('text-selection:send-to-assistant', (event: any) => {
-    const payload = Array.isArray(event?.data) ? event.data[0] : event?.data ?? event
+    const payload = Array.isArray(event?.data) ? event.data[0] : (event?.data ?? event)
     const text = payload?.text ?? ''
     if (text) {
       chatInput.value = text
@@ -628,11 +709,29 @@ onMounted(() => {
       }
     }
   })
+
+  // Listen for conversation changes from other assistant tabs.
+  unsubscribeConversationsChanged = Events.On('conversations:changed', (event: any) => {
+    const payload = Array.isArray(event?.data) ? event.data[0] : (event?.data ?? event)
+    const agentId = Number(payload?.agent_id)
+    const sourceTabId = String(payload?.sourceTabId ?? '')
+    if (!Number.isFinite(agentId) || agentId <= 0) return
+    if (sourceTabId && sourceTabId === props.tabId) return
+
+    markConversationsStale(agentId)
+
+    // If this tab is active and currently viewing the same agent, refresh immediately.
+    if (isTabActive.value && activeAgentId.value === agentId) {
+      void loadConversations(agentId, { preserveSelection: true, force: true })
+    }
+  })
 })
 
 onUnmounted(() => {
   unsubscribeTextSelection?.()
   unsubscribeTextSelection = null
+  unsubscribeConversationsChanged?.()
+  unsubscribeConversationsChanged = null
 })
 </script>
 
@@ -726,7 +825,7 @@ onUnmounted(() => {
                   variant="ghost"
                   class="size-7 opacity-0 group-hover:opacity-100 hover:bg-muted/60 dark:hover:bg-white/10"
                   :title="t('assistant.sidebar.newConversation')"
-                  @click.stop="activeAgentId = a.id; handleNewConversation()"
+                  @click.stop="handleNewConversationForAgent(a.id)"
                 >
                   <IconNewConversation class="size-4 text-muted-foreground" />
                 </Button>
@@ -760,7 +859,7 @@ onUnmounted(() => {
                           <DropdownMenuItem
                             v-for="conv in getAllAgentConversations(a.id)"
                             :key="conv.id"
-                            @click="activeAgentId = a.id; handleSelectConversation(conv)"
+                            @click="handleSelectConversationForAgent(a.id, conv)"
                           >
                             <span class="truncate">{{ conv.name }}</span>
                           </DropdownMenuItem>
@@ -850,26 +949,22 @@ onUnmounted(() => {
     <!-- Right side: Chat area -->
     <section class="flex flex-1 flex-col overflow-hidden">
       <!-- Chat messages area -->
-      <div
-        v-if="chatMessages.length > 0"
-        class="flex-1 overflow-auto px-6 py-4"
-      >
+      <div v-if="chatMessages.length > 0" class="flex-1 overflow-auto px-6 py-4">
         <div class="mx-auto max-w-[800px] flex flex-col gap-4">
           <div
             v-for="msg in chatMessages"
             :key="msg.id"
-            :class="cn(
-              'flex',
-              msg.role === 'user' ? 'justify-end' : 'justify-start'
-            )"
+            :class="cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')"
           >
             <div
-              :class="cn(
-                'max-w-[80%] rounded-2xl px-4 py-3 text-sm',
-                msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-foreground'
-              )"
+              :class="
+                cn(
+                  'max-w-[80%] rounded-2xl px-4 py-3 text-sm',
+                  msg.role === 'user'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-foreground'
+                )
+              "
             >
               <p class="whitespace-pre-wrap wrap-break-word">{{ msg.content }}</p>
             </div>
@@ -879,18 +974,17 @@ onUnmounted(() => {
 
       <!-- Empty state / Input area -->
       <div
-        :class="cn(
-          'flex px-6',
-          chatMessages.length > 0
-            ? 'pb-4'
-            : 'flex-1 items-center justify-center'
-        )"
+        :class="
+          cn('flex px-6', chatMessages.length > 0 ? 'pb-4' : 'flex-1 items-center justify-center')
+        "
       >
         <div
-          :class="cn(
-            'flex w-full flex-col items-center gap-10',
-            chatMessages.length === 0 && '-translate-y-10'
-          )"
+          :class="
+            cn(
+              'flex w-full flex-col items-center gap-10',
+              chatMessages.length === 0 && '-translate-y-10'
+            )
+          "
         >
           <div v-if="chatMessages.length === 0" class="flex items-center gap-3">
             <LogoIcon class="size-10 text-foreground" />
