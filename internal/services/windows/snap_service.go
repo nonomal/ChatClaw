@@ -233,7 +233,12 @@ func (s *SnapService) step() {
 
 	target, found, err := winsnap.TopMostVisibleProcessName(enabledTargets)
 	if err != nil {
-		// Non-windows: snapping is not supported.
+		// Check if our own app is frontmost (user interacting with winsnap window)
+		// In this case, preserve current snap state - don't hide or change anything
+		if err == winsnap.ErrSelfIsFrontmost {
+			return
+		}
+		// Other errors: snapping is not supported or failed.
 		s.mu.Lock()
 		s.status.LastError = err.Error()
 		s.touchLocked(err.Error())

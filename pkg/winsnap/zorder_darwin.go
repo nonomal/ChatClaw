@@ -15,6 +15,16 @@ static char* winsnap_strdup_nsstring(NSString *s) {
 	return strdup(utf8);
 }
 
+// Check if frontmost app is our own app
+static bool winsnap_is_self_frontmost() {
+	@autoreleasepool {
+		NSRunningApplication *frontApp = [[NSWorkspace sharedWorkspace] frontmostApplication];
+		NSRunningApplication *selfApp = [NSRunningApplication currentApplication];
+		if (!frontApp || !selfApp) return false;
+		return [frontApp.bundleIdentifier isEqualToString:selfApp.bundleIdentifier];
+	}
+}
+
 static char* winsnap_frontmost_localized_name() {
 	@autoreleasepool {
 		NSRunningApplication *app = [[NSWorkspace sharedWorkspace] frontmostApplication];
@@ -48,9 +58,15 @@ import (
 
 // TopMostVisibleProcessName returns the "frontmost" application name among targets.
 // On macOS, "top-most" is approximated as the current frontmost application.
+// Returns ErrSelfIsFrontmost if our own app is frontmost (caller should preserve current state).
 func TopMostVisibleProcessName(targetProcessNames []string) (processName string, found bool, err error) {
 	if len(targetProcessNames) == 0 {
 		return "", false, nil
+	}
+
+	// If our own app is frontmost (user clicked on winsnap window), preserve current state
+	if C.winsnap_is_self_frontmost() {
+		return "", false, ErrSelfIsFrontmost
 	}
 
 	cLoc := C.winsnap_frontmost_localized_name()

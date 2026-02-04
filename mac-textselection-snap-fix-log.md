@@ -61,7 +61,64 @@ cgo: pkg/winsnap/winsnap_darwin.go:611:10: struct size calculation error off=8 b
 
 ---
 
-## 二、吸附功能（winsnap）修复方案（已实施）
+## 二、Mac 划词与吸附运行时问题修复（2026-02-04 第二轮）
+
+### 1. 吸附窗体（winsnap）点击就隐藏
+
+**问题描述：** Mac 上点击吸附窗体后，吸附窗体立即隐藏/消失。
+
+**原因：**
+- `TopMostVisibleProcessName` 使用 `frontmostApplication` 检测当前最前的应用
+- 当用户点击吸附窗体时，WillChat 应用变成了 `frontmostApplication`
+- 检测到前台应用不是目标应用（如微信），返回 `found=false`
+- `step()` 调用 `hideOffscreen()` 隐藏吸附窗体
+
+**修复：**
+- 在 `zorder_darwin.go` 中添加 `winsnap_is_self_frontmost()` 检测当前应用是否是我们自己
+- 当检测到前台应用是我们自己时，返回 `ErrSelfIsFrontmost` 错误
+- 在 `snap_service.go` 的 `step()` 中处理此错误，保持当前吸附状态不变
+
+### 1.5 划词弹窗坐标检测问题
+
+**问题描述：** Mac 上划词弹窗的 click outside 检测可能失效。
+
+**原因：**
+- `clickOutsideWatcher` 使用物理像素坐标检测点击位置
+- `SetPopupRect` 接收的弹窗尺寸是点坐标（logical points），没有转换为像素坐标
+- 导致检测区域与实际弹窗位置不匹配
+
+**修复：**
+- 在 `showPopupAt` 中，Mac 上将弹窗位置和尺寸都转换为像素坐标后再设置 click outside rect
+- 同时修正窗口定位：计算像素位置后转换回点坐标用于 Wails `SetPosition`
+
+### 2. 点击划词弹窗没触发程序唤醒
+
+**问题描述：** Mac 上点击划词弹窗按钮后，主程序/吸附窗口/被吸附窗口都没有被唤醒到最前。
+
+**原因：**
+- `forceActivateWindow` 在非 Windows 平台只是调用 `w.Focus()`
+- Mac 上 `Focus()` 可能不够强力，无法将应用从后台唤醒到前台
+
+**修复：**
+- 新增 `activate_darwin.go`，使用 `NSRunningApplication.activateWithOptions(NSApplicationActivateIgnoringOtherApps)` 激活应用
+- 同时保留 `w.Focus()` 确保特定窗口获得焦点
+
+### 3. 主窗体/吸附窗体内划词没弹窗
+
+**问题描述：** 在自己应用内划词（主窗口或 winsnap 窗口），没有弹出划词弹窗。
+
+**原因分析：**
+- Mac 上 mouse hook 会跳过自己的应用（检测 frontmostApplication == currentApplication）
+- 依赖前端 `onMouseUp` 监听 `window.getSelection()` 并调用 `ShowAtScreenPos`
+- 前端使用 `e.screenX * devicePixelRatio` 转换为像素坐标
+
+**相关修复：**
+- 上述坐标转换修复应该同时解决此问题
+- 如果仍有问题，可能需要检查 Wails 在 Mac 上的窗口坐标系统（Cocoa 使用左下角原点）
+
+---
+
+## 三、吸附功能（winsnap）CGO 编译修复（已实施）
 
 **文件：** `pkg/winsnap/winsnap_darwin.go`
 
@@ -95,14 +152,20 @@ cgo: pkg/winsnap/winsnap_darwin.go:611:10: struct size calculation error off=8 b
 
 ### 3.2 划词搜索（Text Selection）
 
-- [ ] 在目标应用（如浏览器、文本编辑器）中选中一段文字，能否正常弹出划词搜索 UI
+- [ ] **外部应用划词**：在目标应用（如浏览器、文本编辑器）中选中一段文字，能否正常弹出划词搜索 UI
+- [ ] **主窗体内划词**：在 WillChat 主窗口内选中文字，能否正常弹出划词搜索 UI
+- [ ] **吸附窗体内划词**：在 winsnap 窗口内选中文字，能否正常弹出划词搜索 UI
 - [ ] 弹窗位置、大小是否合理，是否被遮挡或错位
+- [ ] **点击弹窗按钮**：点击划词弹窗按钮后，文字是否正确发送到目标位置
+- [ ] **点击弹窗后唤醒**：点击弹窗按钮后，主程序/吸附窗口是否被唤醒到前台
 - [ ] 再次划词时，前一次弹窗是否正确关闭或更新
-- [ ] 若存在「无焦点/不激活主窗口」逻辑，在 Mac 上是否仍符合预期
+- [ ] 点击弹窗外部时，弹窗是否正确关闭
 
 **已知平台差异（可在此补充）：**
 
-- 例如：剪贴板、鼠标钩子、焦点/激活行为在 macOS 与 Windows 可能不同，需分别验证。
+- Mac 上 mouse hook 检测到自己应用是前台时会跳过，依赖前端 `onMouseUp` 监听
+- Mac 上坐标系统：mouse hook 使用物理像素，Wails 窗口使用点坐标，需要转换
+- Mac 上剪贴板操作：Cmd+C 模拟可能不会发送到原始应用，需前端配合
 
 ### 3.3 吸附功能（Snap）
 
@@ -135,6 +198,9 @@ cgo: pkg/winsnap/winsnap_darwin.go:611:10: struct size calculation error off=8 b
 | 仅靠 AX API 获取窗口号 | 不可行 | 公开 AX 无「窗口号」属性，需配合 CGWindowList。 |
 | 不传 PID 仅用 AX frame 在全局窗口列表中匹配 | 易错 | 多进程时可能匹配到其它进程同位置窗口，必须用 PID 过滤。 |
 | 在 C 结构体中直接使用 `id` 类型 | CGO 编译失败 | CGO 无法识别 Objective-C 的 `id` 类型大小，需改用 `void*` 并桥接。 |
+| click outside rect 使用点坐标而检测用像素坐标 | 检测失败 | Mac 上 click outside 检测使用物理像素，rect 必须也用像素坐标。 |
+| 非 Windows 平台用 `w.Focus()` 唤醒窗口 | 效果不佳 | Mac 上需用 `NSRunningApplication.activateWithOptions` 激活应用。 |
+| 仅用 `frontmostApplication` 判断目标可见性 | 点击即隐藏 | Mac 上点击自己的窗口会让自己成为 frontmost，需排除自己。 |
 
 ---
 
