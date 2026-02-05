@@ -206,16 +206,20 @@ func (f *follower) winEventProc(_ uintptr, event uint32, hwnd windows.HWND, idOb
 		if idObject != objidWindow || idChild != 0 {
 			return 0
 		}
+		_ = f.syncToTarget()
 	case eventSystemForeground:
 		// Foreground event doesn't use object/child the same way; just react
 		// when the foreground window is the target window.
 		if hwnd != f.target {
 			return 0
 		}
+		// When target becomes foreground, we need to ensure our window is also
+		// brought to the top, placed right after the target in z-order.
+		// Use syncToTargetWithZOrderFix to handle this case.
+		_ = f.syncToTargetWithZOrderFix()
 	default:
 		return 0
 	}
-	_ = f.syncToTarget()
 	return 0
 }
 
@@ -266,6 +270,56 @@ func (f *follower) syncToTarget() error {
 		return setWindowPosWithSizeAfter(f.self, f.target, x, y, width, targetHeight)
 	}
 	_ = setWindowNoTopMostNoActivate(f.self)
+	return setWindowPosWithSizeAfter(f.self, f.target, x, y, width, targetHeight)
+}
+
+// syncToTargetWithZOrderFix is called when the target window becomes foreground.
+// It ensures our winsnap window is brought to the top along with the target.
+// This is needed because SetWindowPos with insertAfter=target may not bring our
+// window above other windows that were previously above us.
+func (f *follower) syncToTargetWithZOrderFix() error {
+	if !isWindow(f.target) {
+		return errors.New("winsnap: target window is not valid")
+	}
+
+	var targetWin, targetFrame rect
+	if err := getWindowRect(f.target, &targetWin); err != nil {
+		return err
+	}
+	if err := getExtendedFrameBounds(f.target, &targetFrame); err != nil {
+		targetFrame = targetWin
+	}
+
+	var selfWin, selfFrame rect
+	if err := getWindowRect(f.self, &selfWin); err != nil {
+		return err
+	}
+	if err := getExtendedFrameBounds(f.self, &selfFrame); err != nil {
+		selfFrame = selfWin
+	}
+
+	selfOffsetX := selfFrame.Left - selfWin.Left
+	selfOffsetY := selfFrame.Top - selfWin.Top
+
+	x := targetFrame.Right + int32(f.gap) - selfOffsetX
+	y := targetFrame.Top - selfOffsetY
+
+	targetHeight := targetFrame.Bottom - targetFrame.Top
+	width := f.selfWidth
+	if width <= 0 {
+		width = selfWin.Right - selfWin.Left
+	}
+
+	// When target becomes foreground, we need to ensure winsnap is also visible.
+	// First, bring our window to HWND_TOP (above all non-topmost windows),
+	// then position it properly after the target.
+	if isTopMost(f.target) {
+		_ = setWindowTopMostNoActivate(f.self)
+	} else {
+		_ = setWindowNoTopMostNoActivate(f.self)
+		// Explicitly bring to top first before positioning after target
+		_ = bringWindowToTopNoActivate(f.self)
+	}
 	return setWindowPosWithSizeAfter(f.self, f.target, x, y, width, targetHeight)
 }
 
@@ -426,6 +480,7 @@ const (
 
 	// Special HWND values for SetWindowPos
 	// https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-setwindowpos
+	hwndTop       = uintptr(0)  // (HWND)0 - Places the window at the top of the Z order
 	hwndTopMost   = ^uintptr(0) // (HWND)-1
 	hwndNoTopMost = ^uintptr(1) // (HWND)-2
 
@@ -637,6 +692,21 @@ func setWindowTopMostNoActivate(hwnd windows.HWND) error {
 func setWindowNoTopMostNoActivate(hwnd windows.HWND) error {
 	flags := uintptr(swpNoMove | swpNoSize | swpNoActivate)
 	r1, _, errNo := procSetWindowPos.Call(uintptr(hwnd), hwndNoTopMost, 0, 0, 0, 0, flags)
+	if r1 == 0 {
+		if errNo != nil && errNo != syscall.Errno(0) {
+			return errNo
+		}
+		return syscall.EINVAL
+	}
+	return nil
+}
+
+// bringWindowToTopNoActivate brings the window to the top of the z-order
+// without activating it. This is useful when the target window becomes foreground
+// and we need to ensure our window is also visible above other windows.
+func bringWindowToTopNoActivate(hwnd windows.HWND) error {
+	flags := uintptr(swpNoMove | swpNoSize | swpNoActivate)
+	r1, _, errNo := procSetWindowPos.Call(uintptr(hwnd), hwndTop, 0, 0, 0, 0, flags)
 	if r1 == 0 {
 		if errNo != nil && errNo != syscall.Errno(0) {
 			return errNo

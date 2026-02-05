@@ -12,37 +12,55 @@ import (
 )
 
 var (
-	procOpenClipboard                = modUser32.NewProc("OpenClipboard")
-	procCloseClipboard               = modUser32.NewProc("CloseClipboard")
-	procEmptyClipboard               = modUser32.NewProc("EmptyClipboard")
-	procSetClipboardData             = modUser32.NewProc("SetClipboardData")
-	procGlobalAlloc                  = modKernel32.NewProc("GlobalAlloc")
-	procGlobalLock                   = modKernel32.NewProc("GlobalLock")
-	procGlobalUnlock                 = modKernel32.NewProc("GlobalUnlock")
-	procKeybd_event                  = modUser32.NewProc("keybd_event")
-	procSetForegroundWindowInput     = modUser32.NewProc("SetForegroundWindow")
-	procGetWindowThreadProcIdInput   = modUser32.NewProc("GetWindowThreadProcessId")
-	procAttachThreadInputInput       = modUser32.NewProc("AttachThreadInput")
-	procGetCurrentThreadIdInput      = modKernel32.NewProc("GetCurrentThreadId")
-	procShowWindowInput              = modUser32.NewProc("ShowWindow")
-	procBringWindowToTopInput        = modUser32.NewProc("BringWindowToTop")
-	procGetForegroundWindowInput     = modUser32.NewProc("GetForegroundWindow")
+	procOpenClipboard    = modUser32.NewProc("OpenClipboard")
+	procCloseClipboard   = modUser32.NewProc("CloseClipboard")
+	procEmptyClipboard   = modUser32.NewProc("EmptyClipboard")
+	procSetClipboardData = modUser32.NewProc("SetClipboardData")
+	procGlobalAlloc      = modKernel32.NewProc("GlobalAlloc")
+	procGlobalLock       = modKernel32.NewProc("GlobalLock")
+	procGlobalUnlock     = modKernel32.NewProc("GlobalUnlock")
+	procSendInput        = modUser32.NewProc("SendInput")
+	procSetWindowPosIn   = modUser32.NewProc("SetWindowPos")
 )
 
 const (
-	CF_UNICODETEXT        = 13
-	GMEM_MOVEABLE         = 0x0002
-	KEYEVENTF_KEYUP_INPUT = 0x0002
-	VK_CONTROL_INPUT      = 0x11
-	VK_RETURN_INPUT       = 0x0D
-	VK_V_INPUT            = 0x56
-	SW_RESTORE_INPUT      = 9
+	CF_UNICODETEXT = 13
+	GMEM_MOVEABLE  = 0x0002
+
+	// SendInput constants
+	INPUT_KEYBOARD   = 1
+	KEYEVENTF_KEYUP  = 0x0002
+	VK_CONTROL       = 0x11
+	VK_RETURN        = 0x0D
+	VK_V             = 0x56
+
+	// SetWindowPos constants
+	HWND_TOP_INPUT    = 0
+	SWP_NOMOVE_INPUT  = 0x0002
+	SWP_NOSIZE_INPUT  = 0x0001
+	SWP_SHOWWINDOW_IN = 0x0040
 )
+
+// KEYBDINPUT structure for SendInput
+type keyboardInput struct {
+	wVk         uint16
+	wScan       uint16
+	dwFlags     uint32
+	time        uint32
+	dwExtraInfo uintptr
+}
+
+// INPUT structure for SendInput
+type inputUnion struct {
+	inputType uint32
+	ki        keyboardInput
+	padding   [8]byte // Padding to match the C union size
+}
 
 // SendTextToTarget sends text to the target application by:
 // 1. Copying text to clipboard
-// 2. Activating target window (using same method as wake)
-// 3. Simulating Ctrl+V to paste
+// 2. Bringing target window to front (without stealing focus from Wails)
+// 3. Simulating Ctrl+V to paste using SendInput
 // 4. Optionally simulating Enter or Ctrl+Enter to send
 func SendTextToTarget(targetProcess string, text string, triggerSend bool, sendKeyStrategy string) error {
 	if targetProcess == "" {
@@ -75,21 +93,22 @@ func SendTextToTarget(targetProcess string, text string, triggerSend bool, sendK
 		return err
 	}
 
-	// Activate target window - use the same proven method as activateHwnd in wake_windows.go
-	activateTargetWindow(targetHWND)
-	time.Sleep(150 * time.Millisecond)
+	// Use the proven wake method to activate target - same as WakeAttachedWindow
+	// This method is already tested and works with the snap functionality
+	activateHwndInput(targetHWND)
+	time.Sleep(200 * time.Millisecond)
 
-	// Simulate Ctrl+V to paste
-	simulateCtrlV()
-	time.Sleep(80 * time.Millisecond)
+	// Simulate Ctrl+V to paste using SendInput
+	sendCtrlV()
+	time.Sleep(100 * time.Millisecond)
 
 	// Optionally trigger send
 	if triggerSend {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(150 * time.Millisecond)
 		if sendKeyStrategy == "ctrl_enter" {
-			simulateCtrlEnter()
+			sendCtrlEnter()
 		} else {
-			simulateEnter()
+			sendEnter()
 		}
 	}
 
@@ -101,39 +120,36 @@ func PasteTextToTarget(targetProcess string, text string) error {
 	return SendTextToTarget(targetProcess, text, false, "")
 }
 
-// activateTargetWindow brings the target window to front and gives it focus
-// This uses the same approach as activateHwnd in wake_windows.go which is proven to work
-func activateTargetWindow(hwnd windows.HWND) {
+// activateHwndInput activates the target window using the same proven method from wake_windows.go
+// This is a copy of activateHwnd to avoid import cycles
+func activateHwndInput(hwnd windows.HWND) {
 	if hwnd == 0 {
 		return
 	}
 
-	foregroundHwnd, _, _ := procGetForegroundWindowInput.Call()
+	foregroundHwnd, _, _ := procGetForegroundWindowWake.Call()
 	var attached bool
 	var foregroundTid, currentTid uintptr
 
 	if foregroundHwnd != 0 {
 		var foregroundPid uint32
-		foregroundTid, _, _ = procGetWindowThreadProcIdInput.Call(
+		foregroundTid, _, _ = procGetWindowThreadProcIdWake.Call(
 			foregroundHwnd,
 			uintptr(unsafe.Pointer(&foregroundPid)),
 		)
-		currentTid, _, _ = procGetCurrentThreadIdInput.Call()
+		currentTid, _, _ = procGetCurrentThreadIdWake.Call()
 		if foregroundTid != currentTid {
-			ret, _, _ := procAttachThreadInputInput.Call(currentTid, foregroundTid, 1)
+			ret, _, _ := procAttachThreadInputWake.Call(currentTid, foregroundTid, 1)
 			attached = ret != 0
 		}
 	}
 
-	// ShowWindow with SW_RESTORE to restore if minimized
-	procShowWindowInput.Call(uintptr(hwnd), SW_RESTORE_INPUT)
-	// SetForegroundWindow to bring to front
-	procSetForegroundWindowInput.Call(uintptr(hwnd))
-	// BringWindowToTop for good measure
-	procBringWindowToTopInput.Call(uintptr(hwnd))
+	procShowWindowWake.Call(uintptr(hwnd), swRestoreWake)
+	procSetForegroundWindowWake.Call(uintptr(hwnd))
+	procBringWindowToTopWake.Call(uintptr(hwnd))
 
 	if attached {
-		procAttachThreadInputInput.Call(currentTid, foregroundTid, 0)
+		procAttachThreadInputWake.Call(currentTid, foregroundTid, 0)
 	}
 }
 
@@ -189,45 +205,65 @@ func setClipboardText(text string) error {
 	return nil
 }
 
-func simulateCtrlV() {
-	// Press Ctrl
-	procKeybd_event.Call(VK_CONTROL_INPUT, 0, 0, 0)
-	time.Sleep(30 * time.Millisecond)
-
-	// Press V
-	procKeybd_event.Call(VK_V_INPUT, 0, 0, 0)
-	time.Sleep(30 * time.Millisecond)
-
-	// Release V
-	procKeybd_event.Call(VK_V_INPUT, 0, KEYEVENTF_KEYUP_INPUT, 0)
-	time.Sleep(30 * time.Millisecond)
-
-	// Release Ctrl
-	procKeybd_event.Call(VK_CONTROL_INPUT, 0, KEYEVENTF_KEYUP_INPUT, 0)
+// sendInput sends keyboard input using SendInput API
+func sendKeyboardInput(inputs []inputUnion) {
+	if len(inputs) == 0 {
+		return
+	}
+	procSendInput.Call(
+		uintptr(len(inputs)),
+		uintptr(unsafe.Pointer(&inputs[0])),
+		unsafe.Sizeof(inputs[0]),
+	)
 }
 
-func simulateEnter() {
-	// Press Enter
-	procKeybd_event.Call(VK_RETURN_INPUT, 0, 0, 0)
-	time.Sleep(30 * time.Millisecond)
-
-	// Release Enter
-	procKeybd_event.Call(VK_RETURN_INPUT, 0, KEYEVENTF_KEYUP_INPUT, 0)
+// makeKeyDown creates a key down input
+func makeKeyDown(vk uint16) inputUnion {
+	return inputUnion{
+		inputType: INPUT_KEYBOARD,
+		ki: keyboardInput{
+			wVk:     vk,
+			dwFlags: 0,
+		},
+	}
 }
 
-func simulateCtrlEnter() {
-	// Press Ctrl
-	procKeybd_event.Call(VK_CONTROL_INPUT, 0, 0, 0)
-	time.Sleep(30 * time.Millisecond)
+// makeKeyUp creates a key up input
+func makeKeyUp(vk uint16) inputUnion {
+	return inputUnion{
+		inputType: INPUT_KEYBOARD,
+		ki: keyboardInput{
+			wVk:     vk,
+			dwFlags: KEYEVENTF_KEYUP,
+		},
+	}
+}
 
-	// Press Enter
-	procKeybd_event.Call(VK_RETURN_INPUT, 0, 0, 0)
-	time.Sleep(30 * time.Millisecond)
+func sendCtrlV() {
+	// Send all key events: Ctrl down, V down, V up, Ctrl up
+	inputs := []inputUnion{
+		makeKeyDown(VK_CONTROL),
+		makeKeyDown(VK_V),
+		makeKeyUp(VK_V),
+		makeKeyUp(VK_CONTROL),
+	}
+	sendKeyboardInput(inputs)
+}
 
-	// Release Enter
-	procKeybd_event.Call(VK_RETURN_INPUT, 0, KEYEVENTF_KEYUP_INPUT, 0)
-	time.Sleep(30 * time.Millisecond)
+func sendEnter() {
+	inputs := []inputUnion{
+		makeKeyDown(VK_RETURN),
+		makeKeyUp(VK_RETURN),
+	}
+	sendKeyboardInput(inputs)
+}
 
-	// Release Ctrl
-	procKeybd_event.Call(VK_CONTROL_INPUT, 0, KEYEVENTF_KEYUP_INPUT, 0)
+func sendCtrlEnter() {
+	inputs := []inputUnion{
+		makeKeyDown(VK_CONTROL),
+		makeKeyDown(VK_RETURN),
+		makeKeyUp(VK_RETURN),
+		makeKeyUp(VK_CONTROL),
+	}
+	sendKeyboardInput(inputs)
 }
