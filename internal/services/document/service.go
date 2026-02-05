@@ -9,13 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"willchat/internal/define"
+	"willchat/internal/eino/processor"
 	"willchat/internal/errs"
 	"willchat/internal/services/thumbnail"
 	"willchat/internal/sqlite"
@@ -523,7 +523,7 @@ func (s *DocumentService) generateThumbnail(docID, libraryID int64, localPath st
 	}
 }
 
-// processDocument 处理文档（解析 + 向量化）
+// processDocument 处理文档（解析 + 分段 + 向量化 + RAPTOR）
 func (s *DocumentService) processDocument(docID, libraryID int64, runID string, info *taskmanager.TaskInfo) {
 	tm := taskmanager.Get()
 	db, err := s.db()
@@ -579,59 +579,102 @@ func (s *DocumentService) processDocument(docID, libraryID int64, runID string, 
 		}
 	}
 
-	// ========== 阶段1: 解析文档 ==========
+	// 检查任务是否应该继续
 	if !shouldContinue() {
 		return
 	}
+
+	// 获取文档信息
+	var doc documentModel
+	if err := db.NewSelect().Model(&doc).Where("id = ?", docID).Scan(ctx); err != nil {
+		updateAndEmit(StatusFailed, 0, "获取文档信息失败: "+err.Error(), StatusPending, 0, "")
+		return
+	}
+
+	// 开始解析
 	updateAndEmit(StatusProcessing, 0, "", StatusPending, 0, "")
 
-	// 模拟解析过程
-	for progress := 10; progress <= 100; progress += 10 {
+	// 获取知识库配置
+	libraryConfig, err := processor.GetLibraryConfig(ctx, db, libraryID)
+	if err != nil {
+		updateAndEmit(StatusFailed, 0, "获取知识库配置失败: "+err.Error(), StatusPending, 0, "")
+		return
+	}
+
+	// 获取全局嵌入模型配置
+	embeddingConfig, err := processor.GetEmbeddingConfig(ctx, db)
+	if err != nil {
+		updateAndEmit(StatusFailed, 0, "获取嵌入模型配置失败: "+err.Error(), StatusPending, 0, "")
+		return
+	}
+
+	// 创建文档处理器
+	proc, err := processor.NewProcessor(db)
+	if err != nil {
+		updateAndEmit(StatusFailed, 0, "创建处理器失败: "+err.Error(), StatusPending, 0, "")
+		return
+	}
+
+	// 获取供应商信息的回调函数
+	getProviderInfo := func(providerID string) (*processor.ProviderInfo, error) {
+		return processor.GetProviderInfo(ctx, db, providerID)
+	}
+
+	// 进度回调
+	var lastPhase string
+	onProgress := func(phase string, progress int) {
 		if !shouldContinue() {
 			return
 		}
-		time.Sleep(200 * time.Millisecond) // 模拟耗时
-
-		// 随机模拟解析失败（约 30% 概率）
-		if progress == 50 && rand.Intn(10) < 3 {
-			updateAndEmit(StatusFailed, progress, "模拟解析失败：文档格式不支持", StatusPending, 0, "")
-			return
+		if phase == "parsing" {
+			updateAndEmit(StatusProcessing, progress, "", StatusPending, 0, "")
+		} else if phase == "embedding" {
+			if lastPhase != "embedding" {
+				// 解析完成，开始向量化
+				updateAndEmit(StatusCompleted, 100, "", StatusProcessing, progress, "")
+			} else {
+				updateAndEmit(StatusCompleted, 100, "", StatusProcessing, progress, "")
+			}
 		}
-
-		updateAndEmit(StatusProcessing, progress, "", StatusPending, 0, "")
+		lastPhase = phase
 	}
 
-	// 解析完成
+	// 执行文档处理
+	result, err := proc.ProcessDocument(
+		ctx,
+		docID,
+		doc.LocalPath,
+		libraryConfig,
+		embeddingConfig,
+		getProviderInfo,
+		onProgress,
+	)
+
 	if !shouldContinue() {
 		return
 	}
-	updateAndEmit(StatusCompleted, 100, "", StatusPending, 0, "")
 
-	// ========== 阶段2: 向量化 ==========
-	if !shouldContinue() {
+	if err != nil {
+		// 根据错误类型判断是解析失败还是向量化失败
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "parse") || strings.Contains(errMsg, "split") || strings.Contains(errMsg, "store nodes") {
+			updateAndEmit(StatusFailed, 0, errMsg, StatusPending, 0, "")
+		} else {
+			updateAndEmit(StatusCompleted, 100, "", StatusFailed, 0, errMsg)
+		}
 		return
 	}
-	updateAndEmit(StatusCompleted, 100, "", StatusProcessing, 0, "")
 
-	// 模拟向量化过程
-	for progress := 10; progress <= 100; progress += 10 {
-		if !shouldContinue() {
-			return
-		}
-		time.Sleep(200 * time.Millisecond) // 模拟耗时
-
-		// 随机模拟向量化失败（约 30% 概率）
-		if progress == 70 && rand.Intn(10) < 3 {
-			updateAndEmit(StatusCompleted, 100, "", StatusFailed, progress, "模拟向量化失败：嵌入模型调用异常")
-			return
-		}
-
-		updateAndEmit(StatusCompleted, 100, "", StatusProcessing, progress, "")
-	}
+	// 更新文档统计信息
+	db.NewUpdate().
+		Table("documents").
+		Set("word_total = ?", result.WordTotal).
+		Set("split_total = ?", result.SplitTotal).
+		Set("updated_at = ?", sqlite.NowUTC()).
+		Where("id = ?", docID).
+		Where("processing_run_id = ?", runID).
+		Exec(ctx)
 
 	// 全部完成
-	if !shouldContinue() {
-		return
-	}
 	updateAndEmit(StatusCompleted, 100, "", StatusCompleted, 100, "")
 }
