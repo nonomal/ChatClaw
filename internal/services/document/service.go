@@ -275,9 +275,25 @@ func (s *DocumentService) UploadDocuments(input UploadInput) ([]Document, error)
 	defer cancel()
 
 	uploaded := make([]Document, 0, len(input.FilePaths))
+	total := len(input.FilePaths)
+	done := 0
+
+	emitUploadProgress := func() {
+		if s.app == nil {
+			return
+		}
+		s.app.Event.Emit("document:upload_progress", UploadProgressEvent{
+			LibraryID: input.LibraryID,
+			Total:     total,
+			Done:      done,
+		})
+	}
+	emitUploadProgress()
 
 	for _, srcPath := range input.FilePaths {
 		doc, err := s.uploadSingleFile(ctx, db, input.LibraryID, libraryDir, srcPath)
+		done++
+		emitUploadProgress()
 		if err != nil {
 			// 记录错误但继续处理其他文件
 			if s.app != nil {
@@ -286,6 +302,11 @@ func (s *DocumentService) UploadDocuments(input UploadInput) ([]Document, error)
 			continue
 		}
 		uploaded = append(uploaded, *doc)
+
+		// 可选：实时通知前端新增文档（用于即时渲染/反馈）
+		if s.app != nil {
+			s.app.Event.Emit("document:uploaded", *doc)
+		}
 
 		// 启动异步处理任务
 		s.startProcessingTask(doc)

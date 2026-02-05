@@ -395,6 +395,7 @@ export default {
         success: 'Documents uploaded',
         failed: 'Failed to upload documents',
         count: '{count} documents uploaded',
+        uploading: 'Uploading {done}/{total}',
       },
       rename: {
         title: 'Rename Document',

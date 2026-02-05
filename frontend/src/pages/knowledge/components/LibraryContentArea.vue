@@ -65,6 +65,12 @@ const beforeID = ref<number>(0)
 const PAGE_SIZE = 100
 let loadToken = 0
 
+const isUploading = ref(false)
+const uploadTotal = ref(0)
+const uploadDone = ref(0)
+let unsubscribeUploadProgress: (() => void) | null = null
+let unsubscribeUploaded: (() => void) | null = null
+
 const scrollContainerRef = ref<HTMLElement | null>(null)
 const loadMoreSentinelRef = ref<HTMLElement | null>(null)
 let loadMoreObserver: IntersectionObserver | null = null
@@ -126,6 +132,7 @@ const resetAndLoad = async () => {
 const loadMore = async (token?: number) => {
   if (!props.library?.id) return
   if (!hasMore.value) return
+  if (isUploading.value) return
   if (isLoading.value || isLoadingMore.value) return
 
   const currentToken = token ?? loadToken
@@ -210,39 +217,28 @@ const handleAddDocument = async () => {
       ],
     })
     if (result && result.length > 0) {
+      // 立即给用户反馈，避免“卡住”的感觉
+      isUploading.value = true
+      uploadTotal.value = result.length
+      uploadDone.value = 0
+      await nextTick()
+
       // 上传文件
       const uploaded = await DocumentService.UploadDocuments({
         library_id: props.library.id,
         file_paths: result,
       })
 
-      // 如果在搜索模式下，直接重置并重新加载第一页，保持结果一致
-      if (searchQuery.value.trim()) {
-        await resetAndLoad()
-      } else {
-        // 直接将上传的文档合并到列表顶部（避免等待全量刷新）
-        for (const doc of uploaded) {
-          const converted = convertDocument(doc as unknown as BackendDocument)
-          const hash = (doc as unknown as BackendDocument).content_hash
-          const existingIndex =
-            hash && hash.trim()
-              ? documents.value.findIndex((d) => d.contentHash === hash)
-              : documents.value.findIndex((d) => d.id === (doc as unknown as BackendDocument).id)
-          if (existingIndex >= 0) {
-            documents.value[existingIndex] = converted
-          } else {
-            documents.value.unshift(converted)
-          }
-        }
-        // 保持 id DESC
-        documents.value.sort((a, b) => b.id - a.id)
-      }
+      // 上传完成后统一刷新第一页（只渲染 100 条，避免一次性渲染 500 卡片导致卡顿）
+      await resetAndLoad()
 
       toast.success(t('knowledge.content.upload.count', { count: uploaded.length }))
     }
   } catch (error) {
     console.error('Failed to upload documents:', error)
     toast.error(getErrorMessage(error) || t('knowledge.content.upload.failed'))
+  } finally {
+    isUploading.value = false
   }
 }
 
@@ -406,6 +402,41 @@ onMounted(() => {
       errorMessage,
     }
   })
+
+  // 上传进度（用于大批量上传时的即时反馈）
+  unsubscribeUploadProgress = Events.On(
+    'document:upload_progress',
+    (event: { data: { library_id: number; total: number; done: number } }) => {
+      const p = event.data
+      if (p.library_id !== props.library?.id) return
+      uploadTotal.value = p.total
+      uploadDone.value = p.done
+      if (p.total > 0 && p.done > 0 && p.done <= p.total) {
+        isUploading.value = p.done < p.total
+      }
+    }
+  )
+
+  // 单个文档已入库事件（可用于小批量即时显示；大批量仍以 resetAndLoad 为主）
+  unsubscribeUploaded = Events.On('document:uploaded', (event: { data: BackendDocument }) => {
+    const doc = event.data
+    if (!doc || doc.library_id !== props.library?.id) return
+    if (searchQuery.value.trim()) return
+    // 仅在当前列表较少时追加，避免 500 次 DOM 更新
+    if (documents.value.length >= PAGE_SIZE) return
+    const converted = convertDocument(doc)
+    const existingIndex = documents.value.findIndex((d) => d.id === converted.id)
+    if (existingIndex >= 0) {
+      documents.value[existingIndex] = converted
+      return
+    }
+    documents.value.unshift(converted)
+    documents.value.sort((a, b) => b.id - a.id)
+    if (documents.value.length > PAGE_SIZE) {
+      documents.value.length = PAGE_SIZE
+    }
+    beforeID.value = documents.value.length ? documents.value[documents.value.length - 1].id : 0
+  })
 })
 
 onUnmounted(() => {
@@ -418,6 +449,12 @@ onUnmounted(() => {
   }
   if (unsubscribeThumbnail) {
     unsubscribeThumbnail()
+  }
+  if (unsubscribeUploadProgress) {
+    unsubscribeUploadProgress()
+  }
+  if (unsubscribeUploaded) {
+    unsubscribeUploaded()
   }
   if (searchTimeout) {
     clearTimeout(searchTimeout)
@@ -451,6 +488,20 @@ onUnmounted(() => {
         >
           <IconUploadFile class="size-4 text-muted-foreground" />
         </Button>
+      </div>
+    </div>
+
+    <!-- 上传进度条（大批量上传时避免“卡住”的感觉） -->
+    <div v-if="isUploading" class="px-4 pb-2">
+      <div class="flex items-center justify-between text-xs text-muted-foreground">
+        <span>{{ t('knowledge.content.upload.uploading', { done: uploadDone, total: uploadTotal }) }}</span>
+        <span v-if="uploadTotal > 0">{{ Math.floor((uploadDone / uploadTotal) * 100) }}%</span>
+      </div>
+      <div class="mt-1 h-1 w-full overflow-hidden rounded bg-muted">
+        <div
+          class="h-full bg-foreground/30 transition-[width]"
+          :style="{ width: uploadTotal > 0 ? `${Math.min(100, Math.floor((uploadDone / uploadTotal) * 100))}%` : '0%' }"
+        />
       </div>
     </div>
 

@@ -57,7 +57,7 @@ func newOpenAIEmbedder(ctx context.Context, cfg *ProviderConfig) (embedding.Embe
 	if cfg.APIEndpoint != "" {
 		config.BaseURL = cfg.APIEndpoint
 	}
-	// 设置向量维度（某些模型如 text-embedding-v3、text-embedding-3-large 支持）
+	// 设置向量维度（某些模型如 text-embedding-v4、text-embedding-3-large 支持）
 	if cfg.Dimension > 0 {
 		dim := cfg.Dimension
 		config.Dimensions = &dim

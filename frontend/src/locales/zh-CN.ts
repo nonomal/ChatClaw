@@ -393,6 +393,7 @@ export default {
         success: '文档上传成功',
         failed: '文档上传失败',
         count: '已上传 {count} 个文档',
+        uploading: '正在上传 {done}/{total}',
       },
       rename: {
         title: '重命名文档',

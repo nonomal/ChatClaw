@@ -57,6 +57,13 @@ type UploadInput struct {
 	FilePaths []string `json:"file_paths"`
 }
 
+// UploadProgressEvent 上传进度事件（发送给前端）
+type UploadProgressEvent struct {
+	LibraryID int64 `json:"library_id"`
+	Total     int   `json:"total"`
+	Done      int   `json:"done"`
+}
+
 // RenameInput 重命名文档的输入参数
 type RenameInput struct {
 	ID      int64  `json:"id"`
