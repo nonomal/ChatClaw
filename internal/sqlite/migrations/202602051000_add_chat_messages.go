@@ -57,6 +57,9 @@ CREATE TABLE IF NOT EXISTS messages (
 	
 	-- 扩展内容（可选，部分模型支持）
 	thinking_content TEXT NOT NULL DEFAULT '',  -- 思考链/推理内容（如 Claude thinking）
+	
+	-- 消息段（用于存储 interleaved content/tool-call order）
+	segments TEXT NOT NULL DEFAULT '[]',
 
 	FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
