@@ -267,6 +267,7 @@ static bool winsnap_is_frontmost_pid(pid_t pid) {
 
 static void winsnap_order_above_target(WinsnapFollower *f) {
 	if (!f || !f->selfWindow) return;
+	if (f->stopping) return;
 	if (!winsnap_is_frontmost_pid(f->pid)) return;
 
 	int winNo = 0;
@@ -275,10 +276,18 @@ static void winsnap_order_above_target(WinsnapFollower *f) {
 	os_unfair_lock_unlock(&f->lock);
 	if (winNo <= 0) return;
 
-	NSWindow *selfWin = (__bridge NSWindow *)f->selfWindow;
-	if (!selfWin) return;
-	// Order just above the target window (same "normal" level), without activating.
-	[selfWin orderWindow:NSWindowAbove relativeTo:winNo];
+	@try {
+		NSWindow *selfWin = (__bridge NSWindow *)f->selfWindow;
+		if (!selfWin) return;
+		// Verify the window is still valid before ordering
+		if (![selfWin isKindOfClass:[NSWindow class]]) return;
+		if (![selfWin isVisible]) return;
+		// Order just above the target window (same "normal" level), without activating.
+		[selfWin orderWindow:NSWindowAbove relativeTo:winNo];
+	} @catch (NSException *exception) {
+		// Window may have been deallocated or is in an invalid state; ignore safely.
+		NSLog(@"winsnap_order_above_target: caught exception %@", exception);
+	}
 }
 
 static void winsnap_register_activation_observer(WinsnapFollower *f) {
@@ -307,6 +316,7 @@ static void winsnap_unregister_activation_observer(WinsnapFollower *f) {
 
 static void winsnap_sync_to_target(WinsnapFollower *f) {
 	if (!f || !f->selfWindow) return;
+	if (f->stopping) return;
 	if (!f->appElem) return;
 
 	AXUIElementRef win = f->observedWindow;
@@ -359,41 +369,58 @@ static void winsnap_sync_to_target(WinsnapFollower *f) {
 	CFRetain(mainRL);
 	CFRunLoopPerformBlock(mainRL, kCFRunLoopCommonModes, ^{
 		WinsnapFollower *ff = f;
-		if (!ff || !ff->selfWindow) {
-			os_unfair_lock_lock(&ff->lock);
-			ff->applyScheduled = false;
-			os_unfair_lock_unlock(&ff->lock);
-			CFRelease(mainRL);
-			return;
-		}
-		NSWindow *selfWin = (__bridge NSWindow *)ff->selfWindow;
-		if (!selfWin) {
-			os_unfair_lock_lock(&ff->lock);
-			ff->applyScheduled = false;
-			os_unfair_lock_unlock(&ff->lock);
+		if (!ff || !ff->selfWindow || ff->stopping) {
+			if (ff) {
+				os_unfair_lock_lock(&ff->lock);
+				ff->applyScheduled = false;
+				os_unfair_lock_unlock(&ff->lock);
+			}
 			CFRelease(mainRL);
 			return;
 		}
 
-		// Apply the pre-computed Cocoa coordinates (all heavy computation done in AX callback thread).
-		os_unfair_lock_lock(&ff->lock);
-		CGPoint newOrigin = ff->latestCocoaOrigin;
-		CGFloat height = ff->selfHeight;
-		CGFloat width = ff->selfWidth;
-		int targetWinNo = ff->latestTargetWindowNumber;
-		uint64_t gen = ff->frameGen;
-		ff->appliedGen = gen;
-		ff->lastAppliedOrigin = newOrigin;
-		os_unfair_lock_unlock(&ff->lock);
+		@try {
+			NSWindow *selfWin = (__bridge NSWindow *)ff->selfWindow;
+			if (!selfWin || ![selfWin isKindOfClass:[NSWindow class]]) {
+				os_unfair_lock_lock(&ff->lock);
+				ff->applyScheduled = false;
+				os_unfair_lock_unlock(&ff->lock);
+				CFRelease(mainRL);
+				return;
+			}
 
-		// Set both position and size to match target window height
-		NSRect newFrame = NSMakeRect(newOrigin.x, newOrigin.y, width, height);
-		[selfWin setFrame:newFrame display:YES animate:NO];
+			// Apply the pre-computed Cocoa coordinates (all heavy computation done in AX callback thread).
+			os_unfair_lock_lock(&ff->lock);
+			CGPoint newOrigin = ff->latestCocoaOrigin;
+			CGFloat height = ff->selfHeight;
+			CGFloat width = ff->selfWidth;
+			int targetWinNo = ff->latestTargetWindowNumber;
+			uint64_t gen = ff->frameGen;
+			ff->appliedGen = gen;
+			ff->lastAppliedOrigin = newOrigin;
+			os_unfair_lock_unlock(&ff->lock);
 
-		// Z-order: keep the winsnap window just above the target window,
-		// but only when the target application is frontmost (so we don't cover other apps).
-		if (targetWinNo > 0 && winsnap_is_frontmost_pid(ff->pid)) {
-			[selfWin orderWindow:NSWindowAbove relativeTo:targetWinNo];
+			// Check window is still visible before applying frame
+			if (![selfWin isVisible]) {
+				os_unfair_lock_lock(&ff->lock);
+				ff->applyScheduled = false;
+				os_unfair_lock_unlock(&ff->lock);
+				CFRelease(mainRL);
+				return;
+			}
+
+			// Set both position and size to match target window height
+			NSRect newFrame = NSMakeRect(newOrigin.x, newOrigin.y, width, height);
+			[selfWin setFrame:newFrame display:YES animate:NO];
+
+			// Z-order: keep the winsnap window just above the target window,
+			// but only when the target application is frontmost (so we don't cover other apps).
+			if (targetWinNo > 0 && winsnap_is_frontmost_pid(ff->pid)) {
+				[selfWin orderWindow:NSWindowAbove relativeTo:targetWinNo];
+			}
+		} @catch (NSException *exception) {
+			// Window may have been deallocated or is in an invalid state; ignore safely.
+			NSLog(@"winsnap_sync_to_target: caught exception %@", exception);
 		}
 
 		// If more updates arrived while applying, schedule another run.

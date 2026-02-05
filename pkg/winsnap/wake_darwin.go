@@ -62,10 +62,19 @@ static void winsnap_activate_current_app(void) {
 
 // Order a specific window to front without activating the entire application.
 // This brings only the specified window to front, not all windows of the app.
+// Uses @try/@catch to safely handle cases where the window may have been deallocated.
 static void winsnap_order_window_front(void *nsWindow) {
 	if (!nsWindow) return;
-	NSWindow *win = (__bridge NSWindow *)nsWindow;
-	[win orderFrontRegardless];
+	@try {
+		NSWindow *win = (__bridge NSWindow *)nsWindow;
+		// Verify the window is still valid and visible before ordering to front
+		if (win && [win isKindOfClass:[NSWindow class]] && [win isVisible]) {
+			[win orderFrontRegardless];
+		}
+	} @catch (NSException *exception) {
+		// Window may have been deallocated or is in an invalid state; ignore safely.
+		NSLog(@"winsnap_order_window_front: caught exception %@", exception);
+	}
 }
 */
 import "C"
