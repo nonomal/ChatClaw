@@ -9,11 +9,18 @@ package winsnap
 #import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 #include <time.h>
+#include <mach/mach_time.h>
 
 // Helper to get current uptime timestamp in nanoseconds for CGEventSetTimestamp
 // This is required on macOS Sequoia and later for CGEventPost to work reliably
+// Falls back to mach_absolute_time() if clock_gettime_nsec_np fails
 static uint64_t current_uptime_nsec() {
-	return clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+	uint64_t ts = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+	if (ts == 0) {
+		// Fallback: use mach_absolute_time (needs conversion but works for timestamps)
+		ts = mach_absolute_time();
+	}
+	return ts;
 }
 
 // Set clipboard text
@@ -125,6 +132,138 @@ static void winsnap_simulate_cmd_enter() {
 
 	CFRelease(source);
 }
+
+// Get the main window frame of a running application by process name
+// Returns false if app not found or window not available
+static bool winsnap_get_app_window_frame(const char *name, CGRect *outFrame) {
+	if (!name || !outFrame) return false;
+	@autoreleasepool {
+		NSString *target = [NSString stringWithUTF8String:name];
+		if (!target || target.length == 0) return false;
+
+		// Normalize: drop path, .app, .exe suffixes
+		target = [target lastPathComponent];
+		NSString *lower = [target lowercaseString];
+		if ([lower hasSuffix:@".app"]) {
+			target = [target substringToIndex:(target.length - 4)];
+		}
+		lower = [target lowercaseString];
+		if ([lower hasSuffix:@".exe"]) {
+			target = [target substringToIndex:(target.length - 4)];
+		}
+
+		pid_t targetPid = 0;
+		for (NSRunningApplication *app in [[NSWorkspace sharedWorkspace] runningApplications]) {
+			if (!app || app.terminated) continue;
+			NSString *loc = app.localizedName;
+			NSString *exe = app.executableURL.lastPathComponent;
+			if ((loc.length && [[loc lowercaseString] isEqualToString:[target lowercaseString]]) ||
+				(exe.length && [[exe lowercaseString] isEqualToString:[target lowercaseString]])) {
+				targetPid = app.processIdentifier;
+				break;
+			}
+		}
+		if (targetPid <= 0) return false;
+
+		// Get window list and find the main window of target app
+		CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID);
+		if (!windowList) return false;
+
+		bool found = false;
+		CFIndex count = CFArrayGetCount(windowList);
+		for (CFIndex i = 0; i < count && !found; i++) {
+			CFDictionaryRef dict = (CFDictionaryRef)CFArrayGetValueAtIndex(windowList, i);
+			CFNumberRef pidRef = (CFNumberRef)CFDictionaryGetValue(dict, kCGWindowOwnerPID);
+			if (!pidRef) continue;
+			pid_t wpid = 0;
+			CFNumberGetValue(pidRef, kCFNumberIntType, &wpid);
+			if (wpid != targetPid) continue;
+
+			// Check window layer - only consider normal windows (layer 0)
+			CFNumberRef layerRef = (CFNumberRef)CFDictionaryGetValue(dict, kCGWindowLayer);
+			if (layerRef) {
+				int layer = 0;
+				CFNumberGetValue(layerRef, kCFNumberIntType, &layer);
+				if (layer != 0) continue;
+			}
+
+			// Get window bounds
+			CFDictionaryRef boundsDict = (CFDictionaryRef)CFDictionaryGetValue(dict, kCGWindowBounds);
+			if (!boundsDict) continue;
+			CGRect rect;
+			if (CGRectMakeWithDictionaryRepresentation(boundsDict, &rect)) {
+				// Skip tiny windows
+				if (rect.size.width >= 200 && rect.size.height >= 200) {
+					*outFrame = rect;
+					found = true;
+				}
+			}
+		}
+		CFRelease(windowList);
+		return found;
+	}
+}
+
+// Simulate mouse click at screen coordinates
+// x, y are in CG coordinate system (origin at top-left of primary display)
+static void winsnap_simulate_click(CGFloat x, CGFloat y) {
+	CGPoint point = CGPointMake(x, y);
+	CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
+	if (!source) return;
+
+	// Create mouse down event
+	CGEventRef mouseDown = CGEventCreateMouseEvent(source, kCGEventLeftMouseDown, point, kCGMouseButtonLeft);
+	CGEventSetTimestamp(mouseDown, current_uptime_nsec());
+	CGEventPost(kCGHIDEventTap, mouseDown);
+	CFRelease(mouseDown);
+
+	usleep(50000); // 50ms between down and up
+
+	// Create mouse up event
+	CGEventRef mouseUp = CGEventCreateMouseEvent(source, kCGEventLeftMouseUp, point, kCGMouseButtonLeft);
+	CGEventSetTimestamp(mouseUp, current_uptime_nsec());
+	CGEventPost(kCGHIDEventTap, mouseUp);
+	CFRelease(mouseUp);
+
+	CFRelease(source);
+}
+
+// Click on the input area of a target app window
+// offsetX: pixels from left edge (0 = center horizontally)
+// offsetY: pixels from bottom (0 = use default 120)
+// Returns true if click was performed
+static bool winsnap_click_input_area(const char *name, int offsetX, int offsetY) {
+	CGRect frame;
+	if (!winsnap_get_app_window_frame(name, &frame)) {
+		return false;
+	}
+
+	// Default offset from bottom for input box
+	int clickOffsetY = offsetY > 0 ? offsetY : 120;
+
+	// Calculate click position
+	CGFloat x, y;
+	if (offsetX > 0) {
+		x = frame.origin.x + offsetX;
+		// Make sure within window
+		if (x > frame.origin.x + frame.size.width - 10) {
+			x = frame.origin.x + frame.size.width / 2;
+		}
+	} else {
+		// Center horizontally
+		x = frame.origin.x + frame.size.width / 2;
+	}
+
+	// Y from bottom of window
+	y = frame.origin.y + frame.size.height - clickOffsetY;
+	// Make sure within window
+	if (y < frame.origin.y + 100) {
+		y = frame.origin.y + frame.size.height / 2;
+	}
+
+	winsnap_simulate_click(x, y);
+	return true;
+}
 */
 import "C"
 
@@ -137,9 +276,9 @@ import (
 // SendTextToTarget sends text to the target application by:
 // 1. Copying text to clipboard
 // 2. Activating target window
-// 3. Simulating Cmd+V to paste
-// 4. Optionally simulating Enter or Cmd+Enter to send
-// noClick and clickOffsetX/Y are ignored on macOS as focus handling is different
+// 3. Clicking on input area to focus (unless noClick is true)
+// 4. Simulating Cmd+V to paste
+// 5. Optionally simulating Enter or Cmd+Enter to send
 func SendTextToTarget(targetProcess string, text string, triggerSend bool, sendKeyStrategy string, noClick bool, clickOffsetX, clickOffsetY int) error {
 	if targetProcess == "" {
 		return errors.New("winsnap: target process is empty")
@@ -163,15 +302,22 @@ func SendTextToTarget(targetProcess string, text string, triggerSend bool, sendK
 		return ErrTargetWindowNotFound
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(150 * time.Millisecond)
+
+	// Click on input area to focus (unless noClick is true)
+	// This is needed because most apps don't auto-focus the input box when activated
+	if !noClick {
+		C.winsnap_click_input_area(cName, C.int(clickOffsetX), C.int(clickOffsetY))
+		time.Sleep(150 * time.Millisecond)
+	}
 
 	// Simulate Cmd+V to paste
 	C.winsnap_simulate_cmd_v()
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	// Optionally trigger send
 	if triggerSend {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(150 * time.Millisecond)
 		// On macOS, most apps use Enter to send, but some use Cmd+Enter
 		// We'll use the same strategy names but map ctrl_enter to cmd_enter
 		if sendKeyStrategy == "ctrl_enter" {
