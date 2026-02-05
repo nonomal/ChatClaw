@@ -17,8 +17,9 @@ static void textselection_force_popup_topmost(void *nsWindow) {
 		NSWindow *win = (__bridge NSWindow *)nsWindow;
 		if (!win || ![win isKindOfClass:[NSWindow class]]) return;
 
-		// Ensure window level is set to floating
-		[win setLevel:NSFloatingWindowLevel];
+		// Set window level to popup menu level (above all normal windows including winsnap)
+		// NSPopUpMenuWindowLevel = 101, which is higher than NSFloatingWindowLevel (3)
+		[win setLevel:NSPopUpMenuWindowLevel];
 
 		// Bring window to front without activating the app
 		[win orderFrontRegardless];

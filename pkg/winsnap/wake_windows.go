@@ -4,6 +4,7 @@ package winsnap
 
 import (
 	"errors"
+	"strings"
 	"syscall"
 	"unsafe"
 
@@ -20,6 +21,8 @@ var (
 	procBringWindowToTopWake      = modUser32.NewProc("BringWindowToTop")
 	procGetForegroundWindowWake   = modUser32.NewProc("GetForegroundWindow")
 	procSetWindowPosWake          = modUser32.NewProc("SetWindowPos")
+	procGetWindowWake             = modUser32.NewProc("GetWindow")
+	procGetCurrentProcessIdWake   = modKernel32.NewProc("GetCurrentProcessId")
 )
 
 const swRestoreWake = 9
@@ -29,6 +32,9 @@ const (
 	swpNoSizeWake     = 0x0001
 	swpNoActivateWake = 0x0010
 )
+
+// GW_HWNDNEXT = 2: Returns a handle to the window below in z-order
+const gwHwndNextWake = 2
 
 // EnsureWindowVisible restores the window if it was minimized (e.g. by Win+D)
 // so it becomes visible again. Does not activate or steal focus.
@@ -47,17 +53,125 @@ func EnsureWindowVisible(window *application.WebviewWindow) error {
 // WakeAttachedWindow brings the target window and the winsnap window to the front,
 // keeping winsnap ordered directly above the target (same-level behavior).
 func WakeAttachedWindow(self *application.WebviewWindow, targetProcessName string) error {
-	return wakeAttachedWindowInternal(self, targetProcessName)
+	return wakeAttachedWindowInternal(self, targetProcessName, false)
 }
 
-// WakeAttachedWindowWithRefocus is like WakeAttachedWindow but ensures focus returns to winsnap.
-// On Windows, this behaves the same as WakeAttachedWindow since the final activateHwnd
-// already sets focus to the winsnap window.
+// WakeAttachedWindowWithRefocus is like WakeAttachedWindow but checks if target is already
+// adjacent (no other app windows in between). If so, skip waking target to avoid focus flickering.
 func WakeAttachedWindowWithRefocus(self *application.WebviewWindow, targetProcessName string) error {
-	return wakeAttachedWindowInternal(self, targetProcessName)
+	return wakeAttachedWindowInternal(self, targetProcessName, true)
 }
 
-func wakeAttachedWindowInternal(self *application.WebviewWindow, targetProcessName string) error {
+// isTargetAdjacent checks if target window is already directly below self window (no other app windows in between).
+// Returns true if target is adjacent (no need to wake), false if target needs to be woken up.
+func isTargetAdjacent(selfHwnd windows.HWND, targetHwnd windows.HWND, targetProcessNames []string) bool {
+	if selfHwnd == 0 || targetHwnd == 0 {
+		return false
+	}
+
+	// Get our own process ID
+	selfPid, _, _ := procGetCurrentProcessIdWake.Call()
+
+	// Get target process ID
+	var targetPid uint32
+	procGetWindowThreadProcIdWake.Call(uintptr(targetHwnd), uintptr(unsafe.Pointer(&targetPid)))
+
+	// Build a set of target process names for quick lookup
+	targetNames := make(map[string]struct{})
+	for _, name := range targetProcessNames {
+		for _, n := range expandWindowsTargetNames(name) {
+			if n != "" {
+				targetNames[strings.ToLower(n)] = struct{}{}
+			}
+		}
+	}
+
+	// Walk z-order from self window downward, looking for target
+	// If we encounter any other app's window before finding target, return false
+	hwnd := selfHwnd
+	for {
+		// Get next window in z-order (below current)
+		nextHwnd, _, _ := procGetWindowWake.Call(uintptr(hwnd), gwHwndNextWake)
+		if nextHwnd == 0 {
+			break
+		}
+		hwnd = windows.HWND(nextHwnd)
+
+		// Skip invisible windows
+		if !isWindowVisible(hwnd) {
+			continue
+		}
+
+		// Skip minimized windows
+		if isWindowIconic(hwnd) {
+			continue
+		}
+
+		// Check if this is a top-level candidate (not a tool window, etc.)
+		if !isTopLevelCandidate(hwnd) {
+			continue
+		}
+
+		// Get this window's process ID
+		var pid uint32
+		procGetWindowThreadProcIdWake.Call(uintptr(hwnd), uintptr(unsafe.Pointer(&pid)))
+
+		// If this is our own app's window, skip it
+		if uint32(selfPid) == pid {
+			continue
+		}
+
+		// If this is the target window, target is adjacent
+		if hwnd == targetHwnd {
+			return true
+		}
+
+		// Check if this is target app's window (different window but same process)
+		if pid == targetPid {
+			continue
+		}
+
+		// Check if this window belongs to target process by name
+		exe, err := getProcessImageBaseName(pid)
+		if err == nil && exe != "" {
+			if _, ok := targetNames[strings.ToLower(exe)]; ok {
+				continue
+			}
+		}
+
+		// This is another app's window between self and target
+		return false
+	}
+
+	// Target not found below self - check if target is above self
+	// Walk z-order from top to find positions
+	hwnd = selfHwnd
+	for {
+		// Get previous window in z-order (above current)
+		prevHwnd, _, _ := procGetWindowWake.Call(uintptr(hwnd), 3) // GW_HWNDPREV = 3
+		if prevHwnd == 0 {
+			break
+		}
+		hwnd = windows.HWND(prevHwnd)
+
+		if hwnd == targetHwnd {
+			// Target is above self, no need to wake
+			return true
+		}
+	}
+
+	return false
+}
+
+// focusSelfOnly brings focus to winsnap without waking target.
+func focusSelfOnly(selfHwnd windows.HWND) {
+	if selfHwnd == 0 {
+		return
+	}
+	activateHwnd(selfHwnd)
+}
+
+func wakeAttachedWindowInternal(self *application.WebviewWindow, targetProcessName string, checkAdjacent bool) error {
 	if self == nil {
 		return ErrWinsnapWindowInvalid
 	}
@@ -80,6 +194,13 @@ func wakeAttachedWindowInternal(self *application.WebviewWindow, targetProcessNa
 	}
 	if err != nil || targetHwnd == 0 {
 		return ErrTargetWindowNotFound
+	}
+
+	// If checking adjacency, skip wake if target is already adjacent
+	if checkAdjacent && isTargetAdjacent(windows.HWND(selfH), targetHwnd, targetNames) {
+		// Target is already visible and adjacent, just focus winsnap without waking target
+		focusSelfOnly(windows.HWND(selfH))
+		return nil
 	}
 
 	// Bring target to front, then our window, then ensure z-order relationship.

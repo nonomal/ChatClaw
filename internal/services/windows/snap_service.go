@@ -381,22 +381,12 @@ func (s *SnapService) step() {
 
 	target, found, err := winsnap.TopMostVisibleProcessName(enabledTargets)
 	if err != nil {
-		// Check if our own app is frontmost (user interacting with winsnap window)
-		// In this case, preserve current snap state - don't hide or change anything
-		// Additionally, wake the attached target window and sync position (especially important on macOS)
+		// Check if our own app is frontmost (user interacting with our app's window)
+		// In this case, preserve current snap state - don't hide or change anything.
+		// NOTE: We do NOT auto-wake the attached target here because we cannot distinguish
+		// whether the user clicked on the winsnap window or the main window.
+		// Waking is triggered only by frontend pointerdown event on the winsnap window.
 		if err == winsnap.ErrSelfIsFrontmost {
-			s.mu.Lock()
-			currentTarget := s.currentTarget
-			currentState := s.status.State
-			currentWin := s.win
-			s.mu.Unlock()
-
-			// If we have an attached target, wake it and sync position
-			// This ensures the target window is brought to front and properly positioned
-			// when user clicks on or switches to the winsnap window
-			if currentTarget != "" && currentState == SnapStateAttached && currentWin != nil {
-				_ = winsnap.WakeAttachedWindow(currentWin, currentTarget)
-			}
 			return
 		}
 		// Other errors: snapping is not supported or failed.

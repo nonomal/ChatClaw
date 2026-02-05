@@ -9,7 +9,8 @@ package textselection
 #import <Cocoa/Cocoa.h>
 
 // Configure popup window to not activate when shown.
-// On macOS, we set the window level to floating and configure collection behavior.
+// On macOS, we set the window level to popup menu level (very high) to ensure
+// it appears above all other windows including the winsnap window.
 // Note: canBecomeKeyWindow and canBecomeMainWindow are read-only properties,
 // so we cannot set them directly. Instead, we rely on window level and
 // orderFrontRegardless to achieve similar behavior.
@@ -20,9 +21,10 @@ static void textselection_configure_popup_noactivate(void *nsWindow) {
 		NSWindow *win = (__bridge NSWindow *)nsWindow;
 		if (!win || ![win isKindOfClass:[NSWindow class]]) return;
 
-		// Set window level to floating (above normal windows but below modal panels)
-		// This helps the popup stay visible without activating
-		[win setLevel:NSFloatingWindowLevel];
+		// Set window level to popup menu level (above all normal windows including winsnap)
+		// NSPopUpMenuWindowLevel = 101, which is higher than NSFloatingWindowLevel (3)
+		// This ensures the text selection popup is never covered by other app windows
+		[win setLevel:NSPopUpMenuWindowLevel];
 
 		// Set collection behavior to allow the window to be visible in all spaces
 		// and not be managed by Mission Control
