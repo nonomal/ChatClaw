@@ -232,6 +232,168 @@ static int winsnap_get_window_number(void *nsWindow) {
 	});
 	return result;
 }
+
+// Check if target window is already directly below self window (no other app windows in between).
+// Returns 1 if target is adjacent (no need to wake), 0 if target needs to be woken up.
+// This prevents focus flickering between winsnap and target when clicking on winsnap.
+//
+// Z-order check logic:
+// 1. If target window is above or equal to self in z-order -> no wake needed
+// 2. If target window is directly below self (no other app windows in between) -> no wake needed
+// 3. If there are other app windows between self and target -> wake needed
+static int winsnap_is_target_adjacent(int selfWindowNumber, pid_t targetPid) {
+	if (selfWindowNumber <= 0 || targetPid <= 0) return 0;
+	
+	// Get current app's pid for filtering
+	pid_t selfPid = [[NSRunningApplication currentApplication] processIdentifier];
+	
+	CFArrayRef list = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID);
+	if (!list) return 0;
+	
+	// The window list is ordered by z-order (front to back), index 0 is topmost
+	int selfIndex = -1;
+	int targetIndex = -1;
+	int hasOtherAppBetween = 0;
+	
+	CFIndex n = CFArrayGetCount(list);
+	for (CFIndex i = 0; i < n; i++) {
+		CFDictionaryRef dict = (CFDictionaryRef)CFArrayGetValueAtIndex(list, i);
+		
+		// Get window number
+		CFNumberRef numRef = (CFNumberRef)CFDictionaryGetValue(dict, kCGWindowNumber);
+		if (!numRef) continue;
+		int winNum = 0;
+		CFNumberGetValue(numRef, kCFNumberIntType, &winNum);
+		
+		// Get window pid
+		CFNumberRef pidRef = (CFNumberRef)CFDictionaryGetValue(dict, kCGWindowOwnerPID);
+		if (!pidRef) continue;
+		pid_t wpid = 0;
+		CFNumberGetValue(pidRef, kCFNumberIntType, &wpid);
+		
+		// Check window layer - only consider normal windows (layer 0)
+		CFNumberRef layerRef = (CFNumberRef)CFDictionaryGetValue(dict, kCGWindowLayer);
+		if (layerRef) {
+			int layer = 0;
+			CFNumberGetValue(layerRef, kCFNumberIntType, &layer);
+			if (layer != 0) continue; // Skip non-normal windows (menus, tooltips, etc.)
+		}
+		
+		// Check window size - skip tiny windows
+		CFDictionaryRef bounds = (CFDictionaryRef)CFDictionaryGetValue(dict, kCGWindowBounds);
+		if (bounds) {
+			CGRect cgRect;
+			if (CGRectMakeWithDictionaryRepresentation(bounds, &cgRect)) {
+				if (cgRect.size.width < 50 || cgRect.size.height < 50) continue;
+			}
+		}
+		
+		// Check if this is our winsnap window
+		if (winNum == selfWindowNumber) {
+			selfIndex = (int)i;
+			continue;
+		}
+		
+		// Check if this is target app's window
+		if (wpid == targetPid) {
+			if (targetIndex < 0) {
+				targetIndex = (int)i; // Take the topmost target window
+			}
+			continue;
+		}
+		
+		// This is another app's window - check if it's between self and target
+		// We'll determine this after we find both indices
+	}
+	
+	CFRelease(list);
+	
+	// If we couldn't find both windows, assume wake is needed
+	if (selfIndex < 0 || targetIndex < 0) return 0;
+	
+	// If target is above or at same level as self, no wake needed
+	if (targetIndex <= selfIndex) return 1;
+	
+	// Target is below self - check if there are other app windows between them
+	// Re-iterate to check for windows between selfIndex and targetIndex
+	list = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID);
+	if (!list) return 0;
+	
+	n = CFArrayGetCount(list);
+	int currentIndex = 0;
+	for (CFIndex i = 0; i < n; i++) {
+		CFDictionaryRef dict = (CFDictionaryRef)CFArrayGetValueAtIndex(list, i);
+		
+		// Get window pid
+		CFNumberRef pidRef = (CFNumberRef)CFDictionaryGetValue(dict, kCGWindowOwnerPID);
+		if (!pidRef) continue;
+		pid_t wpid = 0;
+		CFNumberGetValue(pidRef, kCFNumberIntType, &wpid);
+		
+		// Check window layer - only consider normal windows (layer 0)
+		CFNumberRef layerRef = (CFNumberRef)CFDictionaryGetValue(dict, kCGWindowLayer);
+		if (layerRef) {
+			int layer = 0;
+			CFNumberGetValue(layerRef, kCFNumberIntType, &layer);
+			if (layer != 0) continue;
+		}
+		
+		// Check window size - skip tiny windows
+		CFDictionaryRef bounds = (CFDictionaryRef)CFDictionaryGetValue(dict, kCGWindowBounds);
+		if (bounds) {
+			CGRect cgRect;
+			if (CGRectMakeWithDictionaryRepresentation(bounds, &cgRect)) {
+				if (cgRect.size.width < 50 || cgRect.size.height < 50) continue;
+			}
+		}
+		
+		// Get window number
+		CFNumberRef numRef = (CFNumberRef)CFDictionaryGetValue(dict, kCGWindowNumber);
+		if (!numRef) continue;
+		int winNum = 0;
+		CFNumberGetValue(numRef, kCFNumberIntType, &winNum);
+		
+		// Skip our own app's windows and target app's windows
+		if (wpid == selfPid || wpid == targetPid) {
+			currentIndex++;
+			continue;
+		}
+		
+		// This is another app's window - check if it's between self and target
+		if (currentIndex > selfIndex && currentIndex < targetIndex) {
+			hasOtherAppBetween = 1;
+			break;
+		}
+		currentIndex++;
+	}
+	
+	CFRelease(list);
+	
+	// If no other app windows between self and target, no wake needed
+	return hasOtherAppBetween ? 0 : 1;
+}
+
+// Just focus the winsnap window without waking the target app.
+// This is used when target is already adjacent (no other apps in between).
+static void winsnap_focus_self_only(int selfWindowNumber) {
+	if (selfWindowNumber <= 0) return;
+	
+	// Activate current app (winsnap) to get keyboard focus
+	NSRunningApplication *selfApp = [NSRunningApplication currentApplication];
+	if (selfApp) {
+		[selfApp activateWithOptions:NSApplicationActivateIgnoringOtherApps];
+	}
+	
+	// Make winsnap window key window on main thread
+	dispatch_sync(dispatch_get_main_queue(), ^{
+		for (NSWindow *win in [NSApp windows]) {
+			if ((int)[win windowNumber] == selfWindowNumber) {
+				[win makeKeyAndOrderFront:nil];
+				return;
+			}
+		}
+	});
+}
 */
 import "C"
 
@@ -326,6 +488,14 @@ func wakeAttachedWindowInternal(self *application.WebviewWindow, targetProcessNa
 	pid := C.winsnap_find_pid_by_name_local(cname)
 	if pid <= 0 {
 		return ErrTargetWindowNotFound
+	}
+
+	// Check if target window is already adjacent (no other apps in between).
+	// If so, skip waking target to avoid focus flickering - just focus winsnap directly.
+	if refocus && C.winsnap_is_target_adjacent(C.int(selfWindowNumber), pid) == 1 {
+		// Target is already visible and adjacent, just focus winsnap without waking target
+		C.winsnap_focus_self_only(C.int(selfWindowNumber))
+		return nil
 	}
 
 	// Find the main window number of the target app for proper z-ordering
