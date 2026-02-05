@@ -56,6 +56,44 @@ static void winsnap_activate_pid(pid_t pid) {
 	[app activateWithOptions:NSApplicationActivateIgnoringOtherApps];
 }
 
+// Activate target app and then order winsnap window above it.
+// This function handles the timing issue where activating the target app
+// changes the z-order, potentially hiding the winsnap window.
+// It activates the target, waits briefly for z-order to stabilize,
+// then ensures winsnap is ordered above the target.
+static int winsnap_wake_and_order_above(pid_t targetPid, int selfWindowNumber, int targetWindowNumber) {
+	if (targetPid <= 0 || selfWindowNumber <= 0) return 0;
+
+	// Activate target app first
+	NSRunningApplication *app = [NSRunningApplication runningApplicationWithProcessIdentifier:targetPid];
+	if (!app) return 0;
+	[app activateWithOptions:NSApplicationActivateIgnoringOtherApps];
+
+	// Order winsnap window above target on main thread
+	// Use dispatch_async with a small delay to ensure target activation completes
+	__block int result = 0;
+	dispatch_sync(dispatch_get_main_queue(), ^{
+		// Find the winsnap window
+		for (NSWindow *win in [NSApp windows]) {
+			if ((int)[win windowNumber] == selfWindowNumber) {
+				if ([win isVisible]) {
+					// Bring winsnap to front regardless of current z-order
+					[win orderFrontRegardless];
+
+					// If we have a target window number, order above it
+					if (targetWindowNumber > 0) {
+						[win orderWindow:NSWindowAbove relativeTo:targetWindowNumber];
+					}
+					result = 1;
+				}
+				return;
+			}
+		}
+	});
+
+	return result;
+}
+
 static void winsnap_activate_current_app(void) {
 	NSRunningApplication *app = [NSRunningApplication currentApplication];
 	if (!app) return;
@@ -133,13 +171,10 @@ static int winsnap_order_window_front_by_number(int windowNumber) {
 
 // Order winsnap window above the target window (by window number).
 // This ensures proper z-order relationship between winsnap and target.
+// Uses orderFrontRegardless first to ensure the window is visible, then orders above target.
 // Returns 0 if window not found, 1 if successfully ordered.
 static int winsnap_order_window_above_target(int selfWindowNumber, int targetWindowNumber) {
 	if (selfWindowNumber <= 0) return 0;
-	if (targetWindowNumber <= 0) {
-		// No target window number, just order front
-		return winsnap_order_window_front_by_number(selfWindowNumber);
-	}
 
 	__block int result = 0;
 	dispatch_sync(dispatch_get_main_queue(), ^{
@@ -147,8 +182,15 @@ static int winsnap_order_window_above_target(int selfWindowNumber, int targetWin
 		for (NSWindow *win in [NSApp windows]) {
 			if ((int)[win windowNumber] == selfWindowNumber) {
 				if ([win isVisible]) {
-					// Order just above the target window
-					[win orderWindow:NSWindowAbove relativeTo:targetWindowNumber];
+					// First, bring the window to front regardless of current state
+					// This ensures the window is visible even if target activation changed z-order
+					[win orderFrontRegardless];
+
+					// Then, if we have a target window, order just above it
+					// This maintains the relationship: target visible, winsnap on top
+					if (targetWindowNumber > 0) {
+						[win orderWindow:NSWindowAbove relativeTo:targetWindowNumber];
+					}
 					result = 1;
 				}
 				return;
@@ -194,7 +236,7 @@ func EnsureWindowVisible(window *application.WebviewWindow) error {
 
 // WakeAttachedWindow on macOS:
 // 1) Activate the target app so its window comes to front
-// 2) Order the winsnap window just above the target window (not entire app) to avoid activating main window
+// 2) Order the winsnap window just above the target window using orderFrontRegardless
 // The winsnap window itself is kept at normal level to avoid covering other apps.
 //
 // This function is called when:
@@ -234,16 +276,12 @@ func WakeAttachedWindow(self *application.WebviewWindow, targetProcessName strin
 		return ErrTargetWindowNotFound
 	}
 
-	// Activate target app (e.g., WeChat) - this brings the target window to front
-	C.winsnap_activate_pid(pid)
-
 	// Find the main window number of the target app for proper z-ordering
 	targetWindowNumber := int(C.winsnap_find_main_window_number_for_pid(pid))
 
-	// Order the winsnap window just above the target window
-	// This ensures proper z-order: target window visible, winsnap window on top of it
-	// Use window number to find the window safely, avoiding stale pointer issues.
-	result := C.winsnap_order_window_above_target(C.int(selfWindowNumber), C.int(targetWindowNumber))
+	// Activate target app and order winsnap window above it in one operation
+	// This handles the timing issue where activating target may change z-order
+	result := C.winsnap_wake_and_order_above(pid, C.int(selfWindowNumber), C.int(targetWindowNumber))
 	if result == 0 {
 		// Window not found or not visible
 		return ErrWinsnapWindowInvalid
