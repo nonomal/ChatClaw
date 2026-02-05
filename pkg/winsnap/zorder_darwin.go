@@ -26,6 +26,21 @@ static bool winsnap_is_self_frontmost() {
 	}
 }
 
+// Get the frontmost app's localized name (or executable name if localized name is empty).
+// Returns NULL if no frontmost app or error.
+static char* winsnap_get_frontmost_app_name() {
+	@autoreleasepool {
+		NSRunningApplication *frontApp = [[NSWorkspace sharedWorkspace] frontmostApplication];
+		if (!frontApp) return NULL;
+		NSString *name = frontApp.localizedName;
+		if (!name || name.length == 0) {
+			name = frontApp.executableURL.lastPathComponent;
+		}
+		if (!name || name.length == 0) return NULL;
+		return winsnap_strdup_nsstring(name);
+	}
+}
+
 // Check if a given pid has any visible on-screen window (layer 0, reasonable size).
 // This is used to determine if the target app is "visible" even when not frontmost.
 static bool winsnap_pid_has_visible_window(pid_t pid) {
@@ -105,15 +120,16 @@ import "C"
 
 import (
 	"errors"
+	"strings"
 	"unsafe"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-// TopMostVisibleProcessName returns the first target application that has a visible window.
-// On macOS, unlike Windows which checks z-order, we check if any target app has a visible
-// on-screen window. This allows the winsnap window to stay visible even when the target
-// app is not frontmost (e.g., covered by another window).
+// TopMostVisibleProcessName returns the target application that is currently frontmost (if any),
+// or falls back to checking if any target app has a visible window.
+// On macOS, we prioritize the frontmost app among targets to ensure proper snap behavior
+// when the user switches between multiple target apps.
 // Returns ErrSelfIsFrontmost if our own app is frontmost (caller should preserve current state).
 func TopMostVisibleProcessName(targetProcessNames []string) (processName string, found bool, err error) {
 	if len(targetProcessNames) == 0 {
@@ -125,10 +141,34 @@ func TopMostVisibleProcessName(targetProcessNames []string) (processName string,
 		return "", false, ErrSelfIsFrontmost
 	}
 
-	// Check each target app to see if it has a visible window on screen
-	// This is different from Windows which checks z-order; on macOS we just need
-	// to know if the target app has any visible window, regardless of whether
-	// it's covered by other windows.
+	// First, check if the frontmost app is one of our target apps
+	// This ensures we attach to the app the user is currently interacting with
+	frontAppNameC := C.winsnap_get_frontmost_app_name()
+	if frontAppNameC != nil {
+		frontAppName := C.GoString(frontAppNameC)
+		C.winsnap_free_cstring(frontAppNameC)
+
+		// Check if frontmost app matches any target
+		for _, raw := range targetProcessNames {
+			n := normalizeMacTargetName(raw)
+			if n == "" {
+				continue
+			}
+			// Case-insensitive comparison
+			if strings.EqualFold(frontAppName, n) {
+				// Verify it has a visible window
+				cname := C.CString(n)
+				pid := C.winsnap_find_pid_by_name_zorder(cname)
+				C.free(unsafe.Pointer(cname))
+				if pid > 0 && C.winsnap_pid_has_visible_window(pid) {
+					return raw, true, nil
+				}
+			}
+		}
+	}
+
+	// Fallback: Check each target app to see if it has a visible window on screen
+	// This handles cases where frontmost app is not a target but a target app is visible
 	for _, raw := range targetProcessNames {
 		n := normalizeMacTargetName(raw)
 		if n == "" {
