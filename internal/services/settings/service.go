@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"willchat/internal/errs"
@@ -17,6 +18,9 @@ import (
 	"github.com/uptrace/bun"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
+
+// reembedMu protects against concurrent embedding config updates
+var reembedMu sync.Mutex
 
 // Category 设置分类
 type Category string
@@ -208,6 +212,10 @@ func (s *SettingsService) UpdateEmbeddingConfig(input UpdateEmbeddingConfigInput
 }
 
 func (s *SettingsService) triggerReembedAllDocuments(dimension int) {
+	// Acquire lock to prevent concurrent rebuilds (e.g. rapid config changes)
+	reembedMu.Lock()
+	defer reembedMu.Unlock()
+
 	db := sqlite.DB()
 	if db == nil {
 		return

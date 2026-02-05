@@ -40,7 +40,7 @@ func (b *batchEmbedder) EmbedStrings(ctx context.Context, texts []string, opts .
 		}
 		vecs, err := b.inner.EmbedStrings(ctx, texts[i:end], opts...)
 		if err != nil {
-			return nil, fmt.Errorf("embed batch %d-%d: %w", i+1, end, err)
+			return nil, fmt.Errorf("embed batch [%d:%d]: %w", i, end, err)
 		}
 		out = append(out, vecs...)
 	}

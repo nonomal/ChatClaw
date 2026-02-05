@@ -10,6 +10,12 @@ import (
 	"github.com/cloudwego/eino/components/embedding"
 )
 
+const (
+	// DefaultBatchSize is the default batch size for embedding operations.
+	// Some embedding APIs (e.g. Qwen) limit batch size to 10.
+	DefaultBatchSize = 10
+)
+
 // ProviderConfig 创建 Embedder 所需的配置
 type ProviderConfig struct {
 	// ProviderType 供应商类型（openai, azure, ollama, gemini, anthropic）
@@ -40,26 +46,26 @@ func NewEmbedder(ctx context.Context, cfg *ProviderConfig) (embedding.Embedder, 
 		if err != nil {
 			return nil, err
 		}
-		return WrapWithBatchLimit(emb, 10), nil
+		return WrapWithBatchLimit(emb, DefaultBatchSize), nil
 	case "azure":
 		emb, err := newAzureEmbedder(ctx, cfg)
 		if err != nil {
 			return nil, err
 		}
-		return WrapWithBatchLimit(emb, 10), nil
+		return WrapWithBatchLimit(emb, DefaultBatchSize), nil
 	case "ollama":
 		emb, err := newOllamaEmbedder(ctx, cfg)
 		if err != nil {
 			return nil, err
 		}
-		return WrapWithBatchLimit(emb, 10), nil
+		return WrapWithBatchLimit(emb, DefaultBatchSize), nil
 	default:
 		// 默认使用 OpenAI 兼容 API
 		emb, err := newOpenAIEmbedder(ctx, cfg)
 		if err != nil {
 			return nil, err
 		}
-		return WrapWithBatchLimit(emb, 10), nil
+		return WrapWithBatchLimit(emb, DefaultBatchSize), nil
 	}
 }
 

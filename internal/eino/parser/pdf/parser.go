@@ -53,16 +53,20 @@ func (p *Parser) Parse(ctx context.Context, reader io.Reader, opts ...parser.Opt
 	if err != nil {
 		return nil, fmt.Errorf("create temp file: %w", err)
 	}
-	defer os.Remove(tmpFile.Name())
-	defer tmpFile.Close()
+	tmpName := tmpFile.Name()
+	defer os.Remove(tmpName)
 
 	if _, err := io.Copy(tmpFile, reader); err != nil {
+		tmpFile.Close()
 		return nil, fmt.Errorf("copy to temp file: %w", err)
 	}
-	tmpFile.Close()
+	// Close explicitly before pdf.Open (some systems require file to be closed before reading)
+	if err := tmpFile.Close(); err != nil {
+		return nil, fmt.Errorf("close temp file: %w", err)
+	}
 
 	// 打开 PDF 文件
-	f, r, err := pdf.Open(tmpFile.Name())
+	f, r, err := pdf.Open(tmpName)
 	if err != nil {
 		return nil, fmt.Errorf("open pdf: %w", err)
 	}

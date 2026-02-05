@@ -940,14 +940,18 @@ func (s *DocumentService) processDocument(docID, libraryID int64, runID string, 
 	}
 
 	// 更新文档统计信息
-	db.NewUpdate().
+	if _, err := db.NewUpdate().
 		Table("documents").
 		Set("word_total = ?", result.WordTotal).
 		Set("split_total = ?", result.SplitTotal).
 		Set("updated_at = ?", sqlite.NowUTC()).
 		Where("id = ?", docID).
 		Where("processing_run_id = ?", runID).
-		Exec(ctx)
+		Exec(ctx); err != nil {
+		if s.app != nil {
+			s.app.Logger.Warn("update document stats failed", "docID", docID, "error", err)
+		}
+	}
 
 	// 全部完成
 	updateAndEmit(StatusCompleted, 100, "", StatusCompleted, 100, "")
