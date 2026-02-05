@@ -233,6 +233,8 @@ export default {
       toolError: '执行失败',
       toolArgs: '参数',
       toolResult: '结果',
+      toolQuery: '查询：',
+      rawJson: '原始 JSON',
     },
     menu: {
       settings: '助手设置',

@@ -124,7 +124,7 @@ const getQueryFromArgs = (argsJson?: string): string => {
             </div>
             <div class="text-muted-foreground/80">
               <span v-if="getQueryFromArgs(toolCall.argsJson)">
-                查询：{{ getQueryFromArgs(toolCall.argsJson) }}
+                {{ t('assistant.chat.toolQuery') }}{{ getQueryFromArgs(toolCall.argsJson) }}
               </span>
             </div>
           </div>
@@ -155,7 +155,7 @@ const getQueryFromArgs = (argsJson?: string): string => {
 
           <details class="rounded border border-border/50 bg-background/20 p-2">
             <summary class="cursor-pointer select-none text-muted-foreground">
-              原始 JSON
+              {{ t('assistant.chat.rawJson') }}
             </summary>
             <div class="mt-2 space-y-2">
               <div v-if="toolCall.argsJson" class="space-y-1">

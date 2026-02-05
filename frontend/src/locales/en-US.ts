@@ -236,6 +236,8 @@ export default {
       toolError: 'Failed',
       toolArgs: 'Arguments',
       toolResult: 'Result',
+      toolQuery: 'Query: ',
+      rawJson: 'Raw JSON',
     },
     menu: {
       settings: 'Agent Settings',

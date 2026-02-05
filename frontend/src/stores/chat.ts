@@ -55,6 +55,9 @@ export interface StreamingMessageState {
   status: string
 }
 
+// Auto-decrementing counter for local optimistic message IDs (always negative to avoid collision with backend IDs)
+let localMessageCounter = 0
+
 export const useChatStore = defineStore('chat', () => {
   // Messages by conversation ID
   const messagesByConversation = ref<Record<number, Message[]>>({})
@@ -143,7 +146,8 @@ export const useChatStore = defineStore('chat', () => {
     if (conversationId <= 0 || !content.trim()) return null
 
     // Optimistically append user message (backend inserts user msg, but doesn't emit an event for it)
-    const localUserMessageId = -Date.now()
+    localMessageCounter -= 1
+    const localUserMessageId = localMessageCounter
     appendMessage(conversationId, {
       id: localUserMessageId,
       conversation_id: conversationId,

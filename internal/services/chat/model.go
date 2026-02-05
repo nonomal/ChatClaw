@@ -40,10 +40,10 @@ type Message struct {
 	OutputTokens   int       `json:"output_tokens"`
 	FinishReason   string    `json:"finish_reason,omitempty"`
 	ToolCalls      string    `json:"tool_calls,omitempty"`
-	ToolCallID     string    `json:"tool_call_id,omitempty"`
-	ToolCallName   string    `json:"tool_call_name,omitempty"`
-	ThinkingContent string  `json:"thinking_content,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
+	ToolCallID      string    `json:"tool_call_id,omitempty"`
+	ToolCallName    string    `json:"tool_call_name,omitempty"`
+	ThinkingContent string    `json:"thinking_content,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
@@ -86,9 +86,9 @@ type messageModel struct {
 	OutputTokens   int       `bun:"output_tokens,notnull"`
 	FinishReason   string    `bun:"finish_reason,notnull"`
 	ToolCalls      string    `bun:"tool_calls,notnull"`
-	ToolCallID     string    `bun:"tool_call_id,notnull"`
-	ToolCallName   string    `bun:"tool_call_name,notnull"`
-	ThinkingContent string  `bun:"thinking_content,notnull"`
+	ToolCallID      string `bun:"tool_call_id,notnull"`
+	ToolCallName    string `bun:"tool_call_name,notnull"`
+	ThinkingContent string `bun:"thinking_content,notnull"`
 }
 
 var _ bun.BeforeInsertHook = (*messageModel)(nil)
@@ -122,9 +122,9 @@ func (m *messageModel) toDTO() Message {
 		FinishReason:   m.FinishReason,
 		ToolCalls:      m.ToolCalls,
 		ToolCallID:     m.ToolCallID,
-		ToolCallName:   m.ToolCallName,
+		ToolCallName:    m.ToolCallName,
 		ThinkingContent: m.ThinkingContent,
-		CreatedAt:      m.CreatedAt,
+		CreatedAt:       m.CreatedAt,
 		UpdatedAt:      m.UpdatedAt,
 	}
 }

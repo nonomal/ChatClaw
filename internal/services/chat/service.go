@@ -76,6 +76,7 @@ type activeGeneration struct {
 	cancel    context.CancelFunc
 	requestID string
 	tabID     string
+	done      chan struct{} // closed when the generation goroutine finishes
 }
 
 // ChatService handles chat operations
@@ -172,14 +173,20 @@ func (s *ChatService) SendMessage(input SendMessageInput) (*SendMessageResult, e
 	genCtx, cancel := context.WithCancel(ctx)
 
 	// Register active generation
-	s.activeGenerations.Store(input.ConversationID, &activeGeneration{
+	gen := &activeGeneration{
 		cancel:    cancel,
 		requestID: requestID,
 		tabID:     input.TabID,
-	})
+		done:      make(chan struct{}),
+	}
+	s.activeGenerations.Store(input.ConversationID, gen)
 
 	// Start generation in goroutine
-	go s.runGeneration(genCtx, db, input.ConversationID, input.TabID, requestID, content, agentConfig, providerConfig)
+	go func() {
+		defer close(gen.done)
+		defer s.tryDeleteGeneration(input.ConversationID, gen)
+		s.runGeneration(genCtx, db, input.ConversationID, input.TabID, requestID, content, agentConfig, providerConfig)
+	}()
 
 	return &SendMessageResult{
 		RequestID: requestID,
@@ -202,13 +209,17 @@ func (s *ChatService) EditAndResend(input EditAndResendInput) (*SendMessageResul
 
 	log.Printf("[chat] EditAndResend conv=%d tab=%s msg=%d content_len=%d", input.ConversationID, input.TabID, input.MessageID, len(content))
 
-	// Stop any existing generation
+	// Stop any existing generation and wait for it to finish
 	if existing, ok := s.activeGenerations.Load(input.ConversationID); ok {
-		gen := existing.(*activeGeneration)
-		gen.cancel()
+		oldGen := existing.(*activeGeneration)
+		oldGen.cancel()
 		s.activeGenerations.Delete(input.ConversationID)
-		// Wait a bit for cleanup
-		time.Sleep(100 * time.Millisecond)
+		// Wait for old goroutine to finish (with timeout to avoid deadlock)
+		select {
+		case <-oldGen.done:
+		case <-time.After(3 * time.Second):
+			log.Printf("[chat] WARNING: old generation did not finish within timeout conv=%d", input.ConversationID)
+		}
 	}
 
 	db, err := s.db()
@@ -260,14 +271,20 @@ func (s *ChatService) EditAndResend(input EditAndResendInput) (*SendMessageResul
 	genCtx, genCancel := context.WithCancel(context.Background())
 
 	// Register active generation
-	s.activeGenerations.Store(input.ConversationID, &activeGeneration{
+	gen := &activeGeneration{
 		cancel:    genCancel,
 		requestID: requestID,
 		tabID:     input.TabID,
-	})
+		done:      make(chan struct{}),
+	}
+	s.activeGenerations.Store(input.ConversationID, gen)
 
 	// Start generation in goroutine (don't insert user message, it's already there)
-	go s.runGenerationWithExistingHistory(genCtx, db, input.ConversationID, input.TabID, requestID, agentConfig, providerConfig)
+	go func() {
+		defer close(gen.done)
+		defer s.tryDeleteGeneration(input.ConversationID, gen)
+		s.runGenerationWithExistingHistory(genCtx, db, input.ConversationID, input.TabID, requestID, agentConfig, providerConfig)
+	}()
 
 	return &SendMessageResult{
 		RequestID: requestID,
@@ -415,9 +432,16 @@ func (s *ChatService) getAgentAndProviderConfig(ctx context.Context, db *bun.DB,
 	return agentConfig, providerConfig, nil
 }
 
+// tryDeleteGeneration removes the generation from the map only if it is still the active one.
+// This prevents a finishing old goroutine from deleting a newer generation's entry.
+func (s *ChatService) tryDeleteGeneration(conversationID int64, gen *activeGeneration) {
+	if cur, ok := s.activeGenerations.Load(conversationID); ok && cur == gen {
+		s.activeGenerations.Delete(conversationID)
+	}
+}
+
 // runGeneration runs the generation loop
 func (s *ChatService) runGeneration(ctx context.Context, db *bun.DB, conversationID int64, tabID, requestID, userContent string, agentConfig AgentConfig, providerConfig ProviderConfig) {
-	defer s.activeGenerations.Delete(conversationID)
 
 	var seq int32 = 0
 	nextSeq := func() int {
@@ -467,7 +491,6 @@ func (s *ChatService) runGeneration(ctx context.Context, db *bun.DB, conversatio
 
 // runGenerationWithExistingHistory runs the generation loop with existing message history
 func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *bun.DB, conversationID int64, tabID, requestID string, agentConfig AgentConfig, providerConfig ProviderConfig) {
-	defer s.activeGenerations.Delete(conversationID)
 
 	var seq int32 = 0
 	nextSeq := func() int {
@@ -830,7 +853,10 @@ func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *
 						ToolCalls:      "[]",
 					}
 					dbCtx, dbCancel := context.WithTimeout(context.Background(), 5*time.Second)
-					db.NewInsert().Model(toolMsg).Exec(dbCtx)
+					if _, err := db.NewInsert().Model(toolMsg).Exec(dbCtx); err != nil {
+						log.Printf("[chat] WARNING: failed to save tool message conv=%d tool=%s call_id=%s err=%v",
+							conversationID, toolName, msg.ToolCallID, err)
+					}
 					dbCancel()
 				} else if msg.Content != "" {
 					contentBuilder.WriteString(msg.Content)

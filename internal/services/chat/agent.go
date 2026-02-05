@@ -18,6 +18,9 @@ import (
 	"google.golang.org/genai"
 )
 
+// defaultMaxIterations is the maximum number of ReAct loop iterations (tool call rounds).
+const defaultMaxIterations = 20
+
 // ProviderConfig contains the configuration for a provider
 type ProviderConfig struct {
 	ProviderID  string
@@ -35,12 +38,27 @@ type AgentConfig struct {
 	Provider    ProviderConfig
 
 	// Optional model parameters
-	Temperature    *float64
-	TopP           *float64
-	MaxTokens      *int
-	EnableTemp     bool
-	EnableTopP     bool
+	Temperature     *float64
+	TopP            *float64
+	MaxTokens       *int
+	EnableTemp      bool
+	EnableTopP      bool
 	EnableMaxTokens bool
+}
+
+// applyOpenAIModelParams applies optional Temperature/TopP/MaxTokens to an openai.ChatModelConfig.
+func applyOpenAIModelParams(cfg *openai.ChatModelConfig, config AgentConfig) {
+	if config.EnableTemp && config.Temperature != nil {
+		temp := float32(*config.Temperature)
+		cfg.Temperature = &temp
+	}
+	if config.EnableTopP && config.TopP != nil {
+		topP := float32(*config.TopP)
+		cfg.TopP = &topP
+	}
+	if config.EnableMaxTokens && config.MaxTokens != nil {
+		cfg.MaxTokens = config.MaxTokens
+	}
 }
 
 // createChatModel creates a ChatModel based on the provider type
@@ -67,18 +85,7 @@ func createOpenAIChatModel(ctx context.Context, config AgentConfig) (model.ToolC
 		Model:   config.ModelID,
 		BaseURL: config.Provider.APIEndpoint,
 	}
-
-	if config.EnableTemp && config.Temperature != nil {
-		temp := float32(*config.Temperature)
-		cfg.Temperature = &temp
-	}
-	if config.EnableTopP && config.TopP != nil {
-		topP := float32(*config.TopP)
-		cfg.TopP = &topP
-	}
-	if config.EnableMaxTokens && config.MaxTokens != nil {
-		cfg.MaxTokens = config.MaxTokens
-	}
+	applyOpenAIModelParams(cfg, config)
 
 	return openai.NewChatModel(ctx, cfg)
 }
@@ -100,18 +107,7 @@ func createAzureChatModel(ctx context.Context, config AgentConfig) (model.ToolCa
 		ByAzure:    true,
 		APIVersion: extraConfig.APIVersion,
 	}
-
-	if config.EnableTemp && config.Temperature != nil {
-		temp := float32(*config.Temperature)
-		cfg.Temperature = &temp
-	}
-	if config.EnableTopP && config.TopP != nil {
-		topP := float32(*config.TopP)
-		cfg.TopP = &topP
-	}
-	if config.EnableMaxTokens && config.MaxTokens != nil {
-		cfg.MaxTokens = config.MaxTokens
-	}
+	applyOpenAIModelParams(cfg, config)
 
 	return openai.NewChatModel(ctx, cfg)
 }
@@ -188,6 +184,15 @@ func createOllamaChatModel(ctx context.Context, config AgentConfig) (model.ToolC
 	return ollama.NewChatModel(ctx, cfg)
 }
 
+// toolCallingInstruction is appended to the system prompt to improve tool call reliability.
+// Bilingual (Chinese + English) to cover a wider range of models.
+const toolCallingInstruction = "\n\n" +
+	"Tool calling rules (VERY IMPORTANT): When calling any tool, `tool_calls[].function.arguments` " +
+	"MUST be a strictly valid JSON object, e.g. {\"query\":\"...\"} or {\"expression\":\"1+2\"}. " +
+	"Do NOT output key=value, plain text, or unquoted fields.\n" +
+	"工具调用规则（非常重要）：当你调用任何工具时，必须让 tool_calls[].function.arguments 是严格合法的 JSON（对象），" +
+	"例如：{\"query\":\"...\"} 或 {\"expression\":\"1+2\"}。不要输出 key=value、不要输出纯文本、不要输出不带引号的字段。\n"
+
 // createChatModelAgent creates an ADK ChatModelAgent with tools
 func createChatModelAgent(ctx context.Context, config AgentConfig, toolRegistry *tools.ToolRegistry) (adk.Agent, error) {
 	// Create the chat model
@@ -206,21 +211,15 @@ func createChatModelAgent(ctx context.Context, config AgentConfig, toolRegistry 
 	baseTools := make([]tool.BaseTool, len(enabledTools))
 	copy(baseTools, enabledTools)
 
-	// Create the agent
-	instruction := config.Instruction
-	// Tool calling reliability note:
-	// Some OpenAI-compatible providers require tool call "function.arguments" to be a valid JSON object string.
-	// Adding an explicit instruction reduces the chance of malformed arguments and 400 errors.
-	instruction = instruction + "\n\n" +
-		"工具调用规则（非常重要）：当你调用任何工具时，必须让 tool_calls[].function.arguments 是严格合法的 JSON（对象），" +
-		"例如：{\"query\":\"...\"} 或 {\"expression\":\"1+2\"}。不要输出 key=value、不要输出纯文本、不要输出不带引号的字段。\n"
+	// Build instruction with tool calling reliability note
+	instruction := config.Instruction + toolCallingInstruction
 
 	agentConfig := &adk.ChatModelAgentConfig{
-		Name:        config.Name,
-		Description: "AI Assistant",
-		Instruction: instruction,
-		Model:       chatModel,
-		MaxIterations: 20,
+		Name:          config.Name,
+		Description:   "AI Assistant",
+		Instruction:   instruction,
+		Model:         chatModel,
+		MaxIterations: defaultMaxIterations,
 	}
 
 	// Add tools if any

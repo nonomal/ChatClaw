@@ -14,12 +14,14 @@ type ToolFactory func(ctx context.Context) (tool.InvokableTool, error)
 type ToolRegistry struct {
 	mu        sync.RWMutex
 	factories map[string]ToolFactory
+	cached    map[string]tool.InvokableTool // lazily populated cache
 }
 
 // NewToolRegistry creates a new tool registry with default tools.
 func NewToolRegistry() *ToolRegistry {
 	r := &ToolRegistry{
 		factories: make(map[string]ToolFactory),
+		cached:    make(map[string]tool.InvokableTool),
 	}
 
 	// Register default tools
@@ -39,6 +41,30 @@ func (r *ToolRegistry) Register(id string, factory ToolFactory) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.factories[id] = factory
+	// Invalidate cache when a factory is re-registered
+	delete(r.cached, id)
+}
+
+// getOrCreate returns a cached tool instance or creates one via the factory.
+// Must be called with at least a read lock held; promotes to write lock if needed.
+func (r *ToolRegistry) getOrCreate(ctx context.Context, id string) (tool.InvokableTool, error) {
+	// Fast path: already cached (caller holds at least RLock)
+	if t, ok := r.cached[id]; ok {
+		return t, nil
+	}
+
+	// Slow path: create and cache (need write lock)
+	factory, ok := r.factories[id]
+	if !ok {
+		return nil, nil
+	}
+
+	t, err := factory(ctx)
+	if err != nil {
+		return nil, err
+	}
+	r.cached[id] = t
+	return t, nil
 }
 
 // GetAllTools returns all registered tools.
@@ -49,9 +75,10 @@ func (r *ToolRegistry) GetAllTools(ctx context.Context) ([]tool.BaseTool, error)
 
 // GetEnabledTools returns tools based on the configuration.
 // If config is nil, all tools are returned (default behavior).
+// Tool instances are cached after first creation.
 func (r *ToolRegistry) GetEnabledTools(ctx context.Context, config *ToolsConfig) ([]tool.BaseTool, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	// If no config, use default (all enabled)
 	if config == nil {
@@ -59,30 +86,27 @@ func (r *ToolRegistry) GetEnabledTools(ctx context.Context, config *ToolsConfig)
 	}
 
 	var tools []tool.BaseTool
-	for id, factory := range r.factories {
+	for id := range r.factories {
 		if config.IsEnabled(id) {
-			t, err := factory(ctx)
+			t, err := r.getOrCreate(ctx, id)
 			if err != nil {
 				return nil, err
 			}
-			tools = append(tools, t)
+			if t != nil {
+				tools = append(tools, t)
+			}
 		}
 	}
 
 	return tools, nil
 }
 
-// GetTool returns a specific tool by ID.
+// GetTool returns a specific tool by ID (cached).
 func (r *ToolRegistry) GetTool(ctx context.Context, id string) (tool.InvokableTool, error) {
-	r.mu.RLock()
-	factory, ok := r.factories[id]
-	r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-	if !ok {
-		return nil, nil
-	}
-
-	return factory(ctx)
+	return r.getOrCreate(ctx, id)
 }
 
 // ListToolIDs returns all registered tool IDs.
