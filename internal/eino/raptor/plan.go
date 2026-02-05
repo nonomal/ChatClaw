@@ -34,7 +34,8 @@ func (b *Builder) BuildTreePlan(ctx context.Context, nodes []*DocumentNode) ([]*
 
 	for currentLevel < b.config.MaxLevel && len(currentNodes) >= b.config.MinNodes {
 		k := b.calculateK(len(currentNodes))
-		if k < 2 {
+		// For small node counts (2-3), skip clustering and directly generate a single summary
+		if k < 2 || len(currentNodes) <= 3 {
 			// In-memory fallback: create a single root summary node.
 			summary, err := b.generateSummary(ctx, currentNodes)
 			if err != nil {

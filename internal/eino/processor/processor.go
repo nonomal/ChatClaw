@@ -42,11 +42,12 @@ type DocumentNode struct {
 
 // LibraryConfig 包含文档处理的知识库配置
 type LibraryConfig struct {
-	ID                        int64
-	ChunkSize                 int
-	ChunkOverlap              int
-	SemanticSegmentProviderID string
-	SemanticSegmentModelID    string
+	ID                          int64
+	ChunkSize                   int
+	ChunkOverlap                int
+	SemanticSegmentationEnabled bool
+	RaptorLLMProviderID         string
+	RaptorLLMModelID            string
 }
 
 // EmbeddingConfig 包含全局嵌入配置
@@ -186,9 +187,12 @@ func (p *Processor) ProcessDocument(
 
 	// 阶段 2：分割文档（Markdown 优先用 Header Splitter，否则按配置选择语义/递归分割）
 	var splittingDone chan struct{}
-	semanticEnabled := libraryConfig != nil &&
-		libraryConfig.SemanticSegmentProviderID != "" &&
-		libraryConfig.SemanticSegmentModelID != ""
+	semanticEnabled := libraryConfig != nil && libraryConfig.SemanticSegmentationEnabled
+	raptorEnabled := libraryConfig != nil &&
+		libraryConfig.RaptorLLMProviderID != "" &&
+		libraryConfig.RaptorLLMModelID != ""
+	log.Printf("[Split] semanticEnabled=%v, raptorEnabled=%v", semanticEnabled, raptorEnabled)
+	splitStart := time.Now()
 	if semanticEnabled {
 		ext := strings.ToLower(filepath.Ext(localPath))
 		if ext != ".md" && ext != ".markdown" && onProgress != nil {
@@ -221,6 +225,7 @@ func (p *Processor) ProcessDocument(
 	if splittingDone != nil {
 		close(splittingDone)
 	}
+	log.Printf("[Split] Completed in %v, got %d chunks", time.Since(splitStart), len(chunks))
 	if err != nil {
 		result.Error = fmt.Errorf("分割失败: %w", err)
 		return result, result.Error
@@ -254,6 +259,8 @@ func (p *Processor) ProcessDocument(
 	}
 
 	// 阶段 4：嵌入 level-0 节点（内存中）
+	log.Printf("[Embedding] Starting embedding for %d level-0 nodes", len(level0))
+	embedStart := time.Now()
 	if onProgress != nil {
 		onProgress("embedding", 10)
 	}
@@ -265,21 +272,25 @@ func (p *Processor) ProcessDocument(
 		result.Error = fmt.Errorf("嵌入失败: %w", err)
 		return result, result.Error
 	}
+	log.Printf("[Embedding] Level-0 embedding completed in %v", time.Since(embedStart))
 
 	if onProgress != nil {
 		onProgress("embedding", 80)
 	}
 
-	// 阶段 5：可选构建 RAPTOR（语义分段开启时）
+	// 阶段 5：可选构建 RAPTOR（RAPTOR LLM 配置开启时）
 	allNodes := level0
-	if semanticEnabled {
+	if raptorEnabled {
+		log.Printf("[RAPTOR] Starting RAPTOR tree building for %d nodes", len(allNodes))
+		raptorStart := time.Now()
 		planned, err := p.buildRaptorPlan(ctx, libraryConfig, allNodes, embedder, getProviderInfo)
 		if err != nil {
-			// 非致命：只保留 level-0
-			_ = err
-		} else {
-			allNodes = planned
+			log.Printf("[RAPTOR] FAILED: %v", err)
+			result.Error = fmt.Errorf("RAPTOR 构建失败: %w", err)
+			return result, result.Error
 		}
+		allNodes = planned
+		log.Printf("[RAPTOR] Completed in %v, total nodes: %d", time.Since(raptorStart), len(allNodes))
 	}
 
 	// 确保所有节点都有 content_tokens（摘要节点也需要）
@@ -341,7 +352,7 @@ func (p *Processor) splitDocument(
 
 	// 如果启用了语义分割，使用全局 embedder 进行语义分割
 	// 注意：Markdown 文件会优先使用 Header Splitter，不受此配置影响
-	if libraryConfig.SemanticSegmentProviderID != "" && libraryConfig.SemanticSegmentModelID != "" {
+	if libraryConfig.SemanticSegmentationEnabled {
 		cfg.SemanticEmbedder = embedder
 		cfg.SemanticPercentile = 0.6
 		cfg.SemanticMinChunkSize = 300
@@ -526,7 +537,7 @@ func (p *Processor) buildRaptorTree(
 	getProviderInfo func(providerID string) (*ProviderInfo, error),
 ) error {
 	// 获取 LLM 的供应商信息
-	providerInfo, err := getProviderInfo(libraryConfig.SemanticSegmentProviderID)
+	providerInfo, err := getProviderInfo(libraryConfig.RaptorLLMProviderID)
 	if err != nil {
 		return fmt.Errorf("获取供应商信息: %w", err)
 	}
@@ -536,7 +547,7 @@ func (p *Processor) buildRaptorTree(
 		ProviderType: providerInfo.ProviderType,
 		APIKey:       providerInfo.APIKey,
 		APIEndpoint:  providerInfo.APIEndpoint,
-		ModelID:      libraryConfig.SemanticSegmentModelID,
+		ModelID:      libraryConfig.RaptorLLMModelID,
 		ExtraConfig:  providerInfo.ExtraConfig,
 	})
 	if err != nil {
@@ -677,7 +688,7 @@ func (p *Processor) buildRaptorPlan(
 	getProviderInfo func(providerID string) (*ProviderInfo, error),
 ) ([]*raptor.DocumentNode, error) {
 	// 获取 LLM 的供应商信息
-	providerInfo, err := getProviderInfo(libraryConfig.SemanticSegmentProviderID)
+	providerInfo, err := getProviderInfo(libraryConfig.RaptorLLMProviderID)
 	if err != nil {
 		return nil, fmt.Errorf("获取供应商信息: %w", err)
 	}
@@ -687,7 +698,7 @@ func (p *Processor) buildRaptorPlan(
 		ProviderType: providerInfo.ProviderType,
 		APIKey:       providerInfo.APIKey,
 		APIEndpoint:  providerInfo.APIEndpoint,
-		ModelID:      libraryConfig.SemanticSegmentModelID,
+		ModelID:      libraryConfig.RaptorLLMModelID,
 		ExtraConfig:  providerInfo.ExtraConfig,
 	})
 	if err != nil {
@@ -697,7 +708,7 @@ func (p *Processor) buildRaptorPlan(
 	builder := raptor.NewBuilder(&raptor.Config{
 		MaxLevel:    2,
 		ClusterSize: 5,
-		MinNodes:    3,
+		MinNodes:    2, // Allow RAPTOR even with 2 nodes
 	}, embedder, llm)
 
 	return builder.BuildTreePlan(ctx, level0)
@@ -788,7 +799,7 @@ func GetLibraryConfig(ctx context.Context, db *bun.DB, libraryID int64) (*Librar
 	var config LibraryConfig
 	err := db.NewSelect().
 		TableExpr("library").
-		Column("id", "chunk_size", "chunk_overlap", "semantic_segment_provider_id", "semantic_segment_model_id").
+		Column("id", "chunk_size", "chunk_overlap", "semantic_segmentation_enabled", "raptor_llm_provider_id", "raptor_llm_model_id").
 		Where("id = ?", libraryID).
 		Scan(ctx, &config)
 	if err != nil {
