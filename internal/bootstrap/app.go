@@ -44,7 +44,6 @@ func NewApp(opts Options) (app *application.App, cleanup func(), err error) {
 	// 声明主窗口变量，用于单实例回调
 	var mainWindow *application.WebviewWindow
 	var floatingBallService *floatingball.FloatingBallService
-	var app *application.App
 
 	// 创建应用实例
 	app = application.New(application.Options{
@@ -72,7 +71,6 @@ func NewApp(opts Options) (app *application.App, cleanup func(), err error) {
 				}
 				// 若悬浮球开关为开启，则在唤醒主窗口时恢复悬浮球
 				if floatingBallService != nil && settings.GetBool("show_floating_window", true) && !floatingBallService.IsVisible() {
-					app.Logger.Info("[floatingball] restore", "reason", "second_instance_launch")
 					_ = floatingBallService.SetVisible(true)
 				}
 			},
@@ -167,7 +165,6 @@ func NewApp(opts Options) (app *application.App, cleanup func(), err error) {
 		mainWindow.Focus()
 		// 若悬浮球开关为开启，则在唤醒主窗口时恢复悬浮球
 		if settings.GetBool("show_floating_window", true) && !floatingBallService.IsVisible() {
-			app.Logger.Info("[floatingball] restore", "reason", "tray_show")
 			_ = floatingBallService.SetVisible(true)
 		}
 	})
@@ -243,7 +240,6 @@ func NewApp(opts Options) (app *application.App, cleanup func(), err error) {
 		if floatingBallService.IsVisible() {
 			return
 		}
-		app.Logger.Info("[floatingball] restore", "reason", reason)
 		_ = floatingBallService.SetVisible(true)
 	}
 	mainWindow.RegisterHook(events.Common.WindowShow, func(_ *application.WindowEvent) { restoreFloatingBall("main_window_show") })

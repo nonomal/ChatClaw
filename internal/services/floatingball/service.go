@@ -91,15 +91,9 @@ type FloatingBallService struct {
 }
 
 func (s *FloatingBallService) debugLog(msg string, fields map[string]any) {
-	if s.app == nil {
-		return
-	}
-	// 使用 Info 级别，方便在 dev 输出中直接看到
-	args := make([]any, 0, len(fields)*2)
-	for k, v := range fields {
-		args = append(args, k, v)
-	}
-	s.app.Logger.Info("[floatingball] "+msg, args...)
+	// Disabled: floatingball logs are too noisy for normal usage.
+	_ = msg
+	_ = fields
 }
 
 // safeRelativePositionLocked returns a best-effort position relative to current Screen.WorkArea.
