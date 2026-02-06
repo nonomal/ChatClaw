@@ -14,8 +14,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	einoagent "willchat/internal/eino/agent"
+	"willchat/internal/eino/tools"
 	"willchat/internal/errs"
-	"willchat/internal/services/tools"
 	"willchat/internal/sqlite"
 
 	"github.com/cloudwego/eino/adk"
@@ -329,7 +330,7 @@ func (s *ChatService) deleteMessagesAfter(ctx context.Context, db *bun.DB, conve
 }
 
 // getAgentAndProviderConfig gets the agent and provider configuration for a conversation
-func (s *ChatService) getAgentAndProviderConfig(ctx context.Context, db *bun.DB, conversationID int64) (AgentConfig, ProviderConfig, error) {
+func (s *ChatService) getAgentAndProviderConfig(ctx context.Context, db *bun.DB, conversationID int64) (einoagent.Config, einoagent.ProviderConfig, error) {
 	// Get conversation
 	type conversationRow struct {
 		AgentID       int64  `bun:"agent_id"`
@@ -343,9 +344,9 @@ func (s *ChatService) getAgentAndProviderConfig(ctx context.Context, db *bun.DB,
 		Where("id = ?", conversationID).
 		Scan(ctx, &conv); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return AgentConfig{}, ProviderConfig{}, errs.New("error.chat_conversation_not_found")
+			return einoagent.Config{}, einoagent.ProviderConfig{}, errs.New("error.chat_conversation_not_found")
 		}
-		return AgentConfig{}, ProviderConfig{}, errs.Wrap("error.chat_conversation_read_failed", err)
+		return einoagent.Config{}, einoagent.ProviderConfig{}, errs.Wrap("error.chat_conversation_read_failed", err)
 	}
 
 	// Get agent
@@ -370,9 +371,9 @@ func (s *ChatService) getAgentAndProviderConfig(ctx context.Context, db *bun.DB,
 		Where("id = ?", conv.AgentID).
 		Scan(ctx, &agent); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return AgentConfig{}, ProviderConfig{}, errs.New("error.chat_agent_not_found")
+			return einoagent.Config{}, einoagent.ProviderConfig{}, errs.New("error.chat_agent_not_found")
 		}
-		return AgentConfig{}, ProviderConfig{}, errs.Wrap("error.chat_agent_read_failed", err)
+		return einoagent.Config{}, einoagent.ProviderConfig{}, errs.Wrap("error.chat_agent_read_failed", err)
 	}
 
 	// Determine which provider/model to use (conversation overrides agent default)
@@ -386,7 +387,7 @@ func (s *ChatService) getAgentAndProviderConfig(ctx context.Context, db *bun.DB,
 	}
 
 	if providerID == "" || modelID == "" {
-		return AgentConfig{}, ProviderConfig{}, errs.New("error.chat_model_not_configured")
+		return einoagent.Config{}, einoagent.ProviderConfig{}, errs.New("error.chat_model_not_configured")
 	}
 
 	// Get provider
@@ -404,28 +405,28 @@ func (s *ChatService) getAgentAndProviderConfig(ctx context.Context, db *bun.DB,
 		Where("provider_id = ?", providerID).
 		Scan(ctx, &provider); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return AgentConfig{}, ProviderConfig{}, errs.Newf("error.chat_provider_not_found", map[string]any{"ProviderID": providerID})
+			return einoagent.Config{}, einoagent.ProviderConfig{}, errs.Newf("error.chat_provider_not_found", map[string]any{"ProviderID": providerID})
 		}
-		return AgentConfig{}, ProviderConfig{}, errs.Wrap("error.chat_provider_read_failed", err)
+		return einoagent.Config{}, einoagent.ProviderConfig{}, errs.Wrap("error.chat_provider_read_failed", err)
 	}
 
 	if !provider.Enabled {
-		return AgentConfig{}, ProviderConfig{}, errs.New("error.chat_provider_not_enabled")
+		return einoagent.Config{}, einoagent.ProviderConfig{}, errs.New("error.chat_provider_not_enabled")
 	}
 
-	agentConfig := AgentConfig{
-		Name:        agent.Name,
-		Instruction: agent.Prompt,
-		ModelID:     modelID,
-		Temperature: &agent.LLMTemperature,
-		TopP:        &agent.LLMTopP,
-		MaxTokens:   &agent.LLMMaxTokens,
-		EnableTemp:  agent.EnableLLMTemperature,
-		EnableTopP:  agent.EnableLLMTopP,
+	agentConfig := einoagent.Config{
+		Name:            agent.Name,
+		Instruction:     agent.Prompt,
+		ModelID:         modelID,
+		Temperature:     &agent.LLMTemperature,
+		TopP:            &agent.LLMTopP,
+		MaxTokens:       &agent.LLMMaxTokens,
+		EnableTemp:      agent.EnableLLMTemperature,
+		EnableTopP:      agent.EnableLLMTopP,
 		EnableMaxTokens: agent.EnableLLMMaxTokens,
 	}
 
-	providerConfig := ProviderConfig{
+	providerConfig := einoagent.ProviderConfig{
 		ProviderID:  providerID,
 		Type:        provider.Type,
 		APIKey:      provider.APIKey,
@@ -445,7 +446,7 @@ func (s *ChatService) tryDeleteGeneration(conversationID int64, gen *activeGener
 }
 
 // runGeneration runs the generation loop
-func (s *ChatService) runGeneration(ctx context.Context, db *bun.DB, conversationID int64, tabID, requestID, userContent string, agentConfig AgentConfig, providerConfig ProviderConfig) {
+func (s *ChatService) runGeneration(ctx context.Context, db *bun.DB, conversationID int64, tabID, requestID, userContent string, agentConfig einoagent.Config, providerConfig einoagent.ProviderConfig) {
 
 	var seq int32 = 0
 	nextSeq := func() int {
@@ -494,7 +495,7 @@ func (s *ChatService) runGeneration(ctx context.Context, db *bun.DB, conversatio
 }
 
 // runGenerationWithExistingHistory runs the generation loop with existing message history
-func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *bun.DB, conversationID int64, tabID, requestID string, agentConfig AgentConfig, providerConfig ProviderConfig) {
+func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *bun.DB, conversationID int64, tabID, requestID string, agentConfig einoagent.Config, providerConfig einoagent.ProviderConfig) {
 
 	var seq int32 = 0
 	nextSeq := func() int {
@@ -570,7 +571,7 @@ func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *
 
 	// Create agent
 	agentConfig.Provider = providerConfig
-	agent, err := createChatModelAgent(ctx, agentConfig, s.toolRegistry)
+	agent, err := einoagent.NewChatModelAgent(ctx, agentConfig, s.toolRegistry)
 	if err != nil {
 		emitError("error.chat_agent_create_failed", map[string]any{"Error": err.Error()})
 		s.updateMessageStatus(db, assistantMsg.ID, StatusError, err.Error(), "")
