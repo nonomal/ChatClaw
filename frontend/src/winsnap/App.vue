@@ -11,19 +11,26 @@ import {
   PinOff,
   Plus,
   Send,
+  Copy, 
+  SendHorizontal, 
+  Type
 } from 'lucide-vue-next'
 import Logo from '@/assets/images/logo.svg'
 import { cn } from '@/lib/utils'
-import { Events, System } from '@wailsio/runtime'
-import { SettingsService } from '@bindings/willchat/internal/services/settings'
+import { Events, System, Clipboard } from '@wailsio/runtime'
+import { SettingsService, Category } from '@bindings/willchat/internal/services/settings'
 import { SnapService } from '@bindings/willchat/internal/services/windows'
 import { WinsnapChatService } from '@bindings/willchat/internal/services/winsnapchat'
 import { TextSelectionService } from '@bindings/willchat/internal/services/textselection'
+import { useToast } from '@/components/ui/toast'
+import { Toaster } from '@/components/ui/toast'
 
 const { t } = useI18n()
+const { toast } = useToast()
 
 const question = ref('')
 const modelLabel = ref('DeepSeek V3.2 Think')
+const lastSelectionActionId = ref<number>(0)
 
 type ChatRole = 'user' | 'assistant'
 type ChatMessage = {
@@ -56,21 +63,157 @@ const pendingRequestId = ref<string | null>(null)
 
 const canSend = computed(() => question.value.trim().length > 0 && !isStreaming.value)
 
-const cancelSnap = async () => {
-  const keys = [
-    'snap_wechat',
-    'snap_wecom',
-    'snap_qq',
-    'snap_dingtalk',
-    'snap_feishu',
-    'snap_douyin',
-  ] as const
+// Settings for button visibility
+const showAiSendButton = ref(true)
+const showAiEditButton = ref(true)
 
+// Track if there's an attached target (for showing send/edit buttons)
+const hasAttachedTarget = ref(false)
+
+// Check snap status and update hasAttachedTarget
+const checkSnapStatus = async () => {
   try {
-    for (const k of keys) {
-      await SettingsService.SetValue(k, 'false')
+    const status = await SnapService.GetStatus()
+    hasAttachedTarget.value = status.state === 'attached' && !!status.targetProcess
+  } catch (error) {
+    console.error('Failed to check snap status:', error)
+    hasAttachedTarget.value = false
+  }
+}
+
+// Load settings
+const loadSettings = async () => {
+  try {
+    const settings = await SettingsService.List(Category.CategorySnap)
+    settings.forEach((setting) => {
+      if (setting.key === 'show_ai_send_button') {
+        showAiSendButton.value = setting.value === 'true'
+      }
+      if (setting.key === 'show_ai_edit_button') {
+        showAiEditButton.value = setting.value === 'true'
+      }
+    })
+  } catch (error) {
+    console.error('Failed to load settings:', error)
+  }
+}
+
+// Action handlers for AI response buttons
+const handleSendAndTrigger = async (content: string) => {
+  if (!content) return
+  try {
+    await SnapService.SendTextToTarget(content, true)
+    toast({
+      description: t('winsnap.toast.sent'),
+    })
+  } catch (error) {
+    console.error('Failed to send and trigger:', error)
+    // If we lost the attached target (race), show a clearer message.
+    await checkSnapStatus()
+    toast({
+      variant: 'error',
+      description: hasAttachedTarget.value ? t('winsnap.toast.sendFailed') : t('winsnap.toast.noTarget'),
+    })
+  }
+}
+
+const handleSendToEdit = async (content: string) => {
+  if (!content) return
+  try {
+    await SnapService.PasteTextToTarget(content)
+    toast({
+      description: t('winsnap.toast.pasted'),
+    })
+  } catch (error) {
+    console.error('Failed to paste to edit:', error)
+    await checkSnapStatus()
+    toast({
+      variant: 'error',
+      description: hasAttachedTarget.value ? t('winsnap.toast.pasteFailed') : t('winsnap.toast.noTarget'),
+    })
+  }
+}
+
+const handleCopyToClipboard = async (content: string) => {
+  if (!content) return
+  try {
+    await Clipboard.SetText(content)
+    toast({
+      description: t('winsnap.toast.copied'),
+    })
+  } catch (error) {
+    console.error('Failed to copy to clipboard:', error)
+  }
+}
+
+// Map from target process name to settings key
+const processToSettingsKey: Record<string, string> = {
+  // Windows
+  'Weixin.exe': 'snap_wechat',
+  'WeChat.exe': 'snap_wechat',
+  'WeChatApp.exe': 'snap_wechat',
+  'WeChatAppEx.exe': 'snap_wechat',
+  'WXWork.exe': 'snap_wecom',
+  'QQ.exe': 'snap_qq',
+  'QQNT.exe': 'snap_qq',
+  'DingTalk.exe': 'snap_dingtalk',
+  'Feishu.exe': 'snap_feishu',
+  'Lark.exe': 'snap_feishu',
+  'Douyin.exe': 'snap_douyin',
+  // macOS
+  '微信': 'snap_wechat',
+  'Weixin': 'snap_wechat',
+  'weixin': 'snap_wechat',
+  'WeChat': 'snap_wechat',
+  'wechat': 'snap_wechat',
+  'com.tencent.xinWeChat': 'snap_wechat',
+  '企业微信': 'snap_wecom',
+  'WeCom': 'snap_wecom',
+  'wecom': 'snap_wecom',
+  'WeWork': 'snap_wecom',
+  'wework': 'snap_wecom',
+  'WXWork': 'snap_wecom',
+  'wxwork': 'snap_wecom',
+  'qiyeweixin': 'snap_wecom',
+  'com.tencent.WeWorkMac': 'snap_wecom',
+  'QQ': 'snap_qq',
+  'qq': 'snap_qq',
+  'com.tencent.qq': 'snap_qq',
+  '钉钉': 'snap_dingtalk',
+  'DingTalk': 'snap_dingtalk',
+  'dingtalk': 'snap_dingtalk',
+  'com.alibaba.DingTalkMac': 'snap_dingtalk',
+  '飞书': 'snap_feishu',
+  'Feishu': 'snap_feishu',
+  'feishu': 'snap_feishu',
+  'Lark': 'snap_feishu',
+  'lark': 'snap_feishu',
+  'com.bytedance.feishu': 'snap_feishu',
+  'com.bytedance.Lark': 'snap_feishu',
+  '抖音': 'snap_douyin',
+  'Douyin': 'snap_douyin',
+  'douyin': 'snap_douyin',
+}
+
+const cancelSnap = async () => {
+  try {
+    // Get current snap status to find the attached target
+    const status = await SnapService.GetStatus()
+
+    // If attached to a target, only disable that specific app's toggle
+    if (status.state === 'attached' && status.targetProcess) {
+      const settingsKey = processToSettingsKey[status.targetProcess]
+      if (settingsKey) {
+        await SettingsService.SetValue(settingsKey, 'false')
+        await SnapService.SyncFromSettings()
+        // Update attached target status
+        hasAttachedTarget.value = false
+        return
+      }
     }
-    await SnapService.SyncFromSettings()
+
+    // Fallback: if no attached target or unknown process, do nothing
+    // This maintains program robustness when there's no attached window
   } catch (error) {
     console.error('Failed to cancel snap:', error)
   }
@@ -201,6 +344,8 @@ const handleSend = async () => {
 }
 
 const handleTextareaKeydown = (e: KeyboardEvent) => {
+  // Avoid sending when IME is composing (common on macOS with Chinese/Japanese input).
+  if (e.isComposing) return
   if (e.key !== 'Enter') return
   if (e.shiftKey) return
   e.preventDefault()
@@ -279,14 +424,47 @@ const processStreamEvent = (requestId: string, eventName: string, data: any) => 
 
 let unsubscribeWinsnapChat: (() => void) | null = null
 let unsubscribeTextSelection: (() => void) | null = null
+let unsubscribeSnapSettings: (() => void) | null = null
+let unsubscribeSnapStateChanged: (() => void) | null = null
 let onMouseUp: ((e: MouseEvent) => void) | null = null
 let onPointerDown: ((e: PointerEvent) => void) | null = null
 onMounted(() => {
+  // Load settings on mount
+  void loadSettings()
+
+  // Check snap status on mount
+  void checkSnapStatus()
+
+  // Listen for settings changes
+  unsubscribeSnapSettings = Events.On('snap:settings-changed', () => {
+    void loadSettings()
+    // Also check snap status when settings change (in case snap app was toggled)
+    void checkSnapStatus()
+  })
+
+  // Listen for snap state changes (attached/hidden/standalone)
+  // This updates hasAttachedTarget when state changes
+  unsubscribeSnapStateChanged = Events.On('snap:state-changed', (event: any) => {
+    const payload = Array.isArray(event?.data) ? event.data[0] : event?.data ?? event
+    const state = payload?.state
+    const targetProcess = payload?.targetProcess
+    // Update hasAttachedTarget based on the new state
+    hasAttachedTarget.value = state === 'attached' && !!targetProcess
+  })
+
   // Listen for text selection action to set input text
   unsubscribeTextSelection = Events.On('text-selection:send-to-snap', (event: any) => {
     const payload = Array.isArray(event?.data) ? event.data[0] : (event?.data ?? event)
     const text = payload?.text ?? ''
+    const id = Number(payload?.id ?? 0)
     if (text) {
+      // Deduplicate (startup fallback may replay the latest action).
+      if (id && id <= lastSelectionActionId.value) {
+        return
+      }
+      if (id) {
+        lastSelectionActionId.value = id
+      }
       question.value = text
       // Auto-send after a short delay
       setTimeout(() => {
@@ -294,6 +472,26 @@ onMounted(() => {
       }, 100)
     }
   })
+
+  // Fallback: pull the latest selection action once on startup.
+  // This avoids missing the first event when the winsnap window is created on-demand.
+  void (async () => {
+    try {
+      const action = await TextSelectionService.GetLastButtonAction()
+      const id = Number((action as any)?.id ?? 0)
+      const text = String((action as any)?.text ?? '')
+      if (!text) return
+      if (id && id <= lastSelectionActionId.value) return
+      if (id) lastSelectionActionId.value = id
+      question.value = text
+      setTimeout(() => {
+        void handleSend()
+      }, 100)
+    } catch (error) {
+      // Best-effort only.
+      console.error('Failed to get last selection action:', error)
+    }
+  })()
 
   // Wails v3 CustomEvent: payload is inside event.data[0] (first argument passed to Emit)
   unsubscribeWinsnapChat = Events.On('winsnap:chat', (event: any) => {
@@ -353,6 +551,10 @@ onUnmounted(() => {
   unsubscribeWinsnapChat = null
   unsubscribeTextSelection?.()
   unsubscribeTextSelection = null
+  unsubscribeSnapSettings?.()
+  unsubscribeSnapSettings = null
+  unsubscribeSnapStateChanged?.()
+  unsubscribeSnapStateChanged = null
   if (onMouseUp) {
     window.removeEventListener('mouseup', onMouseUp, true)
     onMouseUp = null
@@ -387,8 +589,8 @@ onUnmounted(() => {
     <!-- Header -->
     <div class="flex h-12 items-center justify-between bg-background px-3">
       <div class="flex items-center gap-1">
-        <div class="text-base font-semibold text-foreground">{{ t('winsnap.assistantName') }}</div>
-        <ChevronDown class="size-4 text-muted-foreground" />
+        <div class="text-sm font-medium text-foreground">{{ t('winsnap.assistantName') }}</div>
+        <ChevronDown class="size-3.5 text-muted-foreground" />
       </div>
 
       <div class="flex items-center gap-2">
@@ -415,8 +617,8 @@ onUnmounted(() => {
           type="button"
           @click="cancelSnap"
         >
-          <PinOff class="size-4 text-muted-foreground" />
-          <span class="text-sm text-foreground">{{ t('winsnap.cancelSnap') }}</span>
+          <PinOff class="size-3.5 text-muted-foreground" />
+          <span class="text-muted-foreground">{{ t('winsnap.cancelSnap') }}</span>
         </button>
       </div>
     </div>
@@ -442,8 +644,8 @@ onUnmounted(() => {
           <div
             v-for="m in messages"
             :key="m.id"
-            class="flex"
-            :class="m.role === 'user' ? 'justify-end' : 'justify-start'"
+            class="flex flex-col"
+            :class="m.role === 'user' ? 'items-end' : 'items-start'"
           >
             <div
               :class="
@@ -466,6 +668,44 @@ onUnmounted(() => {
               </div>
               <!-- Content -->
               <div v-else class="whitespace-pre-wrap break-words">{{ m.display || m.content }}</div>
+            </div>
+            <!-- Action buttons for assistant messages (only when done) -->
+            <div
+              v-if="m.role === 'assistant' && m.status === 'done' && (m.display || m.content)"
+              class="mt-2 flex items-center gap-2"
+            >
+              <!-- Button 1: Send and trigger send key (only when attached to target) -->
+              <button
+                v-if="showAiSendButton && hasAttachedTarget"
+                class="inline-flex items-center justify-center rounded-md border border-border bg-background p-2 hover:bg-muted"
+                style="--wails-draggable: no-drag"
+                type="button"
+                :title="t('winsnap.actions.sendAndTrigger')"
+                @click="handleSendAndTrigger(m.display || m.content)"
+              >
+                <SendHorizontal class="size-4 text-muted-foreground" />
+              </button>
+              <!-- Button 2: Send to edit box (only when attached to target) -->
+              <button
+                v-if="showAiEditButton && hasAttachedTarget"
+                class="inline-flex items-center justify-center rounded-md border border-border bg-background p-2 hover:bg-muted"
+                style="--wails-draggable: no-drag"
+                type="button"
+                :title="t('winsnap.actions.sendToEdit')"
+                @click="handleSendToEdit(m.display || m.content)"
+              >
+                <Type class="size-4 text-muted-foreground" />
+              </button>
+              <!-- Button 3: Copy to clipboard -->
+              <button
+                class="inline-flex items-center justify-center rounded-md border border-border bg-background p-2 hover:bg-muted"
+                style="--wails-draggable: no-drag"
+                type="button"
+                :title="t('winsnap.actions.copyToClipboard')"
+                @click="handleCopyToClipboard(m.display || m.content)"
+              >
+                <Copy class="size-4 text-muted-foreground" />
+              </button>
             </div>
           </div>
         </div>
@@ -539,5 +779,6 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+    <Toaster />
   </div>
 </template>

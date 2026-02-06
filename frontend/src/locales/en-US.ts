@@ -33,6 +33,19 @@ export default {
     cancelSnap: 'Cancel Snap',
     placeholder: 'Type your question',
     thinking: 'Thinking...',
+    actions: {
+      sendAndTrigger: 'Send and Trigger',
+      sendToEdit: 'Send to Edit Box',
+      copyToClipboard: 'Copy to Clipboard',
+    },
+    toast: {
+      copied: 'Copied to clipboard',
+      sent: 'Sent',
+      pasted: 'Pasted to edit box',
+      sendFailed: 'Failed to send',
+      pasteFailed: 'Failed to paste',
+      noTarget: 'Not attached to any app',
+    },
   },
   selection: {
     aiChat: 'AI Chat',
@@ -118,6 +131,14 @@ export default {
         feishu: 'Feishu',
         douyin: 'Douyin',
       },
+      clickOffset: {
+        labelX: 'From Left',
+        labelY: 'From Bottom',
+        placeholderX: 'Center',
+        hint: 'Pixels to locate input box',
+      },
+      noClickMode: 'No-click mode (apps that keep focus)',
+      clickMode: 'Click mode (need to click to activate input)',
     },
     // Tools settings
     tools: {

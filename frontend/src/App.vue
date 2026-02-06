@@ -7,10 +7,9 @@ import SettingsPage from '@/pages/settings/SettingsPage.vue'
 import AssistantPage from '@/pages/assistant/AssistantPage.vue'
 import KnowledgePage from '@/pages/knowledge/KnowledgePage.vue'
 import { Events, System } from '@wailsio/runtime'
-import { SnapService } from '@bindings/willchat/internal/services/windows'
 import { TextSelectionService } from '@bindings/willchat/internal/services/textselection'
 import MultiaskPage from '@/pages/multiask/MultiaskPage.vue'
-
+import { SnapService } from '@bindings/willchat/internal/services/windows'
 const navigationStore = useNavigationStore()
 const activeTab = computed(() => navigationStore.activeTab)
 
@@ -156,8 +155,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  unsubscribeTextSelection?.()
-  unsubscribeTextSelection = null
   if (onMouseUp) {
     window.removeEventListener('mouseup', onMouseUp, true)
     onMouseUp = null
