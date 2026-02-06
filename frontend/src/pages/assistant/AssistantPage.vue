@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowUp, Check, Copy, MoreHorizontal, Pin, PinOff, Plus, SendHorizontal, Square, Type } from 'lucide-vue-next'
+import { ArrowUp, Check, Copy, MoreHorizontal, Pin, PinOff, Plus, Lightbulb, SendHorizontal, Square, Type } from 'lucide-vue-next'
 import IconAgentAdd from '@/assets/icons/agent-add.svg'
 import IconNewConversation from '@/assets/icons/new-conversation.svg'
 import IconSidebarCollapse from '@/assets/icons/sidebar-collapse.svg'
@@ -264,6 +264,9 @@ const chatInput = ref('')
 // Model selection
 const providersWithModels = ref<ProviderWithModels[]>([])
 const selectedModelKey = ref('')
+
+// Thinking mode
+const enableThinking = ref(false)
 
 // Knowledge base selection
 const libraries = ref<Library[]>([])
@@ -729,6 +732,8 @@ const handleNewConversation = () => {
   chatInput.value = ''
   // Clear knowledge base selection for new conversation
   clearKnowledgeSelection()
+  // Reset thinking mode to default (off) for new conversation
+  enableThinking.value = false
 }
 
 const handleNewConversationForAgent = (agentId: number) => {
@@ -765,6 +770,7 @@ const handleSend = async () => {
           llm_provider_id: providerId || '',
           llm_model_id: modelId || '',
           library_ids: selectedLibraryIds.value,
+          enable_thinking: enableThinking.value,
         })
       )
       if (newConversation) {
@@ -860,6 +866,9 @@ const handleSelectConversation = (conversation: Conversation) => {
 
   // Set knowledge base selection from conversation
   selectedLibraryIds.value = conversation.library_ids || []
+
+  // Set thinking mode from conversation
+  enableThinking.value = conversation.enable_thinking || false
 }
 
 // Handle library selection change from Select component
@@ -873,6 +882,26 @@ const clearLibrarySelection = async () => {
   clearKnowledgeSelection()
   await saveLibraryIdsToConversation()
 }
+
+// Save thinking mode to current conversation
+const saveThinkingToConversation = async () => {
+  if (!activeConversationId.value) return
+  try {
+    await ConversationsService.UpdateConversation(
+      activeConversationId.value,
+      new UpdateConversationInput({
+        enable_thinking: enableThinking.value,
+      })
+    )
+  } catch (err) {
+    console.error('Failed to save thinking mode to conversation:', err)
+  }
+}
+
+// Watch thinking mode changes and save to conversation
+watch(enableThinking, () => {
+  void saveThinkingToConversation()
+})
 
 // Save library_ids to current conversation
 const saveLibraryIdsToConversation = async () => {
@@ -1644,6 +1673,33 @@ onUnmounted(() => {
                   </SelectContent>
                 </Select>
 
+                <!-- Thinking mode toggle -->
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger as-child>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        class="size-8 rounded-full border border-border bg-background"
+                        :class="
+                          enableThinking
+                            ? 'border-primary/50 bg-primary/10 hover:bg-primary/10'
+                            : 'hover:bg-muted/40'
+                        "
+                        @click="enableThinking = !enableThinking"
+                      >
+                        <Lightbulb
+                          class="size-4 pointer-events-none"
+                          :class="enableThinking ? 'text-primary' : 'text-muted-foreground'"
+                        />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{{ enableThinking ? t('assistant.chat.thinkingOn') : t('assistant.chat.thinkingOff') }}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
                 <!-- Knowledge base multi-select using reka-ui Select with multiple -->
                 <SelectRoot
                   v-model="selectedLibraryIds"
@@ -1662,13 +1718,15 @@ onUnmounted(() => {
                     <Button
                       size="icon"
                       variant="ghost"
-                      class="size-8 rounded-full border border-border bg-background hover:bg-muted/40"
-                      :class="{
-                        'border-primary/50 bg-primary/10': selectedLibraryIds.length > 0,
-                      }"
+                      class="size-8 rounded-full border border-border bg-background"
+                      :class="
+                        selectedLibraryIds.length > 0
+                          ? 'border-primary/50 bg-primary/10 hover:bg-primary/10'
+                          : 'hover:bg-muted/40'
+                      "
                     >
                       <IconSelectKnowledge
-                        class="size-4"
+                        class="size-4 pointer-events-none"
                         :class="
                           selectedLibraryIds.length > 0 ? 'text-primary' : 'text-muted-foreground'
                         "
