@@ -3,6 +3,26 @@ export default {
     title: 'WillChat',
     theme: 'Theme',
   },
+  common: {
+    cancel: 'Cancel',
+    confirm: 'Confirm',
+    save: 'Save',
+    delete: 'Delete',
+    edit: 'Edit',
+    copy: 'Copy',
+    detail: 'Details',
+    hide: 'Hide',
+  },
+  tools: {
+    calculator: {
+      name: 'Calculator',
+      description: 'Perform mathematical calculations',
+    },
+    duckduckgo: {
+      name: 'Web Search',
+      description: 'Search the web using DuckDuckGo',
+    },
+  },
   winsnap: {
     title: 'WillChat',
     assistantName: 'Soul Kitchen Assistant',
@@ -245,6 +265,25 @@ export default {
       selectKnowledge: 'Select knowledge base',
       selectImage: 'Select image',
       send: 'Send',
+      stop: 'Stop',
+      copy: 'Copy',
+      copyFailed: 'Failed to copy',
+      edit: 'Edit',
+      resend: 'Resend',
+      error: 'An error occurred',
+      errorMaxIterations: 'Max execution rounds reached, task could not be completed',
+      errorToolCall: 'Tool call failed',
+      errorStream: 'AI service connection interrupted',
+      cancelled: 'Stopped',
+      thinking: 'Thinking',
+      thinkingInProgress: 'Thinking...',
+      toolCalling: 'Calling',
+      toolCompleted: 'Completed',
+      toolError: 'Failed',
+      toolArgs: 'Arguments',
+      toolResult: 'Result',
+      toolQuery: 'Query: ',
+      rawJson: 'Raw JSON',
     },
     menu: {
       settings: 'Agent Settings',
@@ -281,6 +320,8 @@ export default {
       createConversationFailed: 'Failed to create conversation',
       updateConversationFailed: 'Failed to update conversation',
       deleteConversationFailed: 'Failed to delete conversation',
+      sendFailed: 'Failed to send message',
+      resendFailed: 'Failed to resend',
     },
     toasts: {
       created: 'Agent created',
@@ -292,6 +333,7 @@ export default {
       tabs: {
         model: 'Model',
         prompt: 'Prompt',
+        retrieval: 'Retrieval',
         delete: 'Delete',
       },
       model: {
@@ -305,9 +347,13 @@ export default {
         topP: 'Top-P',
         topPHint: 'Controls sampling range',
         contextCount: 'Context Count',
-        matchThreshold: 'Knowledge base match threshold',
         maxTokens: 'Max Tokens',
         unlimited: 'Unlimited',
+      },
+      retrieval: {
+        matchThreshold: 'Match Threshold',
+        topK: 'Chunk Count',
+        default: 'Default',
       },
       delete: {
         title: 'Delete Agent',
@@ -321,7 +367,6 @@ export default {
   knowledge: {
     help: {
       name: 'A name to distinguish different knowledge bases (max 30 characters).',
-      topK: 'Maximum number of chunks returned per retrieval.',
       chunkSize:
         'Chunk size (in characters, 500~5000). Larger chunks keep more context but reduce granularity.',
       chunkOverlap:
@@ -329,7 +374,8 @@ export default {
       matchThreshold: 'Results with similarity lower than this threshold will be filtered (0~1).',
       embeddingModel: 'Embedding model used to convert text into vectors.',
       embeddingDimension: 'Embedding vector dimension must match the selected model output.',
-      semanticSegmentModel: 'Model used for semantic segmentation (optional).',
+      semanticSegmentation: 'When enabled, uses embedding model to intelligently segment by semantic boundaries, improving chunking quality. Note: This increases processing time and consumes extra tokens.',
+      raptorLLMModel: 'Language model for generating multi-level summaries. Builds a hierarchical summary tree to improve retrieval. Note: This increases processing time and consumes extra tokens.',
     },
     tabs: {
       personal: 'Personal',
@@ -383,9 +429,9 @@ export default {
       advanced: 'Advanced settings',
       advancedHide: 'Hide advanced settings',
       defaultMark: 'Default',
-      topK: 'Requested document chunks',
-      semanticSegmentModel: 'Semantic segmentation model',
-      noSemanticSegment: 'No semantic segmentation',
+      semanticSegmentation: 'Semantic Segmentation',
+      raptorLLMModel: 'Hierarchical Summary Model',
+      noRaptorLLM: 'Disabled',
       chunkSize: 'Chunk size',
       chunkOverlap: 'Overlap size',
       matchThreshold: 'Match threshold',
@@ -410,6 +456,7 @@ export default {
       addDocument: 'Add Document',
       selectFile: 'Select File',
       loadFailed: 'Failed to load documents',
+      noMore: 'No more',
       fileTypes: {
         documents: 'Document Files',
         all: 'All Files',
@@ -428,12 +475,14 @@ export default {
       fileMissing: 'File missing',
       menu: {
         rename: 'Rename',
+        relearn: 'Relearn',
         delete: 'Delete',
       },
       upload: {
         success: 'Documents uploaded',
         failed: 'Failed to upload documents',
         count: '{count} documents uploaded',
+        uploading: 'Uploading {done}/{total}',
       },
       rename: {
         title: 'Rename Document',
@@ -443,6 +492,10 @@ export default {
         confirm: 'Save',
         success: 'Renamed',
         failed: 'Failed to rename',
+      },
+      relearn: {
+        success: 'Relearning started',
+        failed: 'Failed to relearn',
       },
       delete: {
         title: 'Confirm Delete',

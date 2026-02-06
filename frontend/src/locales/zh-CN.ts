@@ -3,6 +3,26 @@ export default {
     title: 'WillChat',
     theme: '主题',
   },
+  common: {
+    cancel: '取消',
+    confirm: '确认',
+    save: '保存',
+    delete: '删除',
+    edit: '编辑',
+    copy: '复制',
+    detail: '详情',
+    hide: '收起',
+  },
+  tools: {
+    calculator: {
+      name: '计算器',
+      description: '执行数学计算',
+    },
+    duckduckgo: {
+      name: '网络搜索',
+      description: '使用 DuckDuckGo 搜索网络信息',
+    },
+  },
   winsnap: {
     title: 'WillChat',
     assistantName: '灵魂厨房助手',
@@ -242,6 +262,25 @@ export default {
       selectKnowledge: '选择知识库',
       selectImage: '选择图片',
       send: '发送',
+      stop: '停止',
+      copy: '复制',
+      copyFailed: '复制失败',
+      edit: '编辑',
+      resend: '重新发送',
+      error: '生成过程中出现错误',
+      errorMaxIterations: '已达到最大执行轮次，任务未能完成',
+      errorToolCall: '工具调用过程中出现错误',
+      errorStream: 'AI 服务连接中断',
+      cancelled: '已停止',
+      thinking: '思考中',
+      thinkingInProgress: '正在思考...',
+      toolCalling: '执行中',
+      toolCompleted: '已完成',
+      toolError: '执行失败',
+      toolArgs: '参数',
+      toolResult: '结果',
+      toolQuery: '查询：',
+      rawJson: '原始 JSON',
     },
     menu: {
       settings: '助手设置',
@@ -278,6 +317,8 @@ export default {
       createConversationFailed: '创建会话失败',
       updateConversationFailed: '更新会话失败',
       deleteConversationFailed: '删除会话失败',
+      sendFailed: '发送消息失败',
+      resendFailed: '重新发送失败',
     },
     toasts: {
       created: '助手创建成功',
@@ -289,6 +330,7 @@ export default {
       tabs: {
         model: '模型设置',
         prompt: '提示词设置',
+        retrieval: '知识库检索',
         delete: '删除助手',
       },
       model: {
@@ -302,9 +344,13 @@ export default {
         topP: 'Top-P',
         topPHint: '控制采样范围',
         contextCount: '上下文数',
-        matchThreshold: '知识库匹配度阈值',
         maxTokens: '最大 Token 数',
         unlimited: '不限',
+      },
+      retrieval: {
+        matchThreshold: '匹配度阈值',
+        topK: '检索分片数',
+        default: '默认',
       },
       delete: {
         title: '删除助手',
@@ -318,13 +364,13 @@ export default {
   knowledge: {
     help: {
       name: '知识库名称，用于区分不同的知识库（最多30个字符）。',
-      topK: '每次检索时，最多返回的文档分片数量。',
       chunkSize: '分片大小（字符数，500~5000）。分片越大，上下文越完整，但召回粒度更粗。',
       chunkOverlap: '相邻分片的重叠大小（字符数，0~1000），用于减少跨分片断句导致的信息丢失。',
       matchThreshold: '相似度低于该阈值的结果将被过滤（0~1）。',
       embeddingModel: '用于将文本转换为向量的嵌入模型。',
       embeddingDimension: '嵌入向量维度需与所选模型的输出一致。',
-      semanticSegmentModel: '用于按语义进行分段的模型（可选）。',
+      semanticSegmentation: '启用后，将使用嵌入模型按语义边界进行智能分段，提高分段质量。注意：此功能会增加处理时间并消耗额外的 Token。',
+      raptorLLMModel: '用于生成多层摘要的语言模型。启用后将构建层级摘要树以提升检索效果。注意：此功能会增加处理时间并消耗额外的 Token。',
     },
     tabs: {
       personal: '个人',
@@ -381,9 +427,9 @@ export default {
       advanced: '高级设置',
       advancedHide: '收起高级设置',
       defaultMark: '默认',
-      topK: '请求文档分片数量',
-      semanticSegmentModel: '语义分段模型',
-      noSemanticSegment: '不使用语义分段',
+      semanticSegmentation: '语义分段',
+      raptorLLMModel: '层级摘要模型',
+      noRaptorLLM: '不启用',
       chunkSize: '分片大小',
       chunkOverlap: '重叠大小',
       matchThreshold: '匹配度阈值',
@@ -408,6 +454,7 @@ export default {
       addDocument: '添加文档',
       selectFile: '选择文件',
       loadFailed: '加载文档列表失败',
+      noMore: '没有更多了',
       fileTypes: {
         documents: '文档文件',
         all: '所有文件',
@@ -426,12 +473,14 @@ export default {
       fileMissing: '原始文件已丢失',
       menu: {
         rename: '重命名',
+        relearn: '重新学习',
         delete: '删除',
       },
       upload: {
         success: '文档上传成功',
         failed: '文档上传失败',
         count: '已上传 {count} 个文档',
+        uploading: '正在上传 {done}/{total}',
       },
       rename: {
         title: '重命名文档',
@@ -441,6 +490,10 @@ export default {
         confirm: '保存',
         success: '重命名成功',
         failed: '重命名失败',
+      },
+      relearn: {
+        success: '已开始重新学习',
+        failed: '重新学习失败',
       },
       delete: {
         title: '确认删除',

@@ -3,14 +3,16 @@ package bootstrap
 import (
 	"fmt"
 	"io/fs"
+	"strings"
 	"sync"
 	"time"
 
-	"willchat/internal/services/agents"
-	"willchat/internal/services/conversations"
 	"willchat/internal/define"
+	"willchat/internal/services/agents"
 	appservice "willchat/internal/services/app"
 	"willchat/internal/services/browser"
+	"willchat/internal/services/chat"
+	"willchat/internal/services/conversations"
 	"willchat/internal/services/document"
 	"willchat/internal/services/floatingball"
 	"willchat/internal/services/greet"
@@ -171,11 +173,16 @@ func NewApp(opts Options) (app *application.App, cleanup func(), err error) {
 		return nil, nil, fmt.Errorf("settings cache init: %w", err)
 	}
 
+	// 使用 DB 中持久化的 language 覆盖启动语言（保证重启后语言一致）
+	if lang, ok := settings.GetValue("language"); ok && strings.TrimSpace(lang) != "" {
+		i18n.SetLocale(lang)
+	}
+
 	// 初始化任务管理器（基于 goqite 的持久化消息队列）
 	if err := taskmanager.Init(app, sqlite.DB().DB, taskmanager.Config{
 		Queues: map[string]taskmanager.QueueConfig{
-			taskmanager.QueueThumbnail: {Workers: 8, PollInterval: 50 * time.Millisecond},  // 缩略图：快任务
-			taskmanager.QueueDocument:  {Workers: 2, PollInterval: 100 * time.Millisecond}, // 文档处理：慢任务
+			taskmanager.QueueThumbnail: {Workers: 10, PollInterval: 50 * time.Millisecond}, // 缩略图任务
+			taskmanager.QueueDocument:  {Workers: 3, PollInterval: 100 * time.Millisecond}, // 文档处理任务
 		},
 	}); err != nil {
 		sqlite.Close()
@@ -194,6 +201,8 @@ func NewApp(opts Options) (app *application.App, cleanup func(), err error) {
 	app.RegisterService(application.NewService(agents.NewAgentsService(app)))
 	// 注册会话服务
 	app.RegisterService(application.NewService(conversations.NewConversationsService(app)))
+	// 注册聊天服务
+	app.RegisterService(application.NewService(chat.NewChatService(app)))
 	// 注册应用服务
 	app.RegisterService(application.NewService(appservice.NewAppService(app)))
 	// 注册知识库服务
