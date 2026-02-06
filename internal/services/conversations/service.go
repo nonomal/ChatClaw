@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"log"
 	"strings"
 	"time"
 
@@ -34,14 +33,14 @@ func (s *ConversationsService) db() (*bun.DB, error) {
 }
 
 // serializeLibraryIDs converts library IDs to JSON string for database storage
-func serializeLibraryIDs(ids []int64) string {
+func (s *ConversationsService) serializeLibraryIDs(ids []int64) string {
 	if len(ids) == 0 {
 		return "[]"
 	}
 	jsonBytes, err := json.Marshal(ids)
 	if err != nil {
 		// This should rarely happen with []int64, but log it for debugging
-		log.Printf("[conversations] failed to serialize library_ids: %v", err)
+		s.app.Logger.Warn("[conversations] failed to serialize library_ids", "error", err)
 		return "[]"
 	}
 	return string(jsonBytes)
@@ -153,7 +152,7 @@ func (s *ConversationsService) CreateConversation(input CreateConversationInput)
 		IsPinned:       false,
 		LLMProviderID:  strings.TrimSpace(input.LLMProviderID),
 		LLMModelID:     strings.TrimSpace(input.LLMModelID),
-		LibraryIDs:     serializeLibraryIDs(input.LibraryIDs),
+		LibraryIDs:     s.serializeLibraryIDs(input.LibraryIDs),
 		EnableThinking: input.EnableThinking,
 	}
 
@@ -244,7 +243,7 @@ func (s *ConversationsService) UpdateConversation(id int64, input UpdateConversa
 		}
 
 		if input.LibraryIDs != nil {
-			q = q.Set("library_ids = ?", serializeLibraryIDs(*input.LibraryIDs))
+			q = q.Set("library_ids = ?", s.serializeLibraryIDs(*input.LibraryIDs))
 		}
 
 		if input.EnableThinking != nil {

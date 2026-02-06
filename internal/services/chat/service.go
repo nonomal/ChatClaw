@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 	"sync"
@@ -147,7 +146,7 @@ func (s *ChatService) SendMessage(input SendMessageInput) (*SendMessageResult, e
 		return nil, errs.New("error.chat_content_required")
 	}
 
-	log.Printf("[chat] SendMessage conv=%d tab=%s content_len=%d", input.ConversationID, input.TabID, len(content))
+	s.app.Logger.Info("[chat] SendMessage", "conv", input.ConversationID, "tab", input.TabID, "content_len", len(content))
 
 	// Check if there's already an active generation for this conversation
 	if existing, ok := s.activeGenerations.Load(input.ConversationID); ok {
@@ -212,7 +211,7 @@ func (s *ChatService) EditAndResend(input EditAndResendInput) (*SendMessageResul
 		return nil, errs.New("error.chat_content_required")
 	}
 
-	log.Printf("[chat] EditAndResend conv=%d tab=%s msg=%d content_len=%d", input.ConversationID, input.TabID, input.MessageID, len(content))
+	s.app.Logger.Info("[chat] EditAndResend", "conv", input.ConversationID, "tab", input.TabID, "msg", input.MessageID, "content_len", len(content))
 
 	// Stop any existing generation and wait for it to finish
 	if existing, ok := s.activeGenerations.Load(input.ConversationID); ok {
@@ -226,7 +225,7 @@ func (s *ChatService) EditAndResend(input EditAndResendInput) (*SendMessageResul
 		case <-time.After(3 * time.Second):
 			// Timeout: old goroutine may still be running and could write stale data.
 			// Refuse to start a new generation to avoid data races.
-			log.Printf("[chat] ERROR: old generation did not finish within timeout conv=%d, refusing to start new generation", input.ConversationID)
+			s.app.Logger.Error("[chat] old generation did not finish within timeout, refusing to start new generation", "conv", input.ConversationID)
 			return nil, errs.New("error.chat_previous_generation_not_finished")
 		}
 	}
@@ -365,7 +364,7 @@ func (s *ChatService) getAgentAndProviderConfig(ctx context.Context, db *bun.DB,
 	var convLibraryIDs []int64
 	if conv.LibraryIDs != "" && conv.LibraryIDs != "[]" {
 		if err := json.Unmarshal([]byte(conv.LibraryIDs), &convLibraryIDs); err != nil {
-			log.Printf("[chat] failed to parse library_ids for conversation %d: %v", conversationID, err)
+			s.app.Logger.Warn("[chat] failed to parse library_ids", "conv", conversationID, "error", err)
 			// Continue with empty library IDs on parse error
 			convLibraryIDs = []int64{}
 		}
@@ -465,7 +464,7 @@ func (s *ChatService) getAgentAndProviderConfig(ctx context.Context, db *bun.DB,
 
 	// Use conversation-level library_ids for retrieval
 	if len(convLibraryIDs) > 0 {
-		log.Printf("[chat] using library_ids: %v", convLibraryIDs)
+		s.app.Logger.Info("[chat] using library_ids", "library_ids", convLibraryIDs)
 	}
 
 	extras := AgentExtras{
@@ -497,7 +496,7 @@ func (s *ChatService) runGeneration(ctx context.Context, db *bun.DB, conversatio
 	}
 
 	emitError := func(errorKey string, errorData any) {
-		log.Printf("[chat] error conv=%d tab=%s req=%s key=%s data=%v", conversationID, tabID, requestID, errorKey, errorData)
+		s.app.Logger.Error("[chat] error", "conv", conversationID, "tab", tabID, "req", requestID, "key", errorKey, "data", errorData)
 		emit(EventChatError, ChatErrorEvent{
 			ChatEvent: ChatEvent{
 				ConversationID: conversationID,
@@ -546,7 +545,7 @@ func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *
 	}
 
 	emitError := func(errorKey string, errorData any) {
-		log.Printf("[chat] error conv=%d tab=%s req=%s key=%s data=%v", conversationID, tabID, requestID, errorKey, errorData)
+		s.app.Logger.Error("[chat] error", "conv", conversationID, "tab", tabID, "req", requestID, "key", errorKey, "data", errorData)
 		emit(EventChatError, ChatErrorEvent{
 			ChatEvent: ChatEvent{
 				ConversationID: conversationID,
@@ -602,10 +601,11 @@ func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *
 	}
 
 	// LLM request log (summary)
-	log.Printf("[llm] start conv=%d tab=%s req=%s provider_id=%s provider_type=%s model=%s endpoint=%s messages=%d",
-		conversationID, tabID, requestID, providerConfig.ProviderID, providerConfig.Type, agentConfig.ModelID, providerConfig.APIEndpoint, len(messages))
+	s.app.Logger.Info("[llm] start", "conv", conversationID, "tab", tabID, "req", requestID,
+		"provider_id", providerConfig.ProviderID, "provider_type", providerConfig.Type,
+		"model", agentConfig.ModelID, "endpoint", providerConfig.APIEndpoint, "messages", len(messages))
 	if debugLLM {
-		log.Printf("[llm] context conv=%d req=%s\n%s", conversationID, requestID, summarizeMessagesForLog(messages, 12, 160))
+		s.app.Logger.Debug("[llm] context", "conv", conversationID, "req", requestID, "context", summarizeMessagesForLog(messages, 12, 160))
 	}
 
 	// Create extra tools (e.g., LibraryRetrieverTool if agent has associated libraries)
@@ -613,11 +613,11 @@ func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *
 	if len(agentExtras.LibraryIDs) > 0 {
 		retrieverTool, toolErr := s.createLibraryRetrieverTool(ctx, db, agentExtras.LibraryIDs, agentConfig.RetrievalTopK, agentExtras.MatchThreshold)
 		if toolErr != nil {
-			log.Printf("[chat] failed to create library retriever tool: %v", toolErr)
+			s.app.Logger.Warn("[chat] failed to create library retriever tool", "error", toolErr)
 			// Continue without the retriever tool
 		} else if retrieverTool != nil {
 			extraTools = append(extraTools, retrieverTool)
-			log.Printf("[chat] library retriever tool created with %d libraries, topK=%d, threshold=%.2f", len(agentExtras.LibraryIDs), agentConfig.RetrievalTopK, agentExtras.MatchThreshold)
+			s.app.Logger.Info("[chat] library retriever tool created", "libraries", len(agentExtras.LibraryIDs), "topK", agentConfig.RetrievalTopK, "threshold", agentExtras.MatchThreshold)
 		}
 	}
 
@@ -819,7 +819,7 @@ func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *
 			if strings.Contains(errMsg, "exceeds max iterations") {
 				errorKey = "error.max_iterations_exceeded"
 			}
-			log.Printf("[chat] generation failed conv=%d tab=%s req=%s err=%v", conversationID, tabID, requestID, event.Err)
+			s.app.Logger.Error("[chat] generation failed", "conv", conversationID, "tab", tabID, "req", requestID, "error", event.Err)
 			emitError(errorKey, map[string]any{"Error": errMsg})
 			// Save partial content accumulated before the error
 			toolCallsStr := "[]"
@@ -851,7 +851,7 @@ func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *
 							// Context cancelled
 							break
 						}
-						log.Printf("[chat] stream recv failed conv=%d tab=%s req=%s err=%v", conversationID, tabID, requestID, err)
+						s.app.Logger.Error("[chat] stream recv failed", "conv", conversationID, "tab", tabID, "req", requestID, "error", err)
 						emitError("error.chat_stream_failed", map[string]any{"Error": err.Error()})
 						break
 					}
@@ -924,11 +924,9 @@ func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *
 							// Add tool call to segments
 							addToolCallToSegments(tc.ID)
 							if args != "" && !json.Valid([]byte(args)) {
-								log.Printf("[chat] WARNING tool arguments not valid JSON conv=%d tab=%s req=%s tool=%s call_id=%s args=%q",
-									conversationID, tabID, requestID, toolName, tc.ID, args)
+								s.app.Logger.Warn("[chat] tool arguments not valid JSON", "conv", conversationID, "tab", tabID, "req", requestID, "tool", toolName, "call_id", tc.ID, "args", args)
 							}
-							log.Printf("[llm] tool_call conv=%d tab=%s req=%s tool=%s call_id=%s args=%q",
-								conversationID, tabID, requestID, toolName, tc.ID, truncateRunes(args, 300))
+							s.app.Logger.Info("[llm] tool_call", "conv", conversationID, "tab", tabID, "req", requestID, "tool", toolName, "call_id", tc.ID, "args", truncateRunes(args, 300))
 							emit(EventChatTool, ChatToolEvent{
 								ChatEvent: ChatEvent{
 									ConversationID: conversationID,
@@ -978,8 +976,7 @@ func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *
 							}
 						}
 					}
-					log.Printf("[llm] tool_result conv=%d tab=%s req=%s tool=%s call_id=%s result_len=%d",
-						conversationID, tabID, requestID, toolName, msg.ToolCallID, len(msg.Content))
+					s.app.Logger.Info("[llm] tool_result", "conv", conversationID, "tab", tabID, "req", requestID, "tool", toolName, "call_id", msg.ToolCallID, "result_len", len(msg.Content))
 					emit(EventChatTool, ChatToolEvent{
 						ChatEvent: ChatEvent{
 							ConversationID: conversationID,
@@ -1007,8 +1004,7 @@ func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *
 					}
 					dbCtx, dbCancel := context.WithTimeout(context.Background(), 5*time.Second)
 					if _, err := db.NewInsert().Model(toolMsg).Exec(dbCtx); err != nil {
-						log.Printf("[chat] WARNING: failed to save tool message conv=%d tool=%s call_id=%s err=%v",
-							conversationID, toolName, msg.ToolCallID, err)
+						s.app.Logger.Warn("[chat] failed to save tool message", "conv", conversationID, "tool", toolName, "call_id", msg.ToolCallID, "error", err)
 					}
 					dbCancel()
 				} else if msg.Content != "" {
@@ -1045,8 +1041,9 @@ func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *
 	if ctx.Err() != nil {
 		segmentsJSONFinal, _ := json.Marshal(segments)
 		s.updateMessageFinal(db, assistantMsg.ID, contentBuilder.String(), thinkingBuilder.String(), string(toolCallsJSON), string(segmentsJSONFinal), StatusCancelled, "", "cancelled", inputTokens, outputTokens)
-		log.Printf("[llm] complete conv=%d tab=%s req=%s status=%s finish=%s input_tokens=%d output_tokens=%d content_len=%d thinking_len=%d",
-			conversationID, tabID, requestID, StatusCancelled, "cancelled", inputTokens, outputTokens, len(contentBuilder.String()), len(thinkingBuilder.String()))
+		s.app.Logger.Info("[llm] complete", "conv", conversationID, "tab", tabID, "req", requestID,
+			"status", StatusCancelled, "finish", "cancelled", "input_tokens", inputTokens,
+			"output_tokens", outputTokens, "content_len", len(contentBuilder.String()), "thinking_len", len(thinkingBuilder.String()))
 		emit(EventChatStopped, ChatStoppedEvent{
 			ChatEvent: ChatEvent{
 				ConversationID: conversationID,
@@ -1075,10 +1072,12 @@ func (s *ChatService) runGenerationWithExistingHistory(ctx context.Context, db *
 	s.updateMessageFinal(db, assistantMsg.ID, contentBuilder.String(), thinkingBuilder.String(), toolCallsStr, segmentsStr, StatusSuccess, "", finishReason, inputTokens, outputTokens)
 
 	// LLM completion log
-	log.Printf("[llm] complete conv=%d tab=%s req=%s status=%s finish=%s input_tokens=%d output_tokens=%d content_len=%d thinking_len=%d tool_calls_len=%d",
-		conversationID, tabID, requestID, StatusSuccess, finishReason, inputTokens, outputTokens, len(contentBuilder.String()), len(thinkingBuilder.String()), len(toolCallsStr))
+	s.app.Logger.Info("[llm] complete", "conv", conversationID, "tab", tabID, "req", requestID,
+		"status", StatusSuccess, "finish", finishReason, "input_tokens", inputTokens,
+		"output_tokens", outputTokens, "content_len", len(contentBuilder.String()),
+		"thinking_len", len(thinkingBuilder.String()), "tool_calls_len", len(toolCallsStr))
 	if debugLLM {
-		log.Printf("[llm] output conv=%d req=%s\n%s", conversationID, requestID, truncateRunes(contentBuilder.String(), 800))
+		s.app.Logger.Debug("[llm] output", "conv", conversationID, "req", requestID, "output", truncateRunes(contentBuilder.String(), 800))
 	}
 
 	// Emit complete event
@@ -1213,9 +1212,7 @@ func (s *ChatService) updateMessageStatus(db *bun.DB, messageID int64, status, e
 		Set("finish_reason = ?", finishReason).
 		Where("id = ?", messageID).
 		Exec(ctx); err != nil {
-		if s.app != nil {
-			s.app.Logger.Error("update message status failed", "messageID", messageID, "error", err)
-		}
+		s.app.Logger.Error("update message status failed", "messageID", messageID, "error", err)
 	}
 }
 
@@ -1237,9 +1234,7 @@ func (s *ChatService) updateMessageFinal(db *bun.DB, messageID int64, content, t
 		Set("output_tokens = ?", outputTokens).
 		Where("id = ?", messageID).
 		Exec(ctx); err != nil {
-		if s.app != nil {
-			s.app.Logger.Error("update message final failed", "messageID", messageID, "error", err)
-		}
+		s.app.Logger.Error("update message final failed", "messageID", messageID, "error", err)
 	}
 }
 

@@ -70,9 +70,7 @@ func (s *TrayService) InitFromSettings() {
 	// 安全兜底：没有托盘图标时不允许“关闭时最小化到托盘”（否则用户可能无法找回窗口）。
 	if !trayVisible && minimizeEnabled {
 		minimizeEnabled = false
-		if s.app != nil {
-			s.app.Logger.Warn("tray icon disabled in settings; forcing minimize-to-tray=false to avoid unrecoverable state")
-		}
+		s.app.Logger.Warn("tray icon disabled in settings; forcing minimize-to-tray=false to avoid unrecoverable state")
 	}
 
 	s.mu.Lock()
@@ -81,12 +79,10 @@ func (s *TrayService) InitFromSettings() {
 	s.mu.Unlock()
 
 	// 记录初始化日志
-	if s.app != nil {
-		s.app.Logger.Info("tray settings initialized",
-			"trayVisible", trayVisible,
-			"minimizeEnabled", minimizeEnabled,
-		)
-	}
+	s.app.Logger.Info("tray settings initialized",
+		"trayVisible", trayVisible,
+		"minimizeEnabled", minimizeEnabled,
+	)
 
 	if trayVisible {
 		s.systray.Show()

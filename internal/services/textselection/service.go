@@ -196,9 +196,7 @@ func (s *TextSelectionService) startClickOutsideWatcher() {
 	s.clickOutsideWatcher = NewClickOutsideWatcher(func(x, y int32) {
 		// Hide popup when clicked outside
 		// Note: must execute window operations in main thread, so trigger via event
-		if s.app != nil {
-			s.app.Event.Emit("text-selection:click-outside", nil)
-		}
+		s.app.Event.Emit("text-selection:click-outside", nil)
 	})
 	go s.clickOutsideWatcher.Start()
 }
@@ -261,9 +259,7 @@ func (s *TextSelectionService) startWatcher() {
 		}
 
 		// Click is outside popup, hide popup
-		if s.app != nil {
-			s.app.Event.Emit("text-selection:hide", nil)
-		}
+		s.app.Event.Emit("text-selection:hide", nil)
 	}
 
 	// New mode: show popup only (no clipboard copy), copy on button click.

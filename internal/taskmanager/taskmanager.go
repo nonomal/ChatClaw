@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"log/slog"
 	"sync"
 	"time"
 
@@ -117,7 +116,7 @@ func Init(app *application.App, sqlDB *sql.DB, cfg Config) error {
 
 			r := jobs.NewRunner(jobs.NewRunnerOpts{
 				Limit:        qcfg.Workers,
-				Log:          slog.Default(),
+				Log:          app.Logger,
 				PollInterval: qcfg.PollInterval,
 				Queue:        q,
 			})
@@ -144,18 +143,14 @@ func Get() *TaskManager {
 func (tm *TaskManager) RegisterHandler(queueName, jobType string, handler func(ctx context.Context, info *TaskInfo, data []byte) error) {
 	q, ok := tm.queues[queueName]
 	if !ok {
-		if tm.app != nil {
-			tm.app.Logger.Error("unknown queue for handler registration", "queue", queueName, "jobType", jobType)
-		}
+		tm.app.Logger.Error("unknown queue for handler registration", "queue", queueName, "jobType", jobType)
 		return
 	}
 
 	q.runner.Register(jobType, func(ctx context.Context, msg []byte) error {
 		var payload JobPayload
 		if err := json.Unmarshal(msg, &payload); err != nil {
-			if tm.app != nil {
-				tm.app.Logger.Error("failed to unmarshal job payload", "queue", queueName, "jobType", jobType, "error", err)
-			}
+			tm.app.Logger.Error("failed to unmarshal job payload", "queue", queueName, "jobType", jobType, "error", err)
 			return nil // 不重试格式错误的任务
 		}
 
@@ -229,9 +224,7 @@ func (tm *TaskManager) Submit(queueName, jobType, taskKey, runID string, data []
 
 	q, ok := tm.queues[queueName]
 	if !ok {
-		if tm.app != nil {
-			tm.app.Logger.Error("unknown task queue", "queue", queueName, "taskKey", taskKey)
-		}
+		tm.app.Logger.Error("unknown task queue", "queue", queueName, "taskKey", taskKey)
 		return false
 	}
 
@@ -260,17 +253,13 @@ func (tm *TaskManager) Submit(queueName, jobType, taskKey, runID string, data []
 	}
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		if tm.app != nil {
-			tm.app.Logger.Error("failed to marshal job payload", "taskKey", taskKey, "error", err)
-		}
+		tm.app.Logger.Error("failed to marshal job payload", "taskKey", taskKey, "error", err)
 		return false
 	}
 
 	// 提交到 goqite
 	if err := jobs.Create(tm.ctx, q.queue, jobType, payloadBytes); err != nil {
-		if tm.app != nil {
-			tm.app.Logger.Error("failed to create job", "queue", queueName, "jobType", jobType, "taskKey", taskKey, "error", err)
-		}
+		tm.app.Logger.Error("failed to create job", "queue", queueName, "jobType", jobType, "taskKey", taskKey, "error", err)
 		// 失败时移除任务记录
 		tm.mu.Lock()
 		if cur, ok := tm.tasks[taskKey]; ok && cur == info {
@@ -312,9 +301,7 @@ func (tm *TaskManager) GetTaskInfo(taskKey string) *TaskInfo {
 
 // Emit 发送事件到前端
 func (tm *TaskManager) Emit(eventName string, data any) {
-	if tm.app != nil {
-		tm.app.Event.Emit(eventName, data)
-	}
+	tm.app.Event.Emit(eventName, data)
 }
 
 // removeTask 移除任务记录（仅当仍指向同一 info 时）
