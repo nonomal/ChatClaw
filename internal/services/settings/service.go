@@ -279,9 +279,7 @@ func (s *SettingsService) triggerReembedAllDocuments(dimension int) {
 		tmpName, dimension,
 	))
 	if err != nil {
-		if s.app != nil {
-			s.app.Logger.Error("create tmp doc_vec failed", "error", err)
-		}
+		s.app.Logger.Error("create tmp doc_vec failed", "error", err)
 		return
 	}
 
@@ -301,7 +299,7 @@ func (s *SettingsService) triggerReembedAllDocuments(dimension int) {
 			`CREATE VIRTUAL TABLE IF NOT EXISTS doc_vec USING vec0(id INTEGER PRIMARY KEY, content FLOAT[%d]);`,
 			dimension,
 		))
-		if err2 != nil && s.app != nil {
+		if err2 != nil {
 			s.app.Logger.Error("fallback rebuild doc_vec failed", "error", err2)
 		}
 		return
@@ -322,9 +320,7 @@ func (s *SettingsService) triggerReembedAllDocuments(dimension int) {
 		Column("id", "library_id").
 		OrderExpr("id DESC").
 		Scan(ctx, &rows); err != nil {
-		if s.app != nil {
-			s.app.Logger.Error("query documents failed", "error", err)
-		}
+		s.app.Logger.Error("query documents failed", "error", err)
 		return
 	}
 
@@ -344,9 +340,7 @@ func (s *SettingsService) triggerReembedAllDocuments(dimension int) {
 			Set("embedding_error = ?", "").
 			Where("id = ?", r.ID).
 			Exec(ctx); err != nil {
-			if s.app != nil {
-				s.app.Logger.Error("update document for reembed failed", "docID", r.ID, "error", err)
-			}
+			s.app.Logger.Error("update document for reembed failed", "docID", r.ID, "error", err)
 		}
 
 		jobData, _ := json.Marshal(document.ProcessJobData{

@@ -548,7 +548,7 @@ func (s *ProvidersService) fetchChatWikiModels(provider *Provider) ([]ModelGroup
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	if debugProviders && s.app != nil {
+	if debugProviders {
 		s.app.Logger.Info(
 			"ChatWiki model list request",
 			"provider_id", provider.ProviderID,
@@ -560,7 +560,7 @@ func (s *ProvidersService) fetchChatWikiModels(provider *Provider) ([]ModelGroup
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		if debugProviders && s.app != nil {
+		if debugProviders {
 			s.app.Logger.Warn(
 				"ChatWiki model list request failed",
 				"provider_id", provider.ProviderID,
@@ -580,7 +580,7 @@ func (s *ProvidersService) fetchChatWikiModels(provider *Provider) ([]ModelGroup
 			b, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 			preview = truncateString(string(b), 512)
 		}
-		if debugProviders && s.app != nil {
+		if debugProviders {
 			s.app.Logger.Warn(
 				"ChatWiki model list unexpected status",
 				"provider_id", provider.ProviderID,
@@ -595,7 +595,7 @@ func (s *ProvidersService) fetchChatWikiModels(provider *Provider) ([]ModelGroup
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		if debugProviders && s.app != nil {
+		if debugProviders {
 			s.app.Logger.Warn(
 				"ChatWiki model list read body failed",
 				"provider_id", provider.ProviderID,
@@ -607,7 +607,7 @@ func (s *ProvidersService) fetchChatWikiModels(provider *Provider) ([]ModelGroup
 		return nil, errs.Newf("error.chatwiki_model_list_failed", map[string]any{"Status": err.Error()})
 	}
 
-	if debugProviders && s.app != nil {
+	if debugProviders {
 		s.app.Logger.Info(
 			"ChatWiki model list response received",
 			"provider_id", provider.ProviderID,

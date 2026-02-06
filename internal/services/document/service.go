@@ -81,9 +81,7 @@ func (s *DocumentService) registerTaskHandlers() {
 	tm.RegisterHandler(taskmanager.QueueThumbnail, JobTypeThumbnail, func(ctx context.Context, info *taskmanager.TaskInfo, data []byte) error {
 		var jobData ThumbnailJobData
 		if err := json.Unmarshal(data, &jobData); err != nil {
-			if s.app != nil {
-				s.app.Logger.Error("failed to unmarshal thumbnail job data", "error", err)
-			}
+			s.app.Logger.Error("failed to unmarshal thumbnail job data", "error", err)
 			return nil // Don't retry malformed jobs
 		}
 		s.generateThumbnail(jobData.DocID, jobData.LibraryID, jobData.LocalPath, info)
@@ -94,9 +92,7 @@ func (s *DocumentService) registerTaskHandlers() {
 	tm.RegisterHandler(taskmanager.QueueDocument, JobTypeProcess, func(ctx context.Context, info *taskmanager.TaskInfo, data []byte) error {
 		var jobData ProcessJobData
 		if err := json.Unmarshal(data, &jobData); err != nil {
-			if s.app != nil {
-				s.app.Logger.Error("failed to unmarshal process job data", "error", err)
-			}
+			s.app.Logger.Error("failed to unmarshal process job data", "error", err)
 			return nil // Don't retry malformed jobs
 		}
 		s.processDocument(jobData.DocID, jobData.LibraryID, jobData.RunID, info)
@@ -107,9 +103,7 @@ func (s *DocumentService) registerTaskHandlers() {
 	tm.RegisterHandler(taskmanager.QueueDocument, JobTypeReembed, func(ctx context.Context, info *taskmanager.TaskInfo, data []byte) error {
 		var jobData ProcessJobData
 		if err := json.Unmarshal(data, &jobData); err != nil {
-			if s.app != nil {
-				s.app.Logger.Error("failed to unmarshal reembed job data", "error", err)
-			}
+			s.app.Logger.Error("failed to unmarshal reembed job data", "error", err)
 			return nil
 		}
 		s.reembedDocument(jobData.DocID, jobData.LibraryID, jobData.RunID, info)
@@ -236,9 +230,7 @@ func (s *DocumentService) ListDocuments(libraryID int64, keyword string) ([]Docu
 		matchQuery := tokenizer.BuildMatchQuery(keyword)
 		if matchQuery != "" {
 			// 调试日志
-			if s.app != nil {
-				s.app.Logger.Debug("FTS search", "keyword", keyword, "matchQuery", matchQuery, "libraryID", libraryID)
-			}
+			s.app.Logger.Debug("FTS search", "keyword", keyword, "matchQuery", matchQuery, "libraryID", libraryID)
 			// Combine keyword match with library_id filter in FTS MATCH for better performance
 			ftsMatch := fmt.Sprintf("(%s) AND library_id:%d", matchQuery, libraryID)
 
@@ -313,9 +305,6 @@ func (s *DocumentService) UploadDocuments(input UploadInput) ([]Document, error)
 	done := 0
 
 	emitUploadProgress := func() {
-		if s.app == nil {
-			return
-		}
 		s.app.Event.Emit("document:upload_progress", UploadProgressEvent{
 			LibraryID: input.LibraryID,
 			Total:     total,
@@ -330,17 +319,13 @@ func (s *DocumentService) UploadDocuments(input UploadInput) ([]Document, error)
 		emitUploadProgress()
 		if err != nil {
 			// 记录错误但继续处理其他文件
-			if s.app != nil {
-				s.app.Logger.Warn("upload file failed", "path", srcPath, "error", err)
-			}
+			s.app.Logger.Warn("upload file failed", "path", srcPath, "error", err)
 			continue
 		}
 		uploaded = append(uploaded, *doc)
 
 		// 可选：实时通知前端新增文档（用于即时渲染/反馈）
-		if s.app != nil {
-			s.app.Event.Emit("document:uploaded", *doc)
-		}
+		s.app.Event.Emit("document:uploaded", *doc)
 
 		// 启动异步处理任务
 		s.startProcessingTask(doc)
@@ -395,9 +380,7 @@ func (s *DocumentService) uploadSingleFile(ctx context.Context, db *bun.DB, libr
 		}
 		// 删除旧记录
 		if _, err := db.NewDelete().Model(&existingDoc).Where("id = ?", existingDoc.ID).Exec(ctx); err != nil {
-			if s.app != nil {
-				s.app.Logger.Error("delete existing document failed", "id", existingDoc.ID, "error", err)
-			}
+			s.app.Logger.Error("delete existing document failed", "id", existingDoc.ID, "error", err)
 		}
 	}
 
@@ -542,24 +525,18 @@ func (s *DocumentService) ReprocessDocument(id int64) error {
 		Column("id").
 		Where("document_id = ?", id).
 		Scan(ctx, &nodeIDs); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		if s.app != nil {
-			s.app.Logger.Warn("query document_nodes failed", "error", err)
-		}
+		s.app.Logger.Warn("query document_nodes failed", "error", err)
 	}
 	if len(nodeIDs) > 0 {
 		if _, err := db.ExecContext(ctx,
 			"DELETE FROM doc_vec WHERE id IN (?)", bun.In(nodeIDs)); err != nil {
-			if s.app != nil {
-				s.app.Logger.Warn("delete doc_vec failed", "error", err)
-			}
+			s.app.Logger.Warn("delete doc_vec failed", "error", err)
 		}
 	}
 
 	// 4. 删除旧节点（触发器会自动清理 FTS 索引）
 	if _, err := db.NewDelete().Table("document_nodes").Where("document_id = ?", id).Exec(ctx); err != nil {
-		if s.app != nil {
-			s.app.Logger.Warn("delete document_nodes failed", "error", err)
-		}
+		s.app.Logger.Warn("delete document_nodes failed", "error", err)
 	}
 
 	// 5. 生成新的处理运行 ID 并重置状态
@@ -625,9 +602,7 @@ func (s *DocumentService) DeleteDocument(id int64) error {
 	// 删除物理文件（即使失败也继续删除数据库记录）
 	if m.LocalPath != "" {
 		if err := os.Remove(m.LocalPath); err != nil && !os.IsNotExist(err) {
-			if s.app != nil {
-				s.app.Logger.Warn("delete file failed", "path", m.LocalPath, "error", err)
-			}
+			s.app.Logger.Warn("delete file failed", "path", m.LocalPath, "error", err)
 		}
 	}
 
@@ -638,24 +613,18 @@ func (s *DocumentService) DeleteDocument(id int64) error {
 		Column("id").
 		Where("document_id = ?", id).
 		Scan(ctx, &nodeIDs); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		if s.app != nil {
-			s.app.Logger.Warn("query document_nodes failed", "error", err)
-		}
+		s.app.Logger.Warn("query document_nodes failed", "error", err)
 	}
 	if len(nodeIDs) > 0 {
 		if _, err := db.ExecContext(ctx,
 			"DELETE FROM doc_vec WHERE id IN (?)", bun.In(nodeIDs)); err != nil {
-			if s.app != nil {
-				s.app.Logger.Warn("delete doc_vec failed", "error", err)
-			}
+			s.app.Logger.Warn("delete doc_vec failed", "error", err)
 		}
 	}
 
 	// 手动删除 document_nodes（确保清理干净）
 	if _, err := db.NewDelete().Table("document_nodes").Where("document_id = ?", id).Exec(ctx); err != nil {
-		if s.app != nil {
-			s.app.Logger.Warn("delete document_nodes failed", "error", err)
-		}
+		s.app.Logger.Warn("delete document_nodes failed", "error", err)
 	}
 
 	// 删除文档记录
@@ -762,9 +731,7 @@ func (s *DocumentService) generateThumbnail(docID, libraryID int64, localPath st
 		Column("processing_run_id").
 		Where("id = ?", docID).
 		Scan(ctx, &currentRunID); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		if s.app != nil {
-			s.app.Logger.Error("query document processing_run_id failed", "docID", docID, "error", err)
-		}
+		s.app.Logger.Error("query document processing_run_id failed", "docID", docID, "error", err)
 	}
 	if info != nil && currentRunID != "" && info.RunID != "" && info.RunID != currentRunID {
 		return
@@ -784,9 +751,7 @@ func (s *DocumentService) generateThumbnail(docID, libraryID int64, localPath st
 			Exec(ctx)
 
 		if err != nil {
-			if s.app != nil {
-				s.app.Logger.Warn("failed to update thumbnail", "docID", docID, "error", err)
-			}
+			s.app.Logger.Warn("failed to update thumbnail", "docID", docID, "error", err)
 			return
 		}
 	}
@@ -842,9 +807,7 @@ func (s *DocumentService) processDocument(docID, libraryID int64, runID string, 
 			Where("id = ?", docID).
 			Where("processing_run_id = ?", runID). // 只更新当前运行的任务
 			Exec(ctx); err != nil {
-			if s.app != nil {
-				s.app.Logger.Error("update document status failed", "docID", docID, "error", err)
-			}
+			s.app.Logger.Error("update document status failed", "docID", docID, "error", err)
 		}
 
 		if tm != nil {
@@ -967,9 +930,7 @@ func (s *DocumentService) processDocument(docID, libraryID int64, runID string, 
 		Where("id = ?", docID).
 		Where("processing_run_id = ?", runID).
 		Exec(ctx); err != nil {
-		if s.app != nil {
-			s.app.Logger.Warn("update document stats failed", "docID", docID, "error", err)
-		}
+		s.app.Logger.Warn("update document stats failed", "docID", docID, "error", err)
 	}
 
 	// 全部完成
@@ -1014,24 +975,20 @@ func (s *DocumentService) reembedDocument(docID, libraryID int64, runID string, 
 			q = q.Where("processing_run_id = ?", runID)
 		}
 		if _, err := q.Exec(ctx); err != nil {
-			if s.app != nil {
-				s.app.Logger.Error("update document embedding progress failed", "docID", docID, "error", err)
-			}
+			s.app.Logger.Error("update document embedding progress failed", "docID", docID, "error", err)
 		}
 
 		// Emit event
-		if s.app != nil {
-			s.app.Event.Emit("document:progress", ProgressEvent{
-				DocumentID:        docID,
-				LibraryID:         libraryID,
-				ParsingStatus:     parsingStatus,
-				ParsingProgress:   parsingProgress,
-				ParsingError:      parsingError,
-				EmbeddingStatus:   status,
-				EmbeddingProgress: progress,
-				EmbeddingError:    errMsg,
-			})
-		}
+		s.app.Event.Emit("document:progress", ProgressEvent{
+			DocumentID:        docID,
+			LibraryID:         libraryID,
+			ParsingStatus:     parsingStatus,
+			ParsingProgress:   parsingProgress,
+			ParsingError:      parsingError,
+			EmbeddingStatus:   status,
+			EmbeddingProgress: progress,
+			EmbeddingError:    errMsg,
+		})
 	}
 
 	// Start embedding
