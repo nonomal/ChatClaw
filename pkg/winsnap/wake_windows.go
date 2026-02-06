@@ -66,6 +66,12 @@ func BringWinsnapToFront(window *application.WebviewWindow) error {
 	return nil
 }
 
+// SyncAttachedZOrderNoActivate is a no-op on Windows.
+// Windows z-order syncing after attach is handled by the follower and SetWindowPos strategy.
+func SyncAttachedZOrderNoActivate(_ *application.WebviewWindow, _ string) error {
+	return nil
+}
+
 // WakeAttachedWindow brings the target window and the winsnap window to the front,
 // keeping winsnap ordered directly above the target (same-level behavior).
 func WakeAttachedWindow(self *application.WebviewWindow, targetProcessName string) error {

@@ -502,7 +502,12 @@ func (s *SnapService) attachTo(w *application.WebviewWindow, targetProcess strin
 	// Immediately sync z-order after attaching to ensure the winsnap window
 	// is visible above the target window. Without this, the winsnap may appear
 	// behind other windows until the target is moved or activated.
-	if err := winsnap.WakeAttachedWindow(w, targetProcess); err == winsnap.ErrWinsnapWindowInvalid {
+	// IMPORTANT: Do NOT activate the target app here. Attaching can happen in the background
+	// (e.g. when a target window is visible but not currently focused). Activating would steal
+	// focus from the user's current app, which is not desired on macOS.
+	//
+	// We only adjust z-order when the target app is already frontmost.
+	if err := winsnap.SyncAttachedZOrderNoActivate(w, targetProcess); err == winsnap.ErrWinsnapWindowInvalid {
 		// Winsnap window became invalid after attach - recreate
 		s.handleWinsnapWindowInvalid(targetProcess)
 	}
@@ -722,5 +727,23 @@ func getClickSettingsForTarget(targetProcess string) (noClick bool, offsetX, off
 	noClick = settings.GetBool(key+"_no_click", false)
 	offsetX = settings.GetInt(key+"_click_offset_x", 0)
 	offsetY = settings.GetInt(key+"_click_offset_y", 0)
+	// If not configured (0 or empty), fall back to per-app defaults to match frontend UX.
+	// This is important on macOS where the click implementation otherwise falls back to a generic value.
+	if offsetY <= 0 {
+		offsetY = defaultClickOffsetYForKey(key)
+	}
 	return noClick, offsetX, offsetY
+}
+
+// defaultClickOffsetYForKey returns the default click Y offset (pixels from bottom)
+// used to focus the input box in the target app.
+//
+// Keep this consistent with frontend defaults in SnapSettings.vue.
+func defaultClickOffsetYForKey(key string) int {
+	switch key {
+	case "snap_feishu":
+		return 50
+	default:
+		return 120
+	}
 }

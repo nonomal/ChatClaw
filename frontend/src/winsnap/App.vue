@@ -89,11 +89,16 @@ const handleSendAndTrigger = async (content: string) => {
   if (!content) return
   try {
     await SnapService.SendTextToTarget(content, true)
+    toast({
+      description: t('winsnap.toast.sent'),
+    })
   } catch (error) {
     console.error('Failed to send and trigger:', error)
+    // If we lost the attached target (race), show a clearer message.
+    await checkSnapStatus()
     toast({
       variant: 'error',
-      description: t('winsnap.toast.sendFailed'),
+      description: hasAttachedTarget.value ? t('winsnap.toast.sendFailed') : t('winsnap.toast.noTarget'),
     })
   }
 }
@@ -102,8 +107,16 @@ const handleSendToEdit = async (content: string) => {
   if (!content) return
   try {
     await SnapService.PasteTextToTarget(content)
+    toast({
+      description: t('winsnap.toast.pasted'),
+    })
   } catch (error) {
     console.error('Failed to paste to edit:', error)
+    await checkSnapStatus()
+    toast({
+      variant: 'error',
+      description: hasAttachedTarget.value ? t('winsnap.toast.pasteFailed') : t('winsnap.toast.noTarget'),
+    })
   }
 }
 
@@ -317,6 +330,8 @@ const handleSend = async () => {
 }
 
 const handleTextareaKeydown = (e: KeyboardEvent) => {
+  // Avoid sending when IME is composing (common on macOS with Chinese/Japanese input).
+  if (e.isComposing) return
   if (e.key !== 'Enter') return
   if (e.shiftKey) return
   e.preventDefault()

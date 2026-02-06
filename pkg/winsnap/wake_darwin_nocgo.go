@@ -47,3 +47,8 @@ func BringWinsnapToFront(window *application.WebviewWindow) error {
 	window.Show()
 	return nil
 }
+
+// SyncAttachedZOrderNoActivate is not available without CGO on darwin.
+func SyncAttachedZOrderNoActivate(_ *application.WebviewWindow, _ string) error {
+	return errors.New("winsnap: z-order sync requires cgo on darwin")
+}

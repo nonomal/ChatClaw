@@ -42,3 +42,8 @@ func BringWinsnapToFront(window *application.WebviewWindow) error {
 	window.Show()
 	return nil
 }
+
+// SyncAttachedZOrderNoActivate is a no-op on unsupported platforms.
+func SyncAttachedZOrderNoActivate(_ *application.WebviewWindow, _ string) error {
+	return nil
+}

@@ -56,6 +56,14 @@ static void winsnap_activate_pid(pid_t pid) {
 	[app activateWithOptions:NSApplicationActivateIgnoringOtherApps];
 }
 
+static bool winsnap_is_frontmost_pid_noactivate(pid_t pid) {
+	@autoreleasepool {
+		NSRunningApplication *frontApp = [[NSWorkspace sharedWorkspace] frontmostApplication];
+		if (!frontApp) return false;
+		return frontApp.processIdentifier == pid;
+	}
+}
+
 // Activate target app and then order winsnap window above it, then refocus winsnap.
 // This function handles the timing issue where activating the target app
 // changes the z-order, potentially hiding the winsnap window.
@@ -450,6 +458,55 @@ func WakeStandaloneWindow(window *application.WebviewWindow) error {
 	// Show and focus the window
 	window.Show()
 	window.Focus()
+	return nil
+}
+
+// SyncAttachedZOrderNoActivate ensures the winsnap window is ordered just above the
+// target window when the target application is already frontmost.
+//
+// It MUST NOT activate the target application, so it won't steal focus from the
+// user's current app. This is intended to be called right after attaching.
+func SyncAttachedZOrderNoActivate(self *application.WebviewWindow, targetProcessName string) error {
+	if self == nil {
+		return ErrWinsnapWindowInvalid
+	}
+	nativeHandle := self.NativeWindow()
+	if nativeHandle == nil {
+		return ErrWinsnapWindowInvalid
+	}
+
+	selfWindowNumber := int(C.winsnap_get_window_number(nativeHandle))
+	if selfWindowNumber <= 0 {
+		return ErrWinsnapWindowInvalid
+	}
+	if targetProcessName == "" {
+		return errors.New("winsnap: TargetProcessName is empty")
+	}
+
+	name := normalizeMacTargetName(targetProcessName)
+	if name == "" {
+		return errors.New("winsnap: TargetProcessName is empty")
+	}
+	cname := C.CString(name)
+	defer C.free(unsafe.Pointer(cname))
+	pid := C.winsnap_find_pid_by_name_local(cname)
+	if pid <= 0 {
+		return ErrTargetWindowNotFound
+	}
+
+	// Only adjust ordering when the target is already frontmost.
+	// If not frontmost, we must not activate or bring it forward here.
+	if !bool(C.winsnap_is_frontmost_pid_noactivate(pid)) {
+		return nil
+	}
+
+	targetWindowNumber := int(C.winsnap_find_main_window_number_for_pid(pid))
+	if targetWindowNumber <= 0 {
+		return nil
+	}
+	if C.winsnap_order_window_above_target(C.int(selfWindowNumber), C.int(targetWindowNumber)) == 0 {
+		return ErrWinsnapWindowInvalid
+	}
 	return nil
 }
 
