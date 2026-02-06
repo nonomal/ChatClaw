@@ -1101,13 +1101,17 @@ func (s *ChatService) updateMessageStatus(db *bun.DB, messageID int64, status, e
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	db.NewUpdate().
+	if _, err := db.NewUpdate().
 		Model((*messageModel)(nil)).
 		Set("status = ?", status).
 		Set("error = ?", errorMsg).
 		Set("finish_reason = ?", finishReason).
 		Where("id = ?", messageID).
-		Exec(ctx)
+		Exec(ctx); err != nil {
+		if s.app != nil {
+			s.app.Logger.Error("update message status failed", "messageID", messageID, "error", err)
+		}
+	}
 }
 
 // updateMessageFinal updates the final message content
@@ -1115,7 +1119,7 @@ func (s *ChatService) updateMessageFinal(db *bun.DB, messageID int64, content, t
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	db.NewUpdate().
+	if _, err := db.NewUpdate().
 		Model((*messageModel)(nil)).
 		Set("content = ?", content).
 		Set("thinking_content = ?", thinking).
@@ -1127,5 +1131,9 @@ func (s *ChatService) updateMessageFinal(db *bun.DB, messageID int64, content, t
 		Set("input_tokens = ?", inputTokens).
 		Set("output_tokens = ?", outputTokens).
 		Where("id = ?", messageID).
-		Exec(ctx)
+		Exec(ctx); err != nil {
+		if s.app != nil {
+			s.app.Logger.Error("update message final failed", "messageID", messageID, "error", err)
+		}
+	}
 }
