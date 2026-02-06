@@ -29,6 +29,19 @@ export default {
     cancelSnap: '取消吸附',
     placeholder: '请输入问题',
     thinking: '思考中...',
+    actions: {
+      sendAndTrigger: '发送并触发发送',
+      sendToEdit: '发送到编辑框',
+      copyToClipboard: '复制到剪贴板',
+    },
+    toast: {
+      copied: '已复制到剪贴板',
+      sent: '已发送',
+      pasted: '已粘贴到编辑框',
+      sendFailed: '发送失败',
+      pasteFailed: '粘贴失败',
+      noTarget: '未吸附到任何应用',
+    },
   },
   selection: {
     aiChat: 'AI 对话',
@@ -114,6 +127,14 @@ export default {
         feishu: '飞书',
         douyin: '抖音',
       },
+      clickOffset: {
+        labelX: '距左侧',
+        labelY: '距底部',
+        placeholderX: '居中',
+        hint: '像素，用于定位输入框',
+      },
+      noClickMode: '不点击模式（焦点自动保持的应用）',
+      clickMode: '点击模式（需要点击激活输入框）',
     },
     // 功能工具设置
     tools: {
