@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import IconSidebarCollapse from '@/assets/icons/sidebar-collapse.svg'
 import IconSidebarExpand from '@/assets/icons/sidebar-expand.svg'
@@ -286,10 +286,6 @@ const handleSend = async () => {
           enable_thinking: enableThinking.value,
         })
       )
-      
-      // CRITICAL: Wait for Vue to update the DOM and render ChatMessageList
-      // before sending the message (so the component is ready to display messages)
-      await nextTick()
     } catch {
       // Error already handled in composable
       return
