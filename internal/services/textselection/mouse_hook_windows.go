@@ -14,13 +14,14 @@ import (
 // MouseHookWatcher uses global mouse hook to detect text selection.
 // Principle: when mouse drag is detected, simulate Ctrl+C to copy selected text, then read clipboard.
 type MouseHookWatcher struct {
-	mu                sync.Mutex
-	hook              uintptr
-	callback          func(text string, x, y int32)
-	onDragStart       func(x, y int32)                       // Callback when drag starts
-	showPopupCallback func(x, y int32, originalAppPid int32) // New design for macOS, not used on Windows
-	closed            bool
-	ready             chan struct{}
+	mu                  sync.Mutex
+	hook                uintptr
+	callback            func(text string, x, y int32)
+	onDragStart         func(x, y int32)                       // Callback when drag starts (legacy, no PID)
+	onDragStartWithPid  func(x, y int32, frontAppPid int32)    // Callback when drag starts (with frontmost app PID)
+	showPopupCallback   func(x, y int32, originalAppPid int32) // New design for macOS, not used on Windows
+	closed              bool
+	ready               chan struct{}
 
 	// Drag detection
 	isDragging   bool
@@ -80,15 +81,15 @@ type keyBdInput struct {
 // NewMouseHookWatcher creates a new mouse hook watcher.
 func NewMouseHookWatcher(
 	callback func(text string, x, y int32),
-	onDragStart func(x, y int32),
+	onDragStartWithPid func(x, y int32, frontAppPid int32),
 	showPopupCallback func(x, y int32, originalAppPid int32),
 ) *MouseHookWatcher {
 	return &MouseHookWatcher{
-		callback:          callback,
-		onDragStart:       onDragStart,
-		showPopupCallback: showPopupCallback,
-		ready:             make(chan struct{}),
-		dragDistance:      5, // Minimum drag distance to prevent accidental triggers
+		callback:           callback,
+		onDragStartWithPid: onDragStartWithPid,
+		showPopupCallback:  showPopupCallback,
+		ready:              make(chan struct{}),
+		dragDistance:       5, // Minimum drag distance to prevent accidental triggers
 	}
 }
 
@@ -174,7 +175,7 @@ func lowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 				w.isDragging = true
 				w.dragStartX = hookStruct.Pt.X
 				w.dragStartY = hookStruct.Pt.Y
-				onDragStart := w.onDragStart
+				onDragStartWithPid := w.onDragStartWithPid
 				// Convert to logical pixels
 				scale := getDPIScale()
 				mouseX := int32(float64(hookStruct.Pt.X) / scale)
@@ -182,8 +183,9 @@ func lowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 				w.mu.Unlock()
 
 				// Notify drag start with mouse position for caller to check if inside popup
-				if onDragStart != nil {
-					go onDragStart(mouseX, mouseY)
+				// On Windows, we pass -1 as PID (not needed, popup doesn't steal focus)
+				if onDragStartWithPid != nil {
+					go onDragStartWithPid(mouseX, mouseY, -1)
 				}
 
 			case wmMouseMove:

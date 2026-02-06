@@ -215,7 +215,8 @@ func (s *TextSelectionService) startWatcher() {
 	}
 
 	// Callback when drag starts (hide popup if click is not inside popup)
-	onDragStart := func(mouseX, mouseY int32) {
+	// frontAppPid: the PID of the frontmost app at the moment of mouseDown (before our app gets activated)
+	onDragStartWithPid := func(mouseX, mouseY int32, frontAppPid int32) {
 		// Check if click is inside popup area
 		s.mu.RLock()
 		popX := s.popX
@@ -248,6 +249,13 @@ func (s *TextSelectionService) startWatcher() {
 
 		// If click is inside popup, trigger button click (matching demo project behavior)
 		if inPopup {
+			// On macOS, save the frontmost app PID before our app gets activated by the click.
+			// This is critical for lazy-copy mode: we need to re-activate this app to copy text.
+			if runtime.GOOS == "darwin" && frontAppPid > 0 {
+				s.mu.Lock()
+				s.originalAppPid = frontAppPid
+				s.mu.Unlock()
+			}
 			go s.handleButtonClick()
 			return
 		}
@@ -271,7 +279,7 @@ func (s *TextSelectionService) startWatcher() {
 
 	s.mu.Lock()
 	// Use showPopupOnly mode: detect drag -> show popup (no copy) -> copy on button click
-	s.mouseHookWatcher = NewMouseHookWatcher(nil, onDragStart, showPopupOnly)
+	s.mouseHookWatcher = NewMouseHookWatcher(nil, onDragStartWithPid, showPopupOnly)
 	s.mu.Unlock()
 
 	go s.mouseHookWatcher.Start()
@@ -667,7 +675,12 @@ func (s *TextSelectionService) handleButtonClick() map[string]any {
 
 // copyAndGetSelectedText simulates Ctrl+C/Cmd+C and reads the clipboard.
 // This is used in "lazy copy" mode where we only copy when the user clicks the popup.
-// The popup doesn't steal focus, so the original app still has the text selection.
+//
+// On Windows: The popup doesn't steal focus (WS_EX_NOACTIVATE), so the original app
+// still has the selection and receives the Ctrl+C.
+//
+// On macOS: Clicking the popup activates our app, so we must first re-activate the
+// original app (using the saved PID) before sending Cmd+C.
 func (s *TextSelectionService) copyAndGetSelectedText() string {
 	// Save current clipboard content to detect changes
 	var oldClipboard string
@@ -675,6 +688,21 @@ func (s *TextSelectionService) copyAndGetSelectedText() string {
 		oldClipboard = getClipboardTextDarwin()
 	} else {
 		oldClipboard = getClipboardTextWindows()
+	}
+
+	// On macOS, clicking the popup activates our app.
+	// We need to re-activate the original app before sending Cmd+C.
+	if runtime.GOOS == "darwin" {
+		s.mu.RLock()
+		pid := s.originalAppPid
+		s.mu.RUnlock()
+
+		if pid > 0 {
+			// Re-activate the original app so it receives Cmd+C
+			activateAppByPidDarwin(pid)
+			// Wait for activation to complete
+			time.Sleep(100 * time.Millisecond)
+		}
 	}
 
 	// Simulate Ctrl+C (Windows) or Cmd+C (macOS)
