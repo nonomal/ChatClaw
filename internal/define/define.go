@@ -42,7 +42,7 @@ func ChatWikiOpenAPIEndpoint() string {
 	// - production server -> dev3 openapi
 	switch {
 	case strings.HasPrefix(base, "https://dev1.willchat.chatwiki.com"):
-		return "http://dev1.willchat.chatwiki.com/openapi"
+		return "https://dev1.willchat.chatwiki.com/openapi"
 	case strings.HasPrefix(base, "https://willchat.chatwiki.com"):
 		return "https://willchat.chatwiki.com/openapi"
 	default:
