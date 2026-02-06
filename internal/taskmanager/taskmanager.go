@@ -86,7 +86,6 @@ var (
 // Init 初始化全局任务管理器
 // app 用于日志和事件发送，sqlDB 应为 bun.DB 的底层 *sql.DB
 func Init(app *application.App, sqlDB *sql.DB, cfg Config) error {
-	var initErr error
 	once.Do(func() {
 		if cfg.Queues == nil || len(cfg.Queues) == 0 {
 			// 提供默认配置
@@ -132,7 +131,7 @@ func Init(app *application.App, sqlDB *sql.DB, cfg Config) error {
 
 		instance = tm
 	})
-	return initErr
+	return nil
 }
 
 // Get 返回全局任务管理器实例

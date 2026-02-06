@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowUp, MoreHorizontal, Pin, PinOff } from 'lucide-vue-next'
+import { ArrowUp, MoreHorizontal, Pin, PinOff, Square } from 'lucide-vue-next'
 import IconAgentAdd from '@/assets/icons/agent-add.svg'
 import IconNewConversation from '@/assets/icons/new-conversation.svg'
 import IconSidebarCollapse from '@/assets/icons/sidebar-collapse.svg'
@@ -20,7 +20,8 @@ import { getLogoDataUrl } from '@/composables/useLogo'
 import CreateAgentDialog from './components/CreateAgentDialog.vue'
 import AgentSettingsDialog from './components/AgentSettingsDialog.vue'
 import RenameConversationDialog from './components/RenameConversationDialog.vue'
-import { useNavigationStore } from '@/stores'
+import ChatMessageList from './components/ChatMessageList.vue'
+import { useNavigationStore, useChatStore } from '@/stores'
 import { AgentsService, type Agent } from '@bindings/willchat/internal/services/agents'
 import { Events } from '@wailsio/runtime'
 import {
@@ -74,16 +75,9 @@ const props = defineProps<{
 
 type ListMode = 'personal' | 'team'
 
-// Chat message interface
-interface ChatMessage {
-  id: number
-  role: 'user' | 'assistant'
-  content: string
-  createdAt: Date
-}
-
 const { t } = useI18n()
 const navigationStore = useNavigationStore()
+const chatStore = useChatStore()
 
 const mode = ref<ListMode>('personal')
 
@@ -112,10 +106,6 @@ const conversationsLoadingByAgent = ref<Record<number, boolean>>({})
 const conversationsStaleByAgent = ref<Record<number, boolean>>({})
 const activeConversationId = ref<number | null>(null)
 
-// Chat messages (for display)
-const chatMessages = ref<ChatMessage[]>([])
-let messageIdCounter = 0
-
 // Conversation dialogs
 const renameConversationOpen = ref(false)
 const deleteConversationOpen = ref(false)
@@ -126,8 +116,20 @@ const activeAgent = computed(() => {
   return agents.value.find((a) => a.id === activeAgentId.value) ?? null
 })
 
+// Check if currently generating
+const isGenerating = computed(() => {
+  if (!activeConversationId.value) return false
+  return chatStore.isGenerating(activeConversationId.value).value
+})
+
+// Get messages for current conversation
+const chatMessages = computed(() => {
+  if (!activeConversationId.value) return []
+  return chatStore.getMessages(activeConversationId.value).value
+})
+
 const canSend = computed(() => {
-  return chatInput.value.trim() !== '' && selectedModelKey.value !== ''
+  return chatInput.value.trim() !== '' && selectedModelKey.value !== '' && !isGenerating.value
 })
 
 const hasModels = computed(() => {
@@ -217,13 +219,17 @@ const loadConversations = async (agentId: number, opts: LoadConversationsOptions
         // 保持当前选中状态（如果会话仍存在）
         const stillExists = next.some((c) => c.id === previousConversationId)
         if (!stillExists) {
+          if (previousConversationId) {
+            chatStore.clearMessages(previousConversationId)
+          }
           activeConversationId.value = null
-          chatMessages.value = []
         }
       } else {
         // Don't auto-select any conversation when loading
+        if (previousConversationId) {
+          chatStore.clearMessages(previousConversationId)
+        }
         activeConversationId.value = null
-        chatMessages.value = []
       }
     }
   } catch (error: unknown) {
@@ -407,8 +413,10 @@ const handleDeleted = (id: number) => {
 const handleNewConversation = () => {
   // Just clear the current conversation selection and chat messages
   // Don't create a conversation record until user sends first message
+  if (activeConversationId.value) {
+    chatStore.clearMessages(activeConversationId.value)
+  }
   activeConversationId.value = null
-  chatMessages.value = []
   chatInput.value = ''
 }
 
@@ -432,23 +440,19 @@ const handleSend = async () => {
   const messageContent = chatInput.value.trim()
   chatInput.value = ''
 
-  // Add user message to chat display
-  const userMessage: ChatMessage = {
-    id: ++messageIdCounter,
-    role: 'user',
-    content: messageContent,
-    createdAt: new Date(),
-  }
-  chatMessages.value.push(userMessage)
-
-  // If no active conversation, create one
+  // If no active conversation, create one first
   if (!activeConversationId.value) {
     try {
+      // Get current model selection
+      const [providerId, modelId] = selectedModelKey.value.split('::')
+
       const newConversation = await ConversationsService.CreateConversation(
         new CreateConversationInput({
           agent_id: activeAgentId.value,
-          name: messageContent, // First message becomes conversation name
+          name: messageContent.slice(0, 50), // First message becomes conversation name (truncated)
           last_message: messageContent,
+          llm_provider_id: providerId || '',
+          llm_model_id: modelId || '',
         })
       )
       if (newConversation) {
@@ -482,35 +486,62 @@ const handleSend = async () => {
       }
     } catch (error: unknown) {
       toast.error(getErrorMessage(error) || t('assistant.errors.createConversationFailed'))
-    }
-  } else {
-    // Update existing conversation's last_message and updated_at
-    try {
-      const updated = await ConversationsService.UpdateConversation(
-        activeConversationId.value,
-        new UpdateConversationInput({
-          last_message: messageContent,
-        })
-      )
-      if (updated) {
-        // 更新并重新排序（置顶优先，然后按更新时间倒序）
-        handleConversationUpdated(updated)
-      }
-    } catch (error: unknown) {
-      console.error('Failed to update conversation:', error)
-      // Non-critical error, don't show toast
+      return
     }
   }
 
-  // TODO: Here you would call the LLM API to get a response
-  // For now, just display the user message
+  // Now send the message via ChatService
+  if (activeConversationId.value) {
+    try {
+      await chatStore.sendMessage(activeConversationId.value, messageContent, props.tabId)
+
+      // Update conversation's last_message
+      try {
+        const updated = await ConversationsService.UpdateConversation(
+          activeConversationId.value,
+          new UpdateConversationInput({
+            last_message: messageContent,
+          })
+        )
+        if (updated) {
+          handleConversationUpdated(updated)
+        }
+      } catch {
+        // Non-critical error
+      }
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || t('assistant.errors.sendFailed'))
+    }
+  }
+}
+
+const handleStop = () => {
+  if (!activeConversationId.value) return
+  void chatStore.stopGeneration(activeConversationId.value)
+}
+
+const handleChatEnter = (event: KeyboardEvent) => {
+  // Prevent sending when IME is composing (Chinese/Japanese/Korean input).
+  // Some browsers report keyCode=229 during composition.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyEvent = event as any
+  if (anyEvent?.isComposing || anyEvent?.keyCode === 229) {
+    return
+  }
+
+  event.preventDefault()
+  void handleSend()
 }
 
 const handleSelectConversation = (conversation: Conversation) => {
   activeConversationId.value = conversation.id
-  // TODO: Load conversation messages from backend
-  // For now, just clear messages
-  chatMessages.value = []
+  // Load messages from backend via chatStore
+  chatStore.loadMessages(conversation.id)
+
+  // Set model selection from conversation's saved model
+  if (conversation.llm_provider_id && conversation.llm_model_id) {
+    selectedModelKey.value = `${conversation.llm_provider_id}::${conversation.llm_model_id}`
+  }
 }
 
 const handleSelectKnowledge = () => {
@@ -519,6 +550,17 @@ const handleSelectKnowledge = () => {
 
 const handleSelectImage = () => {
   // TODO: Implement image selection
+}
+
+// Handle message editing (resend from that point)
+const handleEditMessage = async (messageId: number, newContent: string) => {
+  if (!activeConversationId.value) return
+
+  try {
+    await chatStore.editAndResend(activeConversationId.value, messageId, newContent, props.tabId)
+  } catch (error: unknown) {
+    toast.error(getErrorMessage(error) || t('assistant.errors.resendFailed'))
+  }
 }
 
 // Conversation menu actions
@@ -613,8 +655,8 @@ const confirmDeleteConversation = async () => {
       [agentId]: false,
     }
     if (activeConversationId.value === actionConversation.value.id) {
+      chatStore.clearMessages(activeConversationId.value)
       activeConversationId.value = null
-      chatMessages.value = []
     }
     toast.success(t('assistant.conversation.delete.success'))
     deleteConversationOpen.value = false
@@ -651,8 +693,10 @@ watch(activeAgentId, (newAgentId, oldAgentId) => {
   if (newAgentId && oldAgentId !== undefined) {
     loadConversations(newAgentId)
   } else if (!newAgentId) {
+    if (activeConversationId.value) {
+      chatStore.clearMessages(activeConversationId.value)
+    }
     activeConversationId.value = null
-    chatMessages.value = []
   }
 })
 
@@ -695,6 +739,9 @@ onMounted(() => {
     }
   })()
 
+  // Subscribe to chat events (important: do this at page level, not in ChatMessageList)
+  chatStore.subscribe()
+
   // Listen for text selection to send to assistant
   unsubscribeTextSelection = Events.On('text-selection:send-to-assistant', (event: any) => {
     const payload = Array.isArray(event?.data) ? event.data[0] : (event?.data ?? event)
@@ -728,6 +775,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  // Unsubscribe from chat events
+  chatStore.unsubscribe()
+
   unsubscribeTextSelection?.()
   unsubscribeTextSelection = null
   unsubscribeConversationsChanged?.()
@@ -947,46 +997,31 @@ onUnmounted(() => {
     </div>
 
     <!-- Right side: Chat area -->
-    <section class="flex flex-1 flex-col overflow-hidden">
-      <!-- Chat messages area -->
-      <div v-if="chatMessages.length > 0" class="flex-1 overflow-auto px-6 py-4">
-        <div class="mx-auto max-w-[800px] flex flex-col gap-4">
-          <div
-            v-for="msg in chatMessages"
-            :key="msg.id"
-            :class="cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')"
-          >
-            <div
-              :class="
-                cn(
-                  'max-w-[80%] rounded-2xl px-4 py-3 text-sm',
-                  msg.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-foreground'
-                )
-              "
-            >
-              <p class="whitespace-pre-wrap wrap-break-word">{{ msg.content }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <section class="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <!-- Chat messages area - show when we have messages OR when generating -->
+      <ChatMessageList
+        v-if="activeConversationId && (chatMessages.length > 0 || isGenerating)"
+        :conversation-id="activeConversationId"
+        :tab-id="tabId"
+        class="min-w-0 flex-1 overflow-hidden"
+        @edit-message="handleEditMessage"
+      />
 
       <!-- Empty state / Input area -->
       <div
         :class="
-          cn('flex px-6', chatMessages.length > 0 ? 'pb-4' : 'flex-1 items-center justify-center')
+          cn('flex px-6', (chatMessages.length > 0 || isGenerating) ? 'pb-4' : 'flex-1 items-center justify-center')
         "
       >
         <div
           :class="
             cn(
               'flex w-full flex-col items-center gap-10',
-              chatMessages.length === 0 && '-translate-y-10'
+              chatMessages.length === 0 && !isGenerating && '-translate-y-10'
             )
           "
         >
-          <div v-if="chatMessages.length === 0" class="flex items-center gap-3">
+          <div v-if="chatMessages.length === 0 && !isGenerating" class="flex items-center gap-3">
             <LogoIcon class="size-10 text-foreground" />
             <div class="text-2xl font-semibold text-foreground">
               {{ t('app.title') }}
@@ -1001,7 +1036,7 @@ onUnmounted(() => {
               :placeholder="t('assistant.placeholders.inputPlaceholder')"
               class="min-h-[64px] w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
               rows="2"
-              @keydown.enter.exact.prevent="handleSend"
+              @keydown.enter.exact="handleChatEnter"
             />
 
             <div class="mt-3 flex items-center justify-between">
@@ -1066,34 +1101,46 @@ onUnmounted(() => {
                 </Button>
               </div>
 
-              <TooltipProvider v-if="!canSend">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <!-- disabled button has pointer-events-none; use wrapper to keep tooltip hover -->
-                    <span class="inline-flex">
-                      <Button
-                        size="icon"
-                        class="size-6 rounded-full bg-muted-foreground/20 text-muted-foreground disabled:opacity-100"
-                        disabled
-                      >
-                        <ArrowUp class="size-4" />
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{{ t('assistant.placeholders.enterToSend') }}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <Button
-                v-else
-                size="icon"
-                class="size-6 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
-                :title="t('assistant.chat.send')"
-                @click="handleSend"
-              >
-                <ArrowUp class="size-4" />
-              </Button>
+              <template v-if="isGenerating">
+                <Button
+                  size="icon"
+                  class="size-6 rounded-full bg-muted-foreground/20 text-foreground hover:bg-muted-foreground/30"
+                  :title="t('assistant.chat.stop')"
+                  @click="handleStop"
+                >
+                  <Square class="size-4" />
+                </Button>
+              </template>
+              <template v-else>
+                <TooltipProvider v-if="!canSend">
+                  <Tooltip>
+                    <TooltipTrigger as-child>
+                      <!-- disabled button has pointer-events-none; use wrapper to keep tooltip hover -->
+                      <span class="inline-flex">
+                        <Button
+                          size="icon"
+                          class="size-6 rounded-full bg-muted-foreground/20 text-muted-foreground disabled:opacity-100"
+                          disabled
+                        >
+                          <ArrowUp class="size-4" />
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{{ t('assistant.placeholders.enterToSend') }}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <Button
+                  v-else
+                  size="icon"
+                  class="size-6 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                  :title="t('assistant.chat.send')"
+                  @click="handleSend"
+                >
+                  <ArrowUp class="size-4" />
+                </Button>
+              </template>
             </div>
           </div>
         </div>
