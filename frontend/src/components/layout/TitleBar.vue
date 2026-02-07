@@ -12,6 +12,7 @@ import { useNavigationStore, type NavModule } from '@/stores'
 import { cn } from '@/lib/utils'
 import IconSidebarToggle from '@/assets/icons/sidebar-toggle.svg'
 import IconAddNewTab from '@/assets/icons/add-new-tab.svg'
+import IconAssistant from '@/assets/icons/assistant.svg'
 import IconKnowledge from '@/assets/icons/knowledge.svg'
 import IconMultiask from '@/assets/icons/multiask.svg'
 import IconSettings from '@/assets/icons/settings.svg'
@@ -26,6 +27,7 @@ import WindowControlButtons from './WindowControlButtons.vue'
  * We use Record<string, any> to avoid the type conflict.
  */
 const moduleTabIcons: Partial<Record<NavModule, any>> = {
+  assistant: IconAssistant,
   knowledge: IconKnowledge,
   multiask: IconMultiask,
   settings: IconSettings,
@@ -47,6 +49,17 @@ const isMac = computed(() => System.IsMac())
  * 关闭按钮事件类型（支持点击和键盘事件）
  */
 type CloseButtonEvent = MouseEvent | KeyboardEvent
+
+/**
+ * Decide whether to use module SVG icon in the tab.
+ * - For assistant tabs: only use SVG when tab.icon is empty (no agent selected/created yet).
+ * - For other modules: always use SVG when available.
+ */
+const shouldUseModuleIcon = (tab: { module: NavModule; icon?: string }) => {
+  if (!moduleTabIcons[tab.module]) return false
+  if (tab.module === 'assistant') return !tab.icon
+  return true
+}
 
 /**
  * 处理标签页点击
@@ -153,7 +166,7 @@ const handleTitleBarDoubleClick = async (event: MouseEvent) => {
             <div class="flex items-center gap-2">
               <!-- 标签页图标：优先使用模块对应的 SVG 图标，其次使用图片 URL，最后 fallback -->
               <div
-                v-if="moduleTabIcons[tab.module]"
+                v-if="shouldUseModuleIcon(tab)"
                 class="flex size-5 shrink-0 items-center justify-center"
               >
                 <component

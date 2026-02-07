@@ -82,6 +82,27 @@ export const useNavigationStore = defineStore('navigation', () => {
   }
 
   /**
+   * Normalize legacy/default assistant tab icons.
+   * Historically we used a red PNG as the default tab icon; for assistant tabs
+   * we now prefer an empty icon so the title bar can fall back to the side nav SVG.
+   */
+  const normalizeAssistantTab = (tab: Tab) => {
+    if (tab.module !== 'assistant') return
+    // If the stored icon equals the legacy default PNG, treat it as "no icon".
+    if (tab.icon === DefaultTabIcon) {
+      tab.icon = undefined
+      tab.iconIsDefault = false
+    }
+  }
+
+  const getDefaultIconForTab = (module: NavModule) => {
+    // For assistant tabs, keep icon empty by default so the title bar can render
+    // the same SVG icon as the left side nav when no agent is selected/created yet.
+    if (module === 'assistant') return undefined
+    return DefaultTabIcon
+  }
+
+  /**
    * 设置侧边栏折叠状态
    */
   const setSidebarCollapsed = (collapsed: boolean) => {
@@ -113,9 +134,11 @@ export const useNavigationStore = defineStore('navigation', () => {
       id,
       titleKey: moduleLabels[module],
       module,
-      icon: DefaultTabIcon,
-      iconIsDefault: true,
+      icon: getDefaultIconForTab(module),
+      // assistant default icon is intentionally empty (not "default icon")
+      iconIsDefault: module !== 'assistant',
     }
+    normalizeAssistantTab(newTab)
     tabs.value.push(newTab)
     activeTabId.value = id
   }
@@ -125,13 +148,17 @@ export const useNavigationStore = defineStore('navigation', () => {
    */
   const addTab = (tab: Omit<Tab, 'id'>) => {
     const id = createTabId()
-    const icon = tab.icon ?? DefaultTabIcon
+    const icon = tab.icon ?? getDefaultIconForTab(tab.module)
     const newTab: Tab = {
       ...tab,
       icon,
-      iconIsDefault: tab.iconIsDefault ?? tab.icon == null,
+      iconIsDefault:
+        tab.iconIsDefault ??
+        // For assistant tabs, empty icon is intentional and should NOT be treated as default icon.
+        (tab.module === 'assistant' ? false : tab.icon == null),
       id,
     }
+    normalizeAssistantTab(newTab)
     tabs.value.push(newTab)
     activeTabId.value = id
     return id
@@ -202,6 +229,14 @@ export const useNavigationStore = defineStore('navigation', () => {
   ) => {
     const tab = tabs.value.find((t) => t.id === tabId)
     if (tab) {
+      if (tab.module === 'assistant') {
+        // For assistant tabs, allow clearing the icon so the title bar can fall back to SVG.
+        tab.icon = icon || undefined
+        tab.iconIsDefault = options?.isDefault ?? false
+        normalizeAssistantTab(tab)
+        return
+      }
+
       tab.icon = icon ?? DefaultTabIcon
       tab.iconIsDefault = options?.isDefault ?? icon == null
     }
@@ -226,6 +261,9 @@ export const useNavigationStore = defineStore('navigation', () => {
     const newLogoDataUrl = getLogoDataUrl()
     for (const tab of tabs.value) {
       if (tab.module === 'assistant') {
+        // Skip empty icons (we want SVG fallback for "no agent" state).
+        if (!tab.icon) continue
+
         // 兼容旧数据：DefaultTabIcon 视为默认图标
         const isDefault = tab.iconIsDefault === true || tab.icon === DefaultTabIcon
         if (isDefault) {
