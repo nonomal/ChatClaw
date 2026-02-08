@@ -15,7 +15,7 @@ import (
 const maxSnapshotChars = 8000
 
 // snapshotResult holds the formatted snapshot text and a flag indicating
-// ref numbers were assigned via data-ref attributes in the DOM.
+// ref numbers were assigned via data-wc-ref attributes in the DOM.
 type snapshotResult struct {
 	text     string
 	maxRef   int  // highest ref number assigned
@@ -35,60 +35,100 @@ type jsElement struct {
 	Disabled    bool   `json:"disabled"`
 	Checked     bool   `json:"checked"`
 	Focused     bool   `json:"focused"`
+	Sensitive   bool   `json:"sensitive"`
 }
 
-// getSnapshot injects data-ref attributes into interactive DOM elements and
+// getSnapshot injects data-wc-ref attributes into interactive DOM elements and
 // returns a structured text representation. Click/type actions later use
-// the data-ref attribute to locate elements via CSS selector.
+// the data-wc-ref attribute to locate elements via CSS selector.
 func (b *browserTool) getSnapshot(ctx context.Context) (*snapshotResult, error) {
-	// Single JS call: find all interactive elements, assign data-ref, return descriptions.
+	// Single JS call: find all interactive elements, assign data-wc-ref, return descriptions.
 	const script = `(() => {
-    // Remove old data-ref attributes
-    document.querySelectorAll('[data-ref]').forEach(el => el.removeAttribute('data-ref'));
+    // Remove old data-wc-ref attributes
+    document.querySelectorAll('[data-wc-ref]').forEach(el => el.removeAttribute('data-wc-ref'));
 
     const selectors = 'a, button, input, select, textarea, [role="button"], [role="link"], ' +
         '[role="checkbox"], [role="radio"], [role="combobox"], [role="textbox"], [role="searchbox"], ' +
         '[role="menuitem"], [role="option"], [role="tab"], [role="switch"], [role="slider"], ' +
         '[tabindex], [contenteditable="true"], [onclick]';
 
+    const normalizeText = (s) => (s || '').replace(/\s+/g, ' ').trim();
+    const getAriaLabel = (el) => {
+        const direct = el.getAttribute('aria-label');
+        if (direct) return normalizeText(direct);
+        const labelledBy = el.getAttribute('aria-labelledby');
+        if (labelledBy) {
+            const parts = labelledBy.split(/\s+/).map(id => document.getElementById(id)).filter(Boolean);
+            const text = normalizeText(parts.map(p => p.innerText || p.textContent || '').join(' '));
+            if (text) return text;
+        }
+        return '';
+    };
+    const looksSensitive = (el, tag, type, name, placeholder) => {
+        // Avoid leaking secrets: password / token / secret / key / otp / pin, etc.
+        const hay = (type + ' ' + (el.id || '') + ' ' + (el.getAttribute('name') || '') + ' ' +
+            (el.getAttribute('autocomplete') || '') + ' ' + name + ' ' + placeholder).toLowerCase();
+        return /password|passwd|pwd|token|secret|api[_ -]?key|apikey|bearer|auth|otp|2fa|pin/.test(hay);
+    };
+
     const els = document.querySelectorAll(selectors);
     const results = [];
     let ref = 1;
 
     for (const el of els) {
+        if (el.getAttribute('aria-hidden') === 'true') continue;
+        if (el.hasAttribute('tabindex')) {
+            const ti = parseInt(el.getAttribute('tabindex') || '0', 10);
+            if (!Number.isNaN(ti) && ti < 0) continue;
+        }
+
         // Skip invisible elements
         const rect = el.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) continue;
         const style = getComputedStyle(el);
-        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
+        const opacity = parseFloat(style.opacity || '1');
+        if (style.display === 'none' || style.visibility === 'hidden' || opacity === 0) continue;
+        if (style.pointerEvents === 'none') continue;
 
         // Skip elements fully outside viewport (with generous margin)
         // We still include them but they would be at the bottom
 
-        // Assign data-ref for later targeting
-        el.setAttribute('data-ref', String(ref));
+        // Assign data-wc-ref for later targeting
+        el.setAttribute('data-wc-ref', String(ref));
 
         const tag = el.tagName.toLowerCase();
         const role = el.getAttribute('role') || '';
         let name = '';
 
         // Determine the display name
-        if (tag === 'input' || tag === 'textarea') {
-            name = el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.getAttribute('name') || '';
+        const aria = getAriaLabel(el);
+        if (aria) {
+            name = aria;
+        } else if (tag === 'input' || tag === 'textarea') {
+            name = el.getAttribute('placeholder') || el.getAttribute('name') || '';
         } else if (tag === 'select') {
-            name = el.getAttribute('aria-label') || el.options?.[el.selectedIndex]?.text || '';
+            name = el.options?.[el.selectedIndex]?.text || '';
         } else if (tag === 'img') {
             name = el.getAttribute('alt') || '';
         } else {
             // Use innerText for other elements, truncated
-            name = (el.innerText || el.textContent || '').trim();
-            // Remove excessive whitespace
-            name = name.replace(/\s+/g, ' ');
+            name = normalizeText(el.innerText || el.textContent || '');
         }
         name = name.slice(0, 100);
 
-        const value = (el.value !== undefined && el.value !== '' && tag !== 'a') ? String(el.value).slice(0, 80) : '';
-        const href = (tag === 'a') ? (el.getAttribute('href') || '') : '';
+        const placeholder = el.getAttribute('placeholder') || '';
+        const inputType = el.getAttribute('type') || '';
+        const sensitive = looksSensitive(el, tag, inputType, name, placeholder) || inputType.toLowerCase() === 'password';
+
+        let value = '';
+        if (el.value !== undefined && tag !== 'a') {
+            const rawValue = String(el.value || '');
+            if (rawValue) {
+                value = sensitive ? '<redacted>' : rawValue.slice(0, 80);
+            }
+        }
+
+        const href = (tag === 'a') ? (el.href || el.getAttribute('href') || '') : '';
 
         results.push({
             ref:         ref,
@@ -96,12 +136,13 @@ func (b *browserTool) getSnapshot(ctx context.Context) (*snapshotResult, error) 
             role:        role,
             name:        name,
             value:       value,
-            type:        el.getAttribute('type') || '',
+            type:        inputType,
             href:        href,
-            placeholder: el.getAttribute('placeholder') || '',
+            placeholder: placeholder,
             disabled:    el.disabled || false,
             checked:     el.checked || false,
-            focused:     document.activeElement === el
+            focused:     document.activeElement === el,
+            sensitive:   sensitive
         });
         ref++;
     }
@@ -137,6 +178,9 @@ func formatElements(elements []jsElement) *snapshotResult {
 		if name != "" {
 			sb.WriteString(fmt.Sprintf(" %q", name))
 		}
+		if role == "link" && el.Href != "" {
+			sb.WriteString(fmt.Sprintf(" href=%q", el.Href))
+		}
 		if el.Value != "" {
 			sb.WriteString(fmt.Sprintf(" value=%q", el.Value))
 		}
@@ -151,6 +195,9 @@ func formatElements(elements []jsElement) *snapshotResult {
 		}
 		if el.Focused {
 			states = append(states, "focused")
+		}
+		if el.Sensitive {
+			states = append(states, "sensitive")
 		}
 		if len(states) > 0 {
 			sb.WriteString(fmt.Sprintf(" (%s)", strings.Join(states, ", ")))
@@ -216,9 +263,9 @@ func truncateAtLine(text string, maxLen int) string {
 	return text[:cut] + "\n... (content truncated, use scroll_down to see more)\n"
 }
 
-// resolveRef resolves a ref number to a CSS selector using the data-ref attribute.
+// resolveRef resolves a ref number to a CSS selector using the data-wc-ref attribute.
 func resolveRef(ref int) string {
-	return fmt.Sprintf(`[data-ref="%d"]`, ref)
+	return fmt.Sprintf(`[data-wc-ref="%d"]`, ref)
 }
 
 // clickByRef clicks an element by dispatching real CDP mouse events at the
@@ -237,7 +284,11 @@ func (b *browserTool) clickByRef(ctx context.Context, ref int) error {
 		script := fmt.Sprintf(`(() => {
 			const el = document.querySelector('%s');
 			if (!el) return {error: 'element not found'};
-			el.scrollIntoViewIfNeeded(true);
+			if (el.scrollIntoViewIfNeeded) {
+				el.scrollIntoViewIfNeeded(true);
+			} else {
+				el.scrollIntoView({block: 'center', inline: 'center'});
+			}
 			const rect = el.getBoundingClientRect();
 			return {x: rect.x + rect.width/2, y: rect.y + rect.height/2};
 		})()`, selector)
@@ -281,10 +332,19 @@ func (b *browserTool) typeByRef(ctx context.Context, ref int, text string) error
 		script := fmt.Sprintf(`(() => {
 			const el = document.querySelector('%s');
 			if (!el) return false;
-			el.scrollIntoViewIfNeeded(true);
+			if (el.scrollIntoViewIfNeeded) {
+				el.scrollIntoViewIfNeeded(true);
+			} else {
+				el.scrollIntoView({block: 'center', inline: 'center'});
+			}
 			el.focus();
-			el.value = '';
+			if (el.isContentEditable) {
+				el.innerText = '';
+			} else if ('value' in el) {
+				el.value = '';
+			}
 			el.dispatchEvent(new Event('input', {bubbles: true}));
+			el.dispatchEvent(new Event('change', {bubbles: true}));
 			return true;
 		})()`, selector)
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -23,7 +24,7 @@ const browserCallTimeout = 60 * time.Second
 const browserToolDescription = `
 Interact with a web browser to perform various actions such as navigation, element interaction, content extraction, and tab management.
 
-Every action that changes the page automatically returns an accessibility snapshot — a compact, structured text representation of the current page with numbered ref IDs for interactive elements.
+Every action that changes the page automatically returns a page snapshot — a compact, structured text representation of the current page with numbered ref IDs for interactive elements.
 
 Navigation:
 - 'go_to_url': Navigate to a URL. Returns page snapshot.
@@ -55,6 +56,10 @@ type BrowserConfig struct {
 type browserTool struct {
 	config *BrowserConfig
 
+	// opMu serializes browser operations. chromedp contexts and internal mutable state
+	// are not designed for concurrent access.
+	opMu sync.Mutex
+
 	once     sync.Once
 	initErr  error
 	allocCtx context.Context
@@ -64,6 +69,7 @@ type browserTool struct {
 	mu        sync.Mutex
 	tabCtxs   map[target.ID]context.Context
 	tabCancel map[target.ID]context.CancelFunc
+	tabOrder  []target.ID
 	activeTab target.ID
 
 	// Last snapshot
@@ -86,7 +92,7 @@ type browserInput struct {
 // NewBrowserTool creates a lazy browser tool. Chrome is NOT started until first invocation.
 func NewBrowserTool(_ context.Context, config *BrowserConfig) (tool.BaseTool, error) {
 	if config == nil {
-		config = &BrowserConfig{Headless: true}
+		config = &BrowserConfig{Headless: false}
 	}
 	return &browserTool{config: config}, nil
 }
@@ -112,6 +118,8 @@ func (b *browserTool) init() error {
 			opts = append(opts, chromedp.ExecPath(browserPath))
 		}
 
+		// NOTE: We intentionally use Background() here to keep the browser process
+		// alive across tool calls. Per-call timeouts/cancellation are handled in InvokableRun.
 		b.allocCtx, b.cancel = chromedp.NewExecAllocator(context.Background(), opts...)
 
 		// Create the first tab
@@ -127,6 +135,7 @@ func (b *browserTool) init() error {
 		tid := chromedp.FromContext(tabCtx).Target.TargetID
 		b.tabCtxs = map[target.ID]context.Context{tid: tabCtx}
 		b.tabCancel = map[target.ID]context.CancelFunc{tid: tabCancel}
+		b.tabOrder = []target.ID{tid}
 		b.activeTab = tid
 	})
 	return b.initErr
@@ -207,33 +216,23 @@ func (b *browserTool) InvokableRun(ctx context.Context, argumentsInJSON string, 
 		return "", fmt.Errorf("failed to initialize browser: %w", err)
 	}
 
+	// Serialize all operations to avoid concurrent chromedp + state access.
+	b.opMu.Lock()
+	defer b.opMu.Unlock()
+
 	var inp browserInput
 	if err := json.Unmarshal([]byte(argumentsInJSON), &inp); err != nil {
 		return "", fmt.Errorf("invalid input: %w", err)
 	}
-
-	type result struct {
-		output string
-		err    error
-	}
-	ch := make(chan result, 1)
-	go func() {
-		out, e := b.dispatch(ctx, &inp)
-		ch <- result{out, e}
-	}()
+	inp.Action = strings.ToLower(strings.TrimSpace(inp.Action))
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, browserCallTimeout)
 	defer cancel()
-
-	select {
-	case <-timeoutCtx.Done():
-		if ctx.Err() != nil {
-			return "", ctx.Err()
-		}
-		return "", fmt.Errorf("browser operation timed out after %v", browserCallTimeout)
-	case r := <-ch:
-		return r.output, r.err
+	out, err := b.dispatch(timeoutCtx, &inp)
+	if err != nil {
+		return "", err
 	}
+	return out, nil
 }
 
 // dispatch routes to the appropriate action handler.
@@ -270,37 +269,45 @@ func (b *browserTool) dispatch(ctx context.Context, inp *browserInput) (string, 
 
 // --- Action implementations ---
 
-func (b *browserTool) actionSnapshot(_ context.Context) (string, error) {
-	snap, err := b.getSnapshot(b.activeCtx())
+func (b *browserTool) actionSnapshot(ctx context.Context) (string, error) {
+	tabCtx := b.activeCtx()
+	opCtx, opCancel, stop := b.opContext(ctx, tabCtx)
+	defer stop()
+	defer opCancel()
+
+	snap, err := b.getSnapshot(opCtx)
 	if err != nil {
 		return "", err
 	}
 	b.lastSnap = snap
-	return b.snapshotWithURL()
+	return b.snapshotWithURL(opCtx)
 }
 
-func (b *browserTool) actionGoToURL(_ context.Context, url string) (string, error) {
-	if url == "" {
+func (b *browserTool) actionGoToURL(ctx context.Context, urlStr string) (string, error) {
+	if urlStr == "" {
 		return "", fmt.Errorf("url is required for go_to_url action")
 	}
 	tabCtx := b.activeCtx()
-	if err := chromedp.Run(tabCtx, chromedp.Navigate(url)); err != nil {
+	opCtx, opCancel, stop := b.opContext(ctx, tabCtx)
+	defer stop()
+	defer opCancel()
+
+	if err := chromedp.Run(opCtx,
+		chromedp.Navigate(urlStr),
+		chromedp.WaitReady("body", chromedp.ByQuery),
+	); err != nil {
 		return "", fmt.Errorf("navigation failed: %w", err)
 	}
-	// Wait for page to be ready
-	if err := chromedp.Run(tabCtx, chromedp.WaitReady("body", chromedp.ByQuery)); err != nil {
-		log.Printf("[browser] WaitReady after navigate: %v", err)
-	}
 
-	snap, err := b.getSnapshot(tabCtx)
+	snap, err := b.getSnapshot(opCtx)
 	if err != nil {
-		return fmt.Sprintf("Navigated to %s but snapshot failed: %v", url, err), nil
+		return fmt.Sprintf("Navigated to %s but snapshot failed: %v", urlStr, err), nil
 	}
 	b.lastSnap = snap
-	return b.snapshotWithURL()
+	return b.snapshotWithURL(opCtx)
 }
 
-func (b *browserTool) actionClick(_ context.Context, ref int) (string, error) {
+func (b *browserTool) actionClick(ctx context.Context, ref int) (string, error) {
 	if b.lastSnap == nil || !b.lastSnap.hasRefs {
 		return "", fmt.Errorf("no snapshot available; call snapshot first")
 	}
@@ -309,59 +316,72 @@ func (b *browserTool) actionClick(_ context.Context, ref int) (string, error) {
 	}
 
 	tabCtx := b.activeCtx()
+	opCtx, opCancel, stop := b.opContext(ctx, tabCtx)
+	defer stop()
+	defer opCancel()
 
 	// Get URL before click to detect navigation
 	var urlBefore string
-	_ = chromedp.Run(tabCtx, chromedp.Location(&urlBefore))
+	_ = chromedp.Run(opCtx, chromedp.Location(&urlBefore))
 
 	// Register listener for new tabs that might open
-	newTabCh := chromedp.WaitNewTarget(tabCtx, func(info *target.Info) bool {
+	newTabCh := chromedp.WaitNewTarget(opCtx, func(info *target.Info) bool {
 		return info.Type == "page"
 	})
 
-	if err := b.clickByRef(tabCtx, ref); err != nil {
+	if err := b.clickByRef(opCtx, ref); err != nil {
 		return "", fmt.Errorf("click failed: %w", err)
 	}
 
 	// Check if a new tab was opened (give it a brief window)
+	var activeForSnapshot context.Context = tabCtx
 	select {
 	case newTargetID := <-newTabCh:
-		// A new tab was opened — switch to it
-		newTabCtx, newTabCancel := chromedp.NewContext(tabCtx, chromedp.WithTargetID(newTargetID))
-		_ = chromedp.Run(newTabCtx, chromedp.WaitReady("body", chromedp.ByQuery))
+		// A new tab was opened — create a persistent tab context, then switch to it
+		newTabCtx, newTabCancel := chromedp.NewContext(b.allocCtx, chromedp.WithTargetID(newTargetID))
 
 		b.mu.Lock()
 		b.tabCtxs[newTargetID] = newTabCtx
 		b.tabCancel[newTargetID] = newTabCancel
+		b.tabOrder = append(b.tabOrder, newTargetID)
 		b.activeTab = newTargetID
 		b.mu.Unlock()
 
-		tabCtx = newTabCtx
+		activeForSnapshot = newTabCtx
 	case <-time.After(500 * time.Millisecond):
-		// No new tab — check if in-page navigation happened
+		// No new tab
+	case <-ctx.Done():
+		return "", ctx.Err()
 	}
 
-	// Wait for page to settle after navigation
-	_ = chromedp.Run(tabCtx, chromedp.WaitReady("body", chromedp.ByQuery))
+	// Wait for page to settle after click/navigation
+	snapTabCtx := activeForSnapshot
+	snapOpCtx, snapCancel, snapStop := b.opContext(ctx, snapTabCtx)
+	defer snapStop()
+	defer snapCancel()
+
+	if err := chromedp.Run(snapOpCtx, chromedp.WaitReady("body", chromedp.ByQuery)); err != nil {
+		log.Printf("[browser] WaitReady after click: %v", err)
+	}
 
 	// If URL changed, give extra time for dynamic content
 	var urlAfter string
-	_ = chromedp.Run(tabCtx, chromedp.Location(&urlAfter))
-	if urlAfter != urlBefore {
-		time.Sleep(500 * time.Millisecond)
+	_ = chromedp.Run(snapOpCtx, chromedp.Location(&urlAfter))
+	if urlAfter != "" && urlAfter != urlBefore {
+		_ = chromedp.Run(snapOpCtx, chromedp.Sleep(500*time.Millisecond))
 	} else {
-		time.Sleep(200 * time.Millisecond)
+		_ = chromedp.Run(snapOpCtx, chromedp.Sleep(200*time.Millisecond))
 	}
 
-	snap, err := b.getSnapshot(tabCtx)
+	snap, err := b.getSnapshot(snapOpCtx)
 	if err != nil {
 		return fmt.Sprintf("Clicked ref %d but snapshot failed: %v", ref, err), nil
 	}
 	b.lastSnap = snap
-	return b.snapshotWithURL()
+	return b.snapshotWithURL(snapOpCtx)
 }
 
-func (b *browserTool) actionType(_ context.Context, ref int, text string) (string, error) {
+func (b *browserTool) actionType(ctx context.Context, ref int, text string) (string, error) {
 	if b.lastSnap == nil || !b.lastSnap.hasRefs {
 		return "", fmt.Errorf("no snapshot available; call snapshot first")
 	}
@@ -370,20 +390,23 @@ func (b *browserTool) actionType(_ context.Context, ref int, text string) (strin
 	}
 
 	tabCtx := b.activeCtx()
+	opCtx, opCancel, stop := b.opContext(ctx, tabCtx)
+	defer stop()
+	defer opCancel()
 
-	if err := b.typeByRef(tabCtx, ref, text); err != nil {
+	if err := b.typeByRef(opCtx, ref, text); err != nil {
 		return "", fmt.Errorf("type failed: %w", err)
 	}
 
-	snap, err := b.getSnapshot(tabCtx)
+	snap, err := b.getSnapshot(opCtx)
 	if err != nil {
 		return fmt.Sprintf("Typed into ref %d but snapshot failed: %v", ref, err), nil
 	}
 	b.lastSnap = snap
-	return b.snapshotWithURL()
+	return b.snapshotWithURL(opCtx)
 }
 
-func (b *browserTool) actionScroll(_ context.Context, amount int, down bool) (string, error) {
+func (b *browserTool) actionScroll(ctx context.Context, amount int, down bool) (string, error) {
 	if amount <= 0 {
 		amount = 500
 	}
@@ -392,7 +415,11 @@ func (b *browserTool) actionScroll(_ context.Context, amount int, down bool) (st
 	}
 
 	tabCtx := b.activeCtx()
-	err := chromedp.Run(tabCtx, chromedp.Evaluate(
+	opCtx, opCancel, stop := b.opContext(ctx, tabCtx)
+	defer stop()
+	defer opCancel()
+
+	err := chromedp.Run(opCtx, chromedp.Evaluate(
 		fmt.Sprintf("window.scrollBy(0, %d)", amount), nil,
 	))
 	if err != nil {
@@ -400,47 +427,57 @@ func (b *browserTool) actionScroll(_ context.Context, amount int, down bool) (st
 	}
 
 	// Brief wait for lazy-loaded content
-	time.Sleep(200 * time.Millisecond)
+	_ = chromedp.Run(opCtx, chromedp.Sleep(200*time.Millisecond))
 
-	snap, err := b.getSnapshot(tabCtx)
+	snap, err := b.getSnapshot(opCtx)
 	if err != nil {
 		return fmt.Sprintf("Scrolled but snapshot failed: %v", err), nil
 	}
 	b.lastSnap = snap
-	return b.snapshotWithURL()
+	return b.snapshotWithURL(opCtx)
 }
 
 func (b *browserTool) actionWebSearch(ctx context.Context, query string) (string, error) {
 	if query == "" {
 		return "", fmt.Errorf("query is required for web_search action")
 	}
-	searchURL := "https://duckduckgo.com/?q=" + strings.ReplaceAll(query, " ", "+")
+	searchURL := "https://duckduckgo.com/?q=" + url.QueryEscape(query)
 	return b.actionGoToURL(ctx, searchURL)
 }
 
-func (b *browserTool) actionWait(_ context.Context, seconds int) (string, error) {
+func (b *browserTool) actionWait(ctx context.Context, seconds int) (string, error) {
 	if seconds <= 0 {
 		seconds = 1
 	}
 	if seconds > 30 {
 		seconds = 30
 	}
-	time.Sleep(time.Duration(seconds) * time.Second)
+	if err := sleepWithContext(ctx, time.Duration(seconds)*time.Second); err != nil {
+		return "", err
+	}
 
-	snap, err := b.getSnapshot(b.activeCtx())
+	tabCtx := b.activeCtx()
+	opCtx, opCancel, stop := b.opContext(ctx, tabCtx)
+	defer stop()
+	defer opCancel()
+
+	snap, err := b.getSnapshot(opCtx)
 	if err != nil {
 		return fmt.Sprintf("Waited %d seconds but snapshot failed: %v", seconds, err), nil
 	}
 	b.lastSnap = snap
-	return b.snapshotWithURL()
+	return b.snapshotWithURL(opCtx)
 }
 
-func (b *browserTool) actionExtractContent(_ context.Context, goal string) (string, error) {
+func (b *browserTool) actionExtractContent(ctx context.Context, goal string) (string, error) {
 	tabCtx := b.activeCtx()
+	opCtx, opCancel, stop := b.opContext(ctx, tabCtx)
+	defer stop()
+	defer opCancel()
 
 	// Extract the page text content
 	var textContent string
-	err := chromedp.Run(tabCtx, chromedp.Evaluate(`document.body.innerText`, &textContent))
+	err := chromedp.Run(opCtx, chromedp.Evaluate(`document.body && document.body.innerText ? document.body.innerText : ''`, &textContent))
 	if err != nil {
 		return "", fmt.Errorf("failed to extract page text: %w", err)
 	}
@@ -451,7 +488,7 @@ func (b *browserTool) actionExtractContent(_ context.Context, goal string) (stri
 			"Extract the following information from the web page content below.\n\nGoal: %s\n\nPage content:\n%s",
 			goal, truncate(textContent, 6000),
 		)
-		resp, err := b.config.ExtractChatModel.Generate(context.Background(), []*schema.Message{
+		resp, err := b.config.ExtractChatModel.Generate(ctx, []*schema.Message{
 			{Role: schema.User, Content: extractPrompt},
 		})
 		if err != nil {
@@ -464,113 +501,136 @@ func (b *browserTool) actionExtractContent(_ context.Context, goal string) (stri
 	return truncate(textContent, 4000), nil
 }
 
-func (b *browserTool) actionSwitchTab(_ context.Context, tabIndex int) (string, error) {
+func (b *browserTool) actionSwitchTab(ctx context.Context, tabIndex int) (string, error) {
 	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	tabs := b.tabList()
-	if tabIndex < 0 || tabIndex >= len(tabs) {
-		return "", fmt.Errorf("tab index %d out of range (have %d tabs)", tabIndex, len(tabs))
+	if tabIndex < 0 || tabIndex >= len(b.tabOrder) {
+		have := len(b.tabOrder)
+		b.mu.Unlock()
+		return "", fmt.Errorf("tab index %d out of range (have %d tabs)", tabIndex, have)
 	}
-
-	tid := tabs[tabIndex]
+	tid := b.tabOrder[tabIndex]
 	b.activeTab = tid
+	tabCtx := b.tabCtxs[tid]
 	b.mu.Unlock()
 
-	snap, err := b.getSnapshot(b.tabCtxs[tid])
-	b.mu.Lock()
+	opCtx, opCancel, stop := b.opContext(ctx, tabCtx)
+	defer stop()
+	defer opCancel()
+
+	snap, err := b.getSnapshot(opCtx)
 	if err != nil {
 		return fmt.Sprintf("Switched to tab %d but snapshot failed: %v", tabIndex, err), nil
 	}
 	b.lastSnap = snap
-	url := b.currentURL()
-	return fmt.Sprintf("Switched to tab %d\nURL: %s\n\n%s", tabIndex, url, snap.text), nil
+	urlStr, _ := b.location(opCtx)
+	return fmt.Sprintf("Switched to tab %d\nURL: %s\n\n%s", tabIndex, urlStr, snap.text), nil
 }
 
-func (b *browserTool) actionOpenTab(_ context.Context, url string) (string, error) {
-	if url == "" {
-		url = "about:blank"
+func (b *browserTool) actionOpenTab(ctx context.Context, urlStr string) (string, error) {
+	if urlStr == "" {
+		urlStr = "about:blank"
 	}
 
-	b.mu.Lock()
 	tabCtx, tabCancel := chromedp.NewContext(b.allocCtx)
-	b.mu.Unlock()
-
-	if err := chromedp.Run(tabCtx, chromedp.Navigate(url)); err != nil {
-		tabCancel()
-		return "", fmt.Errorf("failed to open new tab: %w", err)
-	}
-	_ = chromedp.Run(tabCtx, chromedp.WaitReady("body", chromedp.ByQuery))
-
 	tid := chromedp.FromContext(tabCtx).Target.TargetID
+
 	b.mu.Lock()
+	if b.tabCtxs == nil {
+		b.tabCtxs = make(map[target.ID]context.Context)
+	}
+	if b.tabCancel == nil {
+		b.tabCancel = make(map[target.ID]context.CancelFunc)
+	}
 	b.tabCtxs[tid] = tabCtx
 	b.tabCancel[tid] = tabCancel
+	b.tabOrder = append(b.tabOrder, tid)
 	b.activeTab = tid
 	b.mu.Unlock()
 
-	snap, err := b.getSnapshot(tabCtx)
+	opCtx, opCancel, stop := b.opContext(ctx, tabCtx)
+	defer stop()
+	defer opCancel()
+
+	if err := chromedp.Run(opCtx, chromedp.Navigate(urlStr), chromedp.WaitReady("body", chromedp.ByQuery)); err != nil {
+		// If open failed, clean up the tab we just created.
+		b.mu.Lock()
+		delete(b.tabCtxs, tid)
+		delete(b.tabCancel, tid)
+		b.tabOrder = removeTargetID(b.tabOrder, tid)
+		if b.activeTab == tid && len(b.tabOrder) > 0 {
+			b.activeTab = b.tabOrder[0]
+		}
+		b.mu.Unlock()
+		tabCancel()
+		return "", fmt.Errorf("failed to open new tab: %w", err)
+	}
+
+	snap, err := b.getSnapshot(opCtx)
 	if err != nil {
-		return fmt.Sprintf("Opened new tab with %s but snapshot failed: %v", url, err), nil
+		return fmt.Sprintf("Opened new tab with %s but snapshot failed: %v", urlStr, err), nil
 	}
 	b.lastSnap = snap
-	return b.snapshotWithURL()
+	return b.snapshotWithURL(opCtx)
 }
 
-func (b *browserTool) actionCloseTab(_ context.Context) (string, error) {
+func (b *browserTool) actionCloseTab(ctx context.Context) (string, error) {
 	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if len(b.tabCtxs) <= 1 {
+	if len(b.tabOrder) <= 1 {
+		b.mu.Unlock()
 		return "", fmt.Errorf("cannot close the last tab")
 	}
 
-	// Close the active tab
-	if cancel, ok := b.tabCancel[b.activeTab]; ok {
+	closing := b.activeTab
+	closingIdx := indexOfTargetID(b.tabOrder, closing)
+
+	// Cancel and remove closing tab
+	if cancel, ok := b.tabCancel[closing]; ok {
 		cancel()
 	}
-	delete(b.tabCtxs, b.activeTab)
-	delete(b.tabCancel, b.activeTab)
+	delete(b.tabCtxs, closing)
+	delete(b.tabCancel, closing)
+	b.tabOrder = removeTargetID(b.tabOrder, closing)
 
-	// Switch to the first remaining tab
-	for tid := range b.tabCtxs {
-		b.activeTab = tid
-		break
+	// Select next active tab
+	nextIdx := closingIdx - 1
+	if nextIdx < 0 || nextIdx >= len(b.tabOrder) {
+		nextIdx = 0
 	}
-
+	b.activeTab = b.tabOrder[nextIdx]
+	nextTabCtx := b.tabCtxs[b.activeTab]
 	b.mu.Unlock()
-	snap, err := b.getSnapshot(b.tabCtxs[b.activeTab])
-	b.mu.Lock()
+
+	opCtx, opCancel, stop := b.opContext(ctx, nextTabCtx)
+	defer stop()
+	defer opCancel()
+
+	snap, err := b.getSnapshot(opCtx)
 	if err != nil {
 		return "Closed tab, switched to another tab but snapshot failed", nil
 	}
 	b.lastSnap = snap
-	url := b.currentURL()
-	return fmt.Sprintf("Closed tab. Now on:\nURL: %s\n\n%s", url, snap.text), nil
+	urlStr, _ := b.location(opCtx)
+	return fmt.Sprintf("Closed tab. Now on:\nURL: %s\n\n%s", urlStr, snap.text), nil
 }
 
 // --- Helpers ---
 
 // snapshotWithURL prepends the current URL to the snapshot text.
-func (b *browserTool) snapshotWithURL() (string, error) {
-	url := b.currentURL()
-	return fmt.Sprintf("URL: %s\n\n%s", url, b.lastSnap.text), nil
-}
-
-// currentURL returns the current page URL.
-func (b *browserTool) currentURL() string {
-	var url string
-	_ = chromedp.Run(b.activeCtx(), chromedp.Location(&url))
-	return url
-}
-
-// tabList returns tab IDs in insertion order (best effort).
-func (b *browserTool) tabList() []target.ID {
-	tabs := make([]target.ID, 0, len(b.tabCtxs))
-	for tid := range b.tabCtxs {
-		tabs = append(tabs, tid)
+func (b *browserTool) snapshotWithURL(ctx context.Context) (string, error) {
+	urlStr, _ := b.location(ctx)
+	if b.lastSnap == nil {
+		return fmt.Sprintf("URL: %s\n\n(no snapshot)", urlStr), nil
 	}
-	return tabs
+	return fmt.Sprintf("URL: %s\n\n%s", urlStr, b.lastSnap.text), nil
+}
+
+// location returns the current page URL in the provided chromedp context.
+func (b *browserTool) location(ctx context.Context) (string, error) {
+	var urlStr string
+	if err := chromedp.Run(ctx, chromedp.Location(&urlStr)); err != nil {
+		return "", err
+	}
+	return urlStr, nil
 }
 
 // truncate shortens s to at most maxLen characters.
@@ -579,4 +639,42 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen] + "\n... (truncated)"
+}
+
+// opContext creates a cancellable chromedp context derived from a tab context.
+// It will be cancelled automatically when the request context is done.
+func (b *browserTool) opContext(reqCtx context.Context, tabCtx context.Context) (context.Context, context.CancelFunc, func() bool) {
+	opCtx, cancel := context.WithCancel(tabCtx)
+	stop := context.AfterFunc(reqCtx, cancel)
+	return opCtx, cancel, stop
+}
+
+func sleepWithContext(ctx context.Context, d time.Duration) error {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func indexOfTargetID(ids []target.ID, id target.ID) int {
+	for i := range ids {
+		if ids[i] == id {
+			return i
+		}
+	}
+	return -1
+}
+
+func removeTargetID(ids []target.ID, id target.ID) []target.ID {
+	out := make([]target.ID, 0, len(ids))
+	for _, v := range ids {
+		if v != id {
+			out = append(out, v)
+		}
+	}
+	return out
 }
