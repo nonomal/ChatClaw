@@ -256,6 +256,11 @@ export default {
       team: '团队',
     },
     empty: '暂无助手',
+    emptyState: {
+      title: '小助手为空',
+      desc: '请添加一个助手',
+      createBtn: '创建助手',
+    },
     create: {
       title: '创建助手',
     },

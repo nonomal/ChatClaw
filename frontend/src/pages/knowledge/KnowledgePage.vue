@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Plus, MoreHorizontal, Settings, FolderOpen } from 'lucide-vue-next'
+import { Plus, MoreHorizontal, Settings } from 'lucide-vue-next'
+import IconKnowledge from '@/assets/icons/knowledge.svg'
 
 /**
  * Props - 每个标签页实例都有自己独立的 tabId
@@ -295,7 +296,9 @@ onMounted(() => {
       <!-- 知识库为空 -->
       <div v-else-if="isLibraryEmpty" class="flex h-full items-center justify-center px-8">
         <div class="flex flex-col items-center gap-4">
-          <FolderOpen class="size-12 text-muted-foreground/50" :stroke-width="1.5" />
+          <div class="grid size-10 place-items-center rounded-lg bg-muted">
+            <IconKnowledge class="size-4 text-muted-foreground" />
+          </div>
           <div class="flex flex-col items-center gap-1.5">
             <h3 class="text-base font-medium text-foreground">
               {{ t('knowledge.empty.title') }}

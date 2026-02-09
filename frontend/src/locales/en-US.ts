@@ -259,6 +259,11 @@ export default {
       team: 'Team',
     },
     empty: 'No agents yet',
+    emptyState: {
+      title: 'No Agents',
+      desc: 'Please add an agent',
+      createBtn: 'Create Agent',
+    },
     create: {
       title: 'Create Agent',
     },
