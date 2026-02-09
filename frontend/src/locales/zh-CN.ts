@@ -530,6 +530,10 @@ export default {
         count: '已上传 {count} 个文档',
         uploading: '正在上传 {done}/{total}',
       },
+      drop: {
+        hint: '拖放文件到此处上传',
+        formats: '支持 PDF、Word、Excel、TXT、Markdown、CSV、HTML、OFD 格式',
+      },
       rename: {
         title: '重命名文档',
         desc: '请输入新的文档名称',

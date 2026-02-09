@@ -532,6 +532,10 @@ export default {
         count: '{count} documents uploaded',
         uploading: 'Uploading {done}/{total}',
       },
+      drop: {
+        hint: 'Drop files here to upload',
+        formats: 'Supports PDF, Word, Excel, TXT, Markdown, CSV, HTML, OFD',
+      },
       rename: {
         title: 'Rename Document',
         desc: 'Enter a new name for the document',

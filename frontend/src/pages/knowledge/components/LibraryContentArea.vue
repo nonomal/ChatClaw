@@ -69,8 +69,10 @@ let loadToken = 0
 const isUploading = ref(false)
 const uploadTotal = ref(0)
 const uploadDone = ref(0)
+const isDragOver = ref(false)
 let unsubscribeUploadProgress: (() => void) | null = null
 let unsubscribeUploaded: (() => void) | null = null
+let unsubscribeFileDrop: (() => void) | null = null
 
 const scrollContainerRef = ref<HTMLElement | null>(null)
 const loadMoreSentinelRef = ref<HTMLElement | null>(null)
@@ -261,6 +263,32 @@ const handleAddDocument = async () => {
   }
 }
 
+// Handle files dropped via Wails native file drop
+const handleFileDrop = async (filePaths: string[]) => {
+  if (!props.library?.id || filePaths.length === 0) return
+  if (isUploading.value) return
+
+  try {
+    isUploading.value = true
+    uploadTotal.value = filePaths.length
+    uploadDone.value = 0
+    await nextTick()
+
+    const uploaded = await DocumentService.UploadDocuments({
+      library_id: props.library.id,
+      file_paths: filePaths,
+    })
+
+    await resetAndLoad()
+    toast.success(t('knowledge.content.upload.count', { count: uploaded.length }))
+  } catch (error) {
+    console.error('Failed to upload dropped files:', error)
+    toast.error(getErrorMessage(error) || t('knowledge.content.upload.failed'))
+  } finally {
+    isUploading.value = false
+  }
+}
+
 const handleRename = (doc: Document) => {
   documentToRename.value = doc
   renameDialogOpen.value = true
@@ -436,6 +464,17 @@ onMounted(() => {
     }
   )
 
+  // 监听 Wails 原生文件拖拽事件
+  unsubscribeFileDrop = Events.On(
+    'filedrop:files',
+    (event: { data: { files: string[] } }) => {
+      const files = event.data?.files
+      if (files && files.length > 0) {
+        handleFileDrop(files)
+      }
+    }
+  )
+
   // 单个文档已入库事件（可用于小批量即时显示；大批量仍以 resetAndLoad 为主）
   unsubscribeUploaded = Events.On('document:uploaded', (event: { data: BackendDocument }) => {
     const doc = event.data
@@ -477,6 +516,9 @@ onUnmounted(() => {
   if (unsubscribeUploaded) {
     unsubscribeUploaded()
   }
+  if (unsubscribeFileDrop) {
+    unsubscribeFileDrop()
+  }
   if (searchTimeout) {
     clearTimeout(searchTimeout)
   }
@@ -484,7 +526,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col">
+  <div class="relative flex h-full flex-col" data-file-drop-target>
     <!-- 头部区域 -->
     <div class="flex h-12 items-center justify-between px-4">
       <h2 class="text-base font-medium text-foreground">{{ library.name }}</h2>
@@ -637,5 +679,40 @@ onUnmounted(() => {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <!-- Drag-and-drop overlay (shown when Wails adds .file-drop-target-active) -->
+    <div class="drop-overlay pointer-events-none">
+      <div class="flex flex-col items-center gap-2">
+        <Upload class="size-10 text-primary" />
+        <p class="text-sm font-medium text-primary">
+          {{ t('knowledge.content.drop.hint') }}
+        </p>
+        <p class="text-xs text-muted-foreground">
+          {{ t('knowledge.content.drop.formats') }}
+        </p>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+/* Drag overlay: hidden by default, shown when Wails adds file-drop-target-active */
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  border: 2px dashed hsl(var(--primary) / 0.5);
+  background: hsl(var(--background) / 0.92);
+  backdrop-filter: blur(4px);
+  transition: opacity 0.15s ease;
+}
+
+/* When Wails detects a file drag over the drop target */
+[data-file-drop-target].file-drop-target-active .drop-overlay {
+  display: flex;
+}
+</style>
