@@ -91,26 +91,36 @@ static void winsnap_simulate_cmd_v() {
 	CFRelease(source);
 }
 
-// Simulate Enter key via CGEventPost through Window Server.
-// Using kCGEventSourceStateHIDSystemState + CGEventPost(kCGHIDEventTap) so the event
-// travels the same path as a physical key press.
+// Simulate Enter key using AppleScript via System Events.
+// CGEvent (both CGEventPost and CGEventPostToPid) fails for plain Enter on macOS:
+// plain Enter is a regular key that goes through keyDown: -> interpretKeyEvents: ->
+// insertNewline:, where macOS text input system treats synthetic CGEvents as text input
+// (newline) rather than letting the app's custom "send" handler intercept them.
+// AppleScript "key code" via System Events uses Apple's official accessibility pathway,
+// producing events indistinguishable from physical key presses.
+// key code 36 = kVK_Return
 static void winsnap_simulate_enter_to_pid(pid_t targetPid) {
-	CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
-	if (!source) return;
-
-	CGEventRef keyDown = CGEventCreateKeyboardEvent(source, (CGKeyCode)kVK_Return, true);
-	CGEventSetTimestamp(keyDown, current_uptime_nsec());
-
-	CGEventRef keyUp = CGEventCreateKeyboardEvent(source, (CGKeyCode)kVK_Return, false);
-	CGEventSetTimestamp(keyUp, current_uptime_nsec());
-
-	CGEventPost(kCGHIDEventTap, keyDown);
-	usleep(20000); // 20ms
-	CGEventPost(kCGHIDEventTap, keyUp);
-
-	CFRelease(keyDown);
-	CFRelease(keyUp);
-	CFRelease(source);
+	@autoreleasepool {
+		NSAppleScript *script = [[NSAppleScript alloc] initWithSource:
+			@"tell application \"System Events\" to key code 36"];
+		NSDictionary *error = nil;
+		[script executeAndReturnError:&error];
+		if (error) {
+			// Fallback: CGEvent if AppleScript fails (e.g. no Automation permission)
+			CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
+			if (!source) return;
+			CGEventRef keyDown = CGEventCreateKeyboardEvent(source, (CGKeyCode)kVK_Return, true);
+			CGEventSetTimestamp(keyDown, current_uptime_nsec());
+			CGEventRef keyUp = CGEventCreateKeyboardEvent(source, (CGKeyCode)kVK_Return, false);
+			CGEventSetTimestamp(keyUp, current_uptime_nsec());
+			CGEventPost(kCGHIDEventTap, keyDown);
+			usleep(20000);
+			CGEventPost(kCGHIDEventTap, keyUp);
+			CFRelease(keyDown);
+			CFRelease(keyUp);
+			CFRelease(source);
+		}
+	}
 }
 
 // Legacy function for compatibility
@@ -118,38 +128,42 @@ static void winsnap_simulate_enter() {
 	winsnap_simulate_enter_to_pid(0);
 }
 
-// Simulate Cmd+Enter via CGEventPost through Window Server.
+// Simulate Cmd+Enter using AppleScript via System Events.
+// key code 36 using command down = Cmd+Return
 static void winsnap_simulate_cmd_enter_to_pid(pid_t targetPid) {
-	CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
-	if (!source) return;
-
-	CGEventRef cmdDown = CGEventCreateKeyboardEvent(source, (CGKeyCode)kVK_Command, true);
-	CGEventSetTimestamp(cmdDown, current_uptime_nsec());
-
-	CGEventRef keyDown = CGEventCreateKeyboardEvent(source, (CGKeyCode)kVK_Return, true);
-	CGEventSetFlags(keyDown, kCGEventFlagMaskCommand);
-	CGEventSetTimestamp(keyDown, current_uptime_nsec());
-
-	CGEventRef keyUp = CGEventCreateKeyboardEvent(source, (CGKeyCode)kVK_Return, false);
-	CGEventSetFlags(keyUp, kCGEventFlagMaskCommand);
-	CGEventSetTimestamp(keyUp, current_uptime_nsec());
-
-	CGEventRef cmdUp = CGEventCreateKeyboardEvent(source, (CGKeyCode)kVK_Command, false);
-	CGEventSetTimestamp(cmdUp, current_uptime_nsec());
-
-	CGEventPost(kCGHIDEventTap, cmdDown);
-	usleep(10000);
-	CGEventPost(kCGHIDEventTap, keyDown);
-	usleep(20000);
-	CGEventPost(kCGHIDEventTap, keyUp);
-	usleep(10000);
-	CGEventPost(kCGHIDEventTap, cmdUp);
-
-	CFRelease(cmdDown);
-	CFRelease(keyDown);
-	CFRelease(keyUp);
-	CFRelease(cmdUp);
-	CFRelease(source);
+	@autoreleasepool {
+		NSAppleScript *script = [[NSAppleScript alloc] initWithSource:
+			@"tell application \"System Events\" to key code 36 using command down"];
+		NSDictionary *error = nil;
+		[script executeAndReturnError:&error];
+		if (error) {
+			// Fallback: CGEvent if AppleScript fails
+			CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
+			if (!source) return;
+			CGEventRef cmdDown = CGEventCreateKeyboardEvent(source, (CGKeyCode)kVK_Command, true);
+			CGEventSetTimestamp(cmdDown, current_uptime_nsec());
+			CGEventRef keyDown = CGEventCreateKeyboardEvent(source, (CGKeyCode)kVK_Return, true);
+			CGEventSetFlags(keyDown, kCGEventFlagMaskCommand);
+			CGEventSetTimestamp(keyDown, current_uptime_nsec());
+			CGEventRef keyUp = CGEventCreateKeyboardEvent(source, (CGKeyCode)kVK_Return, false);
+			CGEventSetFlags(keyUp, kCGEventFlagMaskCommand);
+			CGEventSetTimestamp(keyUp, current_uptime_nsec());
+			CGEventRef cmdUp = CGEventCreateKeyboardEvent(source, (CGKeyCode)kVK_Command, false);
+			CGEventSetTimestamp(cmdUp, current_uptime_nsec());
+			CGEventPost(kCGHIDEventTap, cmdDown);
+			usleep(10000);
+			CGEventPost(kCGHIDEventTap, keyDown);
+			usleep(20000);
+			CGEventPost(kCGHIDEventTap, keyUp);
+			usleep(10000);
+			CGEventPost(kCGHIDEventTap, cmdUp);
+			CFRelease(cmdDown);
+			CFRelease(keyDown);
+			CFRelease(keyUp);
+			CFRelease(cmdUp);
+			CFRelease(source);
+		}
+	}
 }
 
 // Legacy function for compatibility
