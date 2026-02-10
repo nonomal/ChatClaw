@@ -1,7 +1,5 @@
 package define
 
-import "strings"
-
 // AppID 用于文件系统/配置目录等“标识用途”
 const AppID = "willchat"
 
@@ -24,11 +22,4 @@ func IsDev() bool {
 // IsProd 是否为生产环境
 func IsProd() bool {
 	return Env == "production"
-}
-
-// ChatWikiOpenAPIEndpoint returns the ChatWiki OpenAPI base URL (ServerURL as configured; no suffix appended).
-// Initial write to providers table uses this (see migrations: create_models_table, add_chatwiki_provider).
-// Env defaults (env_dev.go / env_prod.go) should include /openapi so the stored api_endpoint is correct.
-func ChatWikiOpenAPIEndpoint() string {
-	return strings.TrimSuffix(strings.TrimSpace(ServerURL), "/")
 }

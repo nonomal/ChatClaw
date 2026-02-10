@@ -21,7 +21,7 @@ type BuiltinModelConfig struct {
 
 // BuiltinProviders 内置供应商列表（chatwiki 默认置顶，将通过接口查询信息）
 var BuiltinProviders = []BuiltinProviderConfig{
-	{ProviderID: "chatwiki", Name: "ChatWiki", Type: "openai", Icon: "chatwiki", SortOrder: 0, APIEndpoint: ChatWikiOpenAPIEndpoint()},
+	{ProviderID: "chatwiki", Name: "ChatWiki", Type: "openai", Icon: "chatwiki", SortOrder: 0, APIEndpoint: ServerURL},
 	{ProviderID: "openai", Name: "OpenAI", Type: "openai", Icon: "openai", SortOrder: 1, APIEndpoint: "https://api.openai.com/v1"},
 	{ProviderID: "azure", Name: "Azure OpenAI", Type: "azure", Icon: "azure", SortOrder: 2, APIEndpoint: ""},
 	{ProviderID: "anthropic", Name: "Anthropic", Type: "anthropic", Icon: "anthropic", SortOrder: 3, APIEndpoint: "https://api.anthropic.com/v1"},
@@ -103,10 +103,10 @@ var BuiltinModels = []BuiltinModelConfig{
 }
 
 // GetBuiltinProviderDefaultEndpoint 获取内置供应商的默认 API 地址
-// ChatWiki 在调用时从 ChatWikiOpenAPIEndpoint() 取，避免包初始化顺序导致 ServerURL 未就绪
+// ChatWiki 直接使用 ServerURL
 func GetBuiltinProviderDefaultEndpoint(providerID string) (string, bool) {
 	if providerID == "chatwiki" {
-		return ChatWikiOpenAPIEndpoint(), true
+		return ServerURL, true
 	}
 	for _, p := range BuiltinProviders {
 		if p.ProviderID == providerID {
