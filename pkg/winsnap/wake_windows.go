@@ -36,8 +36,9 @@ const (
 // GW_HWNDNEXT = 2: Returns a handle to the window below in z-order
 const gwHwndNextWake = 2
 
-// EnsureWindowVisible restores the window if it was minimized (e.g. by Win+D)
-// so it becomes visible again. Does not activate or steal focus.
+// EnsureWindowVisible makes the window visible again after being hidden (SW_HIDE)
+// or minimized (e.g. by Win+D). Uses SW_RESTORE for minimized windows (necessary
+// to undo minimize), and SW_SHOWNOACTIVATE for hidden windows to avoid stealing focus.
 func EnsureWindowVisible(window *application.WebviewWindow) error {
 	if window == nil {
 		return ErrWinsnapWindowInvalid
@@ -46,7 +47,14 @@ func EnsureWindowVisible(window *application.WebviewWindow) error {
 	if h == 0 {
 		return ErrWinsnapWindowInvalid
 	}
-	procShowWindowWake.Call(h, swRestoreWake)
+	if isWindowIconic(windows.HWND(h)) {
+		// Minimized: must use SW_RESTORE to undo minimize state
+		procShowWindowWake.Call(h, swRestoreWake)
+	} else {
+		// Hidden (SW_HIDE'd) or already visible: show without activating
+		const swShowNoActivate = 4 // SW_SHOWNOACTIVATE
+		procShowWindowWake.Call(h, swShowNoActivate)
+	}
 	return nil
 }
 

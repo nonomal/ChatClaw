@@ -245,7 +245,10 @@ func (s *TextSelectionService) startWatcher() {
 		inPopup := mouseX >= int32(popX)-marginPx && mouseX <= int32(popX+popWPx)+marginPx &&
 			mouseY >= int32(popY)-marginPx && mouseY <= int32(popY+popHPx)+marginPx
 
-		// If click is inside popup, trigger button click (matching demo project behavior)
+		// If click is inside popup, let the popup's frontend handle the click event
+		// (via @mousedown on the visible button). Don't call handleButtonClick() here
+		// — only the frontend knows if the user clicked the actual visible button vs
+		// the transparent background, reducing false triggers from other areas.
 		if inPopup {
 			// On macOS, save the frontmost app PID before our app gets activated by the click.
 			// This is critical for lazy-copy mode: we need to re-activate this app to copy text.
@@ -254,7 +257,6 @@ func (s *TextSelectionService) startWatcher() {
 				s.originalAppPid = frontAppPid
 				s.mu.Unlock()
 			}
-			go s.handleButtonClick()
 			return
 		}
 
@@ -528,18 +530,15 @@ func (s *TextSelectionService) Hide() {
 	s.mu.Unlock()
 
 	if w != nil {
-		// Check if window is still valid before calling SetPosition
+		// Check if window is still valid before hiding
 		nativeHandle := w.NativeWindow()
 		if nativeHandle != nil && uintptr(nativeHandle) != 0 {
-			if runtime.GOOS == "darwin" {
-				// macOS: use Hide() for reliable hiding
-				// Moving off-screen may still show window edge on some display configurations
-				w.Hide()
-			} else {
-				// Windows: Don't use w.Hide(), because Wails Hide() internally calls Focus,
-				// causing WebView2 error. Move window off-screen to "hide" instead.
-				w.SetPosition(-9999, -9999)
-			}
+			// Use platform-specific native hide:
+			// - Windows: ShowWindow(SW_HIDE) via native API (avoids Wails Focus crash)
+			// - macOS: w.Hide() (reliable)
+			// This replaces the old approach of moving off-screen which could be
+			// discovered on multi-monitor setups.
+			hidePopupNative(w)
 		} else {
 			// Window has been closed, clear the reference
 			s.mu.Lock()

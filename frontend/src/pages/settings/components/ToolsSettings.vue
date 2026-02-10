@@ -156,7 +156,7 @@ watch(
 )
 
 // 划词搜索设置状态
-const enableSelectionSearch = ref(true)
+const enableSelectionSearch = ref(false)
 
 // 布尔设置映射表
 const boolSettingsMap: Record<string, { value: boolean }> = {

@@ -19,7 +19,7 @@ INSERT OR IGNORE INTO settings (key, value, type, category, description, created
 ('show_floating_window', 'true', 'boolean', 'tools', '悬浮窗：是否显示桌面悬浮窗', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 
 -- 划词搜索相关设置
-('enable_selection_search', 'true', 'boolean', 'tools', '划词搜索：是否启用划词搜索功能', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+('enable_selection_search', 'false', 'boolean', 'tools', '划词搜索：是否启用划词搜索功能', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 `
 			if _, err := db.ExecContext(ctx, sql); err != nil {
 				return err

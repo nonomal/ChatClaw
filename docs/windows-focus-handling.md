@@ -151,21 +151,23 @@ func setWindowPosNoActivate(hwnd windows.HWND, x, y int32) error {
 1. **激活主窗口**：使用 `winutil.ForceActivateWindow(mainWindow)`（`pkg/winutil`）
 2. **显示弹窗**：调用 `tryConfigurePopupNoActivate(w)` 后再 `w.Show()`
 3. **移动窗口**：使用带 `SWP_NOACTIVATE` 的 `SetWindowPos`
-4. **隐藏弹窗**：使用 `w.SetPosition(-9999, -9999)` 而非 `w.Hide()`
+4. **隐藏弹窗/工具窗口**：使用原生 `ShowWindow(hwnd, SW_HIDE)` 而非 `w.Hide()` 或 `w.SetPosition(-9999)`
+5. **显示已隐藏的窗口**：使用原生 `ShowWindow(hwnd, SW_SHOWNOACTIVATE)` 或 `w.Show()`（配合 NoActivate Hook）
 
 ### ❌ 不应该这样做
 
 1. **直接调用 `w.Focus()`** - 可能导致 WebView2 崩溃
 2. **直接调用 `w.Hide()`** - Wails 内部可能调用 Focus
 3. **不带 `SWP_NOACTIVATE` 的 `SetWindowPos`** - 可能意外激活窗口
+4. **使用 `SetPosition(-9999, -9999)` 隐藏窗口** - 多屏扩展可能发现该窗口
 
 ## 跨平台兼容
 
-| 平台 | Focus 处理 | 窗口隐藏 | 可见性检测 |
-|------|-----------|---------|-----------|
-| Windows | 使用原生 API，避免 `w.Focus()` | `SetPosition(-9999, -9999)` | 枚举窗口 z-order |
-| macOS | 可以使用 `w.Focus()`，配合 `NSRunningApplication.activateWithOptions` | `w.Hide()` / `w.Show()` | `CGWindowListCopyWindowInfo` |
-| Linux | 可以使用 `w.Focus()` | `SetPosition(-9999, -9999)` | - |
+| 平台 | Focus 处理 | 窗口隐藏 | 窗口显示 | 可见性检测 |
+|------|-----------|---------|---------|-----------|
+| Windows | 使用原生 API，避免 `w.Focus()` | 原生 `ShowWindow(SW_HIDE)` | 原生 `ShowWindow(SW_SHOWNOACTIVATE)` 或 `w.Show()` | 枚举窗口 z-order |
+| macOS | 可以使用 `w.Focus()`，配合 `NSRunningApplication.activateWithOptions` | `w.Hide()` | `w.Show()` | `CGWindowListCopyWindowInfo` |
+| Linux | 可以使用 `w.Focus()` | `w.Hide()` | `w.Show()` | - |
 
 ### macOS 划词弹窗特殊处理
 
@@ -195,13 +197,12 @@ macOS 的划词搜索弹窗（text selection popup）需要以下特殊配置：
 
 3. **窗口隐藏**：
    ```go
-   // macOS: 使用 Hide() 可靠隐藏
-   if runtime.GOOS == "darwin" {
-       w.Hide()
-   } else {
-       // Windows: 移动到屏幕外（避免 WebView2 Focus 错误）
-       w.SetPosition(-9999, -9999)
-   }
+   // 使用平台特定的原生隐藏（hidePopupNative / MoveOffscreen）：
+   // - Windows: 原生 ShowWindow(hwnd, SW_HIDE)，避免 Wails Focus 崩溃，
+   //            也避免 SetPosition(-9999) 在多屏环境下被发现
+   // - macOS: w.Hide() 可靠隐藏
+   hidePopupNative(w) // 划词弹窗
+   winsnap.MoveOffscreen(w) // 吸附窗口
    ```
 
 ### macOS 吸附窗口特殊处理
@@ -215,6 +216,8 @@ macOS 的吸附窗口（winsnap）有以下特殊行为：
 
 2. **窗口隐藏/显示**：
    ```go
+   // 所有平台统一使用原生 Hide/Show：
+   
    // macOS: 使用 Hide/Show
    func MoveOffscreen(window *application.WebviewWindow) error {
        window.Hide()  // 可靠隐藏
@@ -226,9 +229,16 @@ macOS 的吸附窗口（winsnap）有以下特殊行为：
        return nil
    }
    
-   // Windows: 移动到屏幕外
+   // Windows: 使用原生 ShowWindow API（避免 Wails Focus 崩溃和多屏问题）
    func MoveOffscreen(window *application.WebviewWindow) error {
-       return setWindowPosNoSizeNoZ(hwnd, -9999, -9999)
+       ShowWindow(hwnd, SW_HIDE)  // 原生隐藏
+       return nil
+   }
+   
+   func EnsureWindowVisible(window *application.WebviewWindow) error {
+       if isMinimized { ShowWindow(hwnd, SW_RESTORE) }
+       else           { ShowWindow(hwnd, SW_SHOWNOACTIVATE) }
+       return nil
    }
    ```
 
@@ -330,6 +340,7 @@ pkg/winsnap/
 
 | 日期 | 更新内容 |
 |------|---------|
+| 2026-02-10 | 全平台统一改用原生 Hide/Show：Windows 使用 `ShowWindow(SW_HIDE/SW_SHOWNOACTIVATE)` 替代 `SetPosition(-9999)` 避免多屏问题 |
 | 2026-02-10 | 将 `ForceActivateWindow` 从 `textselection` 包提取到 `pkg/winutil` 公共包，消除架构耦合 |
 | 2026-02-10 | `bootstrap/app.go`: `safeShow`/`safeWake`/`safeUnMinimiseAndShow` 改用 `winutil.ForceActivateWindow` 替代 `w.Focus()` |
 | 2026-02-10 | 系统托盘：添加左键单击 `OnClick` 处理器，单击托盘图标即可唤醒主窗口并置顶 |

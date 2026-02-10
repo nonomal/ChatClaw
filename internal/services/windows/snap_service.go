@@ -304,22 +304,31 @@ func (s *SnapService) SyncFromSettings() (SnapStatus, error) {
 	return status, nil
 }
 
-func (s *SnapService) ensureRunning() error {
-	// Ensure window exists & shown (do not focus).
+// ensureWindow creates the winsnap window (if not already created), installs
+// event hooks, and stores the reference. Safe to call multiple times.
+func (s *SnapService) ensureWindow() (*application.WebviewWindow, error) {
 	if err := s.winSvc.Show(WindowWinsnap); err != nil {
-		return err
+		return nil, err
 	}
-
 	s.mu.Lock()
 	// We can safely call ensure here because we're in the same package; do NOT expose
 	// any *application.WebviewWindow types to the frontend bindings.
 	w, err := s.winSvc.ensure(WindowWinsnap)
 	if err != nil {
 		s.mu.Unlock()
-		return err
+		return nil, err
 	}
 	s.installWindowHooksLocked(w)
+	s.mu.Unlock()
+	return w, nil
+}
 
+// ensureRunning starts the snap-detection loop. The winsnap window is NOT
+// created here — it is lazily created inside step() only when a visible target
+// application is found. This avoids a brief window flash when the user toggles
+// a snap setting on.
+func (s *SnapService) ensureRunning() error {
+	s.mu.Lock()
 	alreadyLooping := s.loopCancel != nil
 	if alreadyLooping {
 		s.mu.Unlock()
@@ -355,20 +364,17 @@ func (s *SnapService) stop() error {
 	w := s.win
 	s.mu.Unlock()
 
-	// Instead of closing the window, move it to a standalone position (centered on screen)
-	// so it can wait for new snap relationships
+	// Hide the window off-screen instead of showing it at a standalone position.
+	// This avoids a brief flash when the user toggles snap settings off.
+	// If text selection or other features need the window later, WakeWindow()
+	// will bring it back (or recreate it if needed).
 	if w != nil {
-		s.moveToStandalone(w)
-		s.mu.Lock()
-		s.status.State = SnapStateStandalone
-		s.touchLocked("")
-		s.mu.Unlock()
-	} else {
-		s.mu.Lock()
-		s.status.State = SnapStateStopped
-		s.touchLocked("")
-		s.mu.Unlock()
+		_ = winsnap.MoveOffscreen(w)
 	}
+	s.mu.Lock()
+	s.status.State = SnapStateStopped
+	s.touchLocked("")
+	s.mu.Unlock()
 
 	return nil
 }
@@ -383,17 +389,8 @@ func (s *SnapService) moveToStandalone(w *application.WebviewWindow) {
 }
 
 func (s *SnapService) loop(ctx context.Context) {
-	// Wait until the winsnap window is ready (or at least shown) to ensure a valid native handle.
-	s.mu.Lock()
-	readyCh := s.readyCh
-	s.mu.Unlock()
-	select {
-	case <-readyCh:
-	case <-ctx.Done():
-		return
-	}
-
-	// Run immediately then on a ticker.
+	// Run step immediately. The window is created lazily inside step() only
+	// when a visible target is found, so we no longer wait for readyCh here.
 	s.step()
 	ticker := time.NewTicker(400 * time.Millisecond)
 	defer ticker.Stop()
@@ -422,13 +419,29 @@ func (s *SnapService) step() {
 		return
 	}
 	if w == nil {
-		// Window got closed; re-create.
-		if err := s.ensureRunning(); err != nil {
+		// Window doesn't exist yet or was closed. Only create it when a visible
+		// target is found (lazy creation), avoiding a brief flash on settings toggle.
+		target, found, err := winsnap.TopMostVisibleProcessName(enabledTargets)
+		if err != nil {
+			if err != winsnap.ErrSelfIsFrontmost {
+				s.mu.Lock()
+				s.status.LastError = err.Error()
+				s.touchLocked(err.Error())
+				s.mu.Unlock()
+			}
+			return
+		}
+		if !found || target == "" {
+			return // No target visible, skip window creation
+		}
+		// Target found — create the window on demand.
+		if _, err := s.ensureWindow(); err != nil {
 			s.mu.Lock()
 			s.status.LastError = err.Error()
 			s.touchLocked(err.Error())
 			s.mu.Unlock()
 		}
+		// Window just created; let it initialize. Next tick will attach.
 		return
 	}
 
@@ -444,7 +457,7 @@ func (s *SnapService) step() {
 				time.Sleep(80 * time.Millisecond) // allow restore layout to settle
 				_ = winsnap.SyncRightOfProcessNow(winsnap.AttachOptions{
 					TargetProcessName: targetForRestore,
-					Gap:               0,
+					Gap:               10,
 					App:               s.app,
 					Window:            w,
 				})
@@ -552,7 +565,7 @@ func (s *SnapService) attachTo(w *application.WebviewWindow, targetProcess strin
 
 	c, err := winsnap.AttachRightOfProcess(winsnap.AttachOptions{
 		TargetProcessName: targetProcess,
-		Gap:               0,
+		Gap:               10,
 		FindTimeout:       800 * time.Millisecond,
 		App:               s.app,
 		Window:            w,
@@ -644,7 +657,7 @@ func (s *SnapService) installWindowHooksLocked(w *application.WebviewWindow) {
 				time.Sleep(60 * time.Millisecond) // allow restore layout to settle
 				_ = winsnap.SyncRightOfProcessNow(winsnap.AttachOptions{
 					TargetProcessName: target,
-					Gap:               0,
+					Gap:               10,
 					App:               s.app,
 					Window:            w,
 				})

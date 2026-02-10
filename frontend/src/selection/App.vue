@@ -52,13 +52,13 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="flex h-screen w-screen cursor-pointer select-none items-center justify-center"
+    class="flex h-screen w-screen select-none items-center justify-center"
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
-    @mousedown="handleMouseDown"
   >
     <div
-      class="flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 shadow-lg transition-all hover:shadow-xl"
+      class="flex cursor-pointer items-center gap-2 rounded-full border border-border bg-background px-4 py-2 shadow-lg transition-all hover:shadow-xl"
+      @mousedown="handleMouseDown"
     >
       <Logo class="size-6" />
       <span class="text-sm font-medium text-foreground">{{ t('selection.aiChat') }}</span>

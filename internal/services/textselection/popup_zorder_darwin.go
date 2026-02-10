@@ -30,6 +30,15 @@ import "C"
 
 import "github.com/wailsapp/wails/v3/pkg/application"
 
+// hidePopupNative hides the popup window using the platform's native hide mechanism.
+// On macOS, w.Hide() is safe and reliable.
+func hidePopupNative(w *application.WebviewWindow) {
+	if w == nil {
+		return
+	}
+	w.Hide()
+}
+
 // forcePopupTopMostNoActivate ensures the popup is visible above other windows
 // without stealing focus on macOS.
 func forcePopupTopMostNoActivate(w *application.WebviewWindow) {
