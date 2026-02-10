@@ -92,6 +92,17 @@ func (s *UpdaterService) cleanupOldBinary() {
 	oldName := "." + filepath.Base(exe) + ".old"
 
 	if runtime.GOOS == "windows" {
+		// Only run the cleanup bat if an .old file likely exists; this avoids
+		// spawning a cmd.exe process (which may flash a console window) on
+		// every normal startup.
+		// We cannot stat the dot-prefixed file directly (Win32 path bug), so
+		// we check via a quick "dir /A /B" in the exe directory.
+		probe := exec.Command("cmd", "/C", fmt.Sprintf(`cd /D "%s" & dir /A /B "%s"`, dir, oldName))
+		setDetachedProcess(probe)
+		if probe.Run() != nil {
+			return // file not found — nothing to clean
+		}
+
 		script := fmt.Sprintf(
 			"@echo off\r\ncd /D \"%s\"\r\nattrib -H \"%s\" >nul 2>&1\r\ndel /F \"%s\" >nul 2>&1\r\n",
 			dir, oldName, oldName,
@@ -100,7 +111,9 @@ func (s *UpdaterService) cleanupOldBinary() {
 		if err := os.WriteFile(batPath, []byte(script), 0o644); err != nil {
 			return
 		}
-		_ = exec.Command("cmd", "/C", batPath).Run()
+		cmd := exec.Command("cmd", "/C", batPath)
+		setDetachedProcess(cmd)
+		_ = cmd.Run()
 		_ = os.Remove(batPath)
 	} else {
 		oldPath := filepath.Join(dir, oldName)
