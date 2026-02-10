@@ -16,7 +16,8 @@ static CFRunLoopSourceRef runLoopSource = NULL;
 static CFRunLoopRef tapRunLoop = NULL;
 static bool isDragging = false;
 static CGPoint dragStartPoint;
-static int dragDistanceThreshold = 5;
+static uint64_t dragStartTimestamp = 0;  // Event timestamp at drag start (nanoseconds)
+static int dragDistanceThreshold = 20;   // Minimum drag distance in CG points (~40 physical px on Retina)
 
 // Go callback declarations
 extern void mouseHookDarwinCallback(int x, int y);
@@ -97,6 +98,7 @@ static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CG
 		case kCGEventLeftMouseDown: {
 			isDragging = true;
 			dragStartPoint = location;
+			dragStartTimestamp = CGEventGetTimestamp(event);
 			// Get Cocoa coordinates and convert to screen pixel coordinates
 			NSPoint mouseLoc = [NSEvent mouseLocation];
 			NSScreen *screen = nil;
@@ -146,16 +148,31 @@ static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CG
 				CGFloat distance = dx*dx + dy*dy;
 				int thresholdSq = dragDistanceThreshold * dragDistanceThreshold;
 
+				// Multi-layer heuristic filtering (matching Windows implementation):
+				//
+				// Filter 1: minimum drag distance (20 CG points ≈ 40px on Retina)
+				bool passDistance = (distance > thresholdSq);
+				//
+				// Filter 2: minimum drag duration (150ms)
+				// CGEventGetTimestamp returns nanoseconds since system boot.
+				uint64_t elapsed = CGEventGetTimestamp(event) - dragStartTimestamp;
+				bool passDuration = (elapsed >= 150000000ULL); // 150ms in nanoseconds
+				//
+				// Filter 3: reject mostly-vertical drags (likely window drag / scrollbar)
+				CGFloat absDx = fabs(dx);
+				CGFloat absDy = fabs(dy);
+				bool passDirection = !(absDy > 3 * absDx && absDx < 20);
+
 				// Log drag distance
 				int distInt = (int)distance;
-				int passedCheck = (distance > thresholdSq) ? 1 : 0;
+				int passedCheck = (passDistance && passDuration && passDirection) ? 1 : 0;
 				dispatch_async(dispatch_get_main_queue(), ^{
 					mouseHookDarwinLogCallback(distInt, thresholdSq, passedCheck);
 				});
 
-		if (distance > thresholdSq) {
+		if (passDistance && passDuration && passDirection) {
 			// Possibly selecting text, delay processing
-			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 50 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 120 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
 				// Check if current focus app is our own
 				// If so, frontend JavaScript already handles it
 				NSRunningApplication *frontApp = [[NSWorkspace sharedWorkspace] frontmostApplication];

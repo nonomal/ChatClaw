@@ -85,8 +85,12 @@ func TopMostVisibleProcessName(targetProcessNames []string) (processName string,
 	return enumResult, true, nil
 }
 
-// MoveOffscreen moves the given window far outside the visible desktop area.
+// MoveOffscreen hides the given window using native ShowWindow(SW_HIDE).
 // This is used to represent "hidden (snapping) state" without closing the window.
+// Using native SW_HIDE instead of moving off-screen avoids the window being
+// discovered on multi-monitor setups where off-screen coordinates may be visible.
+// Note: We use native ShowWindow instead of Wails' w.Hide() because Wails Hide()
+// internally may call Focus(), which crashes WebView2 on HiddenOnTaskbar windows.
 func MoveOffscreen(window *application.WebviewWindow) error {
 	if window == nil {
 		return errors.New("winsnap: Window is nil")
@@ -95,18 +99,9 @@ func MoveOffscreen(window *application.WebviewWindow) error {
 	if h == 0 {
 		return errors.New("winsnap: native window handle is 0")
 	}
-	// Get window size to ensure we move it completely off-screen.
-	// Move by 3x window dimensions to ensure complete hiding.
-	width, height := window.Size()
-	if width <= 0 {
-		width = 2000 // fallback: large enough to ensure hiding
-	}
-	if height <= 0 {
-		height = 2000 // fallback: large enough to ensure hiding
-	}
-	offX := int32(-(width * 3))
-	offY := int32(-(height * 3))
-	return setWindowPosNoSizeNoZ(windows.HWND(h), offX, offY)
+	const swHide = 0 // SW_HIDE
+	procShowWindowZOrder.Call(h, swHide)
+	return nil
 }
 
 // MoveToStandalone moves the window to a standalone position (right side of the screen where the window is located).

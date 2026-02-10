@@ -24,12 +24,13 @@ type MouseHookWatcher struct {
 	ready               chan struct{}
 
 	// Drag detection
-	isDragging   bool
-	dragStartX   int32
-	dragStartY   int32
-	lastMouseX   int32
-	lastMouseY   int32
-	dragDistance int32 // Minimum drag distance threshold
+	isDragging    bool
+	dragStartX    int32
+	dragStartY    int32
+	dragStartTime time.Time // Record drag start time for duration filtering
+	lastMouseX    int32
+	lastMouseY    int32
+	dragDistance   int32 // Minimum drag distance threshold (in physical pixels)
 }
 
 var (
@@ -92,7 +93,7 @@ func NewMouseHookWatcher(
 		onDragStartWithPid: onDragStartWithPid,
 		showPopupCallback:  showPopupCallback,
 		ready:              make(chan struct{}),
-		dragDistance:       5, // Minimum drag distance to prevent accidental triggers
+		dragDistance:       30, // Minimum drag distance (physical px) to prevent accidental triggers
 	}
 }
 
@@ -180,6 +181,7 @@ func lowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 				w.isDragging = true
 				w.dragStartX = hookStruct.Pt.X
 				w.dragStartY = hookStruct.Pt.Y
+				w.dragStartTime = time.Now()
 				onDragStartWithPid := w.onDragStartWithPid
 				// Convert to logical pixels
 				scale := getDPIScale()
@@ -205,18 +207,38 @@ func lowLevelMouseProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 					dx := hookStruct.Pt.X - w.dragStartX
 					dy := hookStruct.Pt.Y - w.dragStartY
 					distance := dx*dx + dy*dy
+					dragDuration := time.Since(w.dragStartTime)
 
 					// Convert to logical pixels
 					scale := getDPIScale()
 					mouseX := int32(float64(hookStruct.Pt.X) / scale)
 					mouseY := int32(float64(hookStruct.Pt.Y) / scale)
 
-					// Check if there's enough drag distance (indicating possible text selection)
-					if distance > w.dragDistance*w.dragDistance {
+					// Multi-layer heuristic filtering to reduce false triggers:
+					//
+					// Filter 1: minimum drag distance (30px in physical pixels).
+					// Filter 2: minimum drag duration (150ms) — quick clicks/flicks are not text selection.
+					// Filter 3: reject mostly-vertical drags (|dy| > 3*|dx| && |dx| < 20px)
+					//           — likely window dragging, scrollbar, or screenshot tool.
+
+					absDx := dx
+					if absDx < 0 {
+						absDx = -absDx
+					}
+					absDy := dy
+					if absDy < 0 {
+						absDy = -absDy
+					}
+
+					passDistance := distance > w.dragDistance*w.dragDistance
+					passDuration := dragDuration >= 150*time.Millisecond
+					passDirection := !(absDy > 3*absDx && absDx < 20)
+
+					if passDistance && passDuration && passDirection {
 						w.mu.Unlock()
 						// Delay processing to let system complete selection
 						go func() {
-							time.Sleep(50 * time.Millisecond)
+							time.Sleep(120 * time.Millisecond)
 							w.handlePossibleSelection(mouseX, mouseY)
 						}()
 					} else {

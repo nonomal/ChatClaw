@@ -16,6 +16,26 @@ const (
 	swpNoActivate = 0x0010
 )
 
+var procShowWindowPopup = modUser32.NewProc("ShowWindow")
+
+const swHidePopup = 0 // SW_HIDE
+
+// hidePopupNative hides the popup window using native ShowWindow(SW_HIDE).
+// We use native API instead of Wails' w.Hide() because Wails Hide() internally
+// may call Focus(), which crashes WebView2 on popup/tool windows.
+// Using native SW_HIDE instead of moving off-screen avoids the window being
+// discovered on multi-monitor setups.
+func hidePopupNative(w *application.WebviewWindow) {
+	if w == nil {
+		return
+	}
+	h := uintptr(w.NativeWindow())
+	if h == 0 {
+		return
+	}
+	procShowWindowPopup.Call(h, swHidePopup)
+}
+
 // forcePopupTopMostNoActivate ensures the popup stays above other top-most windows
 // (e.g. winsnap window) without activating/focusing it.
 // Safely handles the case when the window has been closed/released.
