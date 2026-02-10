@@ -118,22 +118,15 @@ wails3 task darwin:sign UNIVERSAL=true DEV=true  # wails3 task darwin:sign:notar
 | Linux amd64    | `WillChat_linux_amd64.tar.gz`       |
 | Linux arm64    | `WillChat_linux_arm64.tar.gz`       |
 
-另外需上传校验文件 `checksums.txt`（每行格式：`sha256  filename`）。
-
 ### 制作更新资产示例（macOS arm64）
 
 ```bash
 # 1. 构建
-wails3 task darwin:build ARCH=arm64 DEV=false
+wails3 task darwin:sign:notarize ARCH=arm64 DEV=false
 
 # 2. 打包为 tar.gz（仅包含二进制）
 cd bin
 tar -czf WillChat_darwin_arm64.tar.gz -C WillChat.app/Contents/MacOS WillChat
-cd ..
-
-# 3. 生成 checksums
-cd bin
-shasum -a 256 WillChat_darwin_arm64.tar.gz >> checksums.txt
 cd ..
 ```
 
@@ -147,15 +140,11 @@ wails3 task windows:build ARCH=amd64 DEV=false
 cd bin
 zip WillChat_windows_amd64.zip WillChat.exe
 cd ..
-
-# 3. 生成 checksums
-cd bin
-sha256sum WillChat_windows_amd64.zip >> checksums.txt
-cd ..
 ```
 
 ### 发布步骤
 
 1. 在 GitHub 创建 Release（tag 格式如 `v1.0.0`）
-2. 上传所有平台的安装包 + 更新资产 + `checksums.txt`
-3. 同步 Release 到 Gitee（包括上传相同的文件）
+2. 各平台分别构建并打包更新资产（因为 CGO 无法交叉编译，需在对应平台上打包）
+3. 上传所有平台的安装包 + 更新资产到 Release
+4. 同步 Release 到 Gitee（包括上传相同的文件）

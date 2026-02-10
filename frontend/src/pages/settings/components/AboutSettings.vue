@@ -1,8 +1,9 @@
 <script setup lang="ts">
 /**
- * About settings component with auto-update support.
+ * About settings component.
+ * Update dialog is rendered in App.vue for global access.
  */
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronRight } from 'lucide-vue-next'
 import { BrowserService } from '@bindings/willchat/internal/services/browser'
@@ -15,7 +16,6 @@ import { toast } from '@/components/ui/toast'
 import { Events } from '@wailsio/runtime'
 import SettingsCard from './SettingsCard.vue'
 import SettingsItem from './SettingsItem.vue'
-import UpdateDialog from './UpdateDialog.vue'
 import LogoIcon from '@/assets/images/logo.svg'
 
 const { t } = useI18n()
@@ -26,21 +26,11 @@ const OFFICIAL_WEBSITE = 'https://github.com/zhimaAi/WillChat'
 // Application version
 const appVersion = ref('...')
 
-// Update states
+// Check update loading state
 const isCheckingUpdate = ref(false)
-const hasUpdate = ref(false)
-const latestVersion = ref('')
-const releaseNotes = ref('')
-
-// Dialog state
-const dialogOpen = ref(false)
-const dialogMode = ref<'new-version' | 'just-updated'>('new-version')
 
 // Auto update toggle
 const autoUpdate = ref(true)
-
-// Event unsubscribe
-let unsubscribeUpdateAvailable: (() => void) | null = null
 
 onMounted(async () => {
   try {
@@ -60,39 +50,7 @@ onMounted(async () => {
   } catch {
     // Use default value if setting not found
   }
-
-  // Check for pending update (just-updated scenario)
-  try {
-    const pending = await UpdaterService.GetPendingUpdate()
-    if (pending && pending.latest_version) {
-      latestVersion.value = pending.latest_version
-      releaseNotes.value = pending.release_notes || ''
-      dialogMode.value = 'just-updated'
-      dialogOpen.value = true
-    }
-  } catch {
-    // Ignore — no pending update
-  }
-
-  // Listen for background update:available event from ServiceStartup
-  unsubscribeUpdateAvailable = Events.On('update:available', handleUpdateAvailable)
 })
-
-onUnmounted(() => {
-  unsubscribeUpdateAvailable?.()
-  unsubscribeUpdateAvailable = null
-})
-
-// Handle update:available event from backend
-function handleUpdateAvailable(info: any) {
-  if (info?.has_update && info?.latest_version) {
-    hasUpdate.value = true
-    latestVersion.value = info.latest_version
-    releaseNotes.value = info.release_notes || ''
-    dialogMode.value = 'new-version'
-    dialogOpen.value = true
-  }
-}
 
 // Open website
 async function handleOpenWebsite() {
@@ -103,18 +61,19 @@ async function handleOpenWebsite() {
   }
 }
 
-// Check for update
+// Check for update — delegates to App.vue via frontend event
 async function handleCheckUpdate() {
   if (isCheckingUpdate.value) return
   isCheckingUpdate.value = true
   try {
     const result = await UpdaterService.CheckForUpdate()
     if (result && result.has_update) {
-      hasUpdate.value = true
-      latestVersion.value = result.latest_version
-      releaseNotes.value = result.release_notes || ''
-      dialogMode.value = 'new-version'
-      dialogOpen.value = true
+      // Notify App.vue to open the update dialog
+      Events.Emit('update:show-dialog', {
+        mode: 'new-version',
+        version: result.latest_version,
+        release_notes: result.release_notes || '',
+      })
     } else {
       toast.success(t('settings.about.alreadyLatest'))
     }
@@ -192,13 +151,4 @@ async function handleAutoUpdateChange(value: boolean) {
       <Switch :model-value="autoUpdate" @update:model-value="handleAutoUpdateChange" />
     </SettingsItem>
   </SettingsCard>
-
-  <!-- Update dialog (new version / just updated) -->
-  <UpdateDialog
-    :open="dialogOpen"
-    :mode="dialogMode"
-    :version="latestVersion"
-    :release-notes="releaseNotes"
-    @update:open="dialogOpen = $event"
-  />
 </template>

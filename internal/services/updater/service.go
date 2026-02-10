@@ -54,7 +54,8 @@ func NewUpdaterService(app *application.App) *UpdaterService {
 // It schedules a background update check if auto_update is enabled.
 func (s *UpdaterService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
 	go func() {
-		time.Sleep(10 * time.Second)
+		time.Sleep(3 * time.Second)
+
 		if !settings.GetBool("auto_update", true) {
 			return
 		}
@@ -65,7 +66,7 @@ func (s *UpdaterService) ServiceStartup(ctx context.Context, options application
 		}
 		if info != nil && info.HasUpdate {
 			s.app.Logger.Info("new version available", "version", info.LatestVersion)
-			s.app.Event.Emit("update:available", info)
+			s.app.Event.Emit("update:available", *info)
 		}
 	}()
 	return nil
@@ -89,8 +90,7 @@ func (s *UpdaterService) CheckForUpdate() (*UpdateInfo, error) {
 	}
 
 	updater, err := selfupdate.NewUpdater(selfupdate.Config{
-		Source:    source,
-		Validator: &selfupdate.ChecksumValidator{UniqueFilename: "checksums.txt"},
+		Source: source,
 	})
 	if err != nil {
 		return nil, errs.Wrap("error.update_init_failed", err)
@@ -143,8 +143,7 @@ func (s *UpdaterService) DownloadAndApply() error {
 	}
 
 	updater, err := selfupdate.NewUpdater(selfupdate.Config{
-		Source:    source,
-		Validator: &selfupdate.ChecksumValidator{UniqueFilename: "checksums.txt"},
+		Source: source,
 	})
 	if err != nil {
 		return errs.Wrap("error.update_init_failed", err)
