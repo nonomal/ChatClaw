@@ -54,12 +54,7 @@ func NewUpdaterService(app *application.App) *UpdaterService {
 }
 
 // ServiceStartup is called by Wails after the application starts.
-// It always schedules a background update check so the frontend can show
-// a badge on the "Check for Update" button. The auto_update setting only
-// controls whether the update dialog is shown automatically.
 func (s *UpdaterService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	// Clean up leftover .old binary from a previous update (Windows leaves it behind
-	// because the old process was still running when the update was applied).
 	s.cleanupOldBinary()
 
 	go func() {
@@ -81,77 +76,35 @@ func (s *UpdaterService) ServiceStartup(ctx context.Context, options application
 	return nil
 }
 
-// cleanupOldBinary removes .old files left behind by a previous update.
-// On Windows, the running process cannot delete itself, so the library renames
-// the old binary to .<name>.old and marks it as hidden. We clean it up on next
-// launch when the file is no longer locked.
+// cleanupOldBinary removes the .<exe>.old backup left by go-selfupdate.
 //
-// NOTE: On Windows, absolute paths with dot-prefixed filenames (e.g.
-// "C:\dir\.file") are misinterpreted by the Win32 path parser as a relative
-// directory reference. Neither Go's os.Remove, kernel32 DeleteFileW with \\?\
-// prefix, nor PowerShell can access such files by absolute path. The
-// workaround is to "cd /D" into the directory and use the relative filename.
+// On Windows the old binary is hidden and its dot-prefixed name cannot be
+// accessed via absolute paths (Win32 treats "\.X" as a relative reference).
+// We work around this by running a bat script that cd's into the directory
+// and uses the relative filename.
 func (s *UpdaterService) cleanupOldBinary() {
-	logToFile := newFileLogger()
-
 	exe, err := os.Executable()
 	if err != nil {
 		return
 	}
 
 	dir := filepath.Dir(exe)
-	name := filepath.Base(exe)
-	oldName := "." + name + ".old"
+	oldName := "." + filepath.Base(exe) + ".old"
 
-	// On Windows, absolute paths with dot-prefixed filenames (e.g.
-	// "C:\dir\.file") are misinterpreted by the Win32 path parser. We work
-	// around this by cd-ing into the directory and using the relative name.
 	if runtime.GOOS == "windows" {
-		logToFile("[cleanup] trying to remove %s in dir %s", oldName, dir)
-
-		// attrib -H to clear hidden attribute, then del /F to force-delete.
-		// Both commands use a relative name after "cd /D" to avoid the
-		// dot-prefix path parsing bug.
 		script := fmt.Sprintf(
-			"@echo off\r\ncd /D \"%s\"\r\nattrib -H \"%s\" >nul 2>&1\r\ndel /F \"%s\"\r\n",
+			"@echo off\r\ncd /D \"%s\"\r\nattrib -H \"%s\" >nul 2>&1\r\ndel /F \"%s\" >nul 2>&1\r\n",
 			dir, oldName, oldName,
 		)
 		batPath := filepath.Join(os.TempDir(), "willclaw_cleanup.bat")
 		if err := os.WriteFile(batPath, []byte(script), 0o644); err != nil {
-			logToFile("[cleanup] failed to write bat: %v", err)
 			return
 		}
-		out, err := exec.Command("cmd", "/C", batPath).CombinedOutput()
+		_ = exec.Command("cmd", "/C", batPath).Run()
 		_ = os.Remove(batPath)
-		if err != nil {
-			logToFile("[cleanup] bat error: %v, output: %s", err, string(out))
-		} else {
-			logToFile("[cleanup] bat succeeded, output: %s", string(out))
-		}
 	} else {
-		// On Unix, just use os.Remove directly — no dot-prefix issues.
 		oldPath := filepath.Join(dir, oldName)
-		if err := os.Remove(oldPath); err != nil && !os.IsNotExist(err) {
-			logToFile("[cleanup] remove failed: %v", err)
-		}
-	}
-}
-
-// newFileLogger returns a function that appends log lines to the willclaw.log
-// file. This bypasses slog (which does not write to disk in production).
-func newFileLogger() func(format string, args ...any) {
-	cfgDir, err := os.UserConfigDir()
-	if err != nil {
-		return func(string, ...any) {}
-	}
-	logPath := filepath.Join(cfgDir, define.AppID, "willclaw.log")
-	return func(format string, args ...any) {
-		f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-		if err != nil {
-			return
-		}
-		defer f.Close()
-		fmt.Fprintf(f, format+"\n", args...)
+		_ = os.Remove(oldPath)
 	}
 }
 
@@ -195,8 +148,6 @@ func (s *UpdaterService) CheckForUpdate() (*UpdateInfo, error) {
 		}, nil
 	}
 
-	// Cache the latest release and source for DownloadAndApply,
-	// so that the same source is used for both check and download.
 	s.mu.Lock()
 	s.latest = latest
 	s.source = source
@@ -212,7 +163,6 @@ func (s *UpdaterService) CheckForUpdate() (*UpdateInfo, error) {
 }
 
 // DownloadAndApply downloads the latest release and replaces the current binary.
-// Must call CheckForUpdate first to detect the latest release.
 func (s *UpdaterService) DownloadAndApply() error {
 	s.mu.Lock()
 	latest := s.latest
@@ -258,9 +208,7 @@ func (s *UpdaterService) DownloadAndApply() error {
 	return nil
 }
 
-// GetPendingUpdate returns update info persisted by the previous DownloadAndApply call,
-// then clears the persisted data. Returns nil if no pending update exists.
-// This is called by the frontend on startup to show the "just updated" dialog.
+// GetPendingUpdate returns and clears update info persisted by DownloadAndApply.
 func (s *UpdaterService) GetPendingUpdate() *UpdateInfo {
 	version, _ := settings.GetValue("pending_update_version")
 	notes, _ := settings.GetValue("pending_update_notes")
@@ -287,11 +235,6 @@ func (s *UpdaterService) GetPendingUpdate() *UpdateInfo {
 }
 
 // RestartApp launches a new instance of the application and exits the current one.
-//
-// On Windows, the application uses SingleInstance mode which prevents a second
-// process from running while the first is still alive. Therefore we must quit
-// the current process FIRST and use a shell-delayed launch (ping localhost to
-// wait ~2s) so the new process starts only after this one has fully exited.
 func (s *UpdaterService) RestartApp() error {
 	exe, err := os.Executable()
 	if err != nil {
@@ -304,8 +247,7 @@ func (s *UpdaterService) RestartApp() error {
 		if err != nil {
 			return errs.Wrap("error.update_restart_failed", err)
 		}
-		// On macOS, use "open" to launch the .app bundle.
-		// exe is like /Applications/WillClaw.app/Contents/MacOS/WillClaw
+		// Resolve the .app bundle path from the inner binary.
 		appPath := exe
 		for i := 0; i < 3; i++ {
 			appPath = filepath.Dir(appPath)
@@ -329,17 +271,10 @@ func (s *UpdaterService) RestartApp() error {
 		}()
 
 	case "windows":
-		// On Windows with SingleInstance, we cannot start the new process while
-		// the current one is still running — it would be rejected as a second
-		// instance. Write a temporary .bat script that waits ~2s (via ping)
-		// then launches the new exe. Using a .bat file avoids all Go/cmd.exe
-		// argument quoting issues.
-		//
-		// The bat script also cleans up the .old backup binary. We do this here
-		// (instead of at next startup) because:
-		//   1. The old process has fully exited, so no file lock.
-		//   2. Using "cd /D" + relative path avoids Windows path parsing issues
-		//      with dot-prefixed filenames in absolute paths.
+		// SingleInstance mode rejects a second process while the first is alive.
+		// A bat script waits ~2s, cleans up the .old binary, then launches the
+		// new exe. Using "cd /D" + relative name works around the Win32 path
+		// parser bug with dot-prefixed filenames.
 		exeDir := filepath.Dir(exe)
 		exeName := filepath.Base(exe)
 		oldName := "." + exeName + ".old"
@@ -408,10 +343,6 @@ func (s *UpdaterService) selectSource() (selfupdate.Source, error) {
 }
 
 // isGoogleReachable checks if Google is accessible within the probe timeout.
-// When Google is reachable the user is on an unrestricted network, so GitHub
-// downloads will also work. This is a stricter check than probing GitHub API
-// directly, because GitHub API may respond while release asset downloads are
-// still throttled or blocked.
 func isGoogleReachable() bool {
 	ctx, cancel := context.WithTimeout(context.Background(), googleProbeTimeout)
 	defer cancel()

@@ -504,8 +504,5 @@ func initLogger() (*slog.Logger, *os.File) {
 	l := slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: level}))
 	l.Info("logger initialized", "path", logPath, "version", define.Version, "env", define.Env)
 
-	// Also write a raw line to verify the file is truly writable (belt and suspenders).
-	_, _ = fmt.Fprintf(f, "=== WillClaw started, version=%s env=%s pid=%d ===\n", define.Version, define.Env, os.Getpid())
-
 	return l, f
 }
