@@ -52,6 +52,7 @@ export default {
     title: 'WillClaw',
     assistantName: '灵魂厨房助手',
     cancelSnap: '取消吸附',
+    closeWindow: '关闭',
     placeholder: '请输入问题',
     thinking: '思考中...',
     actions: {
@@ -59,6 +60,7 @@ export default {
       sendToEdit: '发送到编辑框',
       copyToClipboard: '复制到剪贴板',
     },
+    findSnap: '吸附',
     toast: {
       copied: '已复制到剪贴板',
       sent: '已发送',
@@ -66,6 +68,8 @@ export default {
       sendFailed: '发送失败',
       pasteFailed: '粘贴失败',
       noTarget: '未吸附到任何应用',
+      noSnapTarget: '未找到可吸附的应用',
+      attachFailed: '吸附失败',
     },
   },
   selection: {

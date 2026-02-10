@@ -94,12 +94,53 @@ export function useSnapMode() {
         const settingsKey = processToSettingsKey[status.targetProcess]
         if (settingsKey) {
           await SettingsService.SetValue(settingsKey, 'false')
-          await SnapService.SyncFromSettings()
-          hasAttachedTarget.value = false
         }
       }
+      // Detach but keep window visible at standalone position (right side of screen)
+      await SnapService.DetachToStandalone()
+      hasAttachedTarget.value = false
     } catch (error) {
       console.error('Failed to cancel snap:', error)
+    }
+  }
+
+  const findAndAttach = async () => {
+    try {
+      const key = await SnapService.FindSnapTarget()
+      if (!key) {
+        toast.error(t('winsnap.toast.noSnapTarget'))
+        return
+      }
+      await SettingsService.SetValue(key, 'true')
+      await SnapService.SyncFromSettings()
+    } catch (error) {
+      console.error('Failed to find and attach:', error)
+      toast.error(t('winsnap.toast.attachFailed'))
+    }
+  }
+
+  // All snap settings keys
+  const allSnapKeys = [
+    'snap_wechat', 'snap_wecom', 'snap_qq',
+    'snap_dingtalk', 'snap_feishu', 'snap_douyin',
+  ]
+
+  const closeSnapWindow = async () => {
+    try {
+      // 1. Disable all snap toggles in settings
+      const status = await SnapService.GetStatus()
+      const keysToDisable = status.enabledKeys?.length
+        ? status.enabledKeys
+        : allSnapKeys
+      await Promise.all(
+        keysToDisable.map((key) => SettingsService.SetValue(key, 'false'))
+      )
+
+      // 2. Stop snap service and hide window
+      await SnapService.CloseSnapWindow()
+      hasAttachedTarget.value = false
+    } catch (error) {
+      console.error('Failed to close snap window:', error)
     }
   }
 
@@ -148,6 +189,8 @@ export function useSnapMode() {
     checkSnapStatus,
     loadSnapSettings,
     cancelSnap,
+    findAndAttach,
+    closeSnapWindow,
     handleSendAndTrigger,
     handleSendToEdit,
     handleCopyToClipboard,

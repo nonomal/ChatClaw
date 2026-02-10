@@ -18,8 +18,9 @@ func DefaultDefinitions() []WindowDefinition {
 					Width:  400,
 					Height: 720,
 					Hidden: true,
-					// Use native titlebar for proper close/minimize/fullscreen buttons.
-					Frameless: false,
+					// Use frameless mode — the custom SnapModeHeader provides its own
+					// drag region and close button; no native title bar needed.
+					Frameless: true,
 					// Let z-order follow the attached target window (not global top-most).
 					// - Windows: we insert after the target hwnd (see pkg/winsnap/winsnap_windows.go)
 					// - macOS: we order above the target window number on activation (see pkg/winsnap/winsnap_darwin.go)
@@ -28,10 +29,14 @@ func DefaultDefinitions() []WindowDefinition {
 					// Windows specific: hide from taskbar
 					Windows: application.WindowsWindow{
 						HiddenOnTaskbar: true,
+						// Avoid extra shadow/rounded-corner decorations in frameless mode.
+						DisableFramelessWindowDecorations: true,
 					},
 					Mac: application.MacWindow{
 						// Use normal window level; ordering is handled dynamically to stay above the target window only.
 						WindowLevel: application.MacWindowLevelNormal,
+						// No invisible title bar — dragging is handled by --wails-draggable in the header.
+						InvisibleTitleBarHeight: 0,
 						CollectionBehavior: application.MacWindowCollectionBehaviorCanJoinAllSpaces |
 							application.MacWindowCollectionBehaviorTransient |
 							application.MacWindowCollectionBehaviorIgnoresCycle,

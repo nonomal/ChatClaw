@@ -52,6 +52,7 @@ export default {
     title: 'WillClaw',
     assistantName: 'Soul Kitchen Assistant',
     cancelSnap: 'Cancel Snap',
+    closeWindow: 'Close',
     placeholder: 'Type your question',
     thinking: 'Thinking...',
     actions: {
@@ -59,6 +60,7 @@ export default {
       sendToEdit: 'Send to Edit Box',
       copyToClipboard: 'Copy to Clipboard',
     },
+    findSnap: 'Snap',
     toast: {
       copied: 'Copied to clipboard',
       sent: 'Sent',
@@ -66,6 +68,8 @@ export default {
       sendFailed: 'Failed to send',
       pasteFailed: 'Failed to paste',
       noTarget: 'Not attached to any app',
+      noSnapTarget: 'No snappable app found',
+      attachFailed: 'Failed to attach',
     },
   },
   selection: {
