@@ -97,7 +97,11 @@ var BuiltinModels = []BuiltinModelConfig{
 }
 
 // GetBuiltinProviderDefaultEndpoint 获取内置供应商的默认 API 地址
+// ChatWiki 在调用时从 ChatWikiOpenAPIEndpoint() 取，避免包初始化顺序导致 ServerURL 未就绪
 func GetBuiltinProviderDefaultEndpoint(providerID string) (string, bool) {
+	if providerID == "chatwiki" {
+		return ChatWikiOpenAPIEndpoint(), true
+	}
 	for _, p := range BuiltinProviders {
 		if p.ProviderID == providerID {
 			return p.APIEndpoint, true

@@ -96,11 +96,16 @@ create table if not exists models (
 			}
 
 			// 初始化内置供应商（使用 bun 批量插入，避免 SQL 注入风险）
+			// ChatWiki api_endpoint 在迁移执行时从 define.ChatWikiOpenAPIEndpoint() 取，避免包初始化顺序导致 ServerURL 未就绪
 			if len(define.BuiltinProviders) > 0 {
 				now := time.Now().UTC().Format(dateTimeFormat)
 				providers := make([]migrationProvider, 0, len(define.BuiltinProviders))
 				for _, p := range define.BuiltinProviders {
 					enabled := p.ProviderID == "chatwiki" // ChatWiki enabled by default
+					apiEndpoint := p.APIEndpoint
+					if p.ProviderID == "chatwiki" {
+						apiEndpoint = define.ChatWikiOpenAPIEndpoint()
+					}
 					providers = append(providers, migrationProvider{
 						ProviderID:  p.ProviderID,
 						Name:        p.Name,
@@ -109,7 +114,7 @@ create table if not exists models (
 						IsBuiltin:   true,
 						Enabled:     enabled,
 						SortOrder:   p.SortOrder,
-						APIEndpoint: p.APIEndpoint,
+						APIEndpoint: apiEndpoint,
 						APIKey:      "",
 						ExtraConfig: "{}",
 						CreatedAt:   now,

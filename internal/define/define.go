@@ -26,26 +26,9 @@ func IsProd() bool {
 	return Env == "production"
 }
 
-// ChatWikiOpenAPIEndpoint returns the ChatWiki OpenAPI base URL derived from ServerURL.
-//
-// NOTE:
-// We intentionally keep the same mapping as the previous ChatWikiAPIEndpoint defaults by doing
-// a simple URL replacement based on ServerURL.
+// ChatWikiOpenAPIEndpoint returns the ChatWiki OpenAPI base URL (ServerURL as configured; no suffix appended).
+// Initial write to providers table uses this (see migrations: create_models_table, add_chatwiki_provider).
+// Env defaults (env_dev.go / env_prod.go) should include /openapi so the stored api_endpoint is correct.
 func ChatWikiOpenAPIEndpoint() string {
-	base := strings.TrimSuffix(strings.TrimSpace(ServerURL), "/")
-	if base == "" {
-		return ""
-	}
-
-	// Keep backward-compatible mappings:
-	// - dev1 server -> local openapi
-	// - production server -> dev3 openapi
-	switch {
-	case strings.HasPrefix(base, "https://dev1.willchat.chatwiki.com"):
-		return "https://dev1.willchat.chatwiki.com/openapi"
-	case strings.HasPrefix(base, "https://willchat.chatwiki.com"):
-		return "https://willchat.chatwiki.com/openapi"
-	default:
-		return base + "/openapi"
-	}
+	return strings.TrimSuffix(strings.TrimSpace(ServerURL), "/")
 }
