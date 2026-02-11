@@ -205,7 +205,7 @@ const clearDefaultModel = () => {
   modelKey.value = ''
 }
 
-const isValid = computed(() => name.value.trim() !== '' && prompt.value.trim() !== '')
+const isValid = computed(() => name.value.trim() !== '')
 
 const handleClose = () => emit('update:open', false)
 
@@ -573,7 +573,6 @@ const handleDelete = async () => {
                 <div class="flex flex-col gap-1.5">
                   <label class="text-sm font-medium text-foreground">
                     {{ t('assistant.fields.prompt') }}
-                    <span class="text-destructive">*</span>
                   </label>
                   <textarea
                     v-model="prompt"

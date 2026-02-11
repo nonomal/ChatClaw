@@ -11,7 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"chatclaw/internal/define"
 	"chatclaw/internal/errs"
+	"chatclaw/internal/services/i18n"
 	"chatclaw/internal/sqlite"
 
 	"github.com/uptrace/bun"
@@ -98,9 +100,6 @@ func (s *AgentsService) CreateAgent(input CreateAgentInput) (*Agent, error) {
 	}
 
 	prompt := strings.TrimSpace(input.Prompt)
-	if prompt == "" {
-		return nil, errs.New("error.agent_prompt_required")
-	}
 	if len([]rune(prompt)) > 1000 {
 		return nil, errs.New("error.agent_prompt_too_long")
 	}
@@ -143,6 +142,11 @@ func (s *AgentsService) CreateAgent(input CreateAgentInput) (*Agent, error) {
 
 	dto := m.toDTO()
 	return &dto, nil
+}
+
+// GetDefaultPrompt returns the default prompt based on the current i18n locale.
+func (s *AgentsService) GetDefaultPrompt() string {
+	return define.DefaultAgentPromptForLocale(i18n.GetLocale())
 }
 
 // ReadIconFile 将本地图片文件读取为 data URL（供前端预览 + 写入 DB）。
@@ -244,9 +248,6 @@ func (s *AgentsService) UpdateAgent(id int64, input UpdateAgentInput) (*Agent, e
 
 	if input.Prompt != nil {
 		prompt := strings.TrimSpace(*input.Prompt)
-		if prompt == "" {
-			return nil, errs.New("error.agent_prompt_required")
-		}
 		if len([]rune(prompt)) > 1000 {
 			return nil, errs.New("error.agent_prompt_too_long")
 		}
