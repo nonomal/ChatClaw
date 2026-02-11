@@ -83,7 +83,7 @@ const handleClearLibrarySelection = () => {
   emit('clearLibrarySelection')
 }
 
-// Whether the currently selected model's provider is free (e.g. ChatWiki)
+// Whether the currently selected model's provider is free (e.g. ChatClaw)
 const selectedProviderIsFree = computed(() => {
   if (!props.selectedModelInfo?.providerId || !props.providersWithModels?.length) return false
   const pw = props.providersWithModels.find((p) => p.provider?.provider_id === props.selectedModelInfo?.providerId)
