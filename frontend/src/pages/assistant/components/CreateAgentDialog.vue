@@ -30,15 +30,20 @@ const name = ref('')
 const prompt = ref('')
 const icon = ref<string>('') // data URL
 
-const isValid = computed(() => name.value.trim() !== '' && prompt.value.trim() !== '')
+const isValid = computed(() => name.value.trim() !== '')
 
 watch(
   () => props.open,
-  (open) => {
+  async (open) => {
     if (!open) return
     name.value = ''
     prompt.value = ''
     icon.value = ''
+    try {
+      prompt.value = await AgentsService.GetDefaultPrompt()
+    } catch {
+      // Fallback: leave prompt empty if the backend call fails
+    }
   }
 )
 
@@ -109,7 +114,6 @@ const handleCreate = () => {
         <div class="flex flex-col gap-1.5">
           <label class="text-sm font-medium text-foreground">
             {{ t('assistant.fields.prompt') }}
-            <span class="text-destructive">*</span>
           </label>
           <textarea
             v-model="prompt"
