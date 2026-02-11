@@ -1,9 +1,10 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
+import { v4 as uuidv4 } from 'uuid'
 import DefaultTabIcon from '@/assets/images/tab-default.png'
 import { getLogoDataUrl } from '@/composables/useLogo'
 
-const createTabId = () => `tab-${crypto.randomUUID()}`
+const createTabId = () => `tab-${uuidv4()}`
 
 /**
  * 导航模块类型
