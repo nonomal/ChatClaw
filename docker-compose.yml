@@ -1,0 +1,18 @@
+services:
+  chatclaw:
+    image: registry.cn-hangzhou.aliyuncs.com/chatwiki/chatclaw:latest
+    container_name: chatclaw-server
+    volumes:
+      - chatclaw-data:/root/.config/chatclaw
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  chatclaw-data:

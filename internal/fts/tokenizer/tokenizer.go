@@ -30,7 +30,7 @@ func initSegmenter() {
 	segOnce.Do(func() {
 		seg.AlphaNum = true
 		seg.SkipLog = true
-		_ = seg.LoadDict() // load default dictionary
+		_ = seg.LoadDictEmbed()
 		pinyinArgs = pinyin.NewArgs()
 		pinyinArgs.Style = pinyin.Normal
 		// Keep non-Chinese characters as-is
