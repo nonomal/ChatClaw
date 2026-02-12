@@ -106,6 +106,9 @@ wails3 task darwin:sign:notarize UNIVERSAL=true DEV=false
 ## Linux Server 模式构建、打包
 
 ```bash
+# 打包前端
+cd frontend && npm run build && cd ..
+
 # 构建 arm64 镜像并导出二进制文件
 wails3 task build:docker PLATFORM=arm64
 wails3 task export:docker ARCH=arm64
