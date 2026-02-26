@@ -84,6 +84,7 @@ export default {
     assistant: 'AI助手',
     knowledge: '知识库',
     multiask: '多问',
+    memory: '记忆',
     settings: '设置',
   },
   multiask: {
@@ -610,5 +611,19 @@ export default {
         failed: '删除失败',
       },
     },
+  },
+  memory: {
+    title: '记忆',
+    selectAgent: '选择一个助手以查看其记忆',
+    noData: '暂无记忆数据',
+    basicInfo: '基本信息',
+    basicInfoDesc: '用户最核心的基础信息',
+    basicInfoEmpty: '暂无基本信息',
+    topicSummary: '话题摘要',
+    topicSummaryDesc: '按主题归纳的长期摘要',
+    topicSummaryEmpty: '暂无话题摘要',
+    conversationLog: '对话记录',
+    conversationLogDesc: '按日期的对话事实流水',
+    conversationLogEmpty: '暂无对话记录',
   },
 }

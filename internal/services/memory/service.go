@@ -98,6 +98,62 @@ func (s *MemoryService) GetCoreProfile(ctx context.Context, agentID int64) (stri
 	return m.Content, nil
 }
 
+// ThematicFactDTO is the frontend-facing DTO for thematic facts.
+type ThematicFactDTO struct {
+	ID      int64  `json:"id"`
+	Topic   string `json:"topic"`
+	Content string `json:"content"`
+}
+
+// EventStreamDTO is the frontend-facing DTO for event stream entries.
+type EventStreamDTO struct {
+	ID      int64  `json:"id"`
+	Date    string `json:"date"`
+	Content string `json:"content"`
+}
+
+func (s *MemoryService) GetThematicFacts(ctx context.Context, agentID int64) ([]ThematicFactDTO, error) {
+	if db == nil {
+		return nil, errs.New("error.memory_db_not_initialized")
+	}
+
+	var facts []ThematicFact
+	err := db.NewSelect().Model(&facts).
+		Where("agent_id = ?", agentID).
+		OrderExpr("updated_at DESC").
+		Scan(ctx)
+	if err != nil {
+		return nil, nil
+	}
+
+	result := make([]ThematicFactDTO, len(facts))
+	for i, f := range facts {
+		result[i] = ThematicFactDTO{ID: f.ID, Topic: f.Topic, Content: f.Content}
+	}
+	return result, nil
+}
+
+func (s *MemoryService) GetEventStreams(ctx context.Context, agentID int64) ([]EventStreamDTO, error) {
+	if db == nil {
+		return nil, errs.New("error.memory_db_not_initialized")
+	}
+
+	var events []EventStream
+	err := db.NewSelect().Model(&events).
+		Where("agent_id = ?", agentID).
+		OrderExpr("date DESC, id DESC").
+		Scan(ctx)
+	if err != nil {
+		return nil, nil
+	}
+
+	result := make([]EventStreamDTO, len(events))
+	for i, e := range events {
+		result[i] = EventStreamDTO{ID: e.ID, Date: e.Date, Content: e.Content}
+	}
+	return result, nil
+}
+
 // DeleteAgentMemories deletes all memories associated with an agent.
 // Called by AgentsService when an agent is deleted.
 func DeleteAgentMemories(ctx context.Context, agentID int64) error {

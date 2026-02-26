@@ -84,6 +84,7 @@ export default {
     assistant: 'AI Assistant',
     knowledge: 'Knowledge Base',
     multiask: 'Multi Ask',
+    memory: 'Memory',
     settings: 'Settings',
   },
   multiask: {
@@ -612,5 +613,19 @@ export default {
         failed: 'Failed to delete',
       },
     },
+  },
+  memory: {
+    title: 'Memory',
+    selectAgent: 'Select an agent to view its memory',
+    noData: 'No memory data',
+    basicInfo: 'Basic Info',
+    basicInfoDesc: 'Core user profile information',
+    basicInfoEmpty: 'No basic info yet',
+    topicSummary: 'Topic Summary',
+    topicSummaryDesc: 'Long-term summaries organized by topic',
+    topicSummaryEmpty: 'No topic summaries yet',
+    conversationLog: 'Conversation Log',
+    conversationLogDesc: 'Chronological conversation facts',
+    conversationLogEmpty: 'No conversation logs yet',
   },
 }
