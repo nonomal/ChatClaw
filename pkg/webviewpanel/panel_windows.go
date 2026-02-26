@@ -231,6 +231,15 @@ func (p *windowsPanelImpl) setupChromium() {
 		panelID := fmt.Sprintf("panel-%d", p.panel.id)
 		p.chromium.DataPath = filepath.Join(base, "chatclaw-panels", panelID)
 	}
+
+	// Set custom User-Agent via browser arguments if specified
+	if p.panel.options.UserAgent != "" {
+		p.chromium.AdditionalBrowserArgs = append(
+			p.chromium.AdditionalBrowserArgs,
+			"--user-agent="+p.panel.options.UserAgent,
+		)
+	}
+
 	// Prevent os.Exit on WebView2 errors; log instead
 	p.chromium.SetErrorCallback(func(err error) {
 		fmt.Printf("[WebView2] panel error: %v\n", err)

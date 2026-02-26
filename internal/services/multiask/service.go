@@ -104,6 +104,46 @@ func (s *MultiaskService) Initialize(windowTitle string) error {
 	return nil
 }
 
+// Standard Chrome User-Agent for sites that block embedded browsers
+const chromeUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+
+// getCustomUserAgent returns a custom User-Agent for specific sites that block embedded browsers
+func getCustomUserAgent(url string) string {
+	// Sites that require standard browser User-Agent
+	blockedSites := []string{
+		"yuanbao.tencent.com", // Tencent Yuanbao
+		"kimi.com",           // Kimi AI
+		"zhipuai.cn",         // GLM / Zhipu
+	}
+
+	for _, site := range blockedSites {
+		if containsHost(url, site) {
+			return chromeUserAgent
+		}
+	}
+	return ""
+}
+
+// containsHost checks if URL contains the given host
+func containsHost(url, host string) bool {
+	return len(url) > 0 && len(host) > 0 &&
+		(contains(url, "://"+host) || contains(url, "://www."+host))
+}
+
+// contains is a simple substring check
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && findSubstring(s, substr))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
 // CreatePanel 创建 WebView 面板
 func (s *MultiaskService) CreatePanel(id, name, displayName, url string, bounds PanelBounds) error {
 	s.app.Logger.Info("[MultiaskService] CreatePanel called",
@@ -137,15 +177,25 @@ func (s *MultiaskService) CreatePanel(id, name, displayName, url string, bounds 
 		"height", bounds.Height,
 	)
 
+	// Check if this site needs a custom User-Agent
+	userAgent := getCustomUserAgent(url)
+	if userAgent != "" {
+		s.app.Logger.Info("[MultiaskService] Using custom User-Agent for site",
+			"id", id,
+			"url", url,
+		)
+	}
+
 	panel := s.manager.NewPanel(webviewpanel.WebviewPanelOptions{
-		Name:    id,
-		X:       bounds.X,
-		Y:       bounds.Y,
-		Width:   bounds.Width,
-		Height:  bounds.Height,
-		URL:     url,
-		Visible: &visible,
-		ZIndex:  1,
+		Name:      id,
+		X:         bounds.X,
+		Y:         bounds.Y,
+		Width:     bounds.Width,
+		Height:    bounds.Height,
+		URL:       url,
+		Visible:   &visible,
+		ZIndex:    1,
+		UserAgent: userAgent,
 	})
 
 	s.panels[id] = panel
@@ -298,8 +348,11 @@ func (s *MultiaskService) SendMessageToPanel(id, message string) error {
     const isQwen = hostname.includes('qianwen.com') || hostname.includes('tongyi.aliyun.com');
     const isClaude = hostname.includes('claude.ai');
     const isDeepSeek = hostname.includes('deepseek.com');
+    const isKimi = hostname.includes('kimi.com');
+    const isYuanbao = hostname.includes('yuanbao.tencent.com');
+    const isGLM = hostname.includes('zhipuai.cn');
     
-    console.log('[ChatClaw] Detected site:', { hostname, isChatGPT, isDoubao, isQwen, isClaude, isDeepSeek });
+    console.log('[ChatClaw] Detected site:', { hostname, isChatGPT, isDoubao, isQwen, isClaude, isDeepSeek, isKimi, isYuanbao, isGLM });
     
     // 根据网站选择不同的输入框选择器
     let inputSelectors = [];
@@ -410,6 +463,61 @@ func (s *MultiaskService) SendMessageToPanel(id, message string) error {
             '[class*="InputArea"] button',
             'div[class*="chat-input"] button',
             '[class*="send"] button',
+            'button:has(svg)',
+        ];
+    } else if (isKimi) {
+        inputSelectors = [
+            // Kimi 输入框
+            'div[contenteditable="true"]',
+            'textarea[placeholder*="输入"]',
+            'textarea[placeholder*="问"]',
+            '[class*="editor"] div[contenteditable]',
+            '[class*="input"] textarea',
+            'textarea',
+        ];
+        sendButtonSelectors = [
+            // Kimi 发送按钮
+            'button[class*="send"]',
+            '[class*="send"] button',
+            'button:has(svg[class*="send"])',
+            'button[aria-label*="发送"]',
+            'button[aria-label*="Send"]',
+            'button:has(svg)',
+        ];
+    } else if (isYuanbao) {
+        inputSelectors = [
+            // 腾讯元宝输入框
+            'textarea[placeholder*="输入"]',
+            'textarea[placeholder*="问"]',
+            'div[contenteditable="true"]',
+            '[class*="input"] textarea',
+            '[class*="editor"] div[contenteditable]',
+            'textarea',
+        ];
+        sendButtonSelectors = [
+            // 元宝发送按钮
+            'button[class*="send"]',
+            '[class*="send"] button',
+            'button[aria-label*="发送"]',
+            'button[type="submit"]',
+            'button:has(svg)',
+        ];
+    } else if (isGLM) {
+        inputSelectors = [
+            // 智谱 GLM / z.ai 输入框
+            'textarea[placeholder*="输入"]',
+            'textarea[placeholder*="问"]',
+            'div[contenteditable="true"]',
+            '[class*="chat-input"] textarea',
+            '[class*="input"] textarea',
+            'textarea',
+        ];
+        sendButtonSelectors = [
+            // GLM 发送按钮
+            'button[class*="send"]',
+            '[class*="send"] button',
+            'button[aria-label*="发送"]',
+            'button[type="submit"]',
             'button:has(svg)',
         ];
     } else {
@@ -637,9 +745,9 @@ func (s *MultiaskService) SendMessageToPanel(id, message string) error {
                 return;
             }
             
-            // 豆包、DeepSeek 优先使用 Enter 键发送
-            if (isDoubao || isDeepSeek) {
-                console.log('[ChatClaw] Using Enter key to send (Doubao/DeepSeek)...');
+            // 豆包、DeepSeek、Kimi、元宝、GLM 优先使用 Enter 键发送
+            if (isDoubao || isDeepSeek || isKimi || isYuanbao || isGLM) {
+                console.log('[ChatClaw] Using Enter key to send (Doubao/DeepSeek/Kimi/Yuanbao/GLM)...');
                 input.focus();
                 
                 // 模拟 Enter 键按下

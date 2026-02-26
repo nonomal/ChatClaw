@@ -108,6 +108,27 @@ const chineseFirstModels: AIModel[] = [
     url: 'https://www.qianwen.com/',
   },
   {
+    id: 'kimi',
+    name: 'kimi',
+    icon: 'model-kimi',
+    displayName: 'Kimi',
+    url: 'https://www.kimi.com/',
+  },
+  {
+    id: 'yuanbao',
+    name: 'yuanbao',
+    icon: 'model-yuanbao',
+    displayName: '元宝',
+    url: 'https://yuanbao.tencent.com/',
+  },
+  {
+    id: 'glm',
+    name: 'glm',
+    icon: 'model-glm',
+    displayName: 'GLM',
+    url: 'https://www.zhipuai.cn/',
+  },
+  {
     id: 'openai',
     name: 'chatgpt',
     icon: 'model-chatgpt',
@@ -175,6 +196,27 @@ const englishFirstModels: AIModel[] = [
     icon: 'model-qwen',
     displayName: '通义千问',
     url: 'https://www.qianwen.com/',
+  },
+  {
+    id: 'kimi',
+    name: 'kimi',
+    icon: 'model-kimi',
+    displayName: 'Kimi',
+    url: 'https://www.kimi.com/',
+  },
+  {
+    id: 'yuanbao',
+    name: 'yuanbao',
+    icon: 'model-yuanbao',
+    displayName: '元宝',
+    url: 'https://yuanbao.tencent.com/chat/naQivTmsDa',
+  },
+  {
+    id: 'glm',
+    name: 'glm',
+    icon: 'model-glm',
+    displayName: 'GLM',
+    url: 'https://www.zhipuai.cn/zh',
   },
 ]
 
