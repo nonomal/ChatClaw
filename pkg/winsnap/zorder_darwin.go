@@ -121,6 +121,55 @@ static bool winsnap_pid_has_visible_window(pid_t pid) {
 	return found;
 }
 
+// Return the top-most visible pid among given target pids.
+// It scans on-screen windows in z-order and returns the first matching pid.
+static pid_t winsnap_topmost_visible_target_pid(const pid_t *pids, int count) {
+	if (!pids || count <= 0) return 0;
+	CFArrayRef list = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID);
+	if (!list) return 0;
+
+	pid_t found = 0;
+	CFIndex n = CFArrayGetCount(list);
+	for (CFIndex i = 0; i < n; i++) {
+		CFDictionaryRef dict = (CFDictionaryRef)CFArrayGetValueAtIndex(list, i);
+		CFNumberRef pidRef = (CFNumberRef)CFDictionaryGetValue(dict, kCGWindowOwnerPID);
+		if (!pidRef) continue;
+		pid_t wpid = 0;
+		CFNumberGetValue(pidRef, kCFNumberIntType, &wpid);
+		if (wpid <= 0) continue;
+
+		bool pidMatched = false;
+		for (int j = 0; j < count; j++) {
+			if (pids[j] == wpid) {
+				pidMatched = true;
+				break;
+			}
+		}
+		if (!pidMatched) continue;
+
+		// Only consider normal windows (layer 0)
+		CFNumberRef layerRef = (CFNumberRef)CFDictionaryGetValue(dict, kCGWindowLayer);
+		if (layerRef) {
+			int layer = 0;
+			CFNumberGetValue(layerRef, kCFNumberIntType, &layer);
+			if (layer != 0) continue;
+		}
+
+		// Skip tiny windows
+		CFDictionaryRef bounds = (CFDictionaryRef)CFDictionaryGetValue(dict, kCGWindowBounds);
+		if (!bounds) continue;
+		CGRect cgRect;
+		if (!CGRectMakeWithDictionaryRepresentation(bounds, &cgRect)) continue;
+		if (cgRect.size.width < 100 || cgRect.size.height < 100) continue;
+
+		found = wpid;
+		break;
+	}
+
+	CFRelease(list);
+	return found;
+}
+
 // Find pid by app identifier (localized name / executable name / bundle id)
 static pid_t winsnap_find_pid_by_name_zorder(const char *name) {
 	if (!name) return 0;
@@ -207,8 +256,10 @@ func TopMostVisibleProcessName(targetProcessNames []string) (processName string,
 		}
 	}
 
-	// Fallback: Check each target app to see if it has a visible window on screen
-	// This handles cases where frontmost app is not a target but a target app is visible
+	// Fallback: choose the top-most visible app among target apps instead of
+	// returning the first visible one by target list order.
+	pidToTarget := make(map[C.pid_t]string, len(targetProcessNames))
+	pids := make([]C.pid_t, 0, len(targetProcessNames))
 	for _, raw := range targetProcessNames {
 		n := normalizeMacTargetName(raw)
 		if n == "" {
@@ -221,11 +272,23 @@ func TopMostVisibleProcessName(targetProcessNames []string) (processName string,
 		if pid <= 0 {
 			continue
 		}
-
-		// Check if this app has a visible window
-		if C.winsnap_pid_has_visible_window(pid) {
-			return raw, true, nil
+		if _, exists := pidToTarget[pid]; exists {
+			continue
 		}
+		pidToTarget[pid] = raw
+		pids = append(pids, pid)
+	}
+
+	if len(pids) == 0 {
+		return "", false, nil
+	}
+
+	topPID := C.winsnap_topmost_visible_target_pid((*C.pid_t)(unsafe.Pointer(&pids[0])), C.int(len(pids)))
+	if topPID <= 0 {
+		return "", false, nil
+	}
+	if raw, ok := pidToTarget[topPID]; ok {
+		return raw, true, nil
 	}
 	return "", false, nil
 }

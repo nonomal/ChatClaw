@@ -673,6 +673,7 @@ func (s *SnapService) step() {
 		s.hideOffscreen(w)
 		return
 	}
+
 	s.attachTo(w, target)
 }
 
