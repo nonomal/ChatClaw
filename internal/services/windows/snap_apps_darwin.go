@@ -3,10 +3,34 @@
 package windows
 
 import (
+	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 )
+
+func currentDarwinProcessNamesForFilter() map[string]struct{} {
+	names := make(map[string]struct{})
+
+	add := func(name string) {
+		normalized := strings.ToLower(strings.TrimSpace(name))
+		if normalized == "" {
+			return
+		}
+		names[normalized] = struct{}{}
+		names[strings.TrimSuffix(normalized, filepath.Ext(normalized))] = struct{}{}
+	}
+
+	if exePath, err := os.Executable(); err == nil {
+		add(filepath.Base(exePath))
+	}
+	if len(os.Args) > 0 {
+		add(filepath.Base(os.Args[0]))
+	}
+
+	return names
+}
 
 func listRunningApps() ([]SnapAppCandidate, error) {
 	script := `
@@ -41,6 +65,7 @@ end tell
 	}
 
 	lines := strings.Split(raw, "\n")
+	selfProcessNames := currentDarwinProcessNamesForFilter()
 	seen := make(map[string]struct{}, len(lines))
 	apps := make([]SnapAppCandidate, 0, len(lines))
 
@@ -64,6 +89,13 @@ end tell
 		}
 
 		lower := strings.ToLower(processName)
+		nameLower := strings.ToLower(name)
+		if _, isSelfProcess := selfProcessNames[lower]; isSelfProcess {
+			continue
+		}
+		if _, isSelfName := selfProcessNames[nameLower]; isSelfName {
+			continue
+		}
 		if _, exists := seen[lower]; exists {
 			continue
 		}
