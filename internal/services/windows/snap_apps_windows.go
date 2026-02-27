@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -94,6 +95,30 @@ func resolveWindowsDisplayName(processName string) string {
 	return processName
 }
 
+func currentProcessNamesForFilter() map[string]struct{} {
+	names := make(map[string]struct{})
+
+	add := func(name string) {
+		normalized := strings.ToLower(strings.TrimSpace(name))
+		if normalized == "" {
+			return
+		}
+		if filepath.Ext(normalized) == "" {
+			normalized += ".exe"
+		}
+		names[normalized] = struct{}{}
+	}
+
+	if exePath, err := os.Executable(); err == nil {
+		add(filepath.Base(exePath))
+	}
+	if len(os.Args) > 0 {
+		add(filepath.Base(os.Args[0]))
+	}
+
+	return names
+}
+
 func listRunningApps() ([]SnapAppCandidate, error) {
 	// Keep only processes that own a main window, which matches the
 	// "Apps" section in Windows Task Manager and excludes background services.
@@ -113,6 +138,7 @@ func listRunningApps() ([]SnapAppCandidate, error) {
 
 	items := parseWindowsAppItems(output)
 	seen := make(map[string]struct{})
+	selfProcessNames := currentProcessNamesForFilter()
 	apps := make([]SnapAppCandidate, 0, 128)
 
 	for _, item := range items {
@@ -133,6 +159,9 @@ func listRunningApps() ([]SnapAppCandidate, error) {
 			lowerProcess == "system" ||
 			lowerProcess == "registry" ||
 			lowerProcess == "memory compression" {
+			continue
+		}
+		if _, isSelf := selfProcessNames[lowerProcess]; isSelf {
 			continue
 		}
 		shouldSkip := false
