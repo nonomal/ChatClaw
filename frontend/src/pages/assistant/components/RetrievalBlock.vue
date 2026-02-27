@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronDown, BookOpen, Brain } from 'lucide-vue-next'
+import { ChevronDown } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import type { RetrievalItemInfo } from '@/stores'
+import IconKnowledge from '@/assets/icons/knowledge.svg'
+import IconMemory from '@/assets/icons/memory.svg'
 
 const props = defineProps<{
   items: RetrievalItemInfo[]
@@ -29,7 +31,7 @@ const memoryItems = computed(() => props.items.filter((i) => i.source === 'memor
         class="flex w-full min-w-0 items-center gap-2 text-left text-muted-foreground hover:text-foreground"
         @click="knowledgeExpanded = !knowledgeExpanded"
       >
-        <BookOpen class="size-4 shrink-0" />
+        <IconKnowledge class="size-4 shrink-0" />
         <span class="min-w-0 flex-1 truncate text-xs font-medium">
           {{ t('assistant.chat.retrievalKnowledge') }}
         </span>
@@ -61,7 +63,7 @@ const memoryItems = computed(() => props.items.filter((i) => i.source === 'memor
         class="flex w-full min-w-0 items-center gap-2 text-left text-muted-foreground hover:text-foreground"
         @click="memoryExpanded = !memoryExpanded"
       >
-        <Brain class="size-4 shrink-0" />
+        <IconMemory class="size-4 shrink-0" />
         <span class="min-w-0 flex-1 truncate text-xs font-medium">
           {{ t('assistant.chat.retrievalMemory') }}
         </span>
