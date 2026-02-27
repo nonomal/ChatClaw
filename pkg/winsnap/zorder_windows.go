@@ -25,6 +25,8 @@ var (
 	enumResult  string
 )
 
+var procGetForegroundWindowZOrder = modUser32.NewProc("GetForegroundWindow")
+
 // enumWindowsProc is the single, reusable EnumWindows callback.
 func enumWindowsProc(hwnd uintptr, _ uintptr) uintptr {
 	h := windows.HWND(hwnd)
@@ -65,6 +67,23 @@ func TopMostVisibleProcessName(targetProcessNames []string) (processName string,
 	}
 	if len(targets) == 0 {
 		return "", false, nil
+	}
+
+	// Prefer the true foreground application when it belongs to targets.
+	// This avoids selecting another visible target app while user focus is on one app.
+	foregroundHWND, _, _ := procGetForegroundWindowZOrder.Call()
+	if foregroundHWND != 0 {
+		foregroundPID, ferr := getWindowProcessID(windows.HWND(foregroundHWND))
+		if ferr == nil && foregroundPID != 0 {
+			if foregroundPID == windows.GetCurrentProcessId() {
+				return "", false, ErrSelfIsFrontmost
+			}
+			if foregroundEXE, eerr := getProcessImageBaseName(foregroundPID); eerr == nil {
+				if _, ok := targets[strings.ToLower(foregroundEXE)]; ok {
+					return foregroundEXE, true, nil
+				}
+			}
+		}
 	}
 
 	// Serialise access to the shared callback state.
