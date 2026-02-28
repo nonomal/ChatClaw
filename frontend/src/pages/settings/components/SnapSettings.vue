@@ -349,6 +349,13 @@ const parseCustomApps = (rawValue: string): CustomSnapApp[] => {
       if (!id || !processName) {
         return
       }
+      // Ignore any custom apps that duplicate built-in targets.
+      // This can happen with older configs created before the UI started
+      // blocking built-in apps from being added as "custom".
+      const normalizedProcess = normalizeProcess(processName)
+      if (builtInProcessToAppKeyMap[normalizedProcess]) {
+        return
+      }
       const uniqueKey = `${id}#${normalizeProcess(processName)}`
       if (seen.has(uniqueKey)) {
         return
