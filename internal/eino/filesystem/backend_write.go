@@ -12,7 +12,7 @@ import (
 
 // Write creates or updates file content.
 func (b *LocalBackend) Write(ctx context.Context, req *filesystem.WriteRequest) error {
-	filePath, err := b.resolvePath(req.FilePath)
+	filePath, err := b.resolveWritePath(req.FilePath)
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func (b *LocalBackend) Edit(ctx context.Context, req *filesystem.EditRequest) er
 		return fmt.Errorf("old_string and new_string are identical")
 	}
 
-	filePath, err := b.resolvePath(req.FilePath)
+	filePath, err := b.resolveWritePath(req.FilePath)
 	if err != nil {
 		return err
 	}

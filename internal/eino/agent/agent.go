@@ -14,6 +14,8 @@ import (
 	"chatclaw/internal/eino/filesystem"
 	"chatclaw/internal/eino/tools"
 	"chatclaw/internal/errs"
+	"chatclaw/internal/sandbox"
+	"chatclaw/internal/services/settings"
 
 	"github.com/cloudwego/eino-ext/components/model/claude"
 	einogemini "github.com/cloudwego/eino-ext/components/model/gemini"
@@ -303,8 +305,11 @@ func NewChatModelAgent(ctx context.Context, config Config, toolRegistry *tools.T
 }
 
 // buildFilesystemSystemPrompt generates a system prompt that tells the LLM about
-// the OS environment, home directory, and available filesystem/execute tools.
-func buildFilesystemSystemPrompt(baseDir string) string {
+// the OS environment, working directory, and available filesystem/execute tools.
+//
+// workDir is the primary directory where files should be created/written.
+// When sandbox is enabled, it also serves as the sandbox writable root.
+func buildFilesystemSystemPrompt(homeDir, workDir string, sandboxEnabled bool) string {
 	osName := runtime.GOOS
 	shell := "/bin/bash"
 	switch osName {
@@ -320,15 +325,28 @@ func buildFilesystemSystemPrompt(baseDir string) string {
 - Operating System: %s
 - Shell: %s
 - Home directory: %s
-- All tools use real OS absolute paths. For example: ls(path="%s"), write_file(file_path="%s/foo.txt").
-- The execute tool runs commands with home directory as working directory.
+- **Working directory: %s**
+- All tools use real OS absolute paths.
+- When the user mentions "working directory" or asks to write/create files, **always use the working directory** as the base path. For example: write_file(file_path="%s/foo.txt"), ls(path="%s").
 - When the user mentions "user directory" or "home directory", it refers to: %s
+`, osName, shell, homeDir, workDir, workDir, workDir, homeDir)
 
+	if sandboxEnabled {
+		prompt += fmt.Sprintf(`
+# Sandbox
+
+- Commands run inside an OS-level sandbox (Codex CLI, Seatbelt on macOS / Landlock on Linux).
+- The sandbox writable root is: %s
+- Files outside this directory are **read-only**. All write operations (write_file, edit_file, execute) should target paths within this directory.
+`, workDir)
+	}
+
+	prompt += fmt.Sprintf(`
 # Filesystem Tools
 
 - ls: list files in a directory (use absolute path, e.g. "%s")
 - read_file: read a file from the filesystem
-- write_file: write/create a file (prefer this over shell echo for creating files with code)
+- write_file: write/create a file (prefer this over shell echo for creating files with code). **Default to the working directory: %s**
 - edit_file: edit a file in the filesystem (string replacement based)
 - patch_file: apply line-based patch operations (insert/delete/replace by line numbers). More precise than edit_file for multi-line changes.
 - glob: find files matching a pattern (e.g., "%s/**/*.py")
@@ -342,7 +360,7 @@ func buildFilesystemSystemPrompt(baseDir string) string {
 - **NEVER run long-running or persistent commands** (e.g. "php artisan serve", "npm run dev", "python manage.py runserver", "docker compose up", "tail -f", "watch"). These will block and timeout. If the user needs to start a server, instruct them to run it manually in a separate terminal.
 - For build commands that may take long, keep them focused (e.g. "npm run build" is fine, but avoid running dev servers).
 - Avoid using cat/head/tail (use read_file), find (use glob), grep command (use grep tool)
-`, osName, shell, baseDir, baseDir, baseDir, baseDir, baseDir, baseDir, baseDir)
+`, workDir, workDir, workDir, workDir)
 
 	if osName == "windows" {
 		prompt += `
@@ -364,6 +382,26 @@ func buildFilesystemSystemPrompt(baseDir string) string {
 func BuildMiddlewares(ctx context.Context) []adk.AgentMiddleware {
 	var middlewares []adk.AgentMiddleware
 
+	// Read workspace settings for sandbox configuration.
+	sandboxMode := filesystem.SandboxModeNone
+	var codexBin, sandboxDir string
+
+	if mode, ok := settings.GetValue("workspace_sandbox_mode"); ok && mode == "codex" {
+		sandboxMode = filesystem.SandboxModeCodex
+	}
+	if dir, ok := settings.GetValue("workspace_work_dir"); ok && dir != "" {
+		sandboxDir = dir
+	} else {
+		sandboxDir = sandbox.DefaultWorkDir()
+	}
+	// Ensure the sandbox working directory exists.
+	_ = sandbox.EnsureWorkDir(sandboxDir)
+
+	// Resolve codex binary path from the toolchain bin directory.
+	if sandboxMode == filesystem.SandboxModeCodex {
+		codexBin = resolveCodexBin()
+	}
+
 	fsBackend, err := filesystem.NewLocalBackend(&filesystem.LocalBackendConfig{
 		ShellPolicy: &filesystem.ShellPolicy{
 			BlockedCommands: []string{
@@ -371,6 +409,9 @@ func BuildMiddlewares(ctx context.Context) []adk.AgentMiddleware {
 				":(){:|:&};:", "format c:", "format d:",
 			},
 		},
+		SandboxMode: sandboxMode,
+		CodexBin:    codexBin,
+		SandboxDir:  sandboxDir,
 	})
 	if err != nil {
 		log.Printf("[agent] failed to create local filesystem backend: %v", err)
@@ -384,7 +425,7 @@ func BuildMiddlewares(ctx context.Context) []adk.AgentMiddleware {
 		return middlewares
 	}
 
-	customSystemPrompt := buildFilesystemSystemPrompt(fsBackend.BaseDir())
+	customSystemPrompt := buildFilesystemSystemPrompt(fsBackend.BaseDir(), fsBackend.EffectiveWorkDir(), fsBackend.IsSandboxEnabled())
 
 	filesystemMw, err := fsmw.NewMiddleware(ctx, &fsmw.Config{
 		Backend:                          fsBackend,
@@ -464,6 +505,23 @@ func buildSkillMiddleware(ctx context.Context) (adk.AgentMiddleware, bool) {
 	}
 
 	return skillMw, true
+}
+
+// resolveCodexBin finds the codex binary in the toolchain bin directory.
+func resolveCodexBin() string {
+	cfgDir, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	binName := "codex"
+	if runtime.GOOS == "windows" {
+		binName = "codex.exe"
+	}
+	candidate := filepath.Join(cfgDir, "chatclaw", "bin", binName)
+	if _, err := os.Stat(candidate); err == nil {
+		return candidate
+	}
+	return ""
 }
 
 // ErrorCatchingToolMiddleware catches tool execution errors and returns the error

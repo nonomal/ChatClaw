@@ -21,7 +21,11 @@ type ShellPolicy struct {
 
 // Execute runs a shell command and returns its output.
 // Shell: powershell on Windows, zsh on macOS, bash on Linux.
-// Working directory: baseDir.
+// Working directory: baseDir (or sandboxDir when sandbox is enabled).
+//
+// When SandboxMode is "codex" and a codex binary is available, the command
+// is wrapped with `codex sandbox <platform> --full-auto -- sh -c <command>`
+// for OS-level isolation (Seatbelt on macOS, Landlock on Linux).
 //
 // The command runs in its own process group so that on timeout or cancellation
 // the entire process tree (including child processes such as `php artisan serve`)
@@ -42,30 +46,18 @@ func (b *LocalBackend) Execute(ctx context.Context, req *filesystem.ExecuteReque
 	execCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// Build the command WITHOUT CommandContext — we manage the lifecycle manually
-	// via process groups so that all child processes are killed on cancellation.
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "windows":
-		// Prepend UTF-8 encoding directives so Chinese and other non-ASCII
-		// characters in command output are not garbled.  Both the .NET
-		// Console encoding and PowerShell's $OutputEncoding must be set
-		// because they govern different output paths.
-		wrappedCmd := "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; " +
-			"$OutputEncoding = [System.Text.Encoding]::UTF8; " +
-			req.Command
-		cmd = exec.Command("powershell.exe",
-			"-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-			"-Command", wrappedCmd,
-		)
-	case "darwin":
-		// Login shell (-l) ensures ~/.zprofile & ~/.zshrc are sourced,
-		// so user-installed tools (npx, python, etc.) are on PATH.
-		cmd = exec.Command("/bin/zsh", "-l", "-c", req.Command)
-	default:
-		cmd = exec.Command("/bin/bash", "-l", "-c", req.Command)
+	workDir := b.baseDir
+	if b.sandboxDir != "" {
+		workDir = b.sandboxDir
 	}
-	cmd.Dir = b.baseDir
+
+	var cmd *exec.Cmd
+	if b.sandboxMode == SandboxModeCodex && b.codexBin != "" {
+		cmd = b.buildCodexCommand(req.Command, workDir)
+	} else {
+		cmd = b.buildNativeCommand(req.Command)
+		cmd.Dir = workDir
+	}
 
 	// Create a new process group so we can kill the entire tree.
 	// (platform-specific; see exec_unix.go / exec_windows.go)
@@ -143,6 +135,43 @@ func (b *LocalBackend) Execute(ctx context.Context, req *filesystem.ExecuteReque
 		ExitCode:  &exitCode,
 		Truncated: truncated,
 	}, nil
+}
+
+// buildCodexCommand wraps the user command in a codex sandbox invocation.
+func (b *LocalBackend) buildCodexCommand(command, workDir string) *exec.Cmd {
+	platform := "macos"
+	if runtime.GOOS == "linux" {
+		platform = "linux"
+	}
+
+	args := []string{
+		"sandbox", platform,
+		"--full-auto",
+		"--",
+		"sh", "-c", command,
+	}
+
+	cmd := exec.Command(b.codexBin, args...)
+	cmd.Dir = workDir
+	return cmd
+}
+
+// buildNativeCommand creates a direct shell command (no sandbox).
+func (b *LocalBackend) buildNativeCommand(command string) *exec.Cmd {
+	switch runtime.GOOS {
+	case "windows":
+		wrappedCmd := "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; " +
+			"$OutputEncoding = [System.Text.Encoding]::UTF8; " +
+			command
+		return exec.Command("powershell.exe",
+			"-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+			"-Command", wrappedCmd,
+		)
+	case "darwin":
+		return exec.Command("/bin/zsh", "-l", "-c", command)
+	default:
+		return exec.Command("/bin/bash", "-l", "-c", command)
+	}
 }
 
 func (b *LocalBackend) validateCommand(command string) error {

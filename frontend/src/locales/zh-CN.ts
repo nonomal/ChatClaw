@@ -133,11 +133,27 @@ export default {
     // 设置菜单
     menu: {
       modelService: '模型服务',
+      workspace: '工作区',
       generalSettings: '常规设置',
       memorySettings: '长期记忆',
       snapSettings: '吸附设置',
       tools: '功能工具',
       about: '关于我们',
+    },
+    // 工作区设置
+    workspace: {
+      title: '工作区',
+      sandboxMode: '执行模式',
+      modeCodex: 'Codex 沙盒',
+      modeNative: '本机执行',
+      codexDesc: '使用 OpenAI Codex CLI 提供的 OS 级沙盒隔离执行命令。命令只能在工作目录内写入文件，外部文件系统为只读。',
+      nativeDesc: '直接在本机执行命令，无沙盒隔离。命令拥有当前用户的完整权限。',
+      workDir: '工作目录',
+      workDirDesc: 'AI 执行命令的工作目录。生成的代码、下载的文件等都会保存在此目录中。',
+      changeDir: '更改',
+      selectDir: '选择工作目录',
+      saved: '工作区设置已保存',
+      saveFailed: '保存工作区设置失败',
     },
     // 常规设置
     general: {

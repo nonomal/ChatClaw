@@ -27,7 +27,7 @@ type PatchOperation struct {
 // to a file. Operations are applied in reverse line order so that earlier
 // operations don't shift the line numbers of later ones.
 func (b *LocalBackend) Patch(ctx context.Context, filePath string, ops []PatchOperation) (string, error) {
-	absPath, err := b.resolvePath(filePath)
+	absPath, err := b.resolveWritePath(filePath)
 	if err != nil {
 		return "", err
 	}
