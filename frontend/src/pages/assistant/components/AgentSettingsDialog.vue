@@ -330,7 +330,7 @@ const handleDelete = async () => {
 
 <template>
   <Dialog :open="open" @update:open="handleClose">
-    <DialogContent size="lg" class="gap-0 p-0">
+    <DialogContent size="xl" class="gap-0 p-0">
       <!-- 头部：标题（关闭按钮由 DialogContent 自带） -->
       <div class="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
         <div class="text-base font-semibold text-foreground">
@@ -339,7 +339,7 @@ const handleDelete = async () => {
       </div>
 
       <!-- 内容区：固定高度，内部不随 tab 抖动 -->
-      <div class="h-[464px] px-4 py-2">
+      <div class="h-[480px] px-4 py-2">
         <div class="flex h-full">
           <!-- 左侧 tabs（独立区域） -->
           <div class="w-[140px] shrink-0 border-r border-border pr-4">
@@ -415,7 +415,7 @@ const handleDelete = async () => {
           <!-- 右侧卡片（明显边框，固定高度，不随 tab 抖动） -->
           <div class="min-w-0 flex-1 pl-4">
             <div
-              class="h-full overflow-auto rounded-2xl border border-border bg-card p-6 shadow-sm dark:border-white/15 dark:shadow-none dark:ring-1 dark:ring-white/5"
+              class="h-full overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-card p-6 shadow-sm dark:border-white/15 dark:shadow-none dark:ring-1 dark:ring-white/5"
             >
               <!-- 模型设置 -->
               <div v-if="tab === 'model'" class="flex flex-col gap-5">
@@ -631,13 +631,13 @@ const handleDelete = async () => {
                     v-model="prompt"
                     :placeholder="t('assistant.fields.promptPlaceholder')"
                     maxlength="1000"
-                    class="min-h-[160px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    class="min-h-[200px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
               </div>
 
               <!-- 工作区设置 -->
-              <div v-else-if="tab === 'workspace'" class="flex flex-col gap-5">
+              <div v-else-if="tab === 'workspace'" class="flex min-w-0 flex-col gap-4">
                 <div class="flex flex-col gap-3">
                   <div class="text-sm font-medium text-foreground">
                     {{ t('assistant.settings.workspace.sandboxMode') }}
@@ -696,6 +696,9 @@ const handleDelete = async () => {
                   <div class="text-sm font-medium text-foreground">
                     {{ t('assistant.settings.workspace.workDir') }}
                   </div>
+                  <p class="text-xs text-muted-foreground">
+                    {{ t('assistant.settings.workspace.workDirDesc') }}
+                  </p>
                   <div class="flex items-center gap-2">
                     <span
                       class="min-w-0 flex-1 truncate rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground"
@@ -708,10 +711,7 @@ const handleDelete = async () => {
                       {{ t('assistant.settings.workspace.changeDir') }}
                     </Button>
                   </div>
-                  <p class="text-xs text-muted-foreground">
-                    {{ t('assistant.settings.workspace.workDirDesc') }}
-                  </p>
-                  <p class="text-xs font-mono text-muted-foreground/70">
+                  <p class="break-all text-xs font-mono text-muted-foreground/70">
                     {{ workDirHint }}
                   </p>
                 </div>
