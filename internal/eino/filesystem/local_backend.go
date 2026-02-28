@@ -22,17 +22,32 @@ import (
 	"github.com/cloudwego/eino/adk/filesystem"
 )
 
+// SandboxMode selects the command execution strategy.
+type SandboxMode string
+
+const (
+	SandboxModeNone  SandboxMode = ""       // No sandbox (default, backward compatible)
+	SandboxModeCodex SandboxMode = "codex"  // OS-level sandbox via codex CLI
+	SandboxModeNativ SandboxMode = "native" // Explicit native mode (same as None)
+)
+
 // LocalBackend implements filesystem.Backend and filesystem.ShellBackend
 // using the real local filesystem, rooted at a base directory (typically user's home).
 type LocalBackend struct {
-	baseDir string
-	policy  *ShellPolicy
+	baseDir     string
+	policy      *ShellPolicy
+	sandboxMode SandboxMode
+	codexBin    string // Path to codex binary (for sandbox mode)
+	sandboxDir  string // Working directory for sandboxed commands (may differ from baseDir)
 }
 
 // LocalBackendConfig configures the LocalBackend.
 type LocalBackendConfig struct {
 	BaseDir     string       // Root for all filesystem ops. Empty = user home directory.
 	ShellPolicy *ShellPolicy // Security constraints. Nil = no restrictions.
+	SandboxMode SandboxMode  // Sandbox execution mode. Empty = no sandbox.
+	CodexBin    string       // Path to codex binary. Required when SandboxMode is "codex".
+	SandboxDir  string       // Working directory for sandboxed commands. Empty = baseDir.
 }
 
 // NewLocalBackend creates a new LocalBackend with the given configuration.
@@ -54,11 +69,36 @@ func NewLocalBackend(config *LocalBackendConfig) (*LocalBackend, error) {
 		return nil, fmt.Errorf("base path is not a directory: %s", baseDir)
 	}
 
-	return &LocalBackend{baseDir: baseDir, policy: config.ShellPolicy}, nil
+	return &LocalBackend{
+		baseDir:     baseDir,
+		policy:      config.ShellPolicy,
+		sandboxMode: config.SandboxMode,
+		codexBin:    config.CodexBin,
+		sandboxDir:  config.SandboxDir,
+	}, nil
 }
 
 // BaseDir returns the root directory for all filesystem operations.
 func (b *LocalBackend) BaseDir() string {
+	return b.baseDir
+}
+
+// SandboxDir returns the sandbox working directory (may be empty if not configured).
+func (b *LocalBackend) SandboxDir() string {
+	return b.sandboxDir
+}
+
+// IsSandboxEnabled returns true if sandbox mode is active (codex mode with binary available).
+func (b *LocalBackend) IsSandboxEnabled() bool {
+	return b.sandboxMode == SandboxModeCodex && b.codexBin != ""
+}
+
+// EffectiveWorkDir returns the directory that should be presented as the
+// primary working directory: sandboxDir if set, otherwise baseDir.
+func (b *LocalBackend) EffectiveWorkDir() string {
+	if b.sandboxDir != "" {
+		return b.sandboxDir
+	}
 	return b.baseDir
 }
 
@@ -95,6 +135,38 @@ func (b *LocalBackend) resolvePath(p string) (string, error) {
 	}
 
 	return absResolved, nil
+}
+
+// resolveWritePath resolves a path for write operations.
+// When sandbox mode is active (sandboxDir is set), write operations are
+// restricted to the sandbox working directory. Paths outside the sandbox
+// directory are rejected with an error explaining the restriction.
+// When sandbox mode is off, falls back to resolvePath.
+func (b *LocalBackend) resolveWritePath(p string) (string, error) {
+	absPath, err := b.resolvePath(p)
+	if err != nil {
+		return "", err
+	}
+
+	if b.sandboxDir == "" {
+		return absPath, nil
+	}
+
+	absSandbox, err := filepath.Abs(b.sandboxDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve sandbox directory: %w", err)
+	}
+
+	rel, err := filepath.Rel(filepath.Clean(absSandbox), filepath.Clean(absPath))
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return "", fmt.Errorf(
+			"write operation blocked: path %q is outside the sandbox working directory %q — "+
+				"all write operations must target paths within the working directory",
+			p, absSandbox,
+		)
+	}
+
+	return absPath, nil
 }
 
 // toAPIPath returns the display path shown to the LLM.
