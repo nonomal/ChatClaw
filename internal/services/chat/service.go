@@ -31,6 +31,7 @@ type ChatService struct {
 	app               *application.App
 	toolRegistry      *tools.ToolRegistry
 	bgProcessManager  *tools.BgProcessManager
+	toolchainBinDir   string
 	activeGenerations sync.Map // map[int64]*activeGeneration
 }
 
@@ -41,6 +42,11 @@ func NewChatService(app *application.App) *ChatService {
 		toolRegistry:     tools.NewToolRegistry(),
 		bgProcessManager: tools.NewBgProcessManager(),
 	}
+}
+
+// SetToolchainBinDir sets the directory containing managed tool binaries.
+func (s *ChatService) SetToolchainBinDir(dir string) {
+	s.toolchainBinDir = dir
 }
 
 // Shutdown cleans up all resources held by the ChatService, including
