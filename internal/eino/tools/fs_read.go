@@ -1,13 +1,13 @@
 package tools
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/cloudwego/eino/adk/filesystem"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/components/tool/utils"
 )
@@ -18,72 +18,39 @@ type readFileInput struct {
 	Limit    int    `json:"limit,omitempty" jsonschema:"description=Maximum number of lines to read. Default 200."`
 }
 
-// NewReadFileTool creates a read_file tool that reads from the local filesystem.
-func NewReadFileTool(cfg *FsToolsConfig) (tool.BaseTool, error) {
+// NewReadFileTool creates a read_file tool backed by Backend.
+func NewReadFileTool(b *Backend) (tool.BaseTool, error) {
 	return utils.InferTool(ToolIDReadFile,
 		"Read file content with optional line offset and limit. Use absolute paths.",
 		func(ctx context.Context, input *readFileInput) (string, error) {
-			return readLocalFile(cfg, input)
+			filePath, err := b.ResolvePath(input.FilePath)
+			if err != nil {
+				return "", err
+			}
+
+			limit := input.Limit
+			if limit <= 0 {
+				limit = 200
+			}
+
+			return b.Read(ctx, &filesystem.ReadRequest{
+				FilePath: filePath,
+				Offset:   input.Offset + 1, // tool uses 0-based, backend uses 1-based
+				Limit:    limit,
+			})
 		})
-}
-
-func readLocalFile(cfg *FsToolsConfig, input *readFileInput) (string, error) {
-	filePath, err := cfg.ResolvePath(input.FilePath)
-	if err != nil {
-		return "", err
-	}
-
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to open file: %w", err)
-	}
-	defer file.Close()
-
-	offset := input.Offset
-	if offset < 0 {
-		offset = 0
-	}
-	limit := input.Limit
-	if limit <= 0 {
-		limit = 200
-	}
-
-	scanner := bufio.NewScanner(file)
-	const maxCapacity = 1024 * 1024
-	scanner.Buffer(make([]byte, maxCapacity), maxCapacity)
-
-	var lines []string
-	lineNum := 0
-	for scanner.Scan() {
-		if lineNum >= offset && len(lines) < limit {
-			lines = append(lines, scanner.Text())
-		}
-		lineNum++
-		if len(lines) >= limit {
-			break
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return "", fmt.Errorf("failed to read file: %w", err)
-	}
-
-	content := strings.Join(lines, "\n")
-	if content == "" {
-		return "(empty file)", nil
-	}
-	return content, nil
 }
 
 type lsInput struct {
 	Path string `json:"path" jsonschema:"description=Absolute path of the directory to list."`
 }
 
-// NewLsTool creates an ls tool that lists files in a directory.
-func NewLsTool(cfg *FsToolsConfig) (tool.BaseTool, error) {
+// NewLsTool creates an ls tool with rich output (type, size, time).
+func NewLsTool(b *Backend) (tool.BaseTool, error) {
 	return utils.InferTool(ToolIDLs,
 		"List files and directories at the given path. Returns type, path, size, and modification time.",
 		func(ctx context.Context, input *lsInput) (string, error) {
-			targetPath, err := cfg.ResolvePath(input.Path)
+			targetPath, err := b.ResolvePath(input.Path)
 			if err != nil {
 				return "", err
 			}

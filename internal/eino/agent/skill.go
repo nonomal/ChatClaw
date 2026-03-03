@@ -23,7 +23,7 @@ func buildSkillHandler(ctx context.Context, logger *slog.Logger) adk.ChatModelAg
 		return nil
 	}
 
-	skillsDir := filepath.Join(homeDir, ".agents", "skills")
+	skillsDir := filepath.Join(homeDir, skillsRelDir)
 	if err := os.MkdirAll(skillsDir, 0o755); err != nil {
 		logger.Warn("[agent] failed to create skills directory", "dir", skillsDir, "error", err)
 		return nil
