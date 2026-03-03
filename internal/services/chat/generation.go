@@ -161,11 +161,11 @@ func (s *ChatService) runGenerationCore(ctx context.Context, gc *generationConte
 		"instruction", truncateRunes(agentConfig.Instruction, llmLogMaxInstruction))
 	s.app.Logger.Info("[llm] context", "conv", conversationID, "req", gc.requestID, "context", summarizeMessagesForLog(messages, 12, llmLogMaxContent))
 
-	// Build extra tools and middlewares
-	extraTools, extraMiddlewares := s.buildExtras(ctx, gc)
+	// Build extra tools and handlers
+	extraTools, extraHandlers := s.buildExtras(ctx, gc)
 
 	agentConfig.Provider = providerConfig
-	agentResult, err := einoagent.NewChatModelAgent(ctx, agentConfig, s.toolRegistry, s.bgProcessManager, extraTools, extraMiddlewares, s.app.Logger)
+	agentResult, err := einoagent.NewChatModelAgent(ctx, agentConfig, s.toolRegistry, s.bgProcessManager, extraTools, extraHandlers, s.app.Logger)
 	if err != nil {
 		gc.emitError("error.chat_agent_create_failed", map[string]any{"Error": err.Error()})
 		s.updateMessageStatus(db, assistantMsg.ID, StatusError, err.Error(), "")
@@ -188,12 +188,12 @@ func (s *ChatService) runGenerationCore(ctx context.Context, gc *generationConte
 	}
 }
 
-// buildExtras creates extra tools and middlewares based on agent configuration.
-func (s *ChatService) buildExtras(ctx context.Context, gc *generationContext) ([]tool.BaseTool, []adk.AgentMiddleware) {
+// buildExtras creates extra tools and handlers based on agent configuration.
+func (s *ChatService) buildExtras(ctx context.Context, gc *generationContext) ([]tool.BaseTool, []adk.ChatModelAgentMiddleware) {
 	agentConfig := &gc.agentConfig
 	agentExtras := gc.agentExtras
 	var extraTools []tool.BaseTool
-	var extraMiddlewares []adk.AgentMiddleware
+	var extraHandlers []adk.ChatModelAgentMiddleware
 
 	if len(agentExtras.LibraryIDs) > 0 {
 		retrieverTool, toolErr := s.createLibraryRetrieverTool(ctx, gc.db, agentExtras.LibraryIDs, agentConfig.RetrievalTopK, agentExtras.MatchThreshold)
@@ -235,13 +235,13 @@ func (s *ChatService) buildExtras(ctx context.Context, gc *generationContext) ([
 		coreProfile, _ := memory.GetCoreProfileContent(cpCtx, agentExtras.AgentID)
 		cpCancel()
 		if coreProfile != "" {
-			extraMiddlewares = append(extraMiddlewares, adk.AgentMiddleware{
-				AdditionalInstruction: "\n\n# User Core Profile\nThe following core profile contains long-term facts about the user and this conversation's context. Always respect and utilize this information when formulating your response:\n" + coreProfile,
-			})
+			extraHandlers = append(extraHandlers, einoagent.NewInstructionHandler(
+				"\n\n# User Core Profile\nThe following core profile contains long-term facts about the user and this conversation's context. Always respect and utilize this information when formulating your response:\n"+coreProfile,
+			))
 		}
 	}
 
-	return extraTools, extraMiddlewares
+	return extraTools, extraHandlers
 }
 
 // --- streaming / event processing ---
