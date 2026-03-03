@@ -266,13 +266,13 @@ func (s *SettingsService) GetWorkspaceSettings() (*UpdateWorkspaceSettingsInput,
 	}, nil
 }
 
-// GetSkillsDir returns the fixed skills directory path ($HOME/.agents/skills).
+// GetSkillsDir returns the fixed skills directory path ($HOME/.chatclaw/skills).
 func (s *SettingsService) GetSkillsDir() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", errs.Wrap("error.setting_read_failed", err)
 	}
-	return filepath.Join(homeDir, ".agents", "skills"), nil
+	return filepath.Join(homeDir, ".chatclaw", "skills"), nil
 }
 
 // toNullString converts a string to sql.NullString
