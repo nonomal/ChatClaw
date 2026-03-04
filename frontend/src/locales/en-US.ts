@@ -107,6 +107,7 @@ export default {
     retry: 'Retry',
     notConfigured: 'Not configured',
     longPressToDrag: 'Long press to drag and reorder',
+    modelSettings: 'Model Settings',
   },
   tabs: {
     newTab: 'New Tab',
@@ -136,6 +137,7 @@ export default {
       modelService: 'Model Service',
       generalSettings: 'General Settings',
       memorySettings: 'Long-term Memory',
+      skills: 'Skills',
       snapSettings: 'Snap Settings',
       tools: 'Tools',
       about: 'About Us',
@@ -187,6 +189,14 @@ export default {
       rebuildFailed: 'Failed to rebuild memory vectors',
       confirmRebuildTitle: 'Confirm Rebuild Memory Vectors',
       confirmRebuildDesc: 'You have changed the embedding model or dimension, which requires recalculating vector data for all existing memories. This process may take some time. Do you want to continue?',
+    },
+    // Skills settings
+    skills: {
+      title: 'Skills',
+      enable: 'Enable Skills',
+      enableHint: 'When enabled, the AI assistant will automatically load and use installed skills during conversations.',
+      directory: 'Skills Directory',
+      directoryHint: 'Place downloaded skill folders into this directory. They will be automatically detected and loaded during AI conversations.',
     },
     // Snap settings
     snap: {
@@ -684,6 +694,7 @@ export default {
         success: 'Moved successfully',
         failed: 'Failed to move',
       },
+      navigateToFolder: 'Navigate to Folder',
       openFailed: 'Failed to open document',
     },
     folder: {
@@ -705,6 +716,13 @@ export default {
       deleteCancel: 'Cancel',
       deleteConfirm: 'Delete',
       deleteSuccess: 'Deleted',
+      move: {
+        title: 'Move Folder',
+        selectFolder: 'Select Target Folder',
+        moveToHere: 'Move here',
+        success: 'Moved successfully',
+        failed: 'Failed to move',
+      },
       deleteFailed: 'Failed to delete',
       nameRequired: 'Folder name cannot be empty',
       nameTooLong: 'Folder name cannot exceed 50 characters',
@@ -751,6 +769,7 @@ export default {
       contentNotAvailable: 'Content is not available for viewing. Please open externally.',
       unsupported: 'File type "{type}" is not supported for viewing. Please open externally.',
       localFileNote: 'This file needs to be opened with an external application.',
+      corruptedOrWrongType: 'The document may be corrupted or the file type does not match (actual content does not match {type} format). Cannot preview. Please open externally.',
     },
   },
   memory: {
