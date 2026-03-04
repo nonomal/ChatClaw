@@ -221,6 +221,7 @@ func buildHandlers(ctx context.Context, b *tools.Backend, config Config, chatMod
 		if h := buildSkillHandler(ctx, b, logger); h != nil {
 			handlers = append(handlers, h)
 		}
+		handlers = append(handlers, NewInstructionHandler(buildSkillSystemPrompt()))
 	}
 
 	// Logging handler goes last so BeforeAgent sees the fully-assembled instruction.

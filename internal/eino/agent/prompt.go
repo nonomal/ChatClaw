@@ -306,3 +306,20 @@ When a task meets **any** of the following conditions, prefer delegating via the
 
 	return prompt
 }
+
+// buildSkillSystemPrompt generates a concise system prompt about the Skill
+// marketplace so the agent knows it can search & install skills on demand.
+func buildSkillSystemPrompt() string {
+	if isZhCN() {
+		return `
+# 技能市场
+
+遇到超出自身能力的专业任务时，主动用 skill_search 搜索在线技能市场，找到后用 skill_install 安装。新安装的技能会立即可用。安装前先向用户简要说明并获得确认。
+`
+	}
+	return `
+# Skill Marketplace
+
+When facing specialized tasks beyond your capabilities, proactively use skill_search to find skills in the online marketplace, then skill_install to install them. Newly installed skills are available immediately. Briefly explain the skill to the user and get confirmation before installing.
+`
+}
