@@ -104,6 +104,8 @@ func (s *ChatService) runChatModeCore(ctx context.Context, gc *generationContext
 		return
 	}
 
+	messages = patchToolCallsForChatMode(messages)
+
 	// Determine the user query for retrieval
 	userQuery := latestUserContent
 	if userQuery == "" && len(messages) > 0 {
@@ -127,10 +129,11 @@ func (s *ChatService) runChatModeCore(ctx context.Context, gc *generationContext
 		}
 	}
 
-	s.app.Logger.Info("[llm] chat_mode start", "conv", conversationID, "tab", gc.tabID, "req", gc.requestID,
-		"provider_id", providerConfig.ProviderID, "provider_type", providerConfig.Type,
-		"model", agentConfig.ModelID, "messages", len(messages),
-		"instruction", truncateRunes(augmentedInstruction, llmLogMaxInstruction))
+	s.app.Logger.Info("[chat] chat_mode start", "conv", conversationID, "req", gc.requestID,
+		"model", agentConfig.ModelID, "messages", len(messages))
+	if len(messages) <= 1 {
+		s.app.Logger.Info("[chat] system_prompt", "instruction", augmentedInstruction)
+	}
 
 	agentConfig.Instruction = augmentedInstruction
 	agentConfig.Provider = providerConfig
@@ -150,10 +153,6 @@ func (s *ChatService) runChatModeCore(ctx context.Context, gc *generationContext
 	})
 	fullMessages = append(fullMessages, messages...)
 
-	s.app.Logger.Info("[llm] chat_mode before_call", "conv", conversationID, "req", gc.requestID,
-		"messages", len(fullMessages),
-		"system_prompt", truncateRunes(augmentedInstruction, 2000),
-		"context", summarizeMessagesForLog(fullMessages, 20, llmLogMaxContent))
 	stream, err := chatModel.Stream(ctx, fullMessages)
 	if err != nil {
 		errMsg := err.Error()
@@ -215,7 +214,6 @@ func (s *ChatService) runChatModeCore(ctx context.Context, gc *generationContext
 
 	if ctx.Err() != nil {
 		s.updateMessageFinal(db, assistantMsg.ID, ss.contentBuilder.String(), ss.thinkingBuilder.String(), "[]", ss.segmentsStr(), StatusCancelled, "", "cancelled", ss.inputTokens, ss.outputTokens)
-		s.app.Logger.Info("[llm] chat_mode complete", "conv", conversationID, "status", StatusCancelled)
 		gc.emit(EventChatStopped, ChatStoppedEvent{
 			ChatEvent: gc.chatEvent(assistantMsg.ID),
 			Status:    StatusCancelled,
@@ -225,16 +223,10 @@ func (s *ChatService) runChatModeCore(ctx context.Context, gc *generationContext
 
 	if streamFailed {
 		s.updateMessageFinal(db, assistantMsg.ID, ss.contentBuilder.String(), ss.thinkingBuilder.String(), "[]", ss.segmentsStr(), StatusError, streamErrMsg, "", ss.inputTokens, ss.outputTokens)
-		s.app.Logger.Info("[llm] chat_mode complete", "conv", conversationID, "tab", gc.tabID, "req", gc.requestID,
-			"status", StatusError, "error", streamErrMsg, "input_tokens", ss.inputTokens, "output_tokens", ss.outputTokens)
 		return
 	}
 
 	s.updateMessageFinal(db, assistantMsg.ID, ss.contentBuilder.String(), ss.thinkingBuilder.String(), "[]", ss.segmentsStr(), StatusSuccess, "", ss.finishReason, ss.inputTokens, ss.outputTokens)
-
-	s.app.Logger.Info("[llm] chat_mode complete", "conv", conversationID, "tab", gc.tabID, "req", gc.requestID,
-		"status", StatusSuccess, "finish", ss.finishReason, "input_tokens", ss.inputTokens,
-		"output_tokens", ss.outputTokens, "content_len", len(ss.contentBuilder.String()))
 
 	gc.emit(EventChatComplete, ChatCompleteEvent{
 		ChatEvent:    gc.chatEvent(assistantMsg.ID),
@@ -373,6 +365,31 @@ func (s *ChatService) retrieveFromMemory(ctx context.Context, agentID int64, que
 	out := make([]retrievalResult, 0, len(results))
 	for _, r := range results {
 		out = append(out, retrievalResult{Content: r.Content, Score: r.Score})
+	}
+	return out
+}
+
+// patchToolCallsForChatMode removes tool-call artifacts from the message
+// history so that it can be sent to a plain chat model without triggering API
+// errors like "tool_calls must be followed by tool messages".
+// It drops all tool-role messages and clears ToolCalls on assistant messages,
+// skipping assistant messages that become empty after stripping.
+func patchToolCallsForChatMode(msgs []*schema.Message) []*schema.Message {
+	out := make([]*schema.Message, 0, len(msgs))
+	for _, m := range msgs {
+		if m.Role == schema.Tool {
+			continue
+		}
+		if m.Role == schema.Assistant && len(m.ToolCalls) > 0 {
+			if m.Content == "" {
+				continue
+			}
+			cleaned := *m
+			cleaned.ToolCalls = nil
+			out = append(out, &cleaned)
+			continue
+		}
+		out = append(out, m)
 	}
 	return out
 }

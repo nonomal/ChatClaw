@@ -107,6 +107,7 @@ export default {
     retry: '重试',
     notConfigured: '暂未配置',
     longPressToDrag: '长按拖动排序',
+    modelSettings: '模型设置',
   },
   tabs: {
     newTab: '新标签页',
@@ -136,6 +137,7 @@ export default {
       modelService: '模型服务',
       generalSettings: '常规设置',
       memorySettings: '长期记忆',
+      skills: '技能',
       snapSettings: '吸附设置',
       tools: '功能工具',
       about: '关于我们',
@@ -187,6 +189,14 @@ export default {
       rebuildFailed: '记忆向量重建失败',
       confirmRebuildTitle: '确认重建记忆向量',
       confirmRebuildDesc: '您修改了向量模型或维度，这需要重新计算所有已有记忆的向量数据。此过程可能需要一些时间，是否继续？',
+    },
+    // 技能设置
+    skills: {
+      title: '技能',
+      enable: '启用技能',
+      enableHint: '开启后，AI 助手在对话时会自动加载并使用已安装的技能。',
+      directory: '技能加载目录',
+      directoryHint: '将下载好的技能文件夹放入该目录，AI 对话时会自动识别并加载。',
     },
     // 吸附设置
     snap: {
@@ -682,6 +692,7 @@ export default {
         success: '移动成功',
         failed: '移动失败',
       },
+      navigateToFolder: '跳转到文件夹',
       openFailed: '打开文档失败',
     },
     folder: {
@@ -703,6 +714,13 @@ export default {
       deleteCancel: '取消',
       deleteConfirm: '删除',
       deleteSuccess: '删除成功',
+      move: {
+        title: '移动文件夹',
+        selectFolder: '选择目标文件夹',
+        moveToHere: '移动到此',
+        success: '移动成功',
+        failed: '移动失败',
+      },
       deleteFailed: '删除失败',
       nameRequired: '文件夹名称不能为空',
       nameTooLong: '文件夹名称不能超过50个字符',
@@ -749,6 +767,7 @@ export default {
       contentNotAvailable: '内容无法查看，请使用外部应用打开。',
       unsupported: '文件类型 "{type}" 不支持查看，请使用外部应用打开。',
       localFileNote: '此文件需要使用外部应用打开。',
+      corruptedOrWrongType: '文档可能已损坏或文件类型不匹配（实际内容与 {type} 格式不符），无法预览。请使用外部应用打开。',
     },
   },
   memory: {
