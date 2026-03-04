@@ -7,6 +7,12 @@ import IconUploadFile from '@/assets/icons/upload-file.svg'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -309,6 +315,32 @@ const displayFolders = computed(() => {
   }
   // activeFolderId 为 -1（未分组）时，不显示文件夹
   return []
+})
+
+// 当前标题面包屑：知识库名 + 文件夹路径
+const currentBreadcrumbTitle = computed(() => {
+  if (!props.library?.name) return ''
+
+  // 根目录或未分组：仅显示知识库名
+  if (!activeFolderId.value || activeFolderId.value <= 0) {
+    return props.library.name
+  }
+
+  const names: string[] = []
+  let cursorId: number | null = activeFolderId.value
+
+  while (cursorId && cursorId > 0) {
+    const folder = folderMapCache.value.get(cursorId)
+    if (!folder) break
+    names.push(folder.name)
+    const parentId = (folder.parent_id as unknown as number | null) ?? null
+    cursorId = parentId && parentId > 0 ? parentId : null
+  }
+
+  names.reverse()
+  if (names.length === 0) return props.library.name
+
+  return `${props.library.name} / ${names.join(' / ')}`
 })
 
 // 后端提供的文件夹统计信息（文档数量 & 最近更新时间）
@@ -879,17 +911,9 @@ onUnmounted(() => {
     <!-- 头部区域 -->
     <div class="flex h-12 items-center justify-between px-4">
       <div class="flex items-center gap-3">
-        <h2 class="text-base font-medium text-foreground">{{ library.name }}</h2>
-        <!-- 创建文件夹按钮 -->
-        <Button
-          variant="ghost"
-          size="icon"
-          class="size-6"
-          :title="t('knowledge.folder.create')"
-          @click="createFolderDialogOpen = true"
-        >
-          <FolderPlus class="size-4 text-muted-foreground" />
-        </Button>
+        <h2 class="truncate text-base font-medium text-foreground" :title="currentBreadcrumbTitle">
+          {{ currentBreadcrumbTitle }}
+        </h2>
       </div>
       <div class="flex items-center gap-1.5">
         <!-- 搜索框 -->
@@ -922,16 +946,36 @@ onUnmounted(() => {
           />
           <ArrowUpNarrowWide v-else class="size-4 text-muted-foreground" />
         </Button>
-        <!-- 添加文档按钮 -->
-        <Button
-          variant="ghost"
-          size="icon"
-          class="size-6"
-          :title="t('knowledge.content.addDocument')"
-          @click="handleAddDocument"
-        >
-          <IconUploadFile class="size-4 text-muted-foreground" />
-        </Button>
+        <!-- 添加文件 / 文件夹菜单 -->
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="size-6"
+              :title="t('knowledge.content.addDocument')"
+            >
+              <Plus class="size-4 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-36">
+            <DropdownMenuItem class="gap-2" @select="handleAddDocument">
+              <IconUploadFile class="size-4 text-muted-foreground" />
+              <span>{{ t('knowledge.content.addDocument') }}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              class="gap-2"
+              @select="
+                () => {
+                  createFolderDialogOpen = true
+                }
+              "
+            >
+              <FolderPlus class="size-4 text-muted-foreground" />
+              <span>{{ t('knowledge.folder.create') }}</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
 
@@ -963,9 +1007,9 @@ onUnmounted(() => {
         <div class="text-sm text-muted-foreground">{{ t('knowledge.loading') }}</div>
       </div>
 
-      <!-- 空状态 -->
+      <!-- 空状态（没有文件也没有文件夹时才显示） -->
       <div
-        v-else-if="filteredDocuments.length === 0"
+        v-else-if="filteredDocuments.length === 0 && displayFolders.length === 0"
         class="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground"
       >
         <Upload class="size-10 opacity-40" />

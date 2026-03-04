@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -33,66 +34,110 @@ func (s *LibraryService) ListFolders(libraryID int64) ([]Folder, error) {
 		return nil, errs.Wrap("error.folder_list_failed", err)
 	}
 
-	// Convert to DTO slice and build an index map.
-	// Important: we keep pointers to the slice elements so that
-	// updates to parent.Children are visible when we later return
-	// the root folders.
-	folders := make([]Folder, 0, len(models))
-	folderMap := make(map[int64]*Folder)
+	// Convert to DTO pointers (do NOT build the final tree by appending value copies).
+	// We build parent->children relationships using pointers, then materialize a value tree recursively.
+	folderMap := make(map[int64]*Folder, len(models))
+	all := make([]*Folder, 0, len(models))
 	for i := range models {
 		dto := models[i].toDTO()
-		folders = append(folders, dto)
-		folderMap[dto.ID] = &folders[i]
+		f := dto // create a distinct variable so we can take its address safely
+		folderMap[f.ID] = &f
+		all = append(all, &f)
 	}
 
-	// Build tree structure (also detecting cycles).
-	// We store pointers in roots to avoid losing the Children
-	// relationships when returning.
+	// Build parent -> children pointers (with cycle detection).
+	childrenMap := make(map[int64][]*Folder)
+
+	var checkCycle func(folderID int64, targetID int64, depth int) bool
+	checkCycle = func(folderID int64, targetID int64, depth int) bool {
+		if depth > 100 { // prevent infinite loops in corrupted data
+			return true
+		}
+		if folderID == targetID {
+			return true
+		}
+		if folder, ok := folderMap[folderID]; ok && folder.ParentID != nil {
+			return checkCycle(*folder.ParentID, targetID, depth+1)
+		}
+		return false
+	}
+
+	for _, f := range all {
+		if f.ParentID == nil {
+			continue
+		}
+		parentID := *f.ParentID
+		// self reference
+		if parentID == f.ID {
+			continue
+		}
+		// cycle reference
+		if checkCycle(parentID, f.ID, 0) {
+			continue
+		}
+		if _, ok := folderMap[parentID]; !ok {
+			// parent missing (corrupted data), skip attaching
+			continue
+		}
+		childrenMap[parentID] = append(childrenMap[parentID], f)
+	}
+
+	// Sort children under each parent (stable, deterministic).
+	for pid, items := range childrenMap {
+		sort.SliceStable(items, func(i, j int) bool {
+			if items[i].SortOrder != items[j].SortOrder {
+				return items[i].SortOrder < items[j].SortOrder
+			}
+			return items[i].ID < items[j].ID
+		})
+		childrenMap[pid] = items
+	}
+
+	// Collect and sort roots.
 	roots := make([]*Folder, 0)
-	for i := range folders {
-		if folders[i].ParentID == nil {
-			roots = append(roots, &folders[i])
-		} else {
-			// 检查循环引用：如果父文件夹的 ID 等于当前文件夹 ID，则存在自引用
-			parentID := *folders[i].ParentID
-			if parentID == folders[i].ID {
-				// 自引用（文件夹的父文件夹是自己），跳过这个有问题的文件夹
-				continue
-			}
-
-			// 检查是否存在循环引用路径（通过检查父文件夹链）
-			var checkCycle func(folderID int64, targetID int64, depth int) bool
-			checkCycle = func(folderID int64, targetID int64, depth int) bool {
-				if depth > 100 { // 防止无限递归
-					return true
-				}
-				if folderID == targetID {
-					return true
-				}
-				if folder, ok := folderMap[folderID]; ok && folder.ParentID != nil {
-					return checkCycle(*folder.ParentID, targetID, depth+1)
-				}
-				return false
-			}
-
-			if checkCycle(parentID, folders[i].ID, 0) {
-				// 检测到循环引用，跳过这个文件夹，避免构建错误树形结构
-				continue
-			}
-
-			// 添加到父文件夹的 children
-			if parent, ok := folderMap[parentID]; ok {
-				parent.Children = append(parent.Children, folders[i])
-			}
+	for _, f := range all {
+		if f.ParentID == nil {
+			roots = append(roots, f)
 		}
 	}
+	sort.SliceStable(roots, func(i, j int) bool {
+		if roots[i].SortOrder != roots[j].SortOrder {
+			return roots[i].SortOrder < roots[j].SortOrder
+		}
+		return roots[i].ID < roots[j].ID
+	})
 
-	// Dereference root pointers into a value slice for the final result.
-	result := make([]Folder, len(roots))
-	for i, root := range roots {
-		result[i] = *root
+	// Materialize a value tree recursively so that nested children are preserved.
+	var buildTree func(src *Folder, depth int) Folder
+	buildTree = func(src *Folder, depth int) Folder {
+		if src == nil {
+			return Folder{}
+		}
+		// Copy node value.
+		out := *src
+		out.Children = nil
+
+		if depth > 100 {
+			return out
+		}
+
+		children := childrenMap[src.ID]
+		if len(children) == 0 {
+			out.Children = []Folder{}
+			return out
+		}
+
+		out.Children = make([]Folder, 0, len(children))
+		for _, ch := range children {
+			out.Children = append(out.Children, buildTree(ch, depth+1))
+		}
+		return out
 	}
 
+	result := make([]Folder, 0, len(roots))
+	for _, r := range roots {
+		result = append(result, buildTree(r, 0))
+	}
 	return result, nil
 }
 
