@@ -54,14 +54,14 @@ const handleCardClick = () => {
       >
         <MoreHorizontal class="size-4" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" class="w-32">
-        <DropdownMenuItem class="gap-2" @select="emit('rename', folder)">
+      <DropdownMenuContent align="end" class="w-auto min-w-max">
+        <DropdownMenuItem class="gap-2 whitespace-nowrap" @select="emit('rename', folder)">
           <IconRename class="size-4 text-muted-foreground" />
           {{ t('knowledge.folder.rename') }}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          class="gap-2 text-muted-foreground focus:text-foreground"
+          class="gap-2 whitespace-nowrap text-muted-foreground focus:text-foreground"
           @select="emit('delete', folder)"
         >
           <IconDelete class="size-4" />
