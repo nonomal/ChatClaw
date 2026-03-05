@@ -101,11 +101,21 @@ tasks:
     dir: build
     sources:
       - "appicon.png"
+      - "appicon_mac.png"
     generates:
       - "darwin/icons.icns"
       - "windows/icon.ico"
     cmds:
-      - wails3 generate icons -input appicon.png -macfilename darwin/icons.icns -windowsfilename windows/icon.ico
+      - |
+        set -euo pipefail
+        # Determine which icon to use based on current OS
+        if [[ "$GOOS" == "darwin" ]]; then
+          INPUT_ICON="appicon_mac.png"
+        else
+          INPUT_ICON="appicon.png"
+        fi
+        echo "Using $INPUT_ICON for icon generation..."
+        wails3 generate icons -input $INPUT_ICON -macfilename darwin/icons.icns -windowsfilename windows/icon.ico
 
   dev:frontend:
     summary: Runs the frontend in development mode
