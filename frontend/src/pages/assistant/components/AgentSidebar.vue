@@ -41,6 +41,7 @@ const props = withDefaults(
     teamRobots?: Robot[]
     activeTeamRobotId?: string | null
     teamLoading?: boolean
+    onWakeAttached?: (e: globalThis.PointerEvent) => void
   }>(),
   {
     teamRobots: () => [],
@@ -78,6 +79,13 @@ const handleListModeChange = (mode: ListMode) => {
 
 const handleTeamRobotClick = (robotId: string) => {
   emit('update:activeTeamRobotId', robotId)
+}
+
+const handleWakeAttached = (e: globalThis.PointerEvent) => {
+  // Only trigger wake attached when there are multiple agents
+  if (props.agents.length > 1 && props.onWakeAttached) {
+    props.onWakeAttached(e)
+  }
 }
 </script>
 
@@ -185,6 +193,7 @@ const handleTeamRobotClick = (robotId: string) => {
             role="button"
             tabindex="0"
             @click="handleAgentClick(a.id)"
+            @pointerdown.capture="handleWakeAttached"
             @keydown.enter.prevent="handleAgentClick(a.id)"
             @keydown.space.prevent="handleAgentClick(a.id)"
           >

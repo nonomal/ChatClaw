@@ -35,6 +35,8 @@ import IconMarkdown from '@/assets/icons/file-markdown.svg'
 import IconHtml from '@/assets/icons/file-html.svg'
 import IconCsv from '@/assets/icons/file-csv.svg'
 import IconOfd from '@/assets/icons/file-ofd.svg'
+import IconSidebarCollapse from '@/assets/icons/sidebar-collapse.svg'
+import IconSidebarExpand from '@/assets/icons/sidebar-expand.svg'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,7 +64,7 @@ import {
   type LibraryParagraph as ChatWikiLibraryParagraph,
 } from '@bindings/chatclaw/internal/services/chatwiki'
 import { SettingsService } from '@bindings/chatclaw/internal/services/settings'
-import { ChevronRight } from 'lucide-vue-next'
+import { ChevronRight, FileStack,ChevronDown } from 'lucide-vue-next'
 
 type LibraryTab = 'personal' | 'team'
 
@@ -86,6 +88,8 @@ const expandedLibraries = ref<Set<number>>(new Set())
 const expandedFolders = ref<Set<number>>(new Set())
 // null = 根目录, -1 = 未分组, >0 = 文件夹ID
 const selectedFolderId = ref<number | null>(null)
+// Left sidebar collapsed state (narrow strip with icons only)
+const sidebarCollapsed = ref(false)
 
 const selectedLibrary = computed(
   () => libraries.value.find((l) => l.id === selectedLibraryId.value) || null
@@ -857,15 +861,11 @@ watch([activeTab, teamLibraryTab, selectedTeamLibraryId], ([tab, libType, librar
           </button>
           <button
             type="button"
+            disabled
             :class="
-              cn(
-                'rounded px-3 py-1 text-sm transition-colors',
-                activeTab === 'team'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              )
+              cn('rounded px-3 py-1 text-sm transition-colors', 'cursor-not-allowed opacity-50')
             "
-            @click="activeTab = 'team'"
+            :title="t('knowledge.tabs.teamDisabledTip')"
           >
             {{ t('knowledge.tabs.team') }}
           </button>
@@ -1049,9 +1049,12 @@ watch([activeTab, teamLibraryTab, selectedTeamLibraryId], ([tab, libType, librar
               </button>
             </div>
             <!-- 文件夹树 -->
-            <div v-if="expandedLibraries.has(lib.id)" class="ml-4 flex flex-col gap-0.5">
+            <div
+              v-if="expandedLibraries.has(lib.id)"
+              class="flex flex-col gap-0.5 overflow-hidden border-t border-border/50 px-1 pb-1.5 pt-0.5"
+            >
               <!-- 未分组选项 -->
-              <div class="flex items-center gap-1">
+              <div class="flex items-center gap-1 overflow-hidden">
                 <div class="size-6 shrink-0" />
                 <button
                   type="button"
