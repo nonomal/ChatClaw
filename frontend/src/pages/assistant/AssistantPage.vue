@@ -30,6 +30,7 @@ import {
 import { SnapService } from '@bindings/chatclaw/internal/services/windows'
 import { TextSelectionService } from '@bindings/chatclaw/internal/services/textselection'
 import { LibraryService, type Library } from '@bindings/chatclaw/internal/services/library'
+import { ChatWikiService, TeamChatInput } from '@bindings/chatclaw/internal/services/chatwiki'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +45,7 @@ import { useAgents } from './composables/useAgents'
 import { useConversations } from './composables/useConversations'
 import { useModelSelection } from './composables/useModelSelection'
 import { useSnapMode } from './composables/useSnapMode'
+import { useTeamRobots } from './composables/useTeamRobots'
 
 /**
  * Props - 每个标签页实例都有自己独立的 tabId
@@ -120,6 +122,15 @@ const {
   handleCopyToClipboard,
 } = useSnapMode()
 
+const {
+  teamRobots,
+  activeTeamRobotId,
+  activeRobot,
+  binding,
+  teamLoading,
+  loadTeamRobots,
+} = useTeamRobots()
+
 // Local state
 const listMode = ref<ListMode>('personal')
 const createOpen = ref(false)
@@ -128,6 +139,7 @@ const settingsAgent = ref<Agent | null>(null)
 const settingsInitialTab = ref<string>('')
 const sidebarCollapsed = ref(false)
 const workspaceDrawerOpen = ref(false)
+let teamAssistantMessageCounter = -1000000
 
 // Snap mode: draggable floating expand button
 const snapBtnTop = ref(8) // initial top offset in px
@@ -173,6 +185,29 @@ const selectedLibraryIds = ref<number[]>([])
 const renameConversationOpen = ref(false)
 const deleteConversationOpen = ref(false)
 const actionConversation = ref<Conversation | null>(null)
+const isTeamMode = computed(() => listMode.value === 'team')
+const activeTeamRobot = computed(() => activeRobot.value)
+
+const getTeamConversationId = (robotId: string | null) => {
+  if (!robotId) return null
+  let hash = 0
+  for (let i = 0; i < robotId.length; i += 1) {
+    hash = (hash * 31 + robotId.charCodeAt(i)) % 1000000007
+  }
+  return -(hash + 1000)
+}
+const activeTeamConversationId = computed(() => getTeamConversationId(activeTeamRobotId.value))
+const activeDisplayConversationId = computed(() =>
+  isTeamMode.value ? activeTeamConversationId.value : activeConversationId.value
+)
+
+const logTeam = (stage: string, payload?: Record<string, any>) => {
+  if (payload) {
+    console.warn(`[assistant][team] ${stage}`, payload)
+    return
+  }
+  console.warn(`[assistant][team] ${stage}`)
+}
 
 // Computed
 const activeAgent = computed(() => {
@@ -180,10 +215,11 @@ const activeAgent = computed(() => {
   return agents.value.find((a) => a.id === activeAgentId.value) ?? null
 })
 
-// Whether the agent list is empty (loaded & no agents)
-const isAgentEmpty = computed(
-  () => !loading.value && agents.value.length === 0
-)
+// Whether the agent list is empty (loaded & no agents). In team mode we show sidebar when team has content or loading.
+const isAgentEmpty = computed(() => {
+  if (listMode.value === 'team') return false
+  return !loading.value && agents.value.length === 0
+})
 
 // Helper function to clear knowledge base selection
 const clearKnowledgeSelection = () => {
@@ -192,17 +228,24 @@ const clearKnowledgeSelection = () => {
 
 // Check if currently generating
 const isGenerating = computed(() => {
-  if (!activeConversationId.value) return false
-  return chatStore.isGenerating(activeConversationId.value).value
+  if (!activeDisplayConversationId.value) return false
+  return chatStore.isGenerating(activeDisplayConversationId.value).value
 })
 
 // Get messages for current conversation
 const chatMessages = computed(() => {
-  if (!activeConversationId.value) return []
-  return chatStore.getMessages(activeConversationId.value).value
+  if (!activeDisplayConversationId.value) return []
+  return chatStore.getMessages(activeDisplayConversationId.value).value
 })
 
 const canSend = computed(() => {
+  if (isTeamMode.value) {
+    return (
+      !!activeTeamRobotId.value &&
+      chatInput.value.trim() !== '' &&
+      !isGenerating.value
+    )
+  }
   return (
     !!activeAgentId.value &&
     chatInput.value.trim() !== '' &&
@@ -214,6 +257,11 @@ const canSend = computed(() => {
 // Reason why send is disabled (for tooltip)
 const sendDisabledReason = computed(() => {
   if (isGenerating.value) return ''
+  if (isTeamMode.value) {
+    if (!activeTeamRobotId.value) return '请先选择团队机器人'
+    if (!chatInput.value.trim()) return t('assistant.placeholders.enterToSend')
+    return ''
+  }
   if (!activeAgentId.value) return t('assistant.placeholders.createAgentFirst')
   if (!selectedModelKey.value) return t('assistant.placeholders.selectModelFirst')
   if (!chatInput.value.trim()) return t('assistant.placeholders.enterToSend')
@@ -309,6 +357,17 @@ const handleNewConversation = () => {
   chatMode.value = 'task'
 }
 
+const handleListModeChange = (mode: ListMode) => {
+  logTeam('switch list mode', { from: listMode.value, to: mode })
+  listMode.value = mode
+  if (mode === 'team') {
+    chatMode.value = 'chat'
+    enableThinking.value = false
+    clearKnowledgeSelection()
+    void loadTeamRobots()
+  }
+}
+
 const handleNewConversationForAgent = (agentId: number) => {
   if (activeAgentId.value !== agentId) {
     activeAgentId.value = agentId
@@ -343,11 +402,116 @@ const handleSelectConversation = (conversation: Conversation) => {
   chatMode.value = conversation.chat_mode || 'task'
 }
 
+const getTeamRobotKey = () => {
+  const robot = activeTeamRobot.value as any
+  return String(robot?.robot_key ?? robot?.robotKey ?? '').trim()
+}
+
+const buildTeamHistoryMessages = (conversationId: number) => {
+  const history = chatStore.getMessages(conversationId).value
+  return history
+    .filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'system')
+    .map((m) => ({
+      role: m.role,
+      content: String(m.content ?? ''),
+    }))
+    .filter((m) => m.content.trim() !== '')
+}
+
+const sendTeamMessage = async (messageContent: string) => {
+  const conversationId = activeTeamConversationId.value
+  if (!conversationId) {
+    logTeam('send blocked: no team conversation id', {
+      active_team_robot_id: activeTeamRobotId.value,
+    })
+    return
+  }
+
+  const currentBinding = binding.value
+  if (!currentBinding?.server_url || !currentBinding?.token) {
+    logTeam('send blocked: missing binding', {
+      has_binding: !!currentBinding,
+      server_url: currentBinding?.server_url,
+      token_length: String(currentBinding?.token ?? '').length,
+    })
+    toast.error(t('knowledge.needsBindingShort'))
+    return
+  }
+
+  const robotKey = getTeamRobotKey()
+  if (!robotKey) {
+    logTeam('send blocked: missing robot_key', {
+      active_team_robot_id: activeTeamRobotId.value,
+      active_robot: activeTeamRobot.value,
+    })
+    toast.error('当前机器人缺少 robot_key')
+    return
+  }
+
+  const history = buildTeamHistoryMessages(conversationId)
+  logTeam('send begin', {
+    conversation_id: conversationId,
+    robot_id: activeTeamRobotId.value,
+    robot_key: robotKey,
+    message_len: messageContent.length,
+    history_count: history.length,
+  })
+  chatStore.appendLocalMessage(conversationId, 'user', messageContent)
+
+  const localMessageId = teamAssistantMessageCounter--
+  logTeam('request via backend proxy', {
+    conversation_id: conversationId,
+    local_message_id: localMessageId,
+    token_length: String(currentBinding.token).length,
+  })
+  try {
+    const result = await ChatWikiService.SendTeamMessageStream(
+      new TeamChatInput({
+        conversation_id: conversationId,
+        tab_id: props.tabId,
+        robot_key: robotKey,
+        content: messageContent,
+        messages: history,
+      })
+    )
+    logTeam('backend proxy started', {
+      request_id: result?.request_id,
+      message_id: result?.message_id,
+    })
+  } catch (error: unknown) {
+    logTeam('backend proxy failed', {
+      error: getErrorMessage(error) || String(error),
+    })
+    throw error
+  }
+}
+
 const handleSend = async () => {
-  if (!canSend.value || !activeAgentId.value) return
+  if (!canSend.value) {
+    logTeam('handleSend blocked by canSend=false', {
+      is_team_mode: isTeamMode.value,
+      chat_input_len: chatInput.value.trim().length,
+      active_team_robot_id: activeTeamRobotId.value,
+      active_agent_id: activeAgentId.value,
+      is_generating: isGenerating.value,
+      reason: sendDisabledReason.value,
+    })
+    return
+  }
 
   const messageContent = chatInput.value.trim()
   chatInput.value = ''
+
+  if (isTeamMode.value) {
+    try {
+      await sendTeamMessage(messageContent)
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || t('assistant.errors.sendFailed'))
+    }
+    return
+  }
+
+  if (!activeAgentId.value) return
 
   // If no active conversation, create one first
   if (!activeConversationId.value) {
@@ -410,6 +574,13 @@ const handleSend = async () => {
 }
 
 const handleStop = () => {
+  if (isTeamMode.value) {
+    const conversationId = activeTeamConversationId.value
+    if (!conversationId) return
+    logTeam('stop team request', { conversation_id: conversationId })
+    void ChatWikiService.StopTeamMessageStream(conversationId)
+    return
+  }
   if (!activeConversationId.value) return
   void chatStore.stopGeneration(activeConversationId.value)
 }
@@ -599,6 +770,14 @@ watch(selectedModelKey, () => {
       handleConversationUpdated(updated)
     }
   })()
+})
+
+watch(activeTeamRobotId, (newId, oldId) => {
+  logTeam('active team robot changed', {
+    from: oldId,
+    to: newId,
+    conversation_id: getTeamConversationId(newId),
+  })
 })
 
 // 当前标签页是否激活
@@ -895,8 +1074,12 @@ onUnmounted(() => {
       :get-agent-conversations="getAgentConversations"
       :get-all-agent-conversations="getAllAgentConversations"
       :ensure-conversations-loaded="ensureConversationsLoaded"
+      :team-robots="teamRobots"
+      :active-team-robot-id="activeTeamRobotId"
+      :team-loading="teamLoading"
       @update:active-agent-id="activeAgentId = $event"
-      @update:list-mode="listMode = $event"
+      @update:active-team-robot-id="activeTeamRobotId = $event"
+      @update:list-mode="handleListModeChange"
       @create="createOpen = true"
       @open-settings="openSettings"
       @new-conversation="handleNewConversation"
@@ -950,9 +1133,9 @@ onUnmounted(() => {
 
     <!-- Right side: Chat area -->
     <section class="flex min-w-0 flex-1 flex-col overflow-hidden">
-      <!-- Top toolbar: workspace drawer toggle (task mode + active conversation only) -->
+      <!-- Top toolbar: workspace drawer toggle (task mode + active conversation only; hidden in team mode) -->
       <div
-        v-if="!isAgentEmpty && !isSnapMode && activeConversationId && chatMode === 'task'"
+        v-if="!isAgentEmpty && !isSnapMode && listMode !== 'team' && activeConversationId && chatMode === 'task'"
         class="flex shrink-0 items-center justify-end px-2 pt-1"
       >
         <Button
@@ -988,13 +1171,13 @@ onUnmounted(() => {
 
       <!-- Chat messages area - show when we have an active conversation -->
       <ChatMessageList
-        v-if="!isAgentEmpty && activeConversationId"
+        v-if="!isAgentEmpty && activeDisplayConversationId"
         data-snap-wake="true"
-        :conversation-id="activeConversationId"
+        :conversation-id="activeDisplayConversationId"
         :tab-id="tabId"
         :mode="props.mode"
-        :agent-name="activeAgent?.name"
-        :agent-icon="activeAgent?.icon"
+        :agent-name="isTeamMode ? activeTeamRobot?.name : activeAgent?.name"
+        :agent-icon="isTeamMode ? activeTeamRobot?.icon : activeAgent?.icon"
         :sandbox-mode="activeAgent?.sandbox_mode"
         :has-attached-target="hasAttachedTarget"
         :show-ai-send-button="showAiSendButton"
@@ -1024,8 +1207,9 @@ onUnmounted(() => {
         :can-send="canSend"
         :send-disabled-reason="sendDisabledReason"
         :chat-messages="chatMessages"
-        :active-agent-id="activeAgentId"
+        :active-agent-id="isTeamMode ? -1 : activeAgentId"
         :is-snap-mode="isSnapMode"
+        :is-team-mode="listMode === 'team'"
         @pointerdown.capture="handleWakeAttachedPointerDown"
         @update:chat-input="chatInput = $event"
         @update:chat-mode="chatMode = $event"
@@ -1041,9 +1225,9 @@ onUnmounted(() => {
       />
     </section>
 
-    <!-- Workspace drawer panel (task mode only) -->
+    <!-- Workspace drawer panel (task mode only; hidden in team mode) -->
     <WorkspaceDrawer
-      v-if="!isSnapMode && activeConversationId && chatMode === 'task'"
+      v-if="!isSnapMode && listMode !== 'team' && activeConversationId && chatMode === 'task'"
       :open="workspaceDrawerOpen"
       :agent="activeAgent"
       :conversation-id="activeConversationId"
@@ -1069,8 +1253,9 @@ onUnmounted(() => {
       :can-send="canSend"
       :send-disabled-reason="sendDisabledReason"
       :chat-messages="chatMessages"
-      :active-agent-id="activeAgentId"
+      :active-agent-id="isTeamMode ? -1 : activeAgentId"
       :is-snap-mode="isSnapMode"
+      :is-team-mode="listMode === 'team'"
       @pointerdown.capture="handleWakeAttachedPointerDown"
       @update:chat-input="chatInput = $event"
       @update:chat-mode="chatMode = $event"

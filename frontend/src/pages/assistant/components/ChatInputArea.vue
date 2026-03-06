@@ -32,23 +32,28 @@ import type { ProviderWithModels } from '@bindings/chatclaw/internal/services/pr
 import type { Library } from '@bindings/chatclaw/internal/services/library'
 import { useThemeLogo } from '@/composables/useLogo'
 
-const props = defineProps<{
-  chatInput: string
-  chatMode: string
-  selectedModelKey: string
-  selectedModelInfo: { providerId: string; modelId: string; modelName: string } | null
-  providersWithModels: ProviderWithModels[]
-  hasModels: boolean
-  enableThinking: boolean
-  selectedLibraryIds: number[]
-  libraries: Library[]
-  isGenerating: boolean
-  canSend: boolean
-  sendDisabledReason: string
-  chatMessages: any[]
-  activeAgentId: number | null
-  isSnapMode?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    chatInput: string
+    chatMode: string
+    selectedModelKey: string
+    selectedModelInfo: { providerId: string; modelId: string; modelName: string } | null
+    providersWithModels: ProviderWithModels[]
+    hasModels: boolean
+    enableThinking: boolean
+    selectedLibraryIds: number[]
+    libraries: Library[]
+    isGenerating: boolean
+    canSend: boolean
+    sendDisabledReason: string
+    chatMessages: any[]
+    activeAgentId: number | null
+    isSnapMode?: boolean
+    /** Team mode: only plain chat, hide mode/model/thinking/knowledge controls */
+    isTeamMode?: boolean
+  }>(),
+  { isTeamMode: false }
+)
 
 const emit = defineEmits<{
   'update:chatInput': [value: string]
@@ -76,8 +81,36 @@ const handleChatEnter = (event: KeyboardEvent) => {
     return
   }
 
+  console.warn('[assistant][input] Enter pressed', {
+    isTeamMode: props.isTeamMode,
+    canSend: props.canSend,
+    reason: props.sendDisabledReason,
+    chatInputLen: String(props.chatInput ?? '').trim().length,
+    activeAgentId: props.activeAgentId,
+  })
   event.preventDefault()
   emit('send')
+}
+
+const handleSendClick = () => {
+  console.warn('[assistant][input] Send button clicked', {
+    isTeamMode: props.isTeamMode,
+    canSend: props.canSend,
+    reason: props.sendDisabledReason,
+    chatInputLen: String(props.chatInput ?? '').trim().length,
+    activeAgentId: props.activeAgentId,
+  })
+  emit('send')
+}
+
+const handleDisabledSendClick = () => {
+  console.warn('[assistant][input] Disabled send clicked', {
+    isTeamMode: props.isTeamMode,
+    canSend: props.canSend,
+    reason: props.sendDisabledReason,
+    chatInputLen: String(props.chatInput ?? '').trim().length,
+    activeAgentId: props.activeAgentId,
+  })
 }
 
 const MAX_VISIBLE_LIBRARIES = 3
@@ -147,9 +180,9 @@ function isProviderFree(pw: ProviderWithModels | undefined): boolean {
       <div
         class="w-full max-w-[800px] rounded-2xl border border-border bg-background px-4 pt-4 pb-3 shadow-sm dark:shadow-none dark:ring-1 dark:ring-white/10"
       >
-        <!-- Selected knowledge bases -->
+        <!-- Selected knowledge bases (hidden in team mode) -->
         <div
-          v-if="selectedLibraryIds.length > 0"
+          v-if="!isTeamMode && selectedLibraryIds.length > 0"
           class="-mt-1 mb-3 flex flex-wrap items-center gap-1.5"
         >
           <div
@@ -184,13 +217,16 @@ function isProviderFree(pw: ProviderWithModels | undefined): boolean {
 
         <div class="mt-3 flex items-center justify-between">
           <div :class="cn('flex items-center', isSnapMode ? 'gap-1' : 'gap-2')">
+            <!-- Mode selector: hidden in team mode -->
             <ChatModeSelector
+              v-if="!isTeamMode"
               :model-value="chatMode"
               :compact="isSnapMode"
               @update:model-value="(v) => emit('update:chatMode', v)"
             />
 
-            <TooltipProvider>
+            <!-- Model selector: hidden in team mode -->
+            <TooltipProvider v-if="!isTeamMode">
               <Tooltip>
                 <TooltipTrigger as-child>
                   <div class="min-w-0">
@@ -259,8 +295,8 @@ function isProviderFree(pw: ProviderWithModels | undefined): boolean {
               </Tooltip>
             </TooltipProvider>
 
-            <!-- Thinking mode toggle -->
-            <TooltipProvider>
+            <!-- Thinking mode toggle: hidden in team mode -->
+            <TooltipProvider v-if="!isTeamMode">
               <Tooltip>
                 <TooltipTrigger as-child>
                   <Button
@@ -286,8 +322,9 @@ function isProviderFree(pw: ProviderWithModels | undefined): boolean {
               </Tooltip>
             </TooltipProvider>
 
-            <!-- Knowledge base multi-select using reka-ui Select with multiple -->
+            <!-- Knowledge base multi-select: hidden in team mode -->
             <SelectRoot
+              v-if="!isTeamMode"
               :model-value="selectedLibraryIds"
               multiple
               @update:model-value="(v: any) => { emit('update:selectedLibraryIds', Array.isArray(v) ? v : [v]); handleLibrarySelectionChange() }"
@@ -376,10 +413,10 @@ function isProviderFree(pw: ProviderWithModels | undefined): boolean {
               <Tooltip>
                 <TooltipTrigger as-child>
                   <!-- disabled button has pointer-events-none; use wrapper to keep tooltip hover -->
-                  <span class="inline-flex">
+                  <span class="inline-flex" @click="handleDisabledSendClick">
                     <Button
                       size="icon"
-                      class="size-6 rounded-full bg-muted-foreground/20 text-muted-foreground disabled:opacity-100"
+                      class="size-6 pointer-events-none rounded-full bg-muted-foreground/20 text-muted-foreground disabled:opacity-100"
                       disabled
                     >
                       <ArrowUp class="size-4" />
@@ -396,7 +433,7 @@ function isProviderFree(pw: ProviderWithModels | undefined): boolean {
               size="icon"
               class="size-6 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
               :title="t('assistant.chat.send')"
-              @click="emit('send')"
+              @click="handleSendClick"
             >
               <ArrowUp class="size-4" />
             </Button>

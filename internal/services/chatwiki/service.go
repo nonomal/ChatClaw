@@ -1,6 +1,7 @@
 package chatwiki
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -10,6 +11,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"chatclaw/internal/sqlite"
@@ -85,6 +88,27 @@ type LibraryParagraphPage struct {
 	Total int                `json:"total"`
 }
 
+// TeamChatMessage is a single history message for team chat.
+type TeamChatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// TeamChatInput is the frontend input for team mode streaming chat.
+type TeamChatInput struct {
+	ConversationID int64             `json:"conversation_id"`
+	TabID          string            `json:"tab_id"`
+	RobotKey       string            `json:"robot_key"`
+	Content        string            `json:"content"`
+	Messages       []TeamChatMessage `json:"messages"`
+}
+
+// TeamChatResult returns request/message IDs so frontend can correlate state.
+type TeamChatResult struct {
+	RequestID string `json:"request_id"`
+	MessageID int64  `json:"message_id"`
+}
+
 type chatWikiRobotRaw struct {
 	ID              string `json:"id"`
 	RobotKey        string `json:"robot_key"`
@@ -121,10 +145,18 @@ type bindingModel struct {
 // ChatWikiService exposes ChatWiki binding operations to the frontend via Wails.
 type ChatWikiService struct {
 	app *application.App
+
+	teamMu      sync.Mutex
+	teamCancels map[int64]context.CancelFunc
+	teamSeq     map[string]int32
 }
 
 func NewChatWikiService(app *application.App) *ChatWikiService {
-	return &ChatWikiService{app: app}
+	return &ChatWikiService{
+		app:         app,
+		teamCancels: make(map[int64]context.CancelFunc),
+		teamSeq:     make(map[string]int32),
+	}
 }
 
 // GetBinding returns the current binding, or nil if none exists.
@@ -204,7 +236,7 @@ func (s *ChatWikiService) GetRobotList() ([]Robot, error) {
 	baseURL := strings.TrimRight(binding.ServerURL, "/")
 	q := url.Values{}
 	q.Set("application_type", "-1")
-	q.Set("only_open", "0")
+	q.Set("only_open", "1") // only robots with switch_status open
 	apiURL := baseURL + "/manage/chatclaw/getRobotList?" + q.Encode()
 
 	s.app.Logger.Info("[ChatWiki] GetRobotList request",
@@ -286,6 +318,314 @@ func (s *ChatWikiService) GetRobotList() ([]Robot, error) {
 		})
 	}
 	return robots, nil
+}
+
+// SendTeamMessageStream sends a team-mode message to ChatWiki and forwards SSE chunks
+// to frontend chat events (chat:start/chat:chunk/chat:complete/chat:error/chat:stopped).
+func (s *ChatWikiService) SendTeamMessageStream(input TeamChatInput) (*TeamChatResult, error) {
+	conversationID := input.ConversationID
+	if conversationID == 0 {
+		return nil, fmt.Errorf("conversation_id is required")
+	}
+	content := strings.TrimSpace(input.Content)
+	if content == "" {
+		return nil, fmt.Errorf("content is required")
+	}
+	robotKey := strings.TrimSpace(input.RobotKey)
+	if robotKey == "" {
+		return nil, fmt.Errorf("robot_key is required")
+	}
+	tabID := strings.TrimSpace(input.TabID)
+	if tabID == "" {
+		tabID = "team"
+	}
+
+	binding, err := s.GetBinding()
+	if err != nil || binding == nil {
+		return nil, fmt.Errorf("no binding found")
+	}
+
+	requestID := fmt.Sprintf("team-%d", time.Now().UnixNano())
+	messageID := -time.Now().UnixMilli()
+	if messageID >= 0 {
+		messageID = -1
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.storeTeamCancel(conversationID, cancel)
+
+	s.app.Logger.Info("[ChatWiki][TeamChat] stream start",
+		"conversation_id", conversationID,
+		"tab_id", tabID,
+		"request_id", requestID,
+		"robot_key", robotKey,
+		"history_count", len(input.Messages),
+		"content_len", len(content),
+	)
+
+	go s.runTeamChatStream(ctx, conversationID, tabID, requestID, messageID, robotKey, content, input.Messages, binding)
+
+	return &TeamChatResult{
+		RequestID: requestID,
+		MessageID: messageID,
+	}, nil
+}
+
+// StopTeamMessageStream stops active team-mode SSE stream for a conversation.
+func (s *ChatWikiService) StopTeamMessageStream(conversationID int64) error {
+	if conversationID == 0 {
+		return nil
+	}
+	s.teamMu.Lock()
+	cancel, ok := s.teamCancels[conversationID]
+	s.teamMu.Unlock()
+	if ok && cancel != nil {
+		cancel()
+	}
+	return nil
+}
+
+func (s *ChatWikiService) runTeamChatStream(
+	ctx context.Context,
+	conversationID int64,
+	tabID string,
+	requestID string,
+	messageID int64,
+	robotKey string,
+	content string,
+	history []TeamChatMessage,
+	binding *Binding,
+) {
+	defer s.clearTeamCancel(conversationID)
+
+	emitBase := func() map[string]any {
+		return map[string]any{
+			"conversation_id": conversationID,
+			"tab_id":          tabID,
+			"request_id":      requestID,
+			"message_id":      messageID,
+			"seq":             s.nextTeamSeq(requestID),
+			"ts":              time.Now().UnixMilli(),
+		}
+	}
+
+	startPayload := emitBase()
+	startPayload["status"] = "streaming"
+	s.app.Event.Emit("chat:start", startPayload)
+
+	baseURL := strings.TrimRight(binding.ServerURL, "/")
+	candidates := []string{baseURL + "/manage/chatclaw/chat/completions"}
+
+	reqBody := map[string]any{
+		"robot_key": robotKey,
+		"content":   content,
+		"messages":  history,
+		"quote_lib": true,
+	}
+	b, err := json.Marshal(reqBody)
+	if err != nil {
+		s.emitTeamError(emitBase, "encode request body failed: "+err.Error())
+		return
+	}
+
+	var (
+		resp       *http.Response
+		lastErrMsg string
+	)
+	for idx, candidate := range candidates {
+		u, parseErr := url.Parse(candidate)
+		if parseErr != nil {
+			lastErrMsg = "invalid request url: " + parseErr.Error()
+			continue
+		}
+
+		s.app.Logger.Info("[ChatWiki][TeamChat] request",
+			"url", u.String(),
+			"candidate_index", idx,
+			"token_length", len(binding.Token),
+			"conversation_id", conversationID,
+			"request_id", requestID,
+			"auth_mode", "header_token",
+		)
+
+		req, reqErr := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), bytes.NewReader(b))
+		if reqErr != nil {
+			lastErrMsg = "create request failed: " + reqErr.Error()
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Token", binding.Token)
+		req.Header.Set("AppType", "chat_claw_client")
+
+		tryResp, doErr := http.DefaultClient.Do(req)
+		if doErr != nil {
+			if ctx.Err() == context.Canceled {
+				stopped := emitBase()
+				stopped["status"] = "cancelled"
+				s.app.Event.Emit("chat:stopped", stopped)
+				return
+			}
+			lastErrMsg = "request failed: " + doErr.Error()
+			continue
+		}
+
+		contentType := strings.ToLower(strings.TrimSpace(tryResp.Header.Get("Content-Type")))
+		if tryResp.StatusCode == http.StatusOK && strings.Contains(contentType, "text/event-stream") {
+			resp = tryResp
+			break
+		}
+
+		raw, _ := io.ReadAll(io.LimitReader(tryResp.Body, 4096))
+		_ = tryResp.Body.Close()
+		bodyPreview := strings.TrimSpace(string(raw))
+		lastErrMsg = fmt.Sprintf("unexpected response status=%d content_type=%s body=%s", tryResp.StatusCode, contentType, bodyPreview)
+		s.app.Logger.Warn("[ChatWiki][TeamChat] request not matched",
+			"url", u.String(),
+			"candidate_index", idx,
+			"status", tryResp.StatusCode,
+			"content_type", contentType,
+			"body_preview", bodyPreview,
+		)
+	}
+	if resp == nil {
+		if lastErrMsg == "" {
+			lastErrMsg = "all request candidates failed"
+		}
+		if strings.Contains(strings.ToLower(lastErrMsg), "body=noroute") {
+			lastErrMsg = "remote route not found: /manage/chatclaw/chat/completions returned NoRoute"
+		}
+		s.emitTeamError(emitBase, lastErrMsg)
+		return
+	}
+	defer resp.Body.Close()
+
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 0, 64*1024), 2*1024*1024)
+	eventName := ""
+	dataLines := make([]string, 0, 4)
+	finished := false
+	var fullSendingText strings.Builder
+
+	flush := func() {
+		if eventName == "" {
+			dataLines = dataLines[:0]
+			return
+		}
+		data := strings.Join(dataLines, "\n")
+		s.app.Logger.Info("[ChatWiki][TeamChat] sse event",
+			"conversation_id", conversationID,
+			"request_id", requestID,
+			"event", eventName,
+			"data_len", len(data),
+			"data", data, // full raw data for debugging
+		)
+		switch eventName {
+		case "sending":
+			fullSendingText.WriteString(data)
+			chunk := emitBase()
+			chunk["delta"] = data
+			s.app.Event.Emit("chat:chunk", chunk)
+		case "finish", "data":
+			if fullSendingText.Len() > 0 {
+				s.app.Logger.Info("[ChatWiki][TeamChat] full sending content",
+					"conversation_id", conversationID,
+					"request_id", requestID,
+					"content", fullSendingText.String(), // full assembled content
+				)
+			}
+			complete := emitBase()
+			complete["status"] = "success"
+			complete["finish_reason"] = "stop"
+			s.app.Event.Emit("chat:complete", complete)
+			finished = true
+		case "error":
+			s.emitTeamError(emitBase, data)
+			finished = true
+		}
+		eventName = ""
+		dataLines = dataLines[:0]
+	}
+
+	for scanner.Scan() {
+		if ctx.Err() == context.Canceled {
+			stopped := emitBase()
+			stopped["status"] = "cancelled"
+			s.app.Event.Emit("chat:stopped", stopped)
+			return
+		}
+		line := strings.TrimRight(scanner.Text(), "\r")
+		if line == "" {
+			flush()
+			if finished {
+				return
+			}
+			continue
+		}
+		if strings.HasPrefix(line, ":") {
+			continue
+		}
+		if strings.HasPrefix(line, "event:") {
+			eventName = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
+			continue
+		}
+		if strings.HasPrefix(line, "data:") {
+			dataLines = append(dataLines, strings.TrimSpace(strings.TrimPrefix(line, "data:")))
+		}
+	}
+	flush()
+
+	if err := scanner.Err(); err != nil {
+		if ctx.Err() == context.Canceled {
+			stopped := emitBase()
+			stopped["status"] = "cancelled"
+			s.app.Event.Emit("chat:stopped", stopped)
+			return
+		}
+		s.emitTeamError(emitBase, "stream read failed: "+err.Error())
+		return
+	}
+
+	if !finished {
+		complete := emitBase()
+		complete["status"] = "success"
+		complete["finish_reason"] = "stop"
+		s.app.Event.Emit("chat:complete", complete)
+	}
+}
+
+func (s *ChatWikiService) emitTeamError(emitBase func() map[string]any, message string) {
+	s.app.Logger.Error("[ChatWiki][TeamChat] stream error", "error", message)
+	errPayload := emitBase()
+	errPayload["status"] = "error"
+	errPayload["error_key"] = "error.chat_stream_failed"
+	errPayload["error_data"] = map[string]any{
+		"Error": message,
+	}
+	s.app.Event.Emit("chat:error", errPayload)
+}
+
+func (s *ChatWikiService) storeTeamCancel(conversationID int64, cancel context.CancelFunc) {
+	s.teamMu.Lock()
+	defer s.teamMu.Unlock()
+	if old, ok := s.teamCancels[conversationID]; ok && old != nil {
+		old()
+	}
+	s.teamCancels[conversationID] = cancel
+}
+
+func (s *ChatWikiService) clearTeamCancel(conversationID int64) {
+	s.teamMu.Lock()
+	defer s.teamMu.Unlock()
+	delete(s.teamCancels, conversationID)
+}
+
+func (s *ChatWikiService) nextTeamSeq(requestID string) int {
+	s.teamMu.Lock()
+	defer s.teamMu.Unlock()
+	current := s.teamSeq[requestID]
+	next := atomic.AddInt32(&current, 1)
+	s.teamSeq[requestID] = next
+	return int(next)
 }
 
 // GetLibraryList fetches the full knowledge base list from ChatWiki API.

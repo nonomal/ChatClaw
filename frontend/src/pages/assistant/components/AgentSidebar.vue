@@ -22,24 +22,36 @@ import IconSidebarCollapse from '@/assets/icons/sidebar-collapse.svg'
 import { Pin, PinOff, MoreHorizontal } from 'lucide-vue-next'
 import type { Agent } from '@bindings/chatclaw/internal/services/agents'
 import type { Conversation } from '@bindings/chatclaw/internal/services/conversations'
+import type { Robot } from '@bindings/chatclaw/internal/services/chatwiki'
 import { useThemeLogo } from '@/composables/useLogo'
 
 type ListMode = 'personal' | 'team'
 
-const props = defineProps<{
-  agents: Agent[]
-  activeAgentId: number | null
-  activeConversationId: number | null
-  loading: boolean
-  listMode: ListMode
-  isSnapMode: boolean
-  getAgentConversations: (agentId: number) => Conversation[]
-  getAllAgentConversations: (agentId: number) => Conversation[]
-  ensureConversationsLoaded: (agentId: number) => Promise<void>
-}>()
+const props = withDefaults(
+  defineProps<{
+    agents: Agent[]
+    activeAgentId: number | null
+    activeConversationId: number | null
+    loading: boolean
+    listMode: ListMode
+    isSnapMode: boolean
+    getAgentConversations: (agentId: number) => Conversation[]
+    getAllAgentConversations: (agentId: number) => Conversation[]
+    ensureConversationsLoaded: (agentId: number) => Promise<void>
+    teamRobots?: Robot[]
+    activeTeamRobotId?: string | null
+    teamLoading?: boolean
+  }>(),
+  {
+    teamRobots: () => [],
+    activeTeamRobotId: null,
+    teamLoading: false,
+  }
+)
 
 const emit = defineEmits<{
   'update:activeAgentId': [value: number]
+  'update:activeTeamRobotId': [value: string | null]
   'update:listMode': [value: ListMode]
   'create': []
   'openSettings': [agent: Agent]
@@ -62,6 +74,10 @@ const handleAgentClick = (agentId: number) => {
 
 const handleListModeChange = (mode: ListMode) => {
   emit('update:listMode', mode)
+}
+
+const handleTeamRobotClick = (robotId: string) => {
+  emit('update:activeTeamRobotId', robotId)
 }
 </script>
 
@@ -107,21 +123,35 @@ const handleListModeChange = (mode: ListMode) => {
           {{ t('assistant.modes.personal') }}
         </button>
         <button
-          :class="cn('rounded px-3 py-1 text-sm transition-colors', 'cursor-not-allowed opacity-50')"
-          disabled
+          :class="
+            cn(
+              'rounded px-3 py-1 text-sm transition-colors',
+              listMode === 'team'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )
+          "
+          @click="handleListModeChange('team')"
         >
           {{ t('assistant.modes.team') }}
         </button>
       </div>
 
-      <Button size="icon" variant="ghost" :disabled="loading" @click="emit('create')">
+      <Button
+        v-if="listMode === 'personal'"
+        size="icon"
+        variant="ghost"
+        :disabled="loading"
+        @click="emit('create')"
+      >
         <IconAgentAdd class="size-4 text-muted-foreground" />
       </Button>
     </div>
 
     <div class="flex-1 overflow-auto px-2 pb-3">
+      <!-- Personal mode: empty state -->
       <div
-        v-if="agents.length === 0"
+        v-if="listMode === 'personal' && agents.length === 0"
         class="mx-2 mt-2 flex items-center justify-center rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground"
       >
         <div class="text-center text-sm text-muted-foreground">
@@ -129,7 +159,18 @@ const handleListModeChange = (mode: ListMode) => {
         </div>
       </div>
 
-      <div class="flex flex-col gap-1.5">
+      <!-- Team mode: empty / no binding -->
+      <div
+        v-if="listMode === 'team' && !teamLoading && teamRobots.length === 0"
+        class="mx-2 mt-2 flex items-center justify-center rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground"
+      >
+        <div class="text-center text-sm text-muted-foreground">
+          {{ t('knowledge.needsBindingShort') }}
+        </div>
+      </div>
+
+      <!-- Personal mode: agent list -->
+      <div v-if="listMode === 'personal'" class="flex flex-col gap-1.5">
         <div v-for="a in agents" :key="a.id" class="flex flex-col">
           <!-- Agent item -->
           <div
@@ -269,6 +310,37 @@ const handleListModeChange = (mode: ListMode) => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team mode: robot list from ChatWiki getRobotList -->
+      <div v-if="listMode === 'team'" class="flex flex-col gap-1.5">
+        <div
+          v-for="r in teamRobots"
+          :key="r.id"
+          :class="
+            cn(
+              'group flex h-11 w-full items-center gap-2 rounded px-2 text-left outline-none transition-colors',
+              r.id === activeTeamRobotId
+                ? 'bg-zinc-100 text-foreground dark:bg-accent'
+                : 'bg-white text-muted-foreground shadow-[0px_1px_4px_0px_rgba(0,0,0,0.1)] hover:bg-accent/50 hover:text-foreground dark:bg-zinc-800/50 dark:shadow-[0px_1px_4px_0px_rgba(255,255,255,0.05)]'
+            )
+          "
+          role="button"
+          tabindex="0"
+          @click="handleTeamRobotClick(r.id)"
+          @keydown.enter.prevent="handleTeamRobotClick(r.id)"
+          @keydown.space.prevent="handleTeamRobotClick(r.id)"
+        >
+          <div
+            class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-border bg-white text-foreground dark:border-white/15 dark:bg-white/5"
+          >
+            <img v-if="r.icon" :src="r.icon" class="size-6 object-contain" alt="" />
+            <img v-else :src="logoSrc" class="size-6 opacity-90" alt="ChatClaw logo" />
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="truncate text-sm font-normal">{{ r.name }}</div>
           </div>
         </div>
       </div>
