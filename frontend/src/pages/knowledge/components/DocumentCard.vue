@@ -84,8 +84,8 @@ const statusConfig = computed(() => {
       return {
         label: '',
         icon: Check,
-        class: '',
-        iconClass: 'text-foreground/70',
+        class: 'size-5 rounded-full bg-black/70 text-white shadow-sm dark:bg-white/15 dark:text-white',
+        iconClass: 'text-white',
         iconOnly: true,
         show: true,
       }
