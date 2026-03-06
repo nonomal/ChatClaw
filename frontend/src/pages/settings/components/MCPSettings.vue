@@ -4,7 +4,6 @@ import { useI18n } from 'vue-i18n'
 import {
   FolderOpen,
   Plus,
-  Pencil,
   Trash2,
   Loader2,
   Package,
@@ -396,41 +395,35 @@ onMounted(() => {
           <span class="text-sm">{{ t('settings.mcp.noServers') }}</span>
           <span class="text-xs">{{ t('settings.mcp.noServersHint') }}</span>
         </div>
-        <div v-else class="flex flex-col gap-2">
+        <div v-else class="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
           <div
             v-for="server in servers"
             :key="server.id"
-            class="group rounded-lg border border-border p-3 transition-colors hover:bg-accent/30 dark:border-white/10"
+            class="group flex cursor-pointer flex-col rounded-lg border border-border p-3.5 transition-colors hover:bg-accent/30 dark:border-white/10"
+            @click="openEditDialog(server)"
           >
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2">
-                  <span class="text-sm font-medium text-foreground">{{ server.name }}</span>
-                  <Badge variant="secondary" class="bg-muted px-1.5 py-0 text-[10px] text-muted-foreground">
-                    <Terminal v-if="server.transport === 'stdio'" class="mr-0.5 size-2.5" />
-                    <Globe v-else class="mr-0.5 size-2.5" />
-                    {{ server.transport === 'stdio' ? 'stdio' : 'HTTP' }}
-                  </Badge>
-                </div>
-                <p class="mt-1 truncate text-xs text-muted-foreground">
-                  {{ serverSummary(server) }}
-                </p>
-              </div>
-              <div class="flex shrink-0 items-center gap-2">
+            <div class="flex items-center gap-2">
+              <span class="truncate text-sm font-medium text-foreground">{{ server.name }}</span>
+              <Badge variant="secondary" class="shrink-0 bg-muted px-1.5 py-0 text-[10px] text-muted-foreground">
+                <Terminal v-if="server.transport === 'stdio'" class="mr-0.5 size-2.5" />
+                <Globe v-else class="mr-0.5 size-2.5" />
+                {{ server.transport === 'stdio' ? 'stdio' : 'HTTP' }}
+              </Badge>
+            </div>
+            <p class="mt-1.5 line-clamp-2 min-h-[2lh] text-xs leading-relaxed text-muted-foreground">
+              {{ serverSummary(server) }}
+            </p>
+            <div class="mt-auto flex items-center justify-between gap-2 pt-3">
+              <span class="text-[10px] text-muted-foreground">{{ server.timeout }}s timeout</span>
+              <div class="flex items-center gap-2" @click.stop>
                 <Switch
                   :model-value="server.enabled"
                   class="scale-90"
                   @update:model-value="() => handleToggleServer(server)"
                 />
                 <button
-                  class="inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  @click="openEditDialog(server)"
-                >
-                  <Pencil class="size-3.5" />
-                </button>
-                <button
                   class="inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                  @click="confirmDelete(server)"
+                  @click.stop="confirmDelete(server)"
                 >
                   <Trash2 class="size-3.5" />
                 </button>
