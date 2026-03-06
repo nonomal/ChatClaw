@@ -183,5 +183,7 @@
   "error.channel_platform_required": "缺少平台类型",
   "error.channel_id_required": "缺少频道 ID",
   "error.channel_connect_failed": "频道「{{.Name}}」连接失败",
-  "error.channel_agent_create_failed": "为频道创建 AI 助手失败"
+  "error.channel_connect_requires_agent": "请先绑定助手后再开启连接",
+  "error.channel_agent_create_failed": "为频道创建 AI 助手失败",
+  "error.channel_agent_create_not_available": "自动创建助手功能不可用"
 }

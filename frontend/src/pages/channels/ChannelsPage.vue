@@ -51,6 +51,8 @@ const deleteDialogOpen = ref(false)
 const channelToDelete = ref<Channel | null>(null)
 const bindDialogOpen = ref(false)
 const channelToBind = ref<Channel | null>(null)
+/** True when bind dialog was opened right after creating a channel (show auto-generate option) */
+const bindFromCreate = ref(false)
 const toggleDialogOpen = ref(false)
 const channelToToggle = ref<{ channel: Channel, val: boolean } | null>(null)
 
@@ -122,10 +124,14 @@ function handleSelectPlatform(platform: PlatformMeta) {
   configDialogOpen.value = true
 }
 
-function handleConfigSaved() {
+function handleConfigSaved(channel: Channel) {
   configDialogOpen.value = false
   selectedPlatform.value = null
-  loadData()
+  loadData().then(() => {
+    channelToBind.value = channel
+    bindFromCreate.value = true
+    bindDialogOpen.value = true
+  })
 }
 
 function confirmDelete(channel: Channel) {
@@ -151,11 +157,10 @@ async function handleConnect(channel: Channel) {
   try {
     await ChannelService.ConnectChannel(channel.id)
     toast.success(t('channels.connect.success', '连接成功'))
-    loadData()
+    await loadData()
   } catch (error) {
     toast.error(getErrorMessage(error))
-    // Re-load to reset the switch if failed
-    loadData()
+    await loadData()
   }
 }
 
@@ -163,10 +168,10 @@ async function handleDisconnect(channel: Channel) {
   try {
     await ChannelService.DisconnectChannel(channel.id)
     toast.success(t('channels.disconnect.success', '断开成功'))
-    loadData()
+    await loadData()
   } catch (error) {
     toast.error(getErrorMessage(error))
-    loadData()
+    await loadData()
   }
 }
 
@@ -207,6 +212,7 @@ async function handleUnbind(channel: Channel) {
 
 function handleOpenBind(channel: Channel) {
   channelToBind.value = channel
+  bindFromCreate.value = false
   bindDialogOpen.value = true
 }
 
@@ -221,6 +227,23 @@ async function handleBindAgent(agentId: number) {
   } finally {
     bindDialogOpen.value = false
     channelToBind.value = null
+    bindFromCreate.value = false
+  }
+}
+
+async function handleAutoGenerate() {
+  if (!channelToBind.value) return
+  try {
+    await ChannelService.EnsureAgentForChannel(channelToBind.value.id)
+    await ChannelService.ConnectChannel(channelToBind.value.id)
+    toast.success(t('channels.bindAgent.autoGenerateSuccess', '已自动创建助手并连接频道'))
+    loadData()
+  } catch (error) {
+    toast.error(getErrorMessage(error))
+  } finally {
+    bindDialogOpen.value = false
+    channelToBind.value = null
+    bindFromCreate.value = false
   }
 }
 
@@ -274,7 +297,7 @@ async function handleInlineSave() {
       app_secret: inlineFormAppSecret.value.trim(),
     })
 
-    await ChannelService.CreateChannel({
+    const channel = await ChannelService.CreateChannel({
       platform: selectedPlatformMeta.value.id,
       name: inlineFormName.value.trim(),
       avatar: inlineFormAvatar.value,
@@ -284,7 +307,12 @@ async function handleInlineSave() {
 
     toast.success(t('channels.config.success'))
     resetInlineForm()
-    loadData()
+    await loadData()
+    if (channel) {
+      channelToBind.value = channel
+      bindFromCreate.value = true
+      bindDialogOpen.value = true
+    }
   } catch (error) {
     toast.error(getErrorMessage(error))
   } finally {
@@ -403,7 +431,7 @@ onMounted(loadData)
         >
           <!-- Card Header -->
           <div class="flex items-center justify-between">
-            <div class="flex flex-1 items-center gap-2">
+            <div class="flex flex-1 items-center gap-2 min-w-0">
               <div class="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded border border-[#d9d9d9] bg-white dark:border-border dark:bg-muted">
                 <img 
                   v-if="channel.avatar" 
@@ -421,9 +449,14 @@ onMounted(loadData)
               </div>
               <span class="truncate text-sm text-[#171717] dark:text-foreground">{{ channel.name }}</span>
             </div>
-            
-            <div class="flex items-center gap-2">
-        
+
+            <div class="flex items-center gap-2 shrink-0">
+              <!-- Connection switch: enabled only when agent is bound -->
+              <Switch
+                :model-value="channel.enabled"
+                :disabled="channel.agent_id === 0"
+                @update:model-value="(v: boolean) => handleToggleConnection(channel, v)"
+              />
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
                   <Button variant="ghost" size="icon" class="h-6 w-6 rounded bg-[#f5f5f5] dark:bg-muted hover:bg-[#e5e5e5] dark:hover:bg-muted/80">
@@ -454,7 +487,7 @@ onMounted(loadData)
             Appid: {{ getAppId(channel.extra_config) }}
           </p>
 
-          <!-- Status Tags -->
+          <!-- Status Tags (bind status only; connection status removed) -->
           <div class="flex items-center gap-2">
             <!-- Connection Status -->
             <div class="inline-flex items-center gap-1.5 rounded-full bg-[#f0f0f0] px-2 py-0.5 dark:bg-muted">
@@ -612,7 +645,9 @@ onMounted(loadData)
     <!-- Bind Agent Dialog -->
     <BindAgentDialog
       v-model:open="bindDialogOpen"
+      :from-create="bindFromCreate"
       @bind="handleBindAgent"
+      @auto-generate="handleAutoGenerate"
     />
 
     <!-- Toggle Confirmation -->

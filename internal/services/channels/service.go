@@ -135,13 +135,6 @@ func (s *ChannelService) CreateChannel(input CreateChannelInput) (*Channel, erro
 		return nil, errs.Wrap("error.channel_create_failed", fmt.Errorf("insert: %w", err))
 	}
 
-	// Auto-connect the channel asynchronously
-	go func() {
-		if err := s.ConnectChannel(m.ID); err != nil {
-			s.app.Logger.Warn("auto-connect channel failed", "channel_id", m.ID, "error", err)
-		}
-	}()
-
 	dto := m.toDTO()
 	return &dto, nil
 }
@@ -229,6 +222,54 @@ func (s *ChannelService) BindAgent(id int64, agentID int64) error {
 	return nil
 }
 
+// EnsureAgentForChannel creates an AI agent for the channel (if not already bound) and binds it.
+// Returns the agent ID. Used when the user chooses "auto-generate assistant" in the bind dialog.
+func (s *ChannelService) EnsureAgentForChannel(id int64) (int64, error) {
+	if id <= 0 {
+		return 0, errs.New("error.channel_id_required")
+	}
+
+	db, err := s.db()
+	if err != nil {
+		return 0, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var m channelModel
+	if err := db.NewSelect().Model(&m).Where("id = ?", id).Limit(1).Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, errs.Newf("error.channel_not_found", map[string]any{"ID": id})
+		}
+		return 0, errs.Wrap("error.channel_read_failed", err)
+	}
+
+	if m.AgentID != 0 {
+		return m.AgentID, nil
+	}
+
+	if s.ensureAgent == nil {
+		return 0, errs.New("error.channel_agent_create_not_available")
+	}
+
+	agentID, err := s.ensureAgent(m.Name)
+	if err != nil {
+		return 0, errs.Wrap("error.channel_agent_create_failed", err)
+	}
+
+	if _, err := db.NewUpdate().
+		Model((*channelModel)(nil)).
+		Where("id = ?", id).
+		Set("agent_id = ?", agentID).
+		Exec(ctx); err != nil {
+		return 0, errs.Wrap("error.channel_bind_failed", err)
+	}
+
+	s.app.Logger.Info("auto-created and bound agent for channel", "channel_id", id, "agent_id", agentID)
+	return agentID, nil
+}
+
 // UnbindAgent removes the AI agent association from a channel.
 func (s *ChannelService) UnbindAgent(id int64) error {
 	if id <= 0 {
@@ -304,6 +345,10 @@ func (s *ChannelService) ConnectChannel(id int64) error {
 		return errs.Wrap("error.channel_read_failed", err)
 	}
 
+	if m.AgentID == 0 {
+		return errs.New("error.channel_connect_requires_agent")
+	}
+
 	// Mark as enabled
 	if _, err := db.NewUpdate().
 		Model((*channelModel)(nil)).
@@ -316,23 +361,6 @@ func (s *ChannelService) ConnectChannel(id int64) error {
 	ch := m.toDTO()
 	if err := s.gateway.ConnectChannel(context.Background(), ch); err != nil {
 		return errs.Wrapf("error.channel_connect_failed", err, map[string]any{"Name": ch.Name})
-	}
-
-	// Auto-create an AI agent if the channel doesn't have one yet
-	if m.AgentID == 0 && s.ensureAgent != nil {
-		agentID, err := s.ensureAgent(m.Name)
-		if err != nil {
-			return errs.Wrap("error.channel_agent_create_failed", err)
-		}
-		m.AgentID = agentID
-		if _, err := db.NewUpdate().
-			Model((*channelModel)(nil)).
-			Where("id = ?", id).
-			Set("agent_id = ?", agentID).
-			Exec(ctx); err != nil {
-			return errs.Wrap("error.channel_update_failed", err)
-		}
-		s.app.Logger.Info("auto-created agent for channel", "channel_id", id, "agent_id", agentID)
 	}
 
 	return nil
