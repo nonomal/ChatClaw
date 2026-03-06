@@ -16,14 +16,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ChannelService } from '@bindings/chatclaw/internal/services/channels'
-import type { PlatformMeta } from '@bindings/chatclaw/internal/services/channels'
+import type { Channel, PlatformMeta } from '@bindings/chatclaw/internal/services/channels'
 
 const props = defineProps<{
   platform: PlatformMeta | null
 }>()
 
 const open = defineModel<boolean>('open', { required: true })
-const emit = defineEmits<{ saved: [] }>()
+const emit = defineEmits<{ saved: [channel: Channel] }>()
 
 const { t } = useI18n()
 
@@ -110,7 +110,7 @@ async function handleSave() {
       extraConfig = JSON.stringify({ token: token.value.trim() })
     }
 
-    await ChannelService.CreateChannel({
+    const channel = await ChannelService.CreateChannel({
       platform: props.platform.id,
       name: name.value.trim(),
       avatar: avatar.value,
@@ -119,8 +119,8 @@ async function handleSave() {
     })
 
     toast.success(t('channels.config.success'))
-    emit('saved')
     open.value = false
+    if (channel) emit('saved', channel)
   } catch (error) {
     toast.error(getErrorMessage(error))
   } finally {
