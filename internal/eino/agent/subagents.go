@@ -110,9 +110,9 @@ func buildSubAgentHandlers(
 // 15 provides ample room while preventing runaway loops with weaker models.
 const researcherMaxIterations = 15
 
-func researcherInstruction() string {
+func researcherInstruction(skillsEnabled bool) string {
 	if isZhCN() {
-		return `你是一个深度调研助手，在独立上下文中工作。
+		inst := `你是一个深度调研助手，在独立上下文中工作。
 
 ## 工作流程
 1. 分析调研需求，确定搜索方向和关键词
@@ -136,8 +136,21 @@ func researcherInstruction() string {
 - 交叉验证关键信息，区分事实与观点
 - 如果信息确实不足，在结论中说明，而不是无限搜索
 - 输出要精炼，避免冗余`
+
+		if skillsEnabled {
+			inst += `
+
+## 技能系统
+已安装的技能会自动加载到你的能力中，为你提供额外的调研方法和专业知识。
+- 用 skill_list 查看已安装的技能
+- 用 skill_search 搜索技能市场，查找与调研主题相关的技能
+- 用 read_skill 读取技能内容，获取专业的操作指南
+- 如果已有启用的技能与当前调研任务相关，优先按照技能指引操作`
+		}
+		return inst
 	}
-	return `You are a deep research assistant working in an isolated context.
+
+	inst := `You are a deep research assistant working in an isolated context.
 
 ## Workflow
 1. Analyze the request and determine search directions and keywords
@@ -161,6 +174,18 @@ List main references with URLs
 - Cross-verify key information; distinguish facts from opinions
 - If information is genuinely insufficient, state so in conclusions rather than searching endlessly
 - Keep output concise — avoid redundancy`
+
+	if skillsEnabled {
+		inst += `
+
+## Skill System
+Installed skills are automatically loaded into your capabilities, providing additional research methods and domain expertise.
+- Use skill_list to view installed skills
+- Use skill_search to search the marketplace for skills related to your research topic
+- Use read_skill to read skill content for expert operational guidance
+- If an enabled skill is relevant to the current research task, follow its guidance preferentially`
+	}
+	return inst
 }
 
 func researcherDescription() string {
@@ -171,13 +196,16 @@ func researcherDescription() string {
 }
 
 // newResearcherSubAgent creates the Researcher sub-agent as a tool.
-// It has access to search, browsing, HTTP, read-only filesystem, and thinking tools.
+// It has access to search, browsing, HTTP, read-only filesystem, thinking tools,
+// and optionally skill tools (list, search, read) when skills are enabled.
 func newResearcherSubAgent(
 	ctx context.Context,
 	chatModel model.BaseChatModel,
 	registeredTools []tool.BaseTool,
 	backend *tools.Backend,
 	config Config,
+	skillMgmtTools []tool.BaseTool,
+	skillBackend *filteringSkillBackend,
 	logger *slog.Logger,
 ) (tool.BaseTool, error) {
 	researcherTools := filterToolsByName(registeredTools,
@@ -185,8 +213,16 @@ func newResearcherSubAgent(
 		"http_request", "read_file", "ls", "sequential_thinking",
 	)
 
+	if config.SkillsEnabled && len(skillMgmtTools) > 0 {
+		relevantSkillTools := filterToolsByName(skillMgmtTools, "skill_list", "skill_search")
+		researcherTools = append(researcherTools, relevantSkillTools...)
+		if skillBackend != nil {
+			researcherTools = append(researcherTools, &readSkillTool{backend: skillBackend})
+		}
+	}
+
 	handlers := buildSubAgentHandlers(ctx, backend, config, chatModel, logger,
-		researcherInstruction(), "researcher",
+		researcherInstruction(config.SkillsEnabled), "researcher",
 		true, true, true,
 	)
 

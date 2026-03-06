@@ -125,8 +125,18 @@ func NewChatModelAgent(ctx context.Context, config Config, toolRegistry *tools.T
 	baseTools = append(baseTools, NewConfirmExecutionTool())
 	baseTools = append(baseTools, extraTools...)
 
+	// Prepare skill resources (shared by sub-agents)
+	var skillMgmtTools []tool.BaseTool
+	var skillBackend *filteringSkillBackend
+	if config.SkillsEnabled {
+		skillMgmtTools = filterToolsByName(extraTools,
+			"skill_list", "skill_search", "skill_install", "skill_enable",
+		)
+		skillBackend = newFilteringSkillBackend(backend, logger)
+	}
+
 	// Sub-agents (need baseTools reference for tool selection)
-	researcher, researcherErr := newResearcherSubAgent(ctx, chatModel, baseTools, backend, config, logger)
+	researcher, researcherErr := newResearcherSubAgent(ctx, chatModel, baseTools, backend, config, skillMgmtTools, skillBackend, logger)
 	if researcherErr != nil {
 		logger.Warn("[agent] failed to create researcher sub-agent", "error", researcherErr)
 	}
@@ -146,10 +156,6 @@ func NewChatModelAgent(ctx context.Context, config Config, toolRegistry *tools.T
 	}
 
 	if config.SkillsEnabled {
-		skillMgmtTools := filterToolsByName(extraTools,
-			"skill_list", "skill_search", "skill_install", "skill_enable",
-		)
-		skillBackend := newFilteringSkillBackend(backend, logger)
 		advisor, advisorErr := newSkillAdvisorSubAgent(ctx, chatModel, skillMgmtTools, skillBackend, logger)
 		if advisorErr != nil {
 			logger.Warn("[agent] failed to create skill_advisor sub-agent", "error", advisorErr)
