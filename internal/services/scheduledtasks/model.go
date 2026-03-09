@@ -60,6 +60,11 @@ type scheduledTaskAgentRow struct {
 	DefaultLLMModelID    string `bun:"default_llm_model_id"`
 }
 
+type scheduledTaskConversationModelRow struct {
+	ProviderID string `bun:"provider_id"`
+	ModelID    string `bun:"model_id"`
+}
+
 var _ bun.BeforeInsertHook = (*scheduledTaskModel)(nil)
 var _ bun.BeforeUpdateHook = (*scheduledTaskModel)(nil)
 var _ bun.BeforeInsertHook = (*scheduledTaskRunModel)(nil)
