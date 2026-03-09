@@ -51,6 +51,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+import logoBigmodel from '@/assets/icons/mcp-market/bigmodel.png'
+import logoModelscope from '@/assets/icons/mcp-market/modelscope.png'
+import logoHigress from '@/assets/icons/mcp-market/higress.png'
+import logoMcpSo from '@/assets/icons/mcp-market/mcp-so.png'
+import logoSmithery from '@/assets/icons/mcp-market/smithery.png'
+import logoGlama from '@/assets/icons/mcp-market/glama.png'
+import logoPulsemcp from '@/assets/icons/mcp-market/pulsemcp.png'
+import logoComposio from '@/assets/icons/mcp-market/composio.png'
+import logoGithub from '@/assets/icons/mcp-market/github.png'
+
 import { SettingsService, Category } from '@bindings/chatclaw/internal/services/settings'
 import { MCPService } from '@bindings/chatclaw/internal/services/mcp'
 import type { MCPServer } from '@bindings/chatclaw/internal/services/mcp'
@@ -365,16 +375,16 @@ function deleteFromDetail() {
 
 // ==================== Market ====================
 const mcpMarkets = [
-  { name: 'BigModel MCP Market', desc: '精选 MCP，极速接入。', url: 'https://bigmodel.cn/marketplace/index/mcp' },
-  { name: 'modelscope.cn', desc: '魔塔社区 MCP 服务器。', url: 'https://www.modelscope.cn/mcp' },
-  { name: 'mcp.higress.ai', desc: 'Higress MCP 服务器。', url: 'https://mcp.higress.ai/' },
-  { name: 'mcp.so', desc: 'MCP 服务器发现平台。', url: 'https://mcp.so/' },
-  { name: 'smithery.ai', desc: 'Smithery MCP 工具。', url: 'https://smithery.ai/' },
-  { name: 'glama.ai', desc: 'Glama MCP 服务器目录。', url: 'https://glama.ai/mcp/servers' },
-  { name: 'pulsemcp.com', desc: 'Pulse MCP 服务器。', url: 'https://www.pulsemcp.com/' },
-  { name: 'mcp.composio.dev', desc: 'Composio MCP 开发工具。', url: 'https://mcp.composio.dev/' },
-  { name: 'Model Context Protocol Servers', desc: '官方 MCP 服务器集合。', url: 'https://github.com/modelcontextprotocol/servers' },
-  { name: 'awesome MCP Servers', desc: '精选的 MCP 服务器列表。', url: 'https://github.com/punkpeye/awesome-mcp-servers' },
+  { name: 'BigModel MCP Market', desc: '精选 MCP，极速接入。', url: 'https://bigmodel.cn/marketplace/index/mcp', logo: logoBigmodel },
+  { name: 'modelscope.cn', desc: '魔塔社区 MCP 服务器。', url: 'https://www.modelscope.cn/mcp', logo: logoModelscope },
+  { name: 'mcp.higress.ai', desc: 'Higress MCP 服务器。', url: 'https://mcp.higress.ai/', logo: logoHigress },
+  { name: 'mcp.so', desc: 'MCP 服务器发现平台。', url: 'https://mcp.so/', logo: logoMcpSo },
+  { name: 'smithery.ai', desc: 'Smithery MCP 工具。', url: 'https://smithery.ai/', logo: logoSmithery },
+  { name: 'glama.ai', desc: 'Glama MCP 服务器目录。', url: 'https://glama.ai/mcp/servers', logo: logoGlama },
+  { name: 'pulsemcp.com', desc: 'Pulse MCP 服务器。', url: 'https://www.pulsemcp.com/', logo: logoPulsemcp },
+  { name: 'mcp.composio.dev', desc: 'Composio MCP 开发工具。', url: 'https://mcp.composio.dev/', logo: logoComposio },
+  { name: 'Model Context Protocol Servers', desc: '官方 MCP 服务器集合。', url: 'https://github.com/modelcontextprotocol/servers', logo: logoGithub },
+  { name: 'awesome MCP Servers', desc: '精选的 MCP 服务器列表。', url: 'https://github.com/punkpeye/awesome-mcp-servers', logo: logoGithub },
 ]
 
 async function openMarketLink(url: string) {
@@ -493,7 +503,12 @@ onMounted(() => {
               <Badge
                 v-if="detailResult && tab.count > 0"
                 variant="secondary"
-                class="ml-0.5 bg-background/20 px-1.5 py-0 text-[10px]"
+                :class="cn(
+                  'ml-0.5 px-1.5 py-0 text-[10px]',
+                  detailTab === tab.key
+                    ? 'bg-background/25 text-background'
+                    : 'bg-foreground/10 text-muted-foreground',
+                )"
               >
                 {{ tab.count }}
               </Badge>
@@ -686,9 +701,14 @@ onMounted(() => {
             <div
               v-for="item in mcpMarkets"
               :key="item.url"
-              class="group flex cursor-pointer items-center justify-between rounded-lg border border-border p-3.5 transition-colors hover:bg-accent/30 dark:border-white/10"
+              class="group flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3.5 transition-colors hover:bg-accent/30 dark:border-white/10"
               @click="openMarketLink(item.url)"
             >
+              <img
+                :src="item.logo"
+                :alt="item.name"
+                class="size-8 shrink-0 rounded-md object-contain"
+              />
               <div class="min-w-0 flex-1">
                 <span class="text-sm font-medium text-foreground">{{ item.name }}</span>
                 <p class="mt-0.5 text-xs text-muted-foreground">{{ item.desc }}</p>
