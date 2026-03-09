@@ -16,6 +16,7 @@ import {
   Database,
   ExternalLink,
   X,
+  RefreshCw,
 } from 'lucide-vue-next'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
@@ -103,6 +104,30 @@ async function handleToggleServer(server: MCPServer) {
     server.enabled = newEnabled
   } catch (error) {
     toast.error(getErrorMessage(error))
+  }
+}
+
+// ==================== Validate all enabled servers ====================
+const validating = ref(false)
+
+async function handleValidateAll() {
+  validating.value = true
+  try {
+    const disabledIDs: string[] = await MCPService.ValidateEnabledServers()
+    if (disabledIDs.length > 0) {
+      for (const srv of servers.value) {
+        if (disabledIDs.includes(srv.id)) {
+          srv.enabled = false
+        }
+      }
+      toast.warning(t('settings.mcp.validateDisabled', { count: disabledIDs.length }))
+    } else {
+      toast.success(t('settings.mcp.validateAllPassed'))
+    }
+  } catch (error) {
+    toast.error(getErrorMessage(error))
+  } finally {
+    validating.value = false
   }
 }
 
@@ -631,14 +656,23 @@ onMounted(() => {
               {{ t('settings.mcp.tabMarket') }}
             </button>
           </div>
-          <button
-            v-if="activeSubTab === 'installed'"
-            class="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            @click="openAddDialog"
-          >
-            <Plus class="size-3.5" />
-            {{ t('settings.mcp.addServer') }}
-          </button>
+          <div v-if="activeSubTab === 'installed'" class="flex items-center gap-1">
+            <button
+              class="inline-flex cursor-pointer items-center rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="validating"
+              :title="t('settings.mcp.validateAll')"
+              @click="handleValidateAll"
+            >
+              <RefreshCw class="size-3.5" :class="validating && 'animate-spin'" />
+            </button>
+            <button
+              class="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              @click="openAddDialog"
+            >
+              <Plus class="size-3.5" />
+              {{ t('settings.mcp.addServer') }}
+            </button>
+          </div>
         </div>
 
         <!-- Installed server list -->

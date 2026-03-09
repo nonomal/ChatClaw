@@ -446,6 +446,66 @@ func (s *MCPService) TestServer(input AddServerInput) error {
 	return nil
 }
 
+// ValidateEnabledServers tests every enabled MCP server in parallel,
+// disabling any that fail the connectivity check.
+// Returns the list of server IDs that were disabled.
+func (s *MCPService) ValidateEnabledServers() ([]string, error) {
+	db := s.db()
+	if db == nil {
+		return nil, errs.New("error.db_not_ready")
+	}
+
+	listCtx, listCancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer listCancel()
+
+	var servers []MCPServer
+	if err := db.NewSelect().
+		Model(&servers).
+		Where("enabled = ?", true).
+		Scan(listCtx); err != nil {
+		return nil, errs.Wrap("error.mcp_list_failed", err)
+	}
+
+	if len(servers) == 0 {
+		return []string{}, nil
+	}
+
+	type result struct {
+		id  string
+		err error
+	}
+	ch := make(chan result, len(servers))
+
+	for _, srv := range servers {
+		go func(server MCPServer) {
+			timeout := server.Timeout
+			if timeout <= 0 {
+				timeout = 30
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+			defer cancel()
+
+			c, err := connect(ctx, server)
+			if err != nil {
+				ch <- result{id: server.ID, err: err}
+				return
+			}
+			c.Close()
+			ch <- result{id: server.ID, err: nil}
+		}(srv)
+	}
+
+	var disabledIDs []string
+	for range servers {
+		r := <-ch
+		if r.err != nil {
+			_ = s.setEnabled(r.id, false)
+			disabledIDs = append(disabledIDs, r.id)
+		}
+	}
+	return disabledIDs, nil
+}
+
 // ==================== Inspect ====================
 
 // MCPToolInfo represents a tool provided by an MCP server.
