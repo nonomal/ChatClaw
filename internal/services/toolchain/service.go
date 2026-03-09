@@ -27,9 +27,6 @@ import (
 const (
 	ghProxyPrefix = "https://gh-proxy.org/"
 
-	// 获取 OSS 下载链接的 API
-	ossAPIURL = "https://api.chatclaw.com/tool-download"
-
 	googleProbeURL     = "https://www.google.com"
 	googleProbeTimeout = 3 * time.Second
 
@@ -468,7 +465,7 @@ func (s *ToolchainService) fetchOSSDownloadURL(tool, version, goos, goarch strin
 		return "", err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, ossAPIURL, bytes.NewReader(bodyBytes))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, define.OSSDownloadAPI, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return "", err
 	}
