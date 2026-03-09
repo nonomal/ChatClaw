@@ -23,6 +23,8 @@ type AgentExtras struct {
 	MatchThreshold float64
 	MemoryEnabled  bool
 	ChatMode       string // "chat" or "task"
+	MCPEnabled     bool
+	MCPServerIDs   []string
 }
 
 // getAgentAndProviderConfig gets the agent and provider configuration for a conversation
@@ -72,6 +74,8 @@ func (s *ChatService) getAgentAndProviderConfig(ctx context.Context, db *bun.DB,
 		SandboxMode             string  `bun:"sandbox_mode"`
 		SandboxNetwork          bool    `bun:"sandbox_network"`
 		WorkDir                 string  `bun:"work_dir"`
+		MCPEnabled              bool    `bun:"mcp_enabled"`
+		MCPServerIDs            string  `bun:"mcp_server_ids"`
 	}
 	var agent agentRow
 	if err := db.NewSelect().
@@ -80,7 +84,8 @@ func (s *ChatService) getAgentAndProviderConfig(ctx context.Context, db *bun.DB,
 			"llm_temperature", "llm_top_p", "llm_max_tokens",
 			"enable_llm_temperature", "enable_llm_top_p", "enable_llm_max_tokens",
 			"llm_max_context_count", "retrieval_top_k", "retrieval_match_threshold",
-			"sandbox_mode", "sandbox_network", "work_dir").
+			"sandbox_mode", "sandbox_network", "work_dir",
+			"mcp_enabled", "mcp_server_ids").
 		Where("id = ?", conv.AgentID).
 		Scan(ctx, &agent); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -173,12 +178,22 @@ func (s *ChatService) getAgentAndProviderConfig(ctx context.Context, db *bun.DB,
 		chatMode = "task"
 	}
 
+	var mcpServerIDs []string
+	if agent.MCPServerIDs != "" && agent.MCPServerIDs != "[]" {
+		if err := json.Unmarshal([]byte(agent.MCPServerIDs), &mcpServerIDs); err != nil {
+			s.app.Logger.Warn("[chat] failed to parse mcp_server_ids", "agent", conv.AgentID, "error", err)
+			mcpServerIDs = nil
+		}
+	}
+
 	extras := AgentExtras{
 		AgentID:        conv.AgentID,
 		LibraryIDs:     convLibraryIDs,
 		MatchThreshold: agent.RetrievalMatchThreshold,
 		MemoryEnabled:  memoryEnabled,
 		ChatMode:       chatMode,
+		MCPEnabled:     agent.MCPEnabled,
+		MCPServerIDs:   mcpServerIDs,
 	}
 
 	return agentConfig, providerConfig, extras, nil

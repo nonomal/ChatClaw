@@ -697,6 +697,9 @@ export default {
       noConversationDir: '默认工作目录',
       noConversationAction: '点击修改',
       configureWorkspace: '配置工作区',
+      mcpTools: 'MCP 工具',
+      mcpEnable: '调用 MCP',
+      mcpNoServers: '暂无可用 MCP 服务器',
     },
   },
   knowledge: {
