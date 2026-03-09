@@ -4,6 +4,7 @@ import { computed } from 'vue'
 const props = defineProps<{
   status: string
   label: string
+  variant?: 'badge' | 'dot'
 }>()
 
 const statusClass = computed(() => {
@@ -20,10 +21,38 @@ const statusClass = computed(() => {
       return 'bg-muted text-muted-foreground'
   }
 })
+
+const dotClass = computed(() => {
+  switch (props.status) {
+    case 'running':
+      return {
+        dot: 'bg-sky-500',
+        label: 'text-foreground',
+      }
+    case 'paused':
+      return {
+        dot: 'bg-slate-400',
+        label: 'text-muted-foreground',
+      }
+    default:
+      return {
+        dot: 'bg-slate-400',
+        label: 'text-muted-foreground',
+      }
+  }
+})
 </script>
 
 <template>
-  <span class="inline-flex rounded-full px-2 py-1 text-xs font-medium" :class="statusClass">
+  <span
+    v-if="variant === 'dot'"
+    class="inline-flex items-center gap-2 text-sm font-medium"
+    :class="dotClass.label"
+  >
+    <span class="size-2 rounded-full" :class="dotClass.dot" />
+    {{ label }}
+  </span>
+  <span v-else class="inline-flex rounded-full px-2 py-1 text-xs font-medium" :class="statusClass">
     {{ label }}
   </span>
 </template>

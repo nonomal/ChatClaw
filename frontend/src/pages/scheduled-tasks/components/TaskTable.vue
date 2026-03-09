@@ -30,19 +30,13 @@ const emit = defineEmits<{
 }>()
 
 function displayTaskStatus(task: ScheduledTask) {
-  if (!task.enabled) return 'paused'
-  if (task.last_status === 'running') return 'running'
-  if (task.last_status === 'failed') return 'failed'
-  if (task.last_status === 'success') return 'success'
-  return 'pending'
+  return task.enabled ? 'running' : 'paused'
 }
 
 function displayTaskStatusLabel(task: ScheduledTask) {
   const status = displayTaskStatus(task)
   if (status === 'paused') return t('scheduledTasks.disabled')
   if (status === 'running') return t('scheduledTasks.statusRunning')
-  if (status === 'failed') return t('scheduledTasks.statusFailed')
-  if (status === 'success') return t('scheduledTasks.statusSuccess')
   return t('scheduledTasks.statusPending')
 }
 
@@ -142,6 +136,7 @@ const hasTasks = computed(() => props.tasks.length > 0)
                 <TaskRunStatusBadge
                   :status="displayTaskStatus(task)"
                   :label="displayTaskStatusLabel(task)"
+                  variant="dot"
                 />
                 <Switch
                   :model-value="task.enabled"
