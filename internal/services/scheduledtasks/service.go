@@ -461,6 +461,40 @@ func (s *ScheduledTasksService) getTaskAgentConfig(ctx context.Context, db *bun.
 	return row, nil
 }
 
+func (s *ScheduledTasksService) resolveTaskConversationModel(ctx context.Context, db *bun.DB, agentID int64) (scheduledTaskConversationModelRow, error) {
+	agentConfig, err := s.getTaskAgentConfig(ctx, db, agentID)
+	if err != nil {
+		return scheduledTaskConversationModelRow{}, err
+	}
+	if agentConfig.DefaultLLMProviderID != "" && agentConfig.DefaultLLMModelID != "" {
+		return scheduledTaskConversationModelRow{
+			ProviderID: agentConfig.DefaultLLMProviderID,
+			ModelID:    agentConfig.DefaultLLMModelID,
+		}, nil
+	}
+
+	var fallback scheduledTaskConversationModelRow
+	if err := db.NewSelect().
+		TableExpr("providers AS p").
+		Join("JOIN models AS m ON m.provider_id = p.provider_id").
+		ColumnExpr("p.provider_id AS provider_id").
+		ColumnExpr("m.model_id AS model_id").
+		Where("p.enabled = ?", true).
+		Where("m.enabled = ?", true).
+		Where("m.type = ?", "llm").
+		OrderExpr("CASE WHEN p.is_free THEN 1 ELSE 0 END ASC").
+		OrderExpr("p.sort_order ASC, p.id ASC").
+		OrderExpr("m.sort_order ASC, m.id ASC").
+		Limit(1).
+		Scan(ctx, &fallback); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return scheduledTaskConversationModelRow{}, errs.New("error.chat_model_not_configured")
+		}
+		return scheduledTaskConversationModelRow{}, errs.Wrap("error.scheduled_task_run_failed", err)
+	}
+	return fallback, nil
+}
+
 func (s *ScheduledTasksService) reloadEnabledTasks() error {
 	db, err := s.dbOrGlobal()
 	if err != nil {

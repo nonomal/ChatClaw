@@ -34,7 +34,7 @@ func (s *ScheduledTasksService) executeTask(ctx context.Context, task scheduledT
 		return nil, err
 	}
 
-	agentConfig, err := s.getTaskAgentConfig(ctx, db, task.AgentID)
+	conversationModel, err := s.resolveTaskConversationModel(ctx, db, task.AgentID)
 	if err != nil {
 		_ = s.failRun(context.Background(), task.ID, runModel.ID, err.Error(), runModel.StartedAt)
 		return nil, err
@@ -45,8 +45,8 @@ func (s *ScheduledTasksService) executeTask(ctx context.Context, task scheduledT
 	conv, err := s.runnerDeps.conversations.CreateConversation(conversations.CreateConversationInput{
 		AgentID:        task.AgentID,
 		Name:           conversationName,
-		LLMProviderID:  agentConfig.DefaultLLMProviderID,
-		LLMModelID:     agentConfig.DefaultLLMModelID,
+		LLMProviderID:  conversationModel.ProviderID,
+		LLMModelID:     conversationModel.ModelID,
 		LibraryIDs:     []int64{},
 		EnableThinking: false,
 		ChatMode:       conversations.ChatModeTask,
