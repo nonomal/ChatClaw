@@ -700,6 +700,9 @@ export default {
       noConversationDir: 'Default workspace',
       noConversationAction: 'Click to change',
       configureWorkspace: 'Configure workspace',
+      mcpTools: 'MCP Tools',
+      mcpEnable: 'Use MCP',
+      mcpNoServers: 'No MCP servers available',
     },
   },
   knowledge: {

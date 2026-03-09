@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ShieldCheck, Monitor, FolderOpen, X } from 'lucide-vue-next'
+import { ShieldCheck, Monitor, FolderOpen, X, Terminal, Globe } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { AgentsService, type FileEntry } from '@bindings/chatclaw/internal/services/agents'
+import { AgentsService, type FileEntry, UpdateAgentInput } from '@bindings/chatclaw/internal/services/agents'
+import { MCPService } from '@bindings/chatclaw/internal/services/mcp'
+import type { MCPServer } from '@bindings/chatclaw/internal/services/mcp'
 import { BrowserService } from '@bindings/chatclaw/internal/services/browser'
 import type { Agent } from '@bindings/chatclaw/internal/services/agents'
 import { Events } from '@wailsio/runtime'
@@ -81,8 +84,11 @@ const loadWorkspaceData = async () => {
 watch(
   () => [props.open, props.agent?.id, props.conversationId],
   ([open]) => {
-    if (open && props.agent && props.conversationId) {
-      void loadWorkspaceData()
+    if (open && props.agent) {
+      void loadMCPServers()
+      if (props.conversationId) {
+        void loadWorkspaceData()
+      }
     }
   },
   { immediate: true }
@@ -117,6 +123,53 @@ const handleEnvironmentClick = () => {
 
 const handleClose = () => {
   emit('update:open', false)
+}
+
+// ==================== MCP Tools ====================
+const mcpServers = ref<MCPServer[]>([])
+const mcpEnabled = computed(() => props.agent?.mcp_enabled ?? false)
+const agentMCPServerIDs = computed<string[]>(() => {
+  const raw = props.agent?.mcp_server_ids
+  if (!raw || raw === '[]') return []
+  try { return JSON.parse(raw) } catch { return [] }
+})
+
+async function loadMCPServers() {
+  try {
+    const all = await MCPService.ListServers()
+    mcpServers.value = (all || []).filter((s) => s.enabled)
+  } catch {
+    mcpServers.value = []
+  }
+}
+
+function isMCPServerSelected(id: string): boolean {
+  return agentMCPServerIDs.value.includes(id)
+}
+
+async function handleMCPEnabledChange(val: boolean) {
+  if (!props.agent) return
+  try {
+    await AgentsService.UpdateAgent(props.agent.id, new UpdateAgentInput({ mcp_enabled: val }))
+    props.agent.mcp_enabled = val
+  } catch (error) {
+    console.error('Failed to update mcp_enabled:', error)
+  }
+}
+
+async function handleMCPServerToggle(serverId: string, selected: boolean) {
+  if (!props.agent) return
+  const current = agentMCPServerIDs.value
+  const updated = selected
+    ? [...current, serverId]
+    : current.filter((id) => id !== serverId)
+  const json = JSON.stringify(updated)
+  try {
+    await AgentsService.UpdateAgent(props.agent.id, new UpdateAgentInput({ mcp_server_ids: json }))
+    props.agent.mcp_server_ids = json
+  } catch (error) {
+    console.error('Failed to update mcp_server_ids:', error)
+  }
 }
 
 let unsubTool: (() => void) | null = null
@@ -290,6 +343,46 @@ onUnmounted(() => {
             {{ t('assistant.workspaceDrawer.noConversationAction') }}
           </div>
         </button>
+      </div>
+
+      <!-- MCP Tools section -->
+      <div class="mt-4">
+        <div class="mb-2 flex items-center justify-between">
+          <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {{ t('assistant.workspaceDrawer.mcpTools') }}
+          </span>
+          <Switch
+            :model-value="mcpEnabled"
+            class="scale-75"
+            @update:model-value="handleMCPEnabledChange"
+          />
+        </div>
+
+        <template v-if="mcpEnabled">
+          <div v-if="mcpServers.length === 0" class="flex items-center justify-center rounded-lg border border-dashed border-border py-4">
+            <span class="text-[11px] text-muted-foreground">
+              {{ t('assistant.workspaceDrawer.mcpNoServers') }}
+            </span>
+          </div>
+          <div v-else class="flex flex-col gap-1">
+            <div
+              v-for="server in mcpServers"
+              :key="server.id"
+              class="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50"
+            >
+              <div class="flex min-w-0 items-center gap-1.5">
+                <Terminal v-if="server.transport === 'stdio'" class="size-3 shrink-0 text-muted-foreground" />
+                <Globe v-else class="size-3 shrink-0 text-muted-foreground" />
+                <span class="truncate text-xs text-foreground">{{ server.name }}</span>
+              </div>
+              <Switch
+                :model-value="isMCPServerSelected(server.id)"
+                class="scale-75"
+                @update:model-value="(val: boolean) => handleMCPServerToggle(server.id, val)"
+              />
+            </div>
+          </div>
+        </template>
       </div>
     </div>
   </div>

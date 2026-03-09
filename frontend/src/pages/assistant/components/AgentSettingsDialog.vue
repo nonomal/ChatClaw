@@ -327,6 +327,8 @@ const handleSave = async () => {
       sandbox_mode: sandboxMode.value,
       sandbox_network: sandboxNetwork.value,
       work_dir: workDir.value,
+      mcp_enabled: null,
+      mcp_server_ids: null,
     })
     if (!updated) {
       throw new Error(t('assistant.errors.updateFailed'))

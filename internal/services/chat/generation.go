@@ -358,17 +358,25 @@ func (s *ChatService) buildExtras(ctx context.Context, gc *generationContext) ([
 		}
 	}
 
-	// MCP tools: load tools from all enabled MCP servers
-	mcpServers, mcpErr := mcp.ListEnabledServers()
-	if mcpErr != nil {
-		s.app.Logger.Warn("[chat] failed to list enabled MCP servers", "error", mcpErr)
-	} else if len(mcpServers) > 0 {
-		mcpResult := tools.LoadMCPTools(ctx, mcpServers, s.app.Logger)
-		if len(mcpResult.Tools) > 0 {
-			extraTools = append(extraTools, mcpResult.Tools...)
-			s.app.Logger.Info("[chat] MCP tools added", "servers", len(mcpServers), "tools", len(mcpResult.Tools))
+	// MCP tools: when enabled, load selected servers or all if none selected
+	if agentExtras.MCPEnabled {
+		var mcpServers []mcp.MCPServer
+		var mcpErr error
+		if len(agentExtras.MCPServerIDs) > 0 {
+			mcpServers, mcpErr = mcp.ListEnabledServersByIDs(agentExtras.MCPServerIDs)
+		} else {
+			mcpServers, mcpErr = mcp.ListEnabledServers()
 		}
-		cleanups = append(cleanups, mcpResult.Cleanup)
+		if mcpErr != nil {
+			s.app.Logger.Warn("[chat] failed to list MCP servers for agent", "error", mcpErr)
+		} else if len(mcpServers) > 0 {
+			mcpResult := tools.LoadMCPTools(ctx, mcpServers, s.app.Logger)
+			if len(mcpResult.Tools) > 0 {
+				extraTools = append(extraTools, mcpResult.Tools...)
+				s.app.Logger.Info("[chat] MCP tools added", "agent", agentExtras.AgentID, "servers", len(mcpServers), "tools", len(mcpResult.Tools))
+			}
+			cleanups = append(cleanups, mcpResult.Cleanup)
+		}
 	}
 
 	cleanup := func() {

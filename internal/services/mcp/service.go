@@ -131,6 +131,34 @@ func ListEnabledServers() ([]MCPServer, error) {
 	return servers, nil
 }
 
+// ListEnabledServersByIDs returns enabled MCP servers filtered by the given IDs.
+// This is a package-level function used by the chat service to load
+// only the MCP servers selected for a specific agent.
+func ListEnabledServersByIDs(ids []string) ([]MCPServer, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	db := sqlite.DB()
+	if db == nil {
+		return nil, errs.New("error.db_not_ready")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var servers []MCPServer
+	if err := db.NewSelect().
+		Model(&servers).
+		Where("enabled = ?", true).
+		Where("id IN (?)", bun.In(ids)).
+		OrderExpr("created_at ASC").
+		Scan(ctx); err != nil {
+		return nil, errs.Wrap("error.mcp_list_failed", err)
+	}
+	return servers, nil
+}
+
 // AddServer creates a new MCP server configuration.
 func (s *MCPService) AddServer(input AddServerInput) (*MCPServer, error) {
 	db := s.db()
