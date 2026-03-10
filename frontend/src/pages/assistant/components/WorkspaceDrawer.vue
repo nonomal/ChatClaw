@@ -1,11 +1,30 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ShieldCheck, Monitor, FolderOpen, X, Terminal, Globe } from 'lucide-vue-next'
+import { ShieldCheck, Monitor, FolderOpen, X, Terminal, Globe, Plus, Loader2 } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { toast } from '@/components/ui/toast'
+import { getErrorMessage } from '@/composables/useErrorMessage'
 import { AgentsService, type FileEntry, UpdateAgentInput } from '@bindings/chatclaw/internal/services/agents'
 import { MCPService } from '@bindings/chatclaw/internal/services/mcp'
 import type { MCPServer } from '@bindings/chatclaw/internal/services/mcp'
@@ -169,6 +188,107 @@ async function handleMCPServerToggle(serverId: string, selected: boolean) {
     props.agent.mcp_server_ids = json
   } catch (error) {
     console.error('Failed to update mcp_server_ids:', error)
+  }
+}
+
+// ==================== Add MCP Server Dialog ====================
+const addDialogOpen = ref(false)
+const addForm = ref({
+  name: '',
+  description: '',
+  transport: 'stdio' as 'stdio' | 'streamableHttp',
+  command: '',
+  argsText: '',
+  envPairs: [] as Array<{ key: string; value: string }>,
+  url: '',
+  headerPairs: [] as Array<{ key: string; value: string }>,
+  timeout: 30,
+})
+const addSaving = ref(false)
+const addTesting = ref(false)
+
+function openAddMCPDialog() {
+  addForm.value = {
+    name: '',
+    description: '',
+    transport: 'stdio',
+    command: '',
+    argsText: '',
+    envPairs: [],
+    url: '',
+    headerPairs: [],
+    timeout: 30,
+  }
+  addDialogOpen.value = true
+}
+
+const canSaveAdd = computed(() => {
+  const f = addForm.value
+  if (!f.name.trim()) return false
+  if (!f.description.trim()) return false
+  if (f.transport === 'stdio' && !f.command.trim()) return false
+  if (f.transport === 'streamableHttp' && !f.url.trim()) return false
+  return true
+})
+
+function parseLinesToArray(text: string): string {
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
+  return JSON.stringify(lines)
+}
+
+function pairsToJsonObject(pairs: Array<{ key: string; value: string }>): string {
+  const obj: Record<string, string> = {}
+  pairs.forEach(({ key, value }) => {
+    const k = key.trim()
+    if (k) obj[k] = value
+  })
+  return JSON.stringify(obj)
+}
+
+function addPair(pairs: Array<{ key: string; value: string }>) {
+  pairs.push({ key: '', value: '' })
+}
+
+function removePair(pairs: Array<{ key: string; value: string }>, index: number) {
+  pairs.splice(index, 1)
+}
+
+async function handleAddSave() {
+  const form = addForm.value
+  if (!form.name.trim() || !form.description.trim()) return
+
+  const payload = {
+    name: form.name.trim(),
+    description: form.description.trim(),
+    transport: form.transport,
+    command: form.command.trim(),
+    args: parseLinesToArray(form.argsText),
+    env: pairsToJsonObject(form.envPairs),
+    url: form.url.trim(),
+    headers: pairsToJsonObject(form.headerPairs),
+    timeout: form.timeout,
+  }
+
+  addTesting.value = true
+  try {
+    await MCPService.TestServer(payload)
+  } catch (error) {
+    toast.error(getErrorMessage(error) || t('settings.mcp.testFailed'))
+    addTesting.value = false
+    return
+  }
+  addTesting.value = false
+
+  addSaving.value = true
+  try {
+    await MCPService.AddServer(payload)
+    toast.success(t('settings.mcp.addSuccess'))
+    addDialogOpen.value = false
+    void loadMCPServers()
+  } catch (error) {
+    toast.error(getErrorMessage(error) || t('settings.mcp.addFailed'))
+  } finally {
+    addSaving.value = false
   }
 }
 
@@ -351,11 +471,30 @@ onUnmounted(() => {
           <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             {{ t('assistant.workspaceDrawer.mcpTools') }}
           </span>
-          <Switch
-            :model-value="mcpEnabled"
-            class="scale-75"
-            @update:model-value="handleMCPEnabledChange"
-          />
+          <div class="flex items-center gap-1">
+            <TooltipProvider :delay-duration="300">
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    class="size-5"
+                    @click="openAddMCPDialog"
+                  >
+                    <Plus class="size-3 text-muted-foreground" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {{ t('settings.mcp.addServerTitle') }}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Switch
+              :model-value="mcpEnabled"
+              class="scale-75"
+              @update:model-value="handleMCPEnabledChange"
+            />
+          </div>
         </div>
 
         <template v-if="mcpEnabled">
@@ -385,5 +524,187 @@ onUnmounted(() => {
         </template>
       </div>
     </div>
+
+    <!-- Add MCP Server Dialog -->
+    <Dialog v-model:open="addDialogOpen">
+      <DialogContent class="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{{ t('settings.mcp.addServerTitle') }}</DialogTitle>
+          <DialogDescription class="sr-only">{{ t('settings.mcp.addServerTitle') }}</DialogDescription>
+        </DialogHeader>
+
+        <div class="flex flex-col gap-4 py-2">
+          <div class="flex flex-col gap-1.5">
+            <Label class="text-sm">{{ t('settings.mcp.serverName') }}</Label>
+            <Input
+              v-model="addForm.name"
+              :placeholder="t('settings.mcp.serverNamePlaceholder')"
+            />
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center justify-between">
+              <Label class="text-sm">{{ t('settings.mcp.description') }}</Label>
+              <span class="text-[10px] text-muted-foreground">{{ addForm.description.length }}/300</span>
+            </div>
+            <textarea
+              v-model="addForm.description"
+              :placeholder="t('settings.mcp.descriptionPlaceholder')"
+              :maxlength="300"
+              rows="2"
+              class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <Label class="text-sm">{{ t('settings.mcp.transportType') }}</Label>
+            <Select v-model="addForm.transport">
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="stdio">{{ t('settings.mcp.transportStdio') }}</SelectItem>
+                <SelectItem value="streamableHttp">{{ t('settings.mcp.transportHttp') }}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <template v-if="addForm.transport === 'stdio'">
+            <div class="flex flex-col gap-1.5">
+              <Label class="text-sm">{{ t('settings.mcp.command') }}</Label>
+              <Input
+                v-model="addForm.command"
+                :placeholder="t('settings.mcp.commandPlaceholder')"
+              />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <Label class="text-sm">{{ t('settings.mcp.args') }}</Label>
+              <textarea
+                v-model="addForm.argsText"
+                :placeholder="t('settings.mcp.argsPlaceholder')"
+                rows="3"
+                class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <div class="flex items-center justify-between">
+                <Label class="text-sm">{{ t('settings.mcp.envVars') }}</Label>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  @click="addPair(addForm.envPairs)"
+                >
+                  <Plus class="size-3" />
+                  {{ t('settings.mcp.addRow') }}
+                </button>
+              </div>
+              <div v-if="addForm.envPairs.length === 0" class="text-xs text-muted-foreground py-1">
+                {{ t('settings.mcp.envVarsPlaceholder') }}
+              </div>
+              <div
+                v-for="(pair, idx) in addForm.envPairs"
+                :key="idx"
+                class="flex items-center gap-2"
+              >
+                <Input
+                  v-model="pair.key"
+                  placeholder="KEY"
+                  class="flex-1 font-mono text-xs"
+                />
+                <span class="text-muted-foreground text-xs">=</span>
+                <Input
+                  v-model="pair.value"
+                  placeholder="VALUE"
+                  class="flex-1 font-mono text-xs"
+                />
+                <button
+                  type="button"
+                  class="shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  @click="removePair(addForm.envPairs, idx)"
+                >
+                  <X class="size-3.5" />
+                </button>
+              </div>
+            </div>
+          </template>
+
+          <template v-if="addForm.transport === 'streamableHttp'">
+            <div class="flex flex-col gap-1.5">
+              <Label class="text-sm">{{ t('settings.mcp.serverUrl') }}</Label>
+              <Input
+                v-model="addForm.url"
+                :placeholder="t('settings.mcp.serverUrlPlaceholder')"
+              />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <div class="flex items-center justify-between">
+                <Label class="text-sm">{{ t('settings.mcp.httpHeaders') }}</Label>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  @click="addPair(addForm.headerPairs)"
+                >
+                  <Plus class="size-3" />
+                  {{ t('settings.mcp.addRow') }}
+                </button>
+              </div>
+              <div v-if="addForm.headerPairs.length === 0" class="text-xs text-muted-foreground py-1">
+                {{ t('settings.mcp.httpHeadersPlaceholder') }}
+              </div>
+              <div
+                v-for="(pair, idx) in addForm.headerPairs"
+                :key="idx"
+                class="flex items-center gap-2"
+              >
+                <Input
+                  v-model="pair.key"
+                  placeholder="Header-Name"
+                  class="flex-1 font-mono text-xs"
+                />
+                <span class="text-muted-foreground text-xs">:</span>
+                <Input
+                  v-model="pair.value"
+                  placeholder="Value"
+                  class="flex-1 font-mono text-xs"
+                />
+                <button
+                  type="button"
+                  class="shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  @click="removePair(addForm.headerPairs, idx)"
+                >
+                  <X class="size-3.5" />
+                </button>
+              </div>
+            </div>
+          </template>
+
+          <div class="flex flex-col gap-1.5">
+            <Label class="text-sm">{{ t('settings.mcp.timeout') }}</Label>
+            <div class="flex items-center gap-2">
+              <Input
+                v-model.number="addForm.timeout"
+                type="number"
+                :min="1"
+                :max="300"
+                class="w-24"
+              />
+              <span class="text-xs text-muted-foreground">{{ t('settings.mcp.timeoutUnit') }}</span>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <button
+            class="cursor-pointer rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="!canSaveAdd || addSaving || addTesting"
+            @click="handleAddSave"
+          >
+            <Loader2 v-if="addTesting || addSaving" class="mr-1.5 inline size-3.5 animate-spin" />
+            <template v-if="addTesting">{{ t('settings.mcp.testing') }}</template>
+            <template v-else>{{ t('settings.mcp.addServer') }}</template>
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

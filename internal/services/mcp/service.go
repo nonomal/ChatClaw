@@ -616,6 +616,10 @@ func (s *MCPService) InspectServer(id string) (*InspectResult, error) {
 // envVars before creating the exec.Cmd. This is necessary because GUI apps
 // (especially on Windows) inherit a minimal system PATH that doesn't include
 // directories like the toolchain bin folder where npx.exe / bun.exe / uvx.exe live.
+//
+// It also rewrites "npx" → "bunx" when the resolved npx lives inside the
+// toolchain bin directory, because bun's npx shim is not compatible with
+// the Node.js npx CLI syntax (e.g. npx @scope/pkg@version).
 func StdioCmdFunc(ctx context.Context, command string, envVars []string, args []string) (*exec.Cmd, error) {
 	mergedEnv := mergeEnvVars(os.Environ(), envVars)
 
@@ -633,9 +637,53 @@ func StdioCmdFunc(ctx context.Context, command string, envVars []string, args []
 		}
 	}
 
+	resolved = rewriteToolchainAlias(resolved)
+
 	cmd := exec.CommandContext(ctx, resolved, args...)
 	cmd.Env = mergedEnv
 	return cmd, nil
+}
+
+// rewriteToolchainAlias rewrites commands that are bun aliases in the
+// toolchain bin dir to their correct equivalents.
+// "npx" → "bunx": bun's npx shim doesn't support Node.js npx syntax.
+func rewriteToolchainAlias(resolved string) string {
+	binDir := toolchain.BinDirIfReady()
+	if binDir == "" {
+		return resolved
+	}
+
+	base := filepath.Base(resolved)
+	dir := filepath.Dir(resolved)
+
+	// Only rewrite if the binary lives in the toolchain bin directory.
+	cleanDir := filepath.Clean(dir)
+	cleanBin := filepath.Clean(binDir)
+	if cleanDir != cleanBin {
+		return resolved
+	}
+
+	switch stripExe(base) {
+	case "npx":
+		replacement := "bunx"
+		if runtime.GOOS == "windows" {
+			replacement = "bunx.exe"
+		}
+		return filepath.Join(dir, replacement)
+	}
+
+	return resolved
+}
+
+func stripExe(name string) string {
+	if runtime.GOOS == "windows" {
+		for _, ext := range []string{".exe", ".cmd", ".bat", ".com"} {
+			if len(name) > len(ext) && equalFoldASCII(name[len(name)-len(ext):], ext) {
+				return name[:len(name)-len(ext)]
+			}
+		}
+	}
+	return name
 }
 
 // mergeEnvVars merges extra vars into base, replacing existing keys
@@ -731,6 +779,8 @@ func lookPathIn(name, pathEnv string) string {
 // BuildEnv returns extra env vars to pass to the MCP subprocess.
 // The mcp-go library already inherits os.Environ(), so we only return
 // the toolchain PATH override and user-defined vars — NOT the full env.
+// The toolchain bin dir is prepended to PATH so that the app-managed
+// tools (bun, uv, etc.) are found even if the user has no global install.
 func BuildEnv(envJSON string) []string {
 	var extra []string
 
