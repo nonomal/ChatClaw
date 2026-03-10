@@ -181,8 +181,8 @@ async function loadData() {
     agents.value = agentList || []
 
     const hasSelectedPlatform = platforms.value.some((platform) => platform.id === selectedPlatformId.value)
-    if (!hasSelectedPlatform) {
-      selectedPlatformId.value = platforms.value[0]?.id || ''
+    if (!hasSelectedPlatform || selectedPlatformId.value !== 'feishu') {
+      selectedPlatformId.value = platforms.value.find(p => p.id === 'feishu')?.id || platforms.value[0]?.id || ''
     }
     if (selectedPlatformId.value) {
       syncCreateFormVisibility(selectedPlatformId.value)
@@ -415,10 +415,11 @@ async function handleConfigChannelSaved(channel: Channel) {
                   cn(
                     'flex h-8 items-center rounded-md px-3 text-left text-sm text-[#404040] transition-colors dark:text-muted-foreground',
                     selectedPlatformId === platform.id && 'bg-[#f5f5f5] text-[#171717] dark:bg-muted dark:text-foreground',
-                    selectedPlatformId !== platform.id && 'hover:bg-[#f5f5f5]/70 dark:hover:bg-muted/60'
+                    selectedPlatformId !== platform.id && platform.id === 'feishu' && 'hover:bg-[#f5f5f5]/70 dark:hover:bg-muted/60',
+                    platform.id !== 'feishu' && 'opacity-50 cursor-not-allowed'
                   )
                 "
-                @click="handleSelectPlatform(platform.id)"
+                @click="platform.id === 'feishu' ? handleSelectPlatform(platform.id) : toast.default('即将上线')"
               >
                 <span class="truncate">{{ platform.name || platform.id }}</span>
               </button>

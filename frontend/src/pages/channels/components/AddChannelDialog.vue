@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import type { PlatformMeta } from '@bindings/chatclaw/internal/services/channels'
 import { platformIconMap } from '@/assets/icons/snap/platformIcons'
+import { toast } from '@/components/ui/toast'
 
 defineProps<{
   platforms: PlatformMeta[]
@@ -63,8 +64,11 @@ function getPlatformIcon(platformId: string): string | null {
           <div
             v-for="platform in platforms"
             :key="platform.id"
-            class="flex w-full items-center justify-between border-b border-[#f0f0f0] p-4 last:border-b-0 cursor-pointer hover:bg-[#fcfcfc] transition-colors dark:border-border dark:hover:bg-muted/50"
-            @click="handleSelect(platform)"
+            class="flex w-full items-center justify-between border-b border-[#f0f0f0] p-4 last:border-b-0 transition-colors dark:border-border"
+            :class="[
+              platform.id === 'feishu' ? 'cursor-pointer hover:bg-[#fcfcfc] dark:hover:bg-muted/50' : 'cursor-not-allowed opacity-50 bg-[#f9f9f9] dark:bg-muted/20'
+            ]"
+            @click="platform.id === 'feishu' ? handleSelect(platform) : toast.default('即将上线')"
           >
             <div class="flex flex-1 items-center gap-2">
               <div class="relative flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden">

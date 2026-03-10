@@ -437,8 +437,11 @@ onMounted(loadData)
           v-for="platform in platforms"
           :key="platform.id"
           class="px-3 py-[7.5px] text-sm font-medium transition-colors first:rounded-l-lg last:rounded-r-lg border-l border-[#e5e5e5] dark:border-border"
-          :class="selectedFilter === platform.id ? 'bg-white text-[#0a0a0a] dark:bg-background dark:text-foreground' : 'text-[#0a0a0a] hover:bg-white/50 dark:text-foreground dark:hover:bg-background/50'"
-          @click="selectedFilter = platform.id"
+          :class="[
+            selectedFilter === platform.id ? 'bg-white text-[#0a0a0a] dark:bg-background dark:text-foreground' : 'text-[#0a0a0a] hover:bg-white/50 dark:text-foreground dark:hover:bg-background/50',
+            platform.id !== 'feishu' ? 'opacity-50 cursor-not-allowed' : ''
+          ]"
+          @click="platform.id === 'feishu' ? selectedFilter = platform.id : toast.default('即将上线')"
         >
           {{ getPlatformName(platform.id) }}
         </button>
