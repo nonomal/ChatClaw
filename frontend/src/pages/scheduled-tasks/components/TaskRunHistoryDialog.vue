@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { ScheduledTask, ScheduledTaskRun, ScheduledTaskRunDetail } from '../types'
 import { formatDuration, formatTaskTime } from '../utils'
 import TaskRunStatusBadge from './TaskRunStatusBadge.vue'
-import TaskRunConversationPreview from './TaskRunConversationPreview.vue'
+import EmbeddedAssistantPage from '@/pages/assistant/components/EmbeddedAssistantPage.vue'
 
 const props = defineProps<{
   open: boolean
@@ -111,7 +111,17 @@ async function selectRun(run: ScheduledTaskRun) {
         </div>
 
         <div class="min-h-0 flex-1 overflow-hidden rounded-lg border border-border">
-          <TaskRunConversationPreview :detail="selectedDetail" empty-text="暂无会话内容" />
+          <div
+            v-if="!selectedDetail?.conversation?.id"
+            class="flex h-full items-center justify-center text-sm text-muted-foreground"
+          >
+            暂无会话内容
+          </div>
+          <EmbeddedAssistantPage
+            v-else
+            :conversation-id="selectedDetail.conversation.id"
+            :agent-id="selectedDetail.conversation.agent_id"
+          />
         </div>
       </div>
     </DialogContent>
