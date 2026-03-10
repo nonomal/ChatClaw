@@ -14,9 +14,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
+	"chatclaw/internal/define"
 	"chatclaw/internal/sqlite"
 
 	"github.com/uptrace/bun"
@@ -169,6 +169,12 @@ func NewChatWikiService(app *application.App) *ChatWikiService {
 		teamCancels: make(map[int64]context.CancelFunc),
 		teamSeq:     make(map[string]int32),
 	}
+}
+
+// GetCloudURL returns the ChatWiki Cloud server URL for this build (dev or production).
+// The frontend uses this to open the correct auth page instead of relying on a hardcoded URL.
+func (s *ChatWikiService) GetCloudURL() string {
+	return define.GetChatWikiCloudURL()
 }
 
 // GetBinding returns the current binding, or nil if none exists.
@@ -967,8 +973,7 @@ func (s *ChatWikiService) clearTeamCancel(conversationID int64) {
 func (s *ChatWikiService) nextTeamSeq(requestID string) int {
 	s.teamMu.Lock()
 	defer s.teamMu.Unlock()
-	current := s.teamSeq[requestID]
-	next := atomic.AddInt32(&current, 1)
+	next := s.teamSeq[requestID] + 1
 	s.teamSeq[requestID] = next
 	return int(next)
 }

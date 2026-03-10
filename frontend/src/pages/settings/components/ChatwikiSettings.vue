@@ -30,8 +30,9 @@ import {
 
 const { t } = useI18n()
 
-const CHATWIKI_CLOUD_AUTH_URL = 'http://dev6zhimachatai.applnk.cn/'
 const BINDING_TIMEOUT_SEC = 120
+/** Cloud URL loaded from backend on mount (respects dev/prod build config) */
+const cloudAuthUrl = ref('')
 
 type View = 'list' | 'choose' | 'binding' | 'success' | 'failure'
 
@@ -258,6 +259,7 @@ async function startReauthBinding() {
     toast.error(t('settings.chatwiki.invalidUrl'))
     return
   }
+  isReauthFlow.value = true
   const authUrl = `${base}/#/chatclaw/login`
   await startBinding(authUrl)
 }
@@ -323,7 +325,8 @@ function listenAuthCallback() {
 }
 
 async function handleLoginCloud() {
-  const base = CHATWIKI_CLOUD_AUTH_URL.replace(/\/+$/, '')
+  isReauthFlow.value = false
+  const base = cloudAuthUrl.value.replace(/\/+$/, '')
   await startBinding(`${base}/#/chatclaw/login`)
 }
 
@@ -332,6 +335,7 @@ async function handleGoToAuth() {
     toast.error(t('settings.chatwiki.invalidUrl'))
     return
   }
+  isReauthFlow.value = false
   const base = openSourceUrl.value.trim().replace(/\/+$/, '')
   const authUrl = `${base}/#/chatclaw/login`
   await startBinding(authUrl)
@@ -340,10 +344,13 @@ async function handleGoToAuth() {
 function cancelBinding() {
   stopCountdown()
   cleanupListeners()
-  view.value = 'choose'
+  // Re-auth flow: go back to list; new binding flow: go back to choose
+  view.value = isReauthFlow.value ? 'list' : 'choose'
+  isReauthFlow.value = false
 }
 
 function retry() {
+  isReauthFlow.value = false
   view.value = 'choose'
   openSourceUrl.value = ''
   showOpenSourceInput.value = false
@@ -379,6 +386,9 @@ watch(isBound, (bound) => {
 
 onMounted(() => {
   void loadBinding()
+  void ChatWikiService.GetCloudURL().then((url) => {
+    cloudAuthUrl.value = url ?? ''
+  })
 })
 
 onUnmounted(() => {

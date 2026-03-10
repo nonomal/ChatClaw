@@ -318,7 +318,7 @@ const canSend = computed(() => {
 const sendDisabledReason = computed(() => {
   if (isGenerating.value) return ''
   if (isTeamMode.value) {
-    if (!activeTeamRobotId.value) return '请先选择团队机器人'
+    if (!activeTeamRobotId.value) return t('assistant.errors.selectTeamRobotFirst')
     if (pendingImages.value.length > 0) return t('assistant.errors.teamImageNotSupported')
     if (!chatInput.value.trim()) return t('assistant.placeholders.enterToSend')
     return ''
@@ -620,7 +620,7 @@ const sendTeamMessage = async (messageContent: string) => {
       active_team_robot_id: activeTeamRobotId.value,
       active_robot: activeTeamRobot.value,
     })
-    toast.error('当前机器人缺少 robot_key')
+    toast.error(t('assistant.errors.teamRobotMissingKey'))
     return
   }
 

@@ -632,6 +632,8 @@ export default {
       imagesTotalTooLarge: 'Total image size too large (max {max})',
       imageReadFailed: 'Failed to read image',
       teamImageNotSupported: 'Image sending is not supported in team mode yet',
+      selectTeamRobotFirst: 'Please select a team robot first',
+      teamRobotMissingKey: 'Current robot is missing robot_key, please sync again',
       modelNotSupportVision: 'Current model does not support image recognition. Please switch to a multimodal vision model',
       modelNotSupportVisionHint: 'Models like GPT-4o, Claude, Gemini support image recognition',
     },
