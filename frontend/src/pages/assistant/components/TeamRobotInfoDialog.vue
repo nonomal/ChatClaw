@@ -30,7 +30,7 @@ const setOpen = (value: boolean) => emit('update:open', value)
   <Dialog :open="open" @update:open="setOpen">
     <DialogContent size="md">
       <DialogHeader>
-        <DialogTitle>{{ t('assistant.menu.settings') }}</DialogTitle>
+        <DialogTitle>{{ t('assistant.teamRobot.infoTitle') }}</DialogTitle>
       </DialogHeader>
 
       <div v-if="robot" class="flex flex-col gap-4 py-4">

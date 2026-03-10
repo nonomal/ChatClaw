@@ -629,6 +629,8 @@ export default {
       imagesTotalTooLarge: '图片总大小过大',
       imageReadFailed: '图片读取失败',
       teamImageNotSupported: '团队模式暂不支持发送图片',
+      selectTeamRobotFirst: '请先选择团队机器人',
+      teamRobotMissingKey: '当前机器人缺少 robot_key，请重新同步',
       modelNotSupportVision: '当前模型不支持图片识别，请切换到支持视觉的多模态模型',
       modelNotSupportVisionHint: '例如 GPT-4o、Claude、Gemini 等模型支持图片识别',
     },
