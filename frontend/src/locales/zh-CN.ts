@@ -714,6 +714,7 @@ export default {
       mcpNoSearchResults: '无匹配结果',
       mcpSelectAll: '全选',
       mcpDeselectAll: '取消全选',
+      mcpGlobalDisabled: 'MCP 全局开关已关闭，请在设置中开启',
       mcpGoToSettings: '添加新 MCP',
       mcpGoToSettingsHint: '前往设置页面添加新的 MCP 服务',
     },

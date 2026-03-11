@@ -205,7 +205,7 @@ func (s *ChatService) getAgentAndProviderConfig(ctx context.Context, db *bun.DB,
 		MatchThreshold:      agent.RetrievalMatchThreshold,
 		MemoryEnabled:       memoryEnabled,
 		ChatMode:            chatMode,
-		MCPEnabled:          agent.MCPEnabled,
+		MCPEnabled:          agent.MCPEnabled && settings.GetBool("mcp_enabled", false),
 		MCPServerIDs:        mcpServerIDs,
 		MCPServerEnabledIDs: mcpServerEnabledIDs,
 	}

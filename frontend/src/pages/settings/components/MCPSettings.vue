@@ -710,6 +710,7 @@ onUnmounted(() => {
                 <div class="flex items-center gap-2" @click.stop>
                   <Switch
                     :model-value="server.enabled"
+                    :disabled="!mcpEnabled"
                     class="scale-90"
                     @update:model-value="() => handleToggleServer(server)"
                   />
