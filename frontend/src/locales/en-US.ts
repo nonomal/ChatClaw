@@ -717,6 +717,7 @@ export default {
       mcpNoSearchResults: 'No matching results',
       mcpSelectAll: 'Select all',
       mcpDeselectAll: 'Deselect all',
+      mcpGlobalDisabled: 'MCP is globally disabled. Enable it in Settings.',
       mcpGoToSettings: 'Add new MCP',
       mcpGoToSettingsHint: 'Go to Settings to add a new MCP server',
     },

@@ -17,6 +17,7 @@ import {
 import { AgentsService, type FileEntry, UpdateAgentInput } from '@bindings/chatclaw/internal/services/agents'
 import { MCPService } from '@bindings/chatclaw/internal/services/mcp'
 import type { MCPServer } from '@bindings/chatclaw/internal/services/mcp'
+import { SettingsService, Category } from '@bindings/chatclaw/internal/services/settings'
 import { BrowserService } from '@bindings/chatclaw/internal/services/browser'
 import type { Agent } from '@bindings/chatclaw/internal/services/agents'
 import { Events } from '@wailsio/runtime'
@@ -138,6 +139,7 @@ const handleClose = () => {
 }
 
 // ==================== MCP Tools ====================
+const globalMCPEnabled = ref(false)
 const globalMCPServers = ref<MCPServer[]>([])
 const mcpEnabled = computed(() => props.agent?.mcp_enabled ?? false)
 const agentMCPServerIDs = computed<string[]>(() => {
@@ -179,8 +181,13 @@ function isEnabledForAgent(id: string): boolean {
 
 async function loadMCPServers() {
   try {
-    const all = await MCPService.ListServers()
+    const [all, settings] = await Promise.all([
+      MCPService.ListServers(),
+      SettingsService.List(Category.CategoryMCP),
+    ])
     globalMCPServers.value = (all || []).filter((s) => s.enabled)
+    const enabledSetting = settings.find((s) => s.key === 'mcp_enabled')
+    globalMCPEnabled.value = enabledSetting?.value === 'true'
   } catch {
     globalMCPServers.value = []
   }
@@ -473,6 +480,7 @@ onUnmounted(() => {
                     size="icon"
                     variant="ghost"
                     class="size-5"
+                    :disabled="!globalMCPEnabled"
                     @click="openAddMCPDialog"
                   >
                     <Plus class="size-3 text-muted-foreground" />
@@ -485,13 +493,21 @@ onUnmounted(() => {
             </TooltipProvider>
             <Switch
               :model-value="mcpEnabled"
+              :disabled="!globalMCPEnabled"
               class="scale-75"
               @update:model-value="handleMCPEnabledChange"
             />
           </div>
         </div>
 
-        <template v-if="mcpEnabled">
+        <template v-if="!globalMCPEnabled">
+          <div class="flex items-center justify-center rounded-lg border border-dashed border-border py-4">
+            <span class="text-[11px] text-muted-foreground">
+              {{ t('assistant.workspaceDrawer.mcpGlobalDisabled') }}
+            </span>
+          </div>
+        </template>
+        <template v-else-if="mcpEnabled">
           <div v-if="agentMCPServers.length === 0" class="flex items-center justify-center rounded-lg border border-dashed border-border py-4">
             <span class="text-[11px] text-muted-foreground">
               {{ t('assistant.workspaceDrawer.mcpEmptyHint') }}
@@ -510,6 +526,7 @@ onUnmounted(() => {
               </div>
               <Switch
                 :model-value="isEnabledForAgent(server.id)"
+                :disabled="!globalMCPEnabled"
                 class="scale-75"
                 @update:model-value="(val: boolean) => handleWorkspaceToggleEnabled(server.id, val)"
               />
