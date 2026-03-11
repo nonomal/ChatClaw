@@ -307,7 +307,7 @@ func buildScheduledTaskPrompt() string {
 **第一步：预览**
 1. 用户用自然语言描述任务需求（任务名、提示词、执行时间、目标助手）
 2. 你将时间自然语言转换为结构化调度参数：
-   - ` + "`schedule_type`" + `: 调度类型，如 "preset"、"cron"、"interval"
+   - ` + "`schedule_type`" + `: 调度类型，如 "preset"、"custom"、"cron"
    - ` + "`schedule_value`" + `: 预设值，如 "every_day_0900"、"every_week_mon_1000"
    - ` + "`cron_expr`" + `: 标准 cron 表达式（如需要）
 3. 调用 ` + "`scheduled_task_create_preview`" + `，传入：
@@ -420,7 +420,7 @@ You can help users manage scheduled tasks. When users mention "scheduled tasks",
 **Step 1: Preview**
 1. User describes task requirements in natural language (name, prompt, schedule, target assistant)
 2. You convert natural language time into structured schedule parameters:
-   - ` + "`schedule_type`" + `: Schedule type like "preset", "cron", "interval"
+   - ` + "`schedule_type`" + `: Schedule type like "preset", "custom", "cron"
    - ` + "`schedule_value`" + `: Preset value like "every_day_0900", "every_week_mon_1000"
    - ` + "`cron_expr`" + `: Standard cron expression (if needed)
 3. Call ` + "`scheduled_task_create_preview`" + ` with:
