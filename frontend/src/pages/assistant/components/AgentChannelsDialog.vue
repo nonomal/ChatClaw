@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 import { toast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
 import { platformIconMap } from '@/assets/icons/snap/platformIcons'
+import { getPlatformDocsUrl, openExternalLink } from '@/pages/channels/platformDocs'
 
 const props = defineProps<{
   agent: Agent | null
@@ -340,12 +341,8 @@ function isSelectableChannelPlatform(platformId: string) {
 }
 
 function openPlatformDocs() {
-  const id = selectedPlatformMeta.value?.id
-  if (id === 'feishu') {
-    window.open('https://open.feishu.cn/', '_blank')
-  } else if (id === 'wecom') {
-    window.open('https://developer.work.weixin.qq.com/', '_blank')
-  }
+  const url = getPlatformDocsUrl(selectedPlatformMeta.value?.id)
+  void openExternalLink(url)
 }
 
 async function handleInlineVerify() {

@@ -32,6 +32,7 @@ import {
 import AddChannelDialog from './components/AddChannelDialog.vue'
 import ConfigChannelDialog from './components/ConfigChannelDialog.vue'
 import BindAgentDialog from './components/BindAgentDialog.vue'
+import { getPlatformDocsUrl, openExternalLink } from './platformDocs'
 import { ChannelService, UpdateChannelInput } from '@bindings/chatclaw/internal/services/channels'
 import type { Channel, ChannelStats, PlatformMeta } from '@bindings/chatclaw/internal/services/channels'
 import { AgentsService, type Agent } from '@bindings/chatclaw/internal/services/agents'
@@ -353,12 +354,8 @@ async function handleInlineSave() {
 }
 
 function openPlatformDocs() {
-  const id = selectedPlatformMeta.value?.id
-  if (id === 'feishu') {
-    window.open('https://open.feishu.cn/', '_blank')
-  } else if (id === 'wecom') {
-    window.open('https://developer.work.weixin.qq.com/', '_blank')
-  }
+  const url = getPlatformDocsUrl(selectedPlatformMeta.value?.id)
+  void openExternalLink(url)
 }
 
 async function handleInlineVerify() {
