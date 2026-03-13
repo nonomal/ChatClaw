@@ -72,8 +72,8 @@ func init() {
 	bundle.LoadMessageFileFS(localesFS, "locales/vi-VN.json")
 	bundle.LoadMessageFileFS(localesFS, "locales/zh-TW.json")
 
-	// 默认使用中文
-	localizer = i18n.NewLocalizer(bundle, LocaleZhCN)
+	// 默认使用英文（前端/后端都以英文作为不支持语言时的初始兜底）
+	localizer = i18n.NewLocalizer(bundle, LocaleEnUS)
 }
 
 // Service 多语言服务（暴露给前端调用）
@@ -97,13 +97,14 @@ func (s *Service) SetLocale(locale string) {
 
 // ---- 包级便捷函数 ----
 
-var currentLocale = LocaleZhCN
+var currentLocale = LocaleEnUS
 
 // DetectLocale 检测系统语言，返回支持的语言代码
 func DetectLocale() string {
 	lang, err := locale.GetLanguage()
 	if err != nil {
-		return LocaleZhCN
+		// 获取系统语言失败时，直接退回英文
+		return LocaleEnUS
 	}
 
 	// 系统语言可能是 "zh"、"zh-CN"、"zh_CN"、"zh-Hans" 等格式
@@ -192,8 +193,8 @@ func DetectLocale() string {
 		return LocaleViVN
 	}
 
-	// 不支持的语言默认使用中文
-	return LocaleZhCN
+	// 不支持的语言默认使用英文
+	return LocaleEnUS
 }
 
 // GetLocale 获取当前语言
@@ -230,7 +231,8 @@ func SetLocale(locale string) {
 			LocaleZhTW: true,
 		}
 		if !supported[locale] {
-			locale = LocaleZhCN
+			// 非支持语言统一退回英文
+			locale = LocaleEnUS
 		}
 	}
 	currentLocale = locale
