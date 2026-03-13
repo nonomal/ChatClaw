@@ -8,7 +8,7 @@ import { SettingsService } from '@bindings/chatclaw/internal/services/settings'
 // Re-export Locale type so consumers can import from this composable
 export type { Locale } from '../locales'
 
-const DEFAULT_LOCALE: Locale = 'zh-CN'
+const DEFAULT_LOCALE: Locale = 'en-US'
 
 // 支持的语言列表
 export const SUPPORTED_LOCALES: Locale[] = [
@@ -30,16 +30,57 @@ export const SUPPORTED_LOCALES: Locale[] = [
   'zh-TW',
 ]
 
+function detectSystemLocale(): Locale | null {
+  if (typeof navigator === 'undefined') {
+    return null
+  }
+
+  const candidates: string[] = []
+  const primary =
+    navigator.language ||
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (navigator as any).userLanguage
+  if (primary) {
+    candidates.push(primary)
+  }
+  if (Array.isArray(navigator.languages)) {
+    candidates.push(...navigator.languages)
+  }
+
+  for (const raw of candidates) {
+    if (!raw) continue
+    const normalized = raw.trim().replace('_', '-')
+    if (!normalized) continue
+
+    const lower = normalized.toLowerCase()
+    const fullMatch = SUPPORTED_LOCALES.find(
+      (l) => l.toLowerCase() === lower,
+    )
+    if (fullMatch) {
+      return fullMatch
+    }
+
+    const base = lower.split('-')[0]
+    if (!base) continue
+    const baseMatch = SUPPORTED_LOCALES.find((l) =>
+      l.toLowerCase().startsWith(`${base}-`),
+    )
+    if (baseMatch) {
+      return baseMatch
+    }
+  }
+
+  return null
+}
+
 /**
  * 从后端获取语言配置
  */
 export async function fetchLocale(): Promise<Locale> {
   try {
-    // Prefer persisted settings value
     const s = await SettingsService.Get('language')
     const v = (s?.value || '').trim()
     if (SUPPORTED_LOCALES.includes(v as Locale)) {
-      // keep backend localizer consistent
       try {
         await I18nService.SetLocale(v)
       } catch {
@@ -55,6 +96,17 @@ export async function fetchLocale(): Promise<Locale> {
   } catch (e) {
     console.warn('Failed to fetch locale from backend:', e)
   }
+
+  const systemLocale = detectSystemLocale()
+  if (systemLocale) {
+    try {
+      await I18nService.SetLocale(systemLocale)
+    } catch {
+      // ignore
+    }
+    return systemLocale
+  }
+
   return DEFAULT_LOCALE
 }
 
