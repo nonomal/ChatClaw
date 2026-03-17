@@ -18,7 +18,6 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
-import { openChatWikiCloudLogin } from '@/lib/chatwikiAuth'
 import { useSettingsStore } from '@/stores/settings'
 import type { Provider, ProviderWithModels } from '@bindings/chatclaw/internal/services/providers'
 import { ProvidersService, UpdateProviderInput } from '@bindings/chatclaw/internal/services/providers'
@@ -281,20 +280,7 @@ function goToBindingSettings() {
 }
 
 async function handleLoginNow() {
-  const base = cloudURL.value.trim().replace(/\/+$/, '')
-  if (!base) {
-    toast.error(t('settings.chatwiki.invalidUrl'))
-    return
-  }
-
-  try {
-    await openChatWikiCloudLogin(base)
-  } catch (error) {
-    console.error('Failed to open ChatWiki auth URL:', error)
-    toast.error(getErrorMessage(error) || t('settings.chatwiki.invalidUrl'))
-    return
-  }
-
+  settingsStore.requestChatwikiCloudLogin()
   goToBindingSettings()
 }
 

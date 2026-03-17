@@ -1,9 +1,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createPinia, setActivePinia } from 'pinia'
-import { useSettingsStore } from './settings.ts'
 
-test('chatwiki cloud login intent is consumed once', () => {
+async function loadModule() {
+  // Node 24 can execute the TypeScript source directly for this lightweight test.
+  // @ts-ignore TS5097: test runtime intentionally imports the source file.
+  return import('./settings.ts')
+}
+
+test('chatwiki cloud login intent is consumed once', async () => {
+  const { useSettingsStore } = await loadModule()
   setActivePinia(createPinia())
   const store = useSettingsStore()
 
