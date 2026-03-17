@@ -12,6 +12,7 @@ import { ChatWikiService, type Binding } from '@bindings/chatclaw/internal/servi
 import { ProvidersService } from '@bindings/chatclaw/internal/services/providers'
 import { getBinding as getBindingCached, getRobotListAll as getRobotListAllCached, getLibraryList as getLibraryListCached, clearAll as clearChatwikiCache } from '@/lib/chatwikiCache'
 import { buildChatWikiLoginUrl, openChatWikiCloudLogin } from '@/lib/chatwikiAuth'
+import { useSettingsStore } from '@/stores/settings'
 import { Events } from '@wailsio/runtime'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,6 +33,7 @@ import {
 } from '@/components/ui/alert-dialog'
 
 const { t } = useI18n()
+const settingsStore = useSettingsStore()
 
 const BINDING_TIMEOUT_SEC = 120
 /** Cloud URL loaded from backend on mount (respects dev/prod build config) */
@@ -456,6 +458,9 @@ onMounted(() => {
   void loadBinding()
   void ChatWikiService.GetCloudURL().then((url) => {
     cloudAuthUrl.value = url ?? ''
+    if (settingsStore.consumePendingChatwikiAction() === 'cloudLogin') {
+      void handleLoginCloud()
+    }
   })
 })
 
