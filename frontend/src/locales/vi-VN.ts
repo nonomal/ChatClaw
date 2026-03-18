@@ -564,7 +564,7 @@ export default {
       modelLoginHint: 'Vui lòng đăng nhập và liên kết tài khoản ChatWiki trước. Sau đó danh sách mô hình mới nhất sẽ xuất hiện tại đây.',
       providerStatus: {
         unbound: '{label} (Chưa đăng nhập)',
-        nonCloud: '{label} (Không phải ChatWiki Cloud)',
+        nonCloud: '{label} (Chưa đăng nhập)',
       },
       region: {
         all: 'Tất cả khu vực',
