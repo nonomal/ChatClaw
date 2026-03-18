@@ -565,7 +565,7 @@ export default {
       modelLoginHint: 'Najprej se prijavi in poveži svoj račun ChatWiki. Nato bo tukaj prikazan najnovejši seznam modelov.',
       providerStatus: {
         unbound: '{label} (Ni prijavljen)',
-        nonCloud: '{label} (Ni ChatWiki Cloud)',
+        nonCloud: '{label} (Ni prijavljen)',
       },
       region: {
         all: 'Vse regije',

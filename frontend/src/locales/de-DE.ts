@@ -569,7 +569,7 @@ export default {
       modelLoginHint: 'Bitte melden Sie sich zuerst an und binden Sie Ihr ChatWiki-Konto. Danach wird hier die aktuelle Modellliste angezeigt.',
       providerStatus: {
         unbound: '{label} (Nicht angemeldet)',
-        nonCloud: '{label} (Nicht ChatWiki Cloud)',
+        nonCloud: '{label} (Nicht angemeldet)',
       },
       region: {
         all: 'Alle Regionen',

@@ -563,7 +563,7 @@ export default {
       modelLoginHint: 'Accedi prima e collega il tuo account ChatWiki. In seguito qui apparirà l’elenco più recente dei modelli.',
       providerStatus: {
         unbound: '{label} (Non connesso)',
-        nonCloud: '{label} (Non ChatWiki Cloud)',
+        nonCloud: '{label} (Non connesso)',
       },
       region: {
         all: 'Tutte le regioni',

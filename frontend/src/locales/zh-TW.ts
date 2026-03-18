@@ -551,7 +551,7 @@ export default {
       modelLoginHint: '請先登入並綁定 ChatWiki 帳號，之後這裡會顯示最新的模型服務清單。',
       providerStatus: {
         unbound: '{label}（未登入）',
-        nonCloud: '{label}（非 ChatWiki Cloud）',
+        nonCloud: '{label}（未登入）',
       },
       region: {
         all: '所有範圍',

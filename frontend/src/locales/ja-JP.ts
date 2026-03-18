@@ -563,7 +563,7 @@ export default {
       modelLoginHint: '先に ChatWiki アカウントへサインインして連携してください。完了後、ここに最新のモデル一覧が表示されます。',
       providerStatus: {
         unbound: '{label}（未ログイン）',
-        nonCloud: '{label}（ChatWiki Cloud 以外）',
+        nonCloud: '{label}（未ログイン）',
       },
       region: {
         all: 'すべての地域',

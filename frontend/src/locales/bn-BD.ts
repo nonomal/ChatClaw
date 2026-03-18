@@ -563,7 +563,7 @@ export default {
       modelLoginHint: 'অনুগ্রহ করে আগে ChatWiki অ্যাকাউন্টে সাইন ইন ও bind করুন। তারপর এখানে সর্বশেষ মডেল তালিকা দেখা যাবে।',
       providerStatus: {
         unbound: '{label} (লগ ইন করা হয়নি)',
-        nonCloud: '{label} (ChatWiki Cloud নয়)',
+        nonCloud: '{label} (লগ ইন করা হয়নি)',
       },
       region: {
         all: 'সব অঞ্চল',

@@ -567,7 +567,7 @@ export default {
       modelLoginHint: 'Önce ChatWiki hesabınızla oturum açıp bağlantıyı kurun. Ardından en güncel model listesi burada görünecektir.',
       providerStatus: {
         unbound: '{label} (Oturum açık değil)',
-        nonCloud: '{label} (ChatWiki Cloud değil)',
+        nonCloud: '{label} (Oturum açık değil)',
       },
       region: {
         all: 'Tüm bölgeler',
