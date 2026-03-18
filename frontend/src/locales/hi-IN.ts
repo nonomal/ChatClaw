@@ -563,7 +563,7 @@ export default {
       modelLoginHint: 'कृपया पहले अपने ChatWiki खाते में साइन इन करें और उसे bind करें। उसके बाद यहाँ नवीनतम मॉडल सूची दिखाई देगी।',
       providerStatus: {
         unbound: '{label} (लॉग इन नहीं)',
-        nonCloud: '{label} (ChatWiki Cloud नहीं)',
+        nonCloud: '{label} (लॉग इन नहीं)',
       },
       region: {
         all: 'सभी क्षेत्र',

@@ -558,7 +558,7 @@ export default {
       modelLoginHint: "请先登录并绑定 ChatWiki 账号，随后这里会展示最新的模型服务列表。",
       providerStatus: {
         unbound: '{label}（未登录）',
-        nonCloud: '{label}（非ChatWiki Cloud）',
+        nonCloud: '{label}（未登录）',
       },
       region: {
         all: '所有范围',

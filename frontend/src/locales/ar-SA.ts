@@ -560,7 +560,7 @@ export default {
       modelLoginHint: 'يرجى أولاً تسجيل الدخول وربط حساب ChatWiki الخاص بك. ستظهر هنا بعد ذلك أحدث قائمة بالنماذج.',
       providerStatus: {
         unbound: '{label} (غير مسجل الدخول)',
-        nonCloud: '{label} (ليس ChatWiki Cloud)',
+        nonCloud: '{label} (غير مسجل الدخول)',
       },
       region: {
         all: 'كل المناطق',

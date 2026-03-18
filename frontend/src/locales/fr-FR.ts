@@ -566,7 +566,7 @@ export default {
       modelLoginHint: 'Veuillez d’abord vous connecter et lier votre compte ChatWiki. La liste la plus récente des modèles apparaîtra ensuite ici.',
       providerStatus: {
         unbound: '{label} (Non connecté)',
-        nonCloud: '{label} (Hors ChatWiki Cloud)',
+        nonCloud: '{label} (Non connecté)',
       },
       region: {
         all: 'Toutes les régions',

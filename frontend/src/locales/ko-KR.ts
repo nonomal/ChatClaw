@@ -580,7 +580,7 @@ export default {
       modelLoginHint: '먼저 ChatWiki 계정에 로그인하고 연동하세요. 그러면 여기에서 최신 모델 목록을 볼 수 있습니다.',
       providerStatus: {
         unbound: '{label} (로그인 안 됨)',
-        nonCloud: '{label} (ChatWiki Cloud 아님)',
+        nonCloud: '{label} (로그인 안 됨)',
       },
       region: {
         all: '모든 지역',

@@ -571,7 +571,7 @@ export default {
       modelLoginHint: "Please sign in and bind your ChatWiki account first. The latest model list will appear here afterward.",
       providerStatus: {
         unbound: '{label} (Not logged in)',
-        nonCloud: '{label} (Non-ChatWiki Cloud)',
+        nonCloud: '{label} (Not logged in)',
       },
       region: {
         all: 'All regions',
