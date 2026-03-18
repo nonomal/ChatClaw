@@ -168,6 +168,12 @@ func EnsureChatClawInitialized() error {
 	return err
 }
 
+// GetChatClawConfig returns the ChatClaw provider config from sqlite.
+// Convenience package-level wrapper around GetProvider("chatclaw").
+func GetChatClawConfig() (*Provider, error) {
+	return (&ProvidersService{}).GetProvider("chatclaw")
+}
+
 // fetchPublicIP fetches the machine's public IP via api.ipify.org
 func fetchPublicIP() (string, error) {
 	// Multiple fallbacks for restricted networks (CN-only, captive portals, etc.).
