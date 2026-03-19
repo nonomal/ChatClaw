@@ -65,7 +65,6 @@ const handleCardClick = () => {
           <FolderPlus class="size-4 text-muted-foreground" />
           {{ t('knowledge.folder.move.action') }}
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
         <DropdownMenuItem
           class="gap-2 whitespace-nowrap text-muted-foreground focus:text-foreground"
           @select="emit('delete', folder)"
