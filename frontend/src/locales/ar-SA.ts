@@ -701,6 +701,7 @@ export default {
       freeBadge: 'مجاني',
       noModel: 'لا يوجد نموذج متاح',
       selectKnowledge: 'اختر قاعدة المعرفة',
+      knowledgeChipRemoveNotSupported: "لا يمكن الإزالة في هذا الوضع",
       selectImages: 'اختر الصور',
       selectImagesDisabled: 'اختر نموذجًا يدعم إدخال الصور',
       selectImage: 'اختر صورة',

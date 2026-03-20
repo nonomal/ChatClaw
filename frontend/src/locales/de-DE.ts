@@ -709,6 +709,7 @@ export default {
       freeBadge: 'Kostenlos',
       noModel: 'Kein Modell verfügbar',
       selectKnowledge: 'Wissensdatenbank auswählen',
+      knowledgeChipRemoveNotSupported: "In diesem Modus ist das Entfernen nicht möglich",
       selectImages: 'Bilder auswählen',
       selectImagesDisabled: 'Wählen Sie ein Modell, das Bildeingabe unterstützt',
       selectImage: 'Bild auswählen',
