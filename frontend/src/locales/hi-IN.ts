@@ -723,6 +723,7 @@ export default {
       freeBadge: 'मुफ्त',
       noModel: 'कोई मॉडल उपलब्ध नहीं',
       selectKnowledge: 'नॉलेज बेस चुनें',
+      knowledgeChipRemoveNotSupported: "इस मोड में हटाना समर्थित नहीं है",
       selectImages: 'इमेज चुनें',
       selectImagesDisabled: 'इमेज इनपुट सपोर्ट करने वाला मॉडल चुनें',
       selectImage: 'इमेज चुनें',

@@ -708,6 +708,7 @@ export default {
       freeBadge: 'Gratis',
       noModel: 'Nessun modello',
       selectKnowledge: 'Seleziona knowledge base',
+      knowledgeChipRemoveNotSupported: "Rimozione non disponibile in questa modalità",
       selectImages: 'Seleziona immagini',
       selectImagesDisabled: 'Devi selezionare un modello che supporta immagini',
       selectImage: 'Seleziona immagine',

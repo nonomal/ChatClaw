@@ -709,6 +709,7 @@ export default {
       freeBadge: 'Ücretsiz',
       noModel: 'Mevcut model yok',
       selectKnowledge: 'Bilgi tabanı seç',
+      knowledgeChipRemoveNotSupported: "Bu modda kaldırma desteklenmiyor",
       selectImages: 'Resim seç',
       selectImagesDisabled: 'Girişi destekleyen bir model seçin',
       selectImage: 'Resim seç',

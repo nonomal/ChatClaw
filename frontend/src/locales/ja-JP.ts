@@ -708,6 +708,7 @@ export default {
       freeBadge: '無料',
       noModel: '利用可能なモデルがありません',
       selectKnowledge: 'ナレッジベースを選択',
+      knowledgeChipRemoveNotSupported: "このモードでは削除できません",
       selectImages: '画像を選択',
       selectImagesDisabled: '画像入力 supportedモデルを選択してください',
       selectImage: '画像を選択',
