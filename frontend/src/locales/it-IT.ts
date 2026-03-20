@@ -555,9 +555,6 @@ export default {
         cn: 'Cina',
         global: 'Globale',
       },
-      unbindConfirmDesc:
-        'Dopo la rimozione del binding, non sarà più possibile utilizzare le applicazioni e le knowledge base fornite da ChatWiki. Continuare?',
-      unbindConfirmTitle: 'Conferma rimozione binding',
     },
     tools: {
       tray: {
