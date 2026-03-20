@@ -693,6 +693,7 @@ export default {
       freeBadge: '免費',
       noModel: '沒有可用的模型',
       selectKnowledge: '選擇知識庫',
+      knowledgeChipRemoveNotSupported: "目前模式不支援刪除",
       selectImages: '選擇圖片',
       selectImagesDisabled: '請選擇支援圖片輸入的模型',
       selectImage: '選擇圖片',

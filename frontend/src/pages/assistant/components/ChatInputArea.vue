@@ -664,7 +664,7 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Selected knowledge bases: personal + team chips (both removable; same style) -->
+        <!-- Selected knowledge bases: personal + team chips (same style; knowledge mode: chip locked, no remove) -->
         <div
           v-if="
             !isTeamMode &&
@@ -673,21 +673,41 @@ onUnmounted(() => {
           "
           class="-mt-1 mb-3 flex flex-wrap items-center gap-2"
         >
-          <!-- Personal libraries -->
-          <div
-            v-for="lib in visibleLibraries"
-            :key="'p-' + lib.id"
-            class="group flex h-8 items-center gap-2 rounded-xl bg-muted px-3.5 text-sm text-foreground/80 transition-colors hover:bg-muted/80"
-          >
-            <IconKnowledge class="size-4 shrink-0 text-muted-foreground" />
-            <span class="max-w-[148px] truncate">{{ lib.name }}</span>
-            <button
-              class="cursor-pointer rounded-md p-0.5 text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground active:scale-95"
-              @click="handleRemoveLibrary(lib.id)"
+          <TooltipProvider>
+            <!-- Personal libraries -->
+            <template
+              v-for="lib in visibleLibraries"
+              :key="'p-' + lib.id"
             >
-              <X class="size-4" />
-            </button>
-          </div>
+              <Tooltip v-if="currentMode === 'knowledge'">
+                <TooltipTrigger as-child>
+                  <div
+                    class="group flex h-8 cursor-default items-center gap-2 rounded-xl bg-muted px-3.5 text-sm text-foreground/80"
+                  >
+                    <IconKnowledge class="size-4 shrink-0 text-muted-foreground" />
+                    <span class="max-w-[148px] truncate">{{ lib.name }}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>{{ t('assistant.chat.knowledgeChipRemoveNotSupported') }}</p>
+                </TooltipContent>
+              </Tooltip>
+              <div
+                v-else
+                class="group flex h-8 items-center gap-2 rounded-xl bg-muted px-3.5 text-sm text-foreground/80 transition-colors hover:bg-muted/80"
+              >
+                <IconKnowledge class="size-4 shrink-0 text-muted-foreground" />
+                <span class="max-w-[148px] truncate">{{ lib.name }}</span>
+                <button
+                  type="button"
+                  class="cursor-pointer rounded-md p-0.5 text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground active:scale-95"
+                  @click="handleRemoveLibrary(lib.id)"
+                >
+                  <X class="size-4" />
+                </button>
+              </div>
+            </template>
+          </TooltipProvider>
           <span
             v-if="overflowCount > 0"
             class="inline-flex h-8 items-center rounded-xl bg-muted px-3 text-sm text-muted-foreground"

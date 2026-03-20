@@ -706,6 +706,7 @@ export default {
       freeBadge: 'Miễn phí',
       noModel: 'Không có mô hình khả dụng',
       selectKnowledge: 'Chọn Cơ sở tri thức',
+      knowledgeChipRemoveNotSupported: "Chế độ hiện tại không hỗ trợ gỡ bỏ",
       selectImages: 'Chọn hình ảnh',
       selectImagesDisabled: 'Chọn mô hình hỗ trợ đầu vào hình ảnh',
       selectImage: 'Chọn hình ảnh',
