@@ -1688,15 +1688,6 @@ export default {
       everyMonday0900: '매주 월요일 오전 9:00',
       everyMonth10900: '매월 1일 오전 9:00',
     },
-    weekdays: {
-      sunday: '일요일',
-      monday: '월요일',
-      tuesday: '화요일',
-      wednesday: '수요일',
-      thursday: '목요일',
-      friday: '금요일',
-      saturday: '토요일',
-    },
     weekdaysShort: {
       sunday: '일',
       monday: '월',
