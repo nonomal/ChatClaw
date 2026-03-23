@@ -1259,10 +1259,6 @@ export default {
     deleteConfirmTitle: "确认删除",
     deleteFileConfirm: "确定要删除 {name} 吗？此操作不可撤销。",
     unsavedChangesConfirm: "有未保存的更改，确定要切换吗？",
-    categoryCore: "核心记忆",
-    categoryPersona: "人格文件",
-    categoryDaily: "每日日志",
-    categoryOther: "其他",
   },
   channels: {
     title: "消息频道",
