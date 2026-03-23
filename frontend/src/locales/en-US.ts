@@ -1259,10 +1259,6 @@ export default {
     deleteConfirmTitle: "Confirm Delete",
     deleteFileConfirm: "Are you sure you want to delete {name}? This action cannot be undone.",
     unsavedChangesConfirm: "You have unsaved changes. Switch anyway?",
-    categoryCore: "Core Memory",
-    categoryPersona: "Persona",
-    categoryDaily: "Daily Log",
-    categoryOther: "Other",
   },
   channels: {
     title: "Channels",
