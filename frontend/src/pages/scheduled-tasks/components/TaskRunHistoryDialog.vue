@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScheduledTasksService } from '@bindings/chatclaw/internal/services/scheduledtasks'
@@ -7,15 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { ScheduledTask, ScheduledTaskRun, ScheduledTaskRunDetail } from '../types'
 import { formatDuration, formatTaskTime } from '../utils'
 import TaskRunStatusBadge from './TaskRunStatusBadge.vue'
-import { Events } from '@wailsio/runtime'
-import { ChatEventType } from '@/stores/chat'
-
-// Query keys for the isolated history iframe page.
-const HISTORY_RUN_PAGE_PATH = 'history-run.html'
-const QUERY_KEY_CONVERSATION_ID = 'conversationId'
-const QUERY_KEY_AGENT_ID = 'agentId'
-const HISTORY_IFRAME_TITLE = 'Scheduled task run conversation'
-const FORWARDED_CHAT_EVENT_TYPE = 'history-run-chat-event'
+import EmbeddedAssistantPage from '@/pages/assistant/components/EmbeddedAssistantPage.vue'
 
 const props = defineProps<{
   open: boolean
@@ -30,51 +22,12 @@ const loading = ref(false)
 const runs = ref<ScheduledTaskRun[]>([])
 const selectedRunId = ref<number | null>(null)
 const selectedDetail = ref<ScheduledTaskRunDetail | null>(null)
-const iframeRef = ref<HTMLIFrameElement | null>(null)
+const latestDetailRequestId = ref(0)
 const { t } = useI18n()
 
-const iframeSrc = computed(() => {
-  const conversationId = selectedDetail.value?.conversation?.id
-  if (!conversationId) return ''
-
-  const params = new URLSearchParams()
-  params.set(QUERY_KEY_CONVERSATION_ID, String(conversationId))
-
-  const agentId = selectedDetail.value?.conversation?.agent_id
-  if (agentId && agentId > 0) {
-    params.set(QUERY_KEY_AGENT_ID, String(agentId))
-  }
-
-  return `${HISTORY_RUN_PAGE_PATH}?${params.toString()}`
-})
-
-const forwardChatEventToIframe = (eventName: string, event: any) => {
-  const iframeWindow = iframeRef.value?.contentWindow
-  if (!iframeWindow) return
-
-  const payload = Array.isArray(event?.data) ? event.data[0] : (event?.data ?? event)
-  iframeWindow.postMessage(
-    {
-      type: FORWARDED_CHAT_EVENT_TYPE,
-      eventName,
-      payload,
-    },
-    window.location.origin
-  )
-}
-
-const chatEventNames = Object.values(ChatEventType)
-const chatEventUnsubscribers = chatEventNames.map((eventName) =>
-  Events.On(eventName, (event: any) => {
-    forwardChatEventToIframe(eventName, event)
-  })
-)
-
-onUnmounted(() => {
-  chatEventUnsubscribers.forEach((unsubscribe) => unsubscribe?.())
-})
-
 function displayRunStatusLabel(status: string) {
+  // Keep explicit mapping so badge copy stays aligned with i18n keys.
+  // 保持显式状态映射，确保徽标文案与国际化 key 一一对应。
   if (status === 'running') return t('scheduledTasks.statusRunning')
   if (status === 'failed') return t('scheduledTasks.statusFailed')
   if (status === 'success') return t('scheduledTasks.statusSuccess')
@@ -82,6 +35,8 @@ function displayRunStatusLabel(status: string) {
 }
 
 function displayRunTriggerLabel(triggerType: string) {
+  // Only known trigger types are localized; unknown values fall back to raw text for safety.
+  // 仅对已知触发类型做翻译；未知值回退原文，避免语义被误改。
   if (triggerType === 'schedule') return t('scheduledTasks.runTriggerSchedule')
   if (triggerType === 'manual') return t('scheduledTasks.runTriggerManual')
   return triggerType
@@ -90,15 +45,26 @@ function displayRunTriggerLabel(triggerType: string) {
 watch(
   () => props.open,
   async (value) => {
-    if (!value || !props.task) return
+    if (!value) {
+      // Closing the dialog must invalidate in-flight detail requests and clear stale UI state.
+      // 关闭弹窗时必须废弃进行中的详情请求，并清空旧的界面状态。
+      latestDetailRequestId.value += 1
+      runs.value = []
+      selectedRunId.value = null
+      selectedDetail.value = null
+      return
+    }
+    if (!props.task) return
     loading.value = true
+    const currentTaskId = props.task.id
+    latestDetailRequestId.value += 1
+    selectedDetail.value = null
     try {
       runs.value = await ScheduledTasksService.ListScheduledTaskRuns(props.task.id, 1, 50)
+      if (!props.open || props.task?.id !== currentTaskId) return
       selectedRunId.value = runs.value[0]?.id ?? null
       if (selectedRunId.value) {
-        selectedDetail.value = await ScheduledTasksService.GetScheduledTaskRunDetail(
-          selectedRunId.value
-        )
+        await loadRunDetail(selectedRunId.value)
       } else {
         selectedDetail.value = null
       }
@@ -109,9 +75,27 @@ watch(
   { immediate: true }
 )
 
+async function loadRunDetail(runId: number) {
+  const requestId = latestDetailRequestId.value + 1
+  latestDetailRequestId.value = requestId
+  const currentTaskId = props.task?.id ?? null
+  const detail = await ScheduledTasksService.GetScheduledTaskRunDetail(runId)
+
+  // Only the latest click should win, so slow old requests cannot override the new selection.
+  // 只接受最后一次点击对应的结果，避免旧请求慢返回时覆盖新选择。
+  if (requestId !== latestDetailRequestId.value) return
+  if (!props.open) return
+  if ((props.task?.id ?? null) !== currentTaskId) return
+  if (selectedRunId.value !== runId) return
+  selectedDetail.value = detail
+}
+
 async function selectRun(run: ScheduledTaskRun) {
+  // Clear the previous conversation immediately so the embedded assistant never boots with stale props.
+  // 先清空上一次会话，避免内嵌助手先用旧参数启动再被异步覆盖。
   selectedRunId.value = run.id
-  selectedDetail.value = await ScheduledTasksService.GetScheduledTaskRunDetail(run.id)
+  selectedDetail.value = null
+  await loadRunDetail(run.id)
 }
 </script>
 
@@ -175,13 +159,12 @@ async function selectRun(run: ScheduledTaskRun) {
           >
             {{ t('scheduledTasks.conversationEmpty') }}
           </div>
-          <iframe
+          <EmbeddedAssistantPage
             v-else
-            ref="iframeRef"
-            :key="iframeSrc"
-            :src="iframeSrc"
-            :title="HISTORY_IFRAME_TITLE"
-            class="h-full w-full border-0"
+            :key="`${selectedRunId ?? 'no-run'}-${selectedDetail.conversation.id}`"
+            :conversation-id="selectedDetail.conversation.id"
+            :agent-id="selectedDetail.conversation.agent_id"
+            :run-id="selectedRunId"
           />
         </div>
       </div>
