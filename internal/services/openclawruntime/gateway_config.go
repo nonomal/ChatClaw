@@ -31,6 +31,23 @@ func NewConfigService(manager *Manager) *ConfigService {
 	return &ConfigService{manager: manager}
 }
 
+// EmbeddedGatewaySection returns a SectionBuilder that sets gateway.reload.mode=off.
+// The OpenClaw Gateway watches openclaw.json; when ChatClaw applies config via RPC the
+// gateway persists to disk and the default hybrid reload can mis-detect auth/tailscale
+// changes and loop on SIGUSR1 restarts. Embedded ChatClaw drives config through config.patch only.
+func EmbeddedGatewaySection() SectionBuilder {
+	return func(ctx context.Context) (map[string]any, error) {
+		_ = ctx
+		return map[string]any{
+			"gateway": map[string]any{
+				"reload": map[string]any{
+					"mode": "off",
+				},
+			},
+		}, nil
+	}
+}
+
 // Register adds a named section builder. The name is for logging only;
 // the builder's returned map keys determine the actual config sections.
 func (s *ConfigService) Register(name string, builder SectionBuilder) {
