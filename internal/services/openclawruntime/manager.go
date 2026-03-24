@@ -156,8 +156,8 @@ func (m *Manager) reconcile(restart bool) error {
 		GatewayURL: gatewayURL(cfg.GatewayPort),
 	})
 
-	if err := ensureOpenResponsesEnabled(bundle); err != nil {
-		return fail("ensureOpenResponsesEnabled", err, version, 0)
+	if err := ensureEmbeddedOpenClawConfig(bundle); err != nil {
+		return fail("ensureEmbeddedOpenClawConfig", err, version, 0)
 	}
 
 	// Start process if needed
@@ -628,13 +628,26 @@ func verifyInstalled(bundle *bundledRuntime) (string, error) {
 	return version, nil
 }
 
-// ensureOpenResponsesEnabled uses `openclaw config set` to enable the
-// OpenResponses HTTP endpoint via the standard CLI.
-func ensureOpenResponsesEnabled(bundle *bundledRuntime) error {
+// ensureEmbeddedOpenClawConfig applies defaults for ChatClaw-embedded runs via `openclaw config set`
+// before the gateway process starts: OpenResponses endpoint and gateway.reload.mode=off (stops
+// config-file watch from looping SIGUSR1 restarts when the gateway persists RPC-driven patches).
+func ensureEmbeddedOpenClawConfig(bundle *bundledRuntime) error {
 	if err := os.MkdirAll(bundle.StateDir, 0o700); err != nil {
 		return fmt.Errorf("create openclaw state dir: %w", err)
 	}
 
+	for _, kv := range []struct{ key, val string }{
+		{"gateway.http.endpoints.responses.enabled", "true"},
+		{"gateway.reload.mode", "off"},
+	} {
+		if err := openclawConfigSet(bundle, kv.key, kv.val); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func openclawConfigSet(bundle *bundledRuntime, key, value string) error {
 	env := []string{
 		"OPENCLAW_CONFIG_PATH=" + bundle.ConfigPath,
 		"OPENCLAW_STATE_DIR=" + bundle.StateDir,
@@ -648,14 +661,13 @@ func ensureOpenResponsesEnabled(bundle *bundledRuntime) error {
 		env = append(env, entry)
 	}
 
-	cmd := exec.Command(bundle.CLIPath, "config", "set",
-		"gateway.http.endpoints.responses.enabled", "true")
+	cmd := exec.Command(bundle.CLIPath, "config", "set", key, value)
 	cmd.Env = env
 	cmd.Dir = bundle.Root
 	setCmdHideWindow(cmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("openclaw config set responses.enabled: %w: %s", err, string(out))
+		return fmt.Errorf("openclaw config set %s: %w: %s", key, err, string(out))
 	}
 	return nil
 }
