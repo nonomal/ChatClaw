@@ -37,6 +37,10 @@ const navigationStore = useNavigationStore()
 const appStore = useAppStore()
 const activeTab = computed(() => navigationStore.activeTab)
 
+function resolveAssistantModule(system: typeof appStore.currentSystem): NavModule {
+  return system === 'openclaw' ? 'openclaw' : 'assistant'
+}
+
 // --- In-app text selection popup (HTML overlay, no separate window) ---
 const inAppPopup = ref({
   visible: false,
@@ -55,14 +59,16 @@ async function dispatchSelectedText(text: string) {
       void SnapService.WakeAttached()
       Events.Emit('text-selection:send-to-snap', { text })
     } else {
-      if (activeTab.value?.module !== 'assistant') {
-        navigationStore.navigateToModule('assistant')
+      const target = resolveAssistantModule(appStore.currentSystem)
+      if (activeTab.value?.module !== target) {
+        navigationStore.navigateToModule(target, appStore.currentSystem)
       }
       Events.Emit('text-selection:send-to-assistant', { text })
     }
   } catch {
-    if (activeTab.value?.module !== 'assistant') {
-      navigationStore.navigateToModule('assistant')
+    const target = resolveAssistantModule(appStore.currentSystem)
+    if (activeTab.value?.module !== target) {
+      navigationStore.navigateToModule(target, appStore.currentSystem)
     }
     Events.Emit('text-selection:send-to-assistant', { text })
   }
@@ -159,7 +165,10 @@ watch(
   () => navigationStore.tabs.length,
   (len) => {
     if (len === 0) {
-      navigationStore.navigateToModule('assistant', appStore.currentSystem)
+      navigationStore.navigateToModule(
+        resolveAssistantModule(appStore.currentSystem),
+        appStore.currentSystem
+      )
     }
   },
   { immediate: true }
@@ -278,8 +287,9 @@ onMounted(async () => {
       } else {
         // Snap window is not attached (stopped or hidden)
         // Navigate to AI assistant and send text there
-        if (activeTab.value?.module !== 'assistant') {
-          navigationStore.navigateToModule('assistant')
+        const target = resolveAssistantModule(appStore.currentSystem)
+        if (activeTab.value?.module !== target) {
+          navigationStore.navigateToModule(target, appStore.currentSystem)
         }
         // Emit event for assistant page to receive text
         Events.Emit('text-selection:send-to-assistant', { text })
@@ -287,8 +297,9 @@ onMounted(async () => {
     } catch (error) {
       console.error('Failed to get snap status:', error)
       // Fallback: send to assistant
-      if (activeTab.value?.module !== 'assistant') {
-        navigationStore.navigateToModule('assistant')
+      const target = resolveAssistantModule(appStore.currentSystem)
+      if (activeTab.value?.module !== target) {
+        navigationStore.navigateToModule(target, appStore.currentSystem)
       }
       Events.Emit('text-selection:send-to-assistant', { text })
     }
