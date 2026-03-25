@@ -18,7 +18,11 @@ import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { toast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
 import { OpenClawSkillsService } from '@bindings/chatclaw/internal/openclaw/skills'
-import type { OpenClawSkill, SkillFileInfo, SkillInstallation } from '@bindings/chatclaw/internal/openclaw/skills/models'
+import type {
+  OpenClawSkill,
+  SkillFileInfo,
+  SkillInstallation,
+} from '@bindings/chatclaw/internal/openclaw/skills/models'
 import { OpenClawRuntimeService } from '@bindings/chatclaw/internal/openclaw/runtime'
 import { BrowserService } from '@bindings/chatclaw/internal/services/browser'
 import { useNavigationStore, useSettingsStore } from '@/stores'
@@ -119,9 +123,8 @@ const filteredSkills = computed(() => {
     list = list.filter((s) => {
       const inst = s.installations ?? []
       const instHay = inst
-        .map(
-          (i) =>
-            `${i.openclawAgentId} ${i.agentName} ${i.skillRoot} ${i.layer} ${i.location}`.toLowerCase()
+        .map((i) =>
+          `${i.openclawAgentId} ${i.agentName} ${i.skillRoot} ${i.layer} ${i.location}`.toLowerCase()
         )
         .join(' ')
       return (
@@ -426,22 +429,17 @@ onMounted(() => {
             </button>
           </div>
         </div>
-        <p
-          v-if="!gatewayConnected"
-          class="text-xs text-muted-foreground"
-        >
+        <p v-if="!gatewayConnected" class="text-xs text-muted-foreground">
           {{ t('settings.openclawSkills.gatewayOfflineHint') }}
         </p>
         <div class="flex flex-wrap items-center gap-2">
           <div class="flex flex-wrap gap-1.5">
             <button
-              v-for="opt in (
-                [
-                  { v: 'all' as LocFilter, key: 'settings.openclawSkills.filterAll' },
-                  { v: 'shared' as LocFilter, key: 'settings.openclawSkills.filterShared' },
-                  { v: 'workspace' as LocFilter, key: 'settings.openclawSkills.filterWorkspace' },
-                ] as const
-              )"
+              v-for="opt in [
+                { v: 'all' as LocFilter, key: 'settings.openclawSkills.filterAll' },
+                { v: 'shared' as LocFilter, key: 'settings.openclawSkills.filterShared' },
+                { v: 'workspace' as LocFilter, key: 'settings.openclawSkills.filterWorkspace' },
+              ] as const"
               :key="opt.v"
               type="button"
               class="rounded-md px-2.5 py-1 text-xs transition-colors"
@@ -469,7 +467,10 @@ onMounted(() => {
       </div>
 
       <div class="min-h-0 flex-1 overflow-auto p-4">
-        <div v-if="loading" class="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+        <div
+          v-if="loading"
+          class="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground"
+        >
           <Loader2 class="size-4 animate-spin" />
           {{ t('common.loading') }}
         </div>
@@ -490,7 +491,9 @@ onMounted(() => {
           >
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
-                <div class="truncate text-sm font-medium text-foreground">{{ s.name || s.slug }}</div>
+                <div class="truncate text-sm font-medium text-foreground">
+                  {{ s.name || s.slug }}
+                </div>
                 <div class="truncate font-mono text-[11px] text-muted-foreground">{{ s.slug }}</div>
               </div>
               <div class="flex shrink-0 flex-col items-end gap-0.5">
@@ -504,14 +507,18 @@ onMounted(() => {
                   v-if="(s.installations?.length ?? 0) > 1"
                   class="text-[10px] text-muted-foreground"
                 >
-                  {{ t('settings.openclawSkills.locationCount', { count: s.installations!.length }) }}
+                  {{
+                    t('settings.openclawSkills.locationCount', { count: s.installations!.length })
+                  }}
                 </span>
               </div>
             </div>
             <p v-if="s.description" class="mt-2 line-clamp-2 text-xs text-muted-foreground">
               {{ s.description }}
             </p>
-            <dl class="mt-3 space-y-1 border-t border-border pt-2 text-[11px] text-muted-foreground">
+            <dl
+              class="mt-3 space-y-1 border-t border-border pt-2 text-[11px] text-muted-foreground"
+            >
               <div class="flex gap-1">
                 <dt class="shrink-0 font-medium text-foreground/80">
                   {{ t('settings.openclawSkills.permissionLabel') }}
@@ -576,7 +583,9 @@ onMounted(() => {
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
               <div class="flex flex-wrap items-center gap-2">
-                <span class="text-base font-semibold">{{ activeSkill.name || activeSkill.slug }}</span>
+                <span class="text-base font-semibold">{{
+                  activeSkill.name || activeSkill.slug
+                }}</span>
                 <Badge
                   variant="secondary"
                   class="bg-muted px-1.5 py-0 text-[10px] text-muted-foreground"
@@ -602,15 +611,25 @@ onMounted(() => {
             class="grid gap-2 rounded-md border border-border bg-muted/30 p-3 text-xs sm:grid-cols-2"
           >
             <div>
-              <dt class="font-medium text-foreground/90">{{ t('settings.openclawSkills.permissionLabel') }}</dt>
-              <dd class="mt-0.5 text-muted-foreground">{{ activeSkill.permission || t('common.na') }}</dd>
+              <dt class="font-medium text-foreground/90">
+                {{ t('settings.openclawSkills.permissionLabel') }}
+              </dt>
+              <dd class="mt-0.5 text-muted-foreground">
+                {{ activeSkill.permission || t('common.na') }}
+              </dd>
             </div>
             <div>
-              <dt class="font-medium text-foreground/90">{{ t('settings.openclawSkills.scopeLabel') }}</dt>
-              <dd class="mt-0.5 text-muted-foreground">{{ activeSkill.scope || t('common.na') }}</dd>
+              <dt class="font-medium text-foreground/90">
+                {{ t('settings.openclawSkills.scopeLabel') }}
+              </dt>
+              <dd class="mt-0.5 text-muted-foreground">
+                {{ activeSkill.scope || t('common.na') }}
+              </dd>
             </div>
             <div v-if="activeSkill.location === 'workspace'">
-              <dt class="font-medium text-foreground/90">{{ t('settings.openclawSkills.agentBinding') }}</dt>
+              <dt class="font-medium text-foreground/90">
+                {{ t('settings.openclawSkills.agentBinding') }}
+              </dt>
               <dd class="mt-0.5 text-muted-foreground">
                 {{ agentBindingLabel(activeSkill) || t('common.na') }}
               </dd>
@@ -620,15 +639,21 @@ onMounted(() => {
               <dd class="mt-0.5 text-muted-foreground">{{ activeSkill.version }}</dd>
             </div>
             <div>
-              <dt class="font-medium text-foreground/90">{{ t('settings.openclawSkills.dataSourceLabel') }}</dt>
+              <dt class="font-medium text-foreground/90">
+                {{ t('settings.openclawSkills.dataSourceLabel') }}
+              </dt>
               <dd class="mt-0.5 text-muted-foreground">{{ dataSourceLabel(activeSkill) }}</dd>
             </div>
             <div v-if="activeSkill.dataSource === 'gateway'">
-              <dt class="font-medium text-foreground/90">{{ t('settings.openclawSkills.eligibleLabel') }}</dt>
+              <dt class="font-medium text-foreground/90">
+                {{ t('settings.openclawSkills.eligibleLabel') }}
+              </dt>
               <dd class="mt-0.5 text-muted-foreground">{{ eligibleLabelText(activeSkill) }}</dd>
             </div>
             <div v-if="activeSkill.dataSource === 'gateway' && activeSkill.ineligibleReason">
-              <dt class="font-medium text-foreground/90">{{ t('settings.openclawSkills.gateHintLabel') }}</dt>
+              <dt class="font-medium text-foreground/90">
+                {{ t('settings.openclawSkills.gateHintLabel') }}
+              </dt>
               <dd class="mt-0.5 text-muted-foreground">{{ activeSkill.ineligibleReason }}</dd>
             </div>
           </dl>
@@ -679,7 +704,9 @@ onMounted(() => {
           <aside
             class="flex w-52 shrink-0 flex-col overflow-hidden border-r border-border bg-muted/20"
           >
-            <div class="border-b border-border px-2 py-1.5 text-[11px] font-medium text-muted-foreground">
+            <div
+              class="border-b border-border px-2 py-1.5 text-[11px] font-medium text-muted-foreground"
+            >
               {{ t('settings.skills.selectFile') }}
             </div>
             <div class="min-h-0 flex-1 overflow-auto p-1">
@@ -721,7 +748,9 @@ onMounted(() => {
                 class="prose prose-sm dark:prose-invert max-w-none"
               />
             </template>
-            <p v-else class="text-sm text-muted-foreground">{{ t('settings.skills.selectFile') }}</p>
+            <p v-else class="text-sm text-muted-foreground">
+              {{ t('settings.skills.selectFile') }}
+            </p>
           </div>
         </div>
         <div
