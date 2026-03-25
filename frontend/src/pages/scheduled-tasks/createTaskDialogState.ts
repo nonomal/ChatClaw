@@ -8,6 +8,7 @@ type CreateTaskDialogState = {
 
 type LoadBaseOptions = () => Promise<void>
 type CreateEmptyForm = () => ScheduledTaskFormState
+type BuildTaskForm = (task: ScheduledTask) => ScheduledTaskFormState
 
 export async function prepareCreateTaskDialogState(
   loadBaseOptions: LoadBaseOptions,
@@ -18,6 +19,20 @@ export async function prepareCreateTaskDialogState(
   return {
     editingTask: null,
     form: buildEmptyForm(),
+    createDialogOpen: true,
+  }
+}
+
+export async function prepareEditTaskDialogState(
+  loadBaseOptions: LoadBaseOptions,
+  task: ScheduledTask,
+  buildTaskForm: BuildTaskForm
+): Promise<CreateTaskDialogState> {
+  await loadBaseOptions()
+
+  return {
+    editingTask: task,
+    form: buildTaskForm(task),
     createDialogOpen: true,
   }
 }

@@ -12,7 +12,7 @@ import type {
   Agent,
   Channel,
 } from '../types'
-import { prepareCreateTaskDialogState } from '../createTaskDialogState'
+import { prepareCreateTaskDialogState, prepareEditTaskDialogState } from '../createTaskDialogState'
 import { createEmptyForm } from '../utils'
 
 export function useScheduledTasks() {
@@ -72,9 +72,14 @@ export function useScheduledTasks() {
     task: ScheduledTask,
     toForm: (task: ScheduledTask) => ScheduledTaskFormState
   ) {
-    editingTask.value = task
-    form.value = toForm(task)
-    createDialogOpen.value = true
+    try {
+      const nextState = await prepareEditTaskDialogState(loadBaseOptions, task, toForm)
+      editingTask.value = nextState.editingTask
+      form.value = nextState.form
+      createDialogOpen.value = nextState.createDialogOpen
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    }
   }
 
   async function submitForm(
