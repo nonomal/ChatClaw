@@ -49,6 +49,10 @@ import { getPlatformIcon } from '@/pages/common/channelUtils'
 import {
   OpenClawChannelService,
 } from '@bindings/chatclaw/internal/services/openclaw/channels'
+import {
+  OpenClawAgentsService,
+  CreateOpenClawAgentInput,
+} from '@bindings/chatclaw/internal/services/openclawagents'
 import { UpdateChannelInput } from '@bindings/chatclaw/internal/services/channels'
 import type {
   Channel,
@@ -278,10 +282,24 @@ async function handleBindAgent(agentId: number) {
 }
 
 async function handleAutoGenerate() {
-  if (!channelToBind.value) return
+  const ch = channelToBind.value
+  if (!ch) return
   try {
-    await OpenClawChannelService.EnsureAgentForChannel(channelToBind.value.id)
-    await OpenClawChannelService.ConnectChannel(channelToBind.value.id)
+    // Same payload shape as CreateAgentDialog / useAgents.createAgent (OpenClawAgentsService.CreateAgent).
+    const baseName = ch.name.trim() || t('channels.agentFallback')
+    const created = await OpenClawAgentsService.CreateAgent(
+      new CreateOpenClawAgentInput({
+        name: `${baseName} Agent`,
+        icon: '',
+        identity_emoji: '',
+      })
+    )
+    if (!created) {
+      toast.error(t('assistant.errors.createFailed'))
+      return
+    }
+    await OpenClawChannelService.BindAgent(ch.id, created.id)
+    await OpenClawChannelService.ConnectChannel(ch.id)
     toast.success(t('channels.bindAgent.autoGenerateSuccess'))
     loadData()
   } catch (error) {

@@ -47,25 +47,13 @@ func (s *OpenClawChannelService) db() (*bun.DB, error) {
 	return db, nil
 }
 
-// openClawAgentIDs returns all OpenClaw agent IDs for filtering.
-func (s *OpenClawChannelService) openClawAgentIDs() ([]int64, error) {
-	agents, err := s.agentsSvc.ListAgents()
-	if err != nil {
-		return nil, err
-	}
-	ids := make([]int64, 0, len(agents))
-	for _, a := range agents {
-		ids = append(ids, a.ID)
-	}
-	return ids, nil
-}
+// openClawChannelVisibilitySQL matches migration 202603251200: channels.agent_id is a bare int and can
+// collide between ChatClaw (agents) and OpenClaw (openclaw_agents); only treat a row as OpenClaw-bound
+// when agent_id exists in openclaw_agents and not in agents.
+const openClawChannelVisibilitySQL = `(ch.openclaw_scope = 1 OR (ch.agent_id > 0 AND EXISTS (SELECT 1 FROM openclaw_agents AS oa WHERE oa.id = ch.agent_id) AND NOT EXISTS (SELECT 1 FROM agents AS a WHERE a.id = ch.agent_id)))`
 
-// ListChannels returns channels bound to OpenClaw agents (Feishu only).
+// ListChannels returns channels in OpenClaw scope or bound to OpenClaw-only agents (all platforms).
 func (s *OpenClawChannelService) ListChannels() ([]channels.Channel, error) {
-	agentIDs, err := s.openClawAgentIDs()
-	if err != nil {
-		return nil, err
-	}
 	db, err := s.db()
 	if err != nil {
 		return nil, err
@@ -77,18 +65,8 @@ func (s *OpenClawChannelService) ListChannels() ([]channels.Channel, error) {
 	var models []channelModel
 	q := db.NewSelect().
 		Model(&models).
-		Where("platform = ?", channels.PlatformFeishu).
-		OrderExpr("id DESC")
-	if len(agentIDs) == 0 {
-		q = q.Where("openclaw_scope = ?", true)
-	} else {
-		q = q.WhereGroup(" AND ", func(sq *bun.SelectQuery) *bun.SelectQuery {
-			return sq.WhereGroup(" OR ", func(sq2 *bun.SelectQuery) *bun.SelectQuery {
-				return sq2.Where("openclaw_scope = ?", true).
-					WhereOr("agent_id IN (?)", bun.In(agentIDs))
-			})
-		})
-	}
+		Where(openClawChannelVisibilitySQL).
+		OrderExpr("ch.id DESC")
 	if err := q.Scan(ctx); err != nil {
 		return nil, errs.Wrap("error.channel_list_failed", err)
 	}
@@ -107,11 +85,6 @@ func (s *OpenClawChannelService) ListChannels() ([]channels.Channel, error) {
 // ListAllFeishuChannels returns all Feishu channels (including unbound ones)
 // for the "add existing bot" workflow.
 func (s *OpenClawChannelService) ListAllFeishuChannels() ([]channels.Channel, error) {
-	agentIDs, err := s.openClawAgentIDs()
-	if err != nil {
-		return nil, err
-	}
-
 	db, err := s.db()
 	if err != nil {
 		return nil, err
@@ -123,18 +96,9 @@ func (s *OpenClawChannelService) ListAllFeishuChannels() ([]channels.Channel, er
 	var models []channelModel
 	q := db.NewSelect().
 		Model(&models).
-		Where("platform = ?", channels.PlatformFeishu).
-		OrderExpr("id DESC")
-	if len(agentIDs) == 0 {
-		q = q.Where("openclaw_scope = ?", true)
-	} else {
-		q = q.WhereGroup(" AND ", func(sq *bun.SelectQuery) *bun.SelectQuery {
-			return sq.WhereGroup(" OR ", func(sq2 *bun.SelectQuery) *bun.SelectQuery {
-				return sq2.Where("openclaw_scope = ?", true).
-					WhereOr("agent_id IN (?)", bun.In(agentIDs))
-			})
-		})
-	}
+		Where("ch.platform = ?", channels.PlatformFeishu).
+		Where(openClawChannelVisibilitySQL).
+		OrderExpr("ch.id DESC")
 	if err := q.Scan(ctx); err != nil {
 		return nil, errs.Wrap("error.channel_list_failed", err)
 	}
@@ -150,7 +114,7 @@ func (s *OpenClawChannelService) ListAllFeishuChannels() ([]channels.Channel, er
 	return out, nil
 }
 
-// GetChannelStats returns stats for OpenClaw Feishu channels.
+// GetChannelStats returns stats for OpenClaw-scoped channels.
 func (s *OpenClawChannelService) GetChannelStats() (*channels.ChannelStats, error) {
 	chList, err := s.ListChannels()
 	if err != nil {
@@ -180,14 +144,12 @@ func (s *OpenClawChannelService) GetSupportedPlatforms() []channels.PlatformMeta
 	}
 }
 
-// CreateChannel creates a new Feishu channel and binds it to the specified OpenClaw agent.
+// CreateChannel creates a new Feishu channel. When agent_id > 0, binds that OpenClaw agent;
+// when agent_id is 0, creates an unbound channel (UI binds via BindAgent or auto-generate later).
 func (s *OpenClawChannelService) CreateChannel(input CreateChannelInput) (*channels.Channel, error) {
 	name := strings.TrimSpace(input.Name)
 	if name == "" {
 		return nil, errs.New("error.channel_name_required")
-	}
-	if input.AgentID <= 0 {
-		return nil, errs.New("error.agent_id_required")
 	}
 
 	ch, err := s.channelSvc.CreateChannel(channels.CreateChannelInput{
@@ -202,11 +164,13 @@ func (s *OpenClawChannelService) CreateChannel(input CreateChannelInput) (*chann
 		return nil, err
 	}
 
-	if err := s.channelSvc.BindAgent(ch.ID, input.AgentID); err != nil {
-		return nil, err
+	if input.AgentID > 0 {
+		if err := s.channelSvc.BindAgent(ch.ID, input.AgentID); err != nil {
+			return nil, err
+		}
+		ch.AgentID = input.AgentID
 	}
 
-	ch.AgentID = input.AgentID
 	return ch, nil
 }
 
@@ -291,7 +255,8 @@ type CreateChannelInput struct {
 	Name        string `json:"name"`
 	Avatar      string `json:"avatar"`
 	ExtraConfig string `json:"extra_config"`
-	AgentID     int64  `json:"agent_id"`
+	// AgentID is optional: when 0, the channel is created unbound; bind later via BindAgent.
+	AgentID int64 `json:"agent_id"`
 }
 
 // appCredentialsJSON is used to parse/build extra_config.
