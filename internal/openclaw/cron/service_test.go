@@ -51,9 +51,11 @@ func TestBuildCLIArgs_OnlyAddsJSONWhenRequested(t *testing.T) {
 	assertContains(t, args, "ws://127.0.0.1:9527/ws")
 	assertContains(t, args, "--token")
 	assertContains(t, args, "token-1")
+	assertOrderedSequence(t, args, []string{"cron", "status", "--json", "--url", "ws://127.0.0.1:9527/ws", "--token", "token-1"})
 
 	withoutJSON := buildCLIArgs([]string{"cron", "edit", "job-1"}, "ws://127.0.0.1:9527/ws", "token-1", false)
 	assertNotContains(t, withoutJSON, "--json")
+	assertOrderedSequence(t, withoutJSON, []string{"cron", "edit", "job-1", "--url", "ws://127.0.0.1:9527/ws", "--token", "token-1"})
 }
 
 func TestBuildRunNowArgs_UsesNativeCronRun(t *testing.T) {

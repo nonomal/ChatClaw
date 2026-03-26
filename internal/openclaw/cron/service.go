@@ -29,12 +29,41 @@ import (
 )
 
 const (
-	// openClawCommandName is the CLI entrypoint used to operate the embedded gateway.
-	// openClawCommandName 是调用 OpenClaw CLI 的命令名。
-	openClawCommandName = "openclaw"
 	// defaultOpenClawCronListLimit keeps UI list pagination stable with OpenClaw defaults.
 	// defaultOpenClawCronListLimit 与 OpenClaw 默认分页保持一致，避免前后端理解不一致。
 	defaultOpenClawCronListLimit = 50
+	// globalCronTrackerListenerKey keeps the background run tracker singleton stable.
+	globalCronTrackerListenerKey = "openclaw-cron-global-tracker"
+	// pendingRunTTL bounds how long a pending run can wait for session correlation.
+	pendingRunTTL = 10 * time.Minute
+	// pendingRunReconcileWindowMs matches a local manual trigger to the durable run log.
+	// A small window is enough because cron.run writes the run log almost immediately.
+	pendingRunReconcileWindowMs = int64(30 * time.Second / time.Millisecond)
+	// openClawCronGatewayTimeout keeps gateway cron RPCs bounded.
+	openClawCronGatewayTimeout = 60 * time.Second
+
+	openClawCronMethodAdd    = "cron.add"
+	openClawCronMethodUpdate = "cron.update"
+	openClawCronMethodRemove = "cron.remove"
+	openClawCronMethodRun    = "cron.run"
+	openClawCronMethodRuns   = "cron.runs"
+	openClawCronMethodStatus = "cron.status"
+
+	openClawCronScheduleAt    = "at"
+	openClawCronScheduleEvery = "every"
+	openClawCronScheduleCron  = "cron"
+
+	openClawCronPayloadAgentTurn  = "agentTurn"
+	openClawCronPayloadSystemEvent = "systemEvent"
+
+	openClawCronSessionMain     = "main"
+	openClawCronSessionIsolated = "isolated"
+	openClawCronWakeNow         = "now"
+	openClawCronRunModeForce    = "force"
+
+	openClawCronDeliveryModeNone     = "none"
+	openClawCronDeliveryModeAnnounce = "announce"
+	openClawCronDeliveryModeWebhook  = "webhook"
 )
 
 // OpenClawCronService wraps OpenClaw-native cron management for the Wails frontend.
@@ -48,6 +77,21 @@ type OpenClawCronService struct {
 	watchMu   sync.Mutex
 	watchSeq  atomic.Int64
 	watches   map[string]string
+	convMu    sync.Mutex
+	runMu     sync.Mutex
+	runTracks map[string]string
+	pending   map[string]*pendingCronRun
+}
+
+type pendingCronRun struct {
+	JobID          string
+	RunID          string
+	TriggerAtMs    int64
+	AgentID        int64
+	JobName        string
+	SessionKey     string
+	ConversationID int64
+	ExpiresAt      time.Time
 }
 
 type cronConversationRecord struct {
@@ -81,6 +125,8 @@ func NewOpenClawCronService(
 		convSvc:   convSvc,
 		chatSvc:   chatSvc,
 		watches:   make(map[string]string),
+		runTracks: make(map[string]string),
+		pending:   make(map[string]*pendingCronRun),
 	}
 }
 
@@ -153,15 +199,15 @@ func (s *OpenClawCronService) GetSummary() (*OpenClawCronSummary, error) {
 	return summary, nil
 }
 
-// CreateJob creates a cron job through the OpenClaw CLI.
-// 通过 OpenClaw CLI 新建 Cron 任务，确保写入格式完全与原生一致。
+// CreateJob creates a cron job through the OpenClaw Gateway RPC.
+// 通过 OpenClaw Gateway RPC 新建 Cron 任务，避免每次拉起 CLI 子进程。
 func (s *OpenClawCronService) CreateJob(input CreateOpenClawCronJobInput) (*OpenClawCronJob, error) {
-	args, err := buildCreateArgs(input)
+	payload, err := buildCreateJobPayload(input)
 	if err != nil {
 		return nil, err
 	}
 	var raw openClawJobStoreItem
-	if err := s.runCLIJSON(args, &raw); err != nil {
+	if err := s.gatewayRequest(openClawCronMethodAdd, payload, &raw); err != nil {
 		return nil, err
 	}
 	job := flattenJob(raw)
@@ -170,64 +216,98 @@ func (s *OpenClawCronService) CreateJob(input CreateOpenClawCronJobInput) (*Open
 	return &job, nil
 }
 
-// UpdateJob patches a cron job through the OpenClaw CLI.
+// UpdateJob patches a cron job through the OpenClaw Gateway RPC.
 // 编辑任务时仅传递被修改的字段，避免用默认值误伤原配置。
 func (s *OpenClawCronService) UpdateJob(jobID string, input UpdateOpenClawCronJobInput) (*OpenClawCronJob, error) {
-	args, err := buildUpdateArgs(jobID, input)
+	patch, err := buildUpdateJobPatch(input)
 	if err != nil {
 		return nil, err
 	}
-	if len(args) == 3 {
+	if len(patch) == 0 {
 		return s.findJobByID(jobID)
 	}
-	if err := s.runCLI(args, false, nil); err != nil {
+	if err := s.gatewayRequest(openClawCronMethodUpdate, map[string]any{
+		"id":    strings.TrimSpace(jobID),
+		"patch": patch,
+	}, nil); err != nil {
 		return nil, err
 	}
 	return s.findJobByID(jobID)
 }
 
 func (s *OpenClawCronService) DeleteJob(jobID string) error {
-	var out map[string]any
-	return s.runCLIJSON([]string{"cron", "rm", strings.TrimSpace(jobID)}, &out)
+	return s.gatewayRequest(openClawCronMethodRemove, map[string]any{
+		"id": strings.TrimSpace(jobID),
+	}, nil)
 }
 
 func (s *OpenClawCronService) EnableJob(jobID string) (*OpenClawCronJob, error) {
-	var raw openClawJobStoreItem
-	if err := s.runCLIJSON([]string{"cron", "enable", strings.TrimSpace(jobID)}, &raw); err != nil {
+	if err := s.gatewayRequest(openClawCronMethodUpdate, map[string]any{
+		"id": strings.TrimSpace(jobID),
+		"patch": map[string]any{
+			"enabled": true,
+		},
+	}, nil); err != nil {
 		return nil, err
 	}
-	job := flattenJob(raw)
-	agentNameMap, _ := s.agentNameMap()
-	job.AgentName = agentNameMap[job.AgentID]
-	return &job, nil
+	return s.findJobByID(jobID)
 }
 
 func (s *OpenClawCronService) DisableJob(jobID string) (*OpenClawCronJob, error) {
-	var raw openClawJobStoreItem
-	if err := s.runCLIJSON([]string{"cron", "disable", strings.TrimSpace(jobID)}, &raw); err != nil {
+	if err := s.gatewayRequest(openClawCronMethodUpdate, map[string]any{
+		"id": strings.TrimSpace(jobID),
+		"patch": map[string]any{
+			"enabled": false,
+		},
+	}, nil); err != nil {
 		return nil, err
 	}
-	job := flattenJob(raw)
-	agentNameMap, _ := s.agentNameMap()
-	job.AgentName = agentNameMap[job.AgentID]
-	return &job, nil
+	return s.findJobByID(jobID)
 }
 
 // RunJobNow triggers OpenClaw-native cron execution for the target job.
 // RunJobNow 点击“立即运行”时直接触发 OpenClaw 原生 cron run，保持与自动调度同一执行链路。
-func (s *OpenClawCronService) RunJobNow(jobID string) error {
-	args, err := buildRunNowArgs(jobID)
+func (s *OpenClawCronService) RunJobNow(jobID string) (*OpenClawCronRunNowResult, error) {
+	jobID = strings.TrimSpace(jobID)
+	if jobID == "" {
+		return nil, fmt.Errorf("openclaw cron id is required")
+	}
+	triggeredAt := time.Now()
+	var payload struct {
+		Enqueued bool   `json:"enqueued"`
+		Ran      bool   `json:"ran"`
+		RunID    string `json:"runId"`
+	}
+	err := s.gatewayRequest(openClawCronMethodRun, map[string]any{
+		"id":   jobID,
+		"mode": openClawCronRunModeForce,
+	}, &payload)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("openclaw cron run %s failed: %w", jobID, err)
 	}
-	output, runErr := s.runCLIOutput(args, false)
-	if runErr != nil {
-		if isBenignCronRunOutput(output) {
-			return nil
+	result := &OpenClawCronRunNowResult{
+		RunID:       strings.TrimSpace(payload.RunID),
+		TriggerAtMs: triggeredAt.UnixMilli(),
+		Enqueued:    payload.Enqueued || payload.Ran,
+	}
+	if result.RunID == "" {
+		return result, nil
+	}
+
+	job, err := s.findJobByID(jobID)
+	if err != nil {
+		return result, nil
+	}
+
+	if fixedSessionKey := strings.TrimSpace(job.SessionKey); fixedSessionKey != "" {
+		if _, _, ensureErr := s.ensureConversationForSession(jobID, *job, fixedSessionKey, result.RunID, result.TriggerAtMs); ensureErr != nil {
+			s.app.Logger.Warn("[openclaw-cron] ensure fixed-session conversation failed", "job_id", jobID, "run_id", result.RunID, "error", ensureErr)
 		}
-		return fmt.Errorf("openclaw %s failed: %w: %s", strings.Join(args, " "), runErr, strings.TrimSpace(string(output)))
+		return result, nil
 	}
-	return nil
+
+	s.registerPendingRun(*job, result)
+	return result, nil
 }
 
 // ListRuns reads job run history via OpenClaw CLI first, then falls back to the JSONL log.
@@ -240,10 +320,9 @@ func (s *OpenClawCronService) ListRuns(jobID string, limit int) ([]OpenClawCronR
 	var result struct {
 		Entries []openClawRunEntryCLI `json:"entries"`
 	}
-	err := s.runCLIJSON([]string{
-		"cron", "runs",
-		"--id", strings.TrimSpace(jobID),
-		"--limit", strconv.Itoa(limit),
+	err := s.gatewayQuery(openClawCronMethodRuns, map[string]any{
+		"id":    strings.TrimSpace(jobID),
+		"limit": limit,
 	}, &result)
 	if err == nil {
 		for _, item := range result.Entries {
@@ -261,6 +340,64 @@ func (s *OpenClawCronService) ListRuns(jobID string, limit int) ([]OpenClawCronR
 		merged = merged[:limit]
 	}
 	return merged, nil
+}
+
+// ListHistory merges run-log history, local cron conversations, and pending in-memory runs.
+func (s *OpenClawCronService) ListHistory(jobID string, limit int) ([]OpenClawCronHistoryListItem, error) {
+	if limit <= 0 {
+		limit = defaultOpenClawCronListLimit
+	}
+
+	runEntries, err := s.ListRuns(jobID, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	runItems := make([]OpenClawCronHistoryListItem, 0, len(runEntries))
+	for _, entry := range runEntries {
+		runItems = append(runItems, OpenClawCronHistoryListItem{
+			JobID:      strings.TrimSpace(jobID),
+			SessionID:  strings.TrimSpace(entry.SessionID),
+			SessionKey: strings.TrimSpace(entry.SessionKey),
+			Name:       buildCronConversationName(strings.TrimSpace(jobID), entry.RunAtMs, entry.TimestampMs),
+			Status:     strings.TrimSpace(entry.Status),
+			RunAtMs:    chooseRunTimestamp(entry.RunAtMs, entry.TimestampMs),
+			Source:     OpenClawCronHistorySourceRunLog,
+		})
+	}
+
+	conversationItems, err := s.listConversationHistoryItems(jobID)
+	if err != nil {
+		return nil, err
+	}
+	s.reconcilePendingRuns(jobID, runEntries, conversationItems)
+	pendingItems := s.listPendingHistoryItems(jobID)
+
+	merged := mergeHistoryItems(runItems, conversationItems, pendingItems)
+	if len(merged) > limit {
+		merged = merged[:limit]
+	}
+	return merged, nil
+}
+
+// reconcilePendingRuns removes synthetic manual-run placeholders once a durable run log
+// entry or local mapped conversation exists for the same trigger window.
+func (s *OpenClawCronService) reconcilePendingRuns(jobID string, runEntries []OpenClawCronRunEntry, conversationItems []OpenClawCronHistoryListItem) {
+	s.runMu.Lock()
+	defer s.runMu.Unlock()
+
+	s.cleanupExpiredPendingRunsLocked(time.Now())
+	for runID, pending := range s.pending {
+		if pending == nil || strings.TrimSpace(pending.JobID) != strings.TrimSpace(jobID) {
+			continue
+		}
+		if !isPendingRunAwaitingBinding(pending) {
+			continue
+		}
+		if hasMatchingRunHistory(pending, runEntries, conversationItems) {
+			delete(s.pending, runID)
+		}
+	}
 }
 
 // GetRunDetail loads both the run record and the transcript file for a cron execution.
@@ -309,7 +446,7 @@ func (s *OpenClawCronService) GetRunDetail(jobID string, sessionID string) (*Ope
 // 返回 OpenClaw 原生调度器状态，便于页面展示和问题排查。
 func (s *OpenClawCronService) GetSchedulerStatus() (map[string]any, error) {
 	var out map[string]any
-	if err := s.runCLIJSON([]string{"cron", "status"}, &out); err != nil {
+	if err := s.gatewayQuery(openClawCronMethodStatus, map[string]any{}, &out); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -379,6 +516,18 @@ func (s *OpenClawCronService) StopRunStream(watchID string) {
 	s.watchMu.Unlock()
 }
 
+// OnGatewayReady registers the background run tracker after the gateway becomes available.
+func (s *OpenClawCronService) OnGatewayReady() {
+	s.manager.RemoveEventListener(globalCronTrackerListenerKey)
+	s.manager.AddEventListener(globalCronTrackerListenerKey, func(event string, payload json.RawMessage) {
+		runID, sessionKey := extractGatewayRunContext(event, payload)
+		if runID == "" || sessionKey == "" {
+			return
+		}
+		s.bindRunSession(runID, sessionKey)
+	})
+}
+
 func (s *OpenClawCronService) jobsStorePath() (string, error) {
 	if status, err := s.GetSchedulerStatus(); err == nil {
 		if value, _ := status["storePath"].(string); strings.TrimSpace(value) != "" {
@@ -432,6 +581,164 @@ func (s *OpenClawCronService) findJobByID(jobID string) (*OpenClawCronJob, error
 		}
 	}
 	return nil, fmt.Errorf("openclaw cron job not found")
+}
+
+// registerPendingRun tracks a manual run until a gateway event reveals the real session key.
+func (s *OpenClawCronService) registerPendingRun(job OpenClawCronJob, result *OpenClawCronRunNowResult) {
+	if result == nil || strings.TrimSpace(result.RunID) == "" {
+		return
+	}
+
+	localAgentID, err := s.resolveManualRunAgentID(job.AgentID)
+	if err != nil {
+		s.app.Logger.Warn("[openclaw-cron] resolve pending run agent failed", "job_id", job.ID, "run_id", result.RunID, "error", err)
+	}
+
+	s.runMu.Lock()
+	defer s.runMu.Unlock()
+	s.cleanupExpiredPendingRunsLocked(time.Now())
+	s.pending[result.RunID] = &pendingCronRun{
+		JobID:       strings.TrimSpace(job.ID),
+		RunID:       strings.TrimSpace(result.RunID),
+		TriggerAtMs: result.TriggerAtMs,
+		AgentID:     localAgentID,
+		JobName:     strings.TrimSpace(job.Name),
+		ExpiresAt:   time.Now().Add(pendingRunTTL),
+	}
+}
+
+// bindRunSession correlates a pending run to the session key emitted by the gateway.
+func (s *OpenClawCronService) bindRunSession(runID string, sessionKey string) {
+	runID = strings.TrimSpace(runID)
+	sessionKey = strings.TrimSpace(sessionKey)
+	if runID == "" || sessionKey == "" {
+		return
+	}
+
+	var pending *pendingCronRun
+	s.runMu.Lock()
+	s.cleanupExpiredPendingRunsLocked(time.Now())
+	s.runTracks[runID] = sessionKey
+	pending = s.pending[runID]
+	if pending != nil {
+		pending.SessionKey = sessionKey
+	}
+	s.runMu.Unlock()
+
+	if pending == nil {
+		return
+	}
+
+	job := OpenClawCronJob{
+		ID:         pending.JobID,
+		Name:       pending.JobName,
+		AgentID:    "",
+		SessionKey: sessionKey,
+	}
+	if pending.AgentID > 0 {
+		if conversationID, _, err := s.ensurePendingConversation(job, pending); err != nil {
+			s.app.Logger.Warn("[openclaw-cron] ensure pending conversation failed", "job_id", pending.JobID, "run_id", pending.RunID, "error", err)
+		} else {
+			s.runMu.Lock()
+			if current := s.pending[runID]; current != nil {
+				current.ConversationID = conversationID
+				current.SessionKey = sessionKey
+			}
+			s.runMu.Unlock()
+		}
+	}
+}
+
+func (s *OpenClawCronService) ensurePendingConversation(job OpenClawCronJob, pending *pendingCronRun) (int64, int64, error) {
+	if pending == nil {
+		return 0, 0, nil
+	}
+	if pending.ConversationID > 0 {
+		return pending.ConversationID, pending.AgentID, nil
+	}
+	return s.ensureConversationForSession(job.ID, job, pending.SessionKey, pending.RunID, pending.TriggerAtMs)
+}
+
+func (s *OpenClawCronService) cleanupExpiredPendingRunsLocked(now time.Time) {
+	for runID, item := range s.pending {
+		if item == nil {
+			delete(s.pending, runID)
+			continue
+		}
+		if !item.ExpiresAt.IsZero() && now.After(item.ExpiresAt) {
+			delete(s.pending, runID)
+		}
+	}
+}
+
+func (s *OpenClawCronService) listConversationHistoryItems(jobID string) ([]OpenClawCronHistoryListItem, error) {
+	job, err := s.findJobByID(jobID)
+	if err != nil {
+		return []OpenClawCronHistoryListItem{}, nil
+	}
+
+	localAgentID, err := s.resolveManualRunAgentID(job.AgentID)
+	if err != nil {
+		return nil, err
+	}
+	if localAgentID <= 0 {
+		return []OpenClawCronHistoryListItem{}, nil
+	}
+
+	conversationList, err := s.convSvc.ListConversationsBySource(
+		localAgentID,
+		conversations.AgentTypeOpenClaw,
+		conversations.ConversationSourceOpenClawCron,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]OpenClawCronHistoryListItem, 0, len(conversationList))
+	for _, conversation := range conversationList {
+		sessionKey := strings.TrimSpace(conversation.OpenClawSessionKey)
+		if sessionKey == "" {
+			continue
+		}
+		if !matchesCronExternalID(conversation.ExternalID, jobID) {
+			continue
+		}
+		items = append(items, OpenClawCronHistoryListItem{
+			JobID:          strings.TrimSpace(jobID),
+			SessionKey:     sessionKey,
+			ConversationID: conversation.ID,
+			Name:           strings.TrimSpace(conversation.Name),
+			Status:         "running",
+			RunAtMs:        conversation.UpdatedAt.UnixMilli(),
+			Source:         OpenClawCronHistorySourceConversation,
+		})
+	}
+	return items, nil
+}
+
+func (s *OpenClawCronService) listPendingHistoryItems(jobID string) []OpenClawCronHistoryListItem {
+	s.runMu.Lock()
+	defer s.runMu.Unlock()
+
+	s.cleanupExpiredPendingRunsLocked(time.Now())
+	items := make([]OpenClawCronHistoryListItem, 0, len(s.pending))
+	for _, pending := range s.pending {
+		if pending == nil || strings.TrimSpace(pending.JobID) != strings.TrimSpace(jobID) {
+			continue
+		}
+		items = append(items, OpenClawCronHistoryListItem{
+			JobID:          pending.JobID,
+			RunID:          pending.RunID,
+			SessionKey:     pending.SessionKey,
+			ConversationID: pending.ConversationID,
+			Name:           buildCronConversationName(pending.JobName, pending.TriggerAtMs, pending.TriggerAtMs),
+			Status:         "running",
+			RunAtMs:        pending.TriggerAtMs,
+			Source:         OpenClawCronHistorySourcePending,
+			IsPendingLocal: isPendingRunAwaitingBinding(pending),
+		})
+	}
+	return items
 }
 
 func (s *OpenClawCronService) runFilePath(jobID string) string {
@@ -532,14 +839,6 @@ func (s *OpenClawCronService) ensureRunConversation(jobID string, run OpenClawCr
 		return 0, 0, nil
 	}
 
-	existing, err := s.findConversationBySessionKey(sessionKey)
-	if err != nil {
-		return 0, 0, err
-	}
-	if existing != nil {
-		return existing.ID, existing.AgentID, nil
-	}
-
 	openClawAgentID := parseAgentIDFromSessionKey(sessionKey)
 	if openClawAgentID == "" {
 		return 0, 0, nil
@@ -551,25 +850,21 @@ func (s *OpenClawCronService) ensureRunConversation(jobID string, run OpenClawCr
 	}
 
 	jobName := strings.TrimSpace(jobID)
-	if job, findErr := s.findJobByID(jobID); findErr == nil && strings.TrimSpace(job.Name) != "" {
-		jobName = strings.TrimSpace(job.Name)
+	if foundJob, findErr := s.findJobByID(jobID); findErr == nil {
+		if strings.TrimSpace(foundJob.Name) != "" {
+			jobName = strings.TrimSpace(foundJob.Name)
+		}
 	}
 	if jobName == "" {
-		jobName = "OpenClaw Cron"
+		jobName = openClawCronDefaultConversationName
 	}
 
-	runTime := run.RunAtMs
-	if runTime <= 0 {
-		runTime = run.TimestampMs
-	}
-	name := fmt.Sprintf("%s / %s", jobName, time.UnixMilli(runTime).Local().Format("2006-01-02 15:04:05"))
-	externalID := fmt.Sprintf("openclaw-cron:%s:%s", strings.TrimSpace(jobID), strings.TrimSpace(run.SessionID))
-
-	createdID, err := s.insertConversationRecord(localAgentID, sessionKey, externalID, name)
-	if err != nil {
-		return 0, 0, err
-	}
-	return createdID, localAgentID, nil
+	return s.ensureConversationRecord(
+		localAgentID,
+		sessionKey,
+		buildCronExternalID(jobID, run.SessionID),
+		buildCronConversationName(jobName, run.RunAtMs, run.TimestampMs),
+	)
 }
 
 // findConversationBySessionKey looks up the local conversation mapped to an OpenClaw session key.
@@ -631,61 +926,102 @@ func (s *OpenClawCronService) resolveManualRunAgentID(openClawAgentID string) (i
 // insertConversationRecord creates a read-only history conversation record for a cron run session.
 // insertConversationRecord 为 Cron 历史创建本地会话记录，供只读嵌入页读取完整 OpenClaw 消息。
 func (s *OpenClawCronService) insertConversationRecord(agentID int64, sessionKey, externalID, name string) (int64, error) {
-	db, err := s.db()
+	created, err := s.convSvc.CreateConversation(conversations.CreateConversationInput{
+		AgentID:            agentID,
+		AgentType:          conversations.AgentTypeOpenClaw,
+		ConversationSource: conversations.ConversationSourceOpenClawCron,
+		Name:               strings.TrimSpace(name),
+		ExternalID:         strings.TrimSpace(externalID),
+		OpenClawSessionKey: strings.TrimSpace(sessionKey),
+		ChatMode:           conversations.ChatModeTask,
+		TeamType:           conversations.TeamTypePerson,
+	})
 	if err != nil {
 		return 0, err
 	}
+	return created.ID, nil
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+// ensureConversationRecord serializes session-key based history inserts so background binding
+// and detail reads cannot create duplicate local conversations for the same cron session.
+func (s *OpenClawCronService) ensureConversationRecord(agentID int64, sessionKey, externalID, name string) (int64, int64, error) {
+	s.convMu.Lock()
+	defer s.convMu.Unlock()
+
+	existing, err := s.findConversationBySessionKey(sessionKey)
+	if err != nil {
+		return 0, 0, err
+	}
+	if existing != nil {
+		return existing.ID, existing.AgentID, nil
+	}
+
+	createdID, err := s.insertConversationRecord(agentID, sessionKey, externalID, name)
+	if err != nil {
+		return 0, 0, err
+	}
+	return createdID, agentID, nil
+}
+
+func (s *OpenClawCronService) gatewayRequest(method string, params any, out any) error {
+	ctx, cancel := context.WithTimeout(context.Background(), openClawCronGatewayTimeout)
 	defer cancel()
+	if out == nil {
+		var ignored json.RawMessage
+		return s.manager.QueryRequest(ctx, method, params, &ignored)
+	}
+	return s.manager.QueryRequest(ctx, method, params, out)
+}
 
-	now := time.Now().UTC()
-	res, err := db.ExecContext(ctx, `
-INSERT INTO conversations (
-	created_at,
-	updated_at,
-	agent_id,
-	agent_type,
-	name,
-	external_id,
-	last_message,
-	is_pinned,
-	llm_provider_id,
-	llm_model_id,
-	library_ids,
-	enable_thinking,
-	openclaw_session_key,
-	chat_mode,
-	team_type,
-	dialogue_id,
-	team_library_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		now,
-		now,
-		agentID,
-		"openclaw",
-		strings.TrimSpace(name),
-		strings.TrimSpace(externalID),
-		"",
-		false,
-		"",
-		"",
-		"[]",
-		false,
-		strings.TrimSpace(sessionKey),
-		"task",
-		"person",
-		0,
-		"",
+func (s *OpenClawCronService) gatewayQuery(method string, params any, out any) error {
+	ctx, cancel := context.WithTimeout(context.Background(), openClawCronGatewayTimeout)
+	defer cancel()
+	if out == nil {
+		var ignored json.RawMessage
+		return s.manager.QueryRequest(ctx, method, params, &ignored)
+	}
+	return s.manager.QueryRequest(ctx, method, params, out)
+}
+
+// ensureConversationForSession creates a cron conversation as soon as the session key is known.
+func (s *OpenClawCronService) ensureConversationForSession(jobID string, job OpenClawCronJob, sessionKey, runID string, runAtMs int64) (int64, int64, error) {
+	sessionKey = strings.TrimSpace(sessionKey)
+	if sessionKey == "" {
+		return 0, 0, nil
+	}
+
+	var err error
+	localAgentID := int64(0)
+	if strings.TrimSpace(job.AgentID) != "" {
+		localAgentID, err = s.resolveManualRunAgentID(job.AgentID)
+		if err != nil {
+			return 0, 0, err
+		}
+	}
+	if localAgentID <= 0 {
+		localAgentID, err = s.findLocalOpenClawAgentID(parseAgentIDFromSessionKey(sessionKey))
+		if err != nil {
+			return 0, 0, err
+		}
+	}
+	if localAgentID <= 0 {
+		return 0, 0, nil
+	}
+
+	jobName := strings.TrimSpace(job.Name)
+	if jobName == "" {
+		jobName = strings.TrimSpace(jobID)
+	}
+	if jobName == "" {
+		jobName = openClawCronDefaultConversationName
+	}
+
+	return s.ensureConversationRecord(
+		localAgentID,
+		sessionKey,
+		buildCronExternalID(jobID, runID),
+		buildCronConversationName(jobName, runAtMs, runAtMs),
 	)
-	if err != nil {
-		return 0, err
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
 }
 
 func (s *OpenClawCronService) runCLIJSON(args []string, out any) error {
@@ -714,23 +1050,29 @@ func (s *OpenClawCronService) runCLIOutput(args []string, jsonOutput bool) ([]by
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
+	cliPath, env, err := s.manager.CLICommand()
+	if err != nil {
+		return nil, fmt.Errorf("resolve openclaw cli command: %w", err)
+	}
+
 	gatewayURL := strings.TrimSpace(strings.Replace(s.manager.GatewayURL(), "http://", "ws://", 1)) + "/ws"
 	token := strings.TrimSpace(s.manager.GatewayToken())
 	fullArgs := buildCLIArgs(args, gatewayURL, token, jsonOutput)
 
 	// Force UTF-8 safe output decoding on Windows and keep the command pinned to the embedded gateway.
 	// 在 Windows 下固定 UTF-8 输出，并显式指向内嵌 Gateway，避免误连用户全局 OpenClaw。
-	cmd := exec.CommandContext(ctx, openClawCommandName, fullArgs...)
-	cmd.Env = append(os.Environ(), "PYTHONUTF8=1")
+	cmd := exec.CommandContext(ctx, cliPath, fullArgs...)
+	cmd.Env = append(env, "PYTHONUTF8=1")
 	setCmdHideWindow(cmd)
 	return cmd.CombinedOutput()
 }
 
-// buildCLIArgs appends gateway routing and optional JSON output flags.
-// buildCLIArgs 负责为 OpenClaw CLI 追加网关路由参数，并按需附加 JSON 标志。
+// buildCLIArgs appends command-scoped gateway options after the subcommand tokens.
+// buildCLIArgs 负责把网关路由参数追加到子命令之后，匹配 OpenClaw CLI 的真实参数语义。
 func buildCLIArgs(args []string, gatewayURL string, token string, jsonOutput bool) []string {
-	fullArgs := append([]string{}, args...)
-	if jsonOutput {
+	fullArgs := make([]string, 0, len(args)+5)
+	fullArgs = append(fullArgs, args...)
+	if shouldAppendJSONFlag(args, jsonOutput) {
 		fullArgs = append(fullArgs, "--json")
 	}
 	if strings.TrimSpace(gatewayURL) != "" {
@@ -740,6 +1082,26 @@ func buildCLIArgs(args []string, gatewayURL string, token string, jsonOutput boo
 		fullArgs = append(fullArgs, "--token", strings.TrimSpace(token))
 	}
 	return fullArgs
+}
+
+const (
+	openClawCronCommand = "cron"
+	openClawRunCommand  = "run"
+	openClawCronDefaultConversationName = "OpenClaw Cron"
+)
+
+// shouldAppendJSONFlag guards OpenClaw commands that reject the global --json flag.
+func shouldAppendJSONFlag(args []string, jsonOutput bool) bool {
+	if !jsonOutput {
+		return false
+	}
+	if len(args) < 2 {
+		return true
+	}
+	if strings.TrimSpace(args[0]) == openClawCronCommand && strings.TrimSpace(args[1]) == openClawRunCommand {
+		return false
+	}
+	return true
 }
 
 // buildRunNowArgs keeps manual trigger semantics aligned with OpenClaw-native cron execution.
@@ -764,6 +1126,450 @@ func isBenignCronRunOutput(output []byte) bool {
 		return false
 	}
 	return payload.OK && !payload.Ran && strings.EqualFold(strings.TrimSpace(payload.Reason), "already-running")
+}
+
+func buildCreateJobPayload(input CreateOpenClawCronJobInput) (map[string]any, error) {
+	name := strings.TrimSpace(input.Name)
+	if name == "" {
+		return nil, fmt.Errorf("openclaw cron name is required")
+	}
+
+	schedule, err := buildCreateSchedulePayload(input.ScheduleKind, input.CronExpr, input.Every, input.At, input.Timezone, input.Exact)
+	if err != nil {
+		return nil, err
+	}
+	payload, sessionTarget, err := buildCreatePayload(input)
+	if err != nil {
+		return nil, err
+	}
+	delivery := buildCreateDeliveryPayload(input, sessionTarget, payload)
+
+	job := map[string]any{
+		"name":          name,
+		"schedule":      schedule,
+		"sessionTarget": sessionTarget,
+		"wakeMode":      normalizeWakeModeOrDefault(input.WakeMode),
+		"payload":       payload,
+		"enabled":       input.Enabled,
+	}
+	if description := strings.TrimSpace(input.Description); description != "" {
+		job["description"] = description
+	}
+	if agentID := strings.TrimSpace(input.AgentID); agentID != "" {
+		job["agentId"] = agentID
+	}
+	if sessionKey := strings.TrimSpace(input.SessionKey); sessionKey != "" {
+		job["sessionKey"] = sessionKey
+	}
+	if delivery != nil {
+		job["delivery"] = delivery
+	}
+	if deleteAfterRun, ok := normalizeDeleteAfterRun(input.DeleteAfterRun, input.KeepAfterRun); ok {
+		job["deleteAfterRun"] = deleteAfterRun
+	}
+	return job, nil
+}
+
+func buildUpdateJobPatch(input UpdateOpenClawCronJobInput) (map[string]any, error) {
+	patch := make(map[string]any)
+	if input.Name != nil && strings.TrimSpace(*input.Name) != "" {
+		patch["name"] = strings.TrimSpace(*input.Name)
+	}
+	if input.Description != nil {
+		patch["description"] = strings.TrimSpace(*input.Description)
+	}
+	if input.Enabled != nil {
+		patch["enabled"] = *input.Enabled
+	}
+	if input.DeleteAfterRun != nil || input.KeepAfterRun != nil {
+		deleteAfterRun, ok := normalizeDeleteAfterRun(boolPtrValue(input.DeleteAfterRun), boolPtrValue(input.KeepAfterRun))
+		if ok {
+			patch["deleteAfterRun"] = deleteAfterRun
+		}
+	}
+	if input.ClearAgent {
+		patch["agentId"] = nil
+	} else if input.AgentID != nil && strings.TrimSpace(*input.AgentID) != "" {
+		patch["agentId"] = strings.TrimSpace(*input.AgentID)
+	}
+	if input.ClearSessionKey {
+		patch["sessionKey"] = nil
+	} else if input.SessionKey != nil && strings.TrimSpace(*input.SessionKey) != "" {
+		patch["sessionKey"] = strings.TrimSpace(*input.SessionKey)
+	}
+	if input.SessionTarget != nil {
+		if sessionTarget := normalizeSessionTargetValue(*input.SessionTarget); sessionTarget != "" {
+			patch["sessionTarget"] = sessionTarget
+		}
+	}
+	if input.WakeMode != nil {
+		if wakeMode := normalizeWakeModeValue(*input.WakeMode); wakeMode != "" {
+			patch["wakeMode"] = wakeMode
+		}
+	}
+	schedule, err := buildUpdateSchedulePayload(input)
+	if err != nil {
+		return nil, err
+	}
+	if schedule != nil {
+		patch["schedule"] = schedule
+	}
+	payload := buildUpdatePayloadPatch(input)
+	if payload != nil {
+		patch["payload"] = payload
+	}
+	delivery := buildUpdateDeliveryPatch(input)
+	if delivery != nil {
+		patch["delivery"] = delivery
+	}
+	return patch, nil
+}
+
+func buildCreateSchedulePayload(kind, cronExpr, every, at, timezone string, exact bool) (map[string]any, error) {
+	switch strings.TrimSpace(kind) {
+	case openClawCronScheduleCron:
+		expr := strings.TrimSpace(cronExpr)
+		if expr == "" {
+			return nil, fmt.Errorf("openclaw cron expression is required")
+		}
+		schedule := map[string]any{
+			"kind": openClawCronScheduleCron,
+			"expr": expr,
+		}
+		if tz := strings.TrimSpace(timezone); tz != "" {
+			schedule["tz"] = tz
+		}
+		if exact {
+			schedule["staggerMs"] = int64(0)
+		}
+		return schedule, nil
+	case openClawCronScheduleEvery:
+		everyMs, err := parseEveryDurationMs(every)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{
+			"kind":    openClawCronScheduleEvery,
+			"everyMs": everyMs,
+		}, nil
+	case openClawCronScheduleAt:
+		atValue := strings.TrimSpace(at)
+		if atValue == "" {
+			return nil, fmt.Errorf("openclaw at value is required")
+		}
+		return map[string]any{
+			"kind": openClawCronScheduleAt,
+			"at":   atValue,
+		}, nil
+	default:
+		return nil, fmt.Errorf("unsupported openclaw schedule kind")
+	}
+}
+
+func buildUpdateSchedulePayload(input UpdateOpenClawCronJobInput) (map[string]any, error) {
+	if input.ScheduleKind == nil {
+		return nil, nil
+	}
+	switch strings.TrimSpace(*input.ScheduleKind) {
+	case openClawCronScheduleCron:
+		if input.CronExpr == nil || strings.TrimSpace(*input.CronExpr) == "" {
+			return nil, fmt.Errorf("openclaw cron expression is required")
+		}
+		schedule := map[string]any{
+			"kind": openClawCronScheduleCron,
+			"expr": strings.TrimSpace(*input.CronExpr),
+		}
+		if input.Timezone != nil && strings.TrimSpace(*input.Timezone) != "" {
+			schedule["tz"] = strings.TrimSpace(*input.Timezone)
+		}
+		if input.Exact != nil && *input.Exact {
+			schedule["staggerMs"] = int64(0)
+		}
+		return schedule, nil
+	case openClawCronScheduleEvery:
+		if input.Every == nil {
+			return nil, fmt.Errorf("openclaw every duration is required")
+		}
+		everyMs, err := parseEveryDurationMs(*input.Every)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{
+			"kind":    openClawCronScheduleEvery,
+			"everyMs": everyMs,
+		}, nil
+	case openClawCronScheduleAt:
+		if input.At == nil || strings.TrimSpace(*input.At) == "" {
+			return nil, fmt.Errorf("openclaw at value is required")
+		}
+		return map[string]any{
+			"kind": openClawCronScheduleAt,
+			"at":   strings.TrimSpace(*input.At),
+		}, nil
+	case "":
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unsupported openclaw schedule kind")
+	}
+}
+
+func buildCreatePayload(input CreateOpenClawCronJobInput) (map[string]any, string, error) {
+	message := strings.TrimSpace(input.Message)
+	systemEvent := strings.TrimSpace(input.SystemEvent)
+	if (message == "") == (systemEvent == "") {
+		return nil, "", fmt.Errorf("choose exactly one payload: message or system event")
+	}
+
+	if systemEvent != "" {
+		return map[string]any{
+			"kind": openClawCronPayloadSystemEvent,
+			"text": systemEvent,
+		}, normalizeSessionTargetForCreate(strings.TrimSpace(input.SessionTarget), openClawCronPayloadSystemEvent), nil
+	}
+
+	payload := map[string]any{
+		"kind":    openClawCronPayloadAgentTurn,
+		"message": message,
+	}
+	appendAgentTurnCommonPayload(payload, strings.TrimSpace(input.Model), strings.TrimSpace(input.Thinking), input.TimeoutMs, input.LightContext)
+	return payload, normalizeSessionTargetForCreate(strings.TrimSpace(input.SessionTarget), openClawCronPayloadAgentTurn), nil
+}
+
+func buildUpdatePayloadPatch(input UpdateOpenClawCronJobInput) map[string]any {
+	hasSystemEventPatch := input.SystemEvent != nil
+	hasAgentTurnPatch := input.Message != nil || hasAgentTurnCommonPatch(input)
+	if hasSystemEventPatch && hasAgentTurnPatch {
+		return nil
+	}
+	if hasSystemEventPatch {
+		text := strings.TrimSpace(derefTrim(input.SystemEvent))
+		return map[string]any{
+			"kind": openClawCronPayloadSystemEvent,
+			"text": text,
+		}
+	}
+	if !hasAgentTurnPatch {
+		return nil
+	}
+	payload := map[string]any{
+		"kind": openClawCronPayloadAgentTurn,
+	}
+	if input.Message != nil {
+		payload["message"] = strings.TrimSpace(*input.Message)
+	}
+	appendAgentTurnCommonPatch(payload, input)
+	return payload
+}
+
+func buildCreateDeliveryPayload(input CreateOpenClawCronJobInput, sessionTarget string, payload map[string]any) map[string]any {
+	if sessionTarget != openClawCronSessionIsolated || payload["kind"] != openClawCronPayloadAgentTurn {
+		return nil
+	}
+
+	mode := normalizeCreateDeliveryMode(input.Announce, input.DeliveryMode)
+	delivery := map[string]any{
+		"mode": mode,
+	}
+	if channel := strings.TrimSpace(input.DeliveryChannel); channel != "" {
+		delivery["channel"] = strings.ToLower(channel)
+	}
+	if to := strings.TrimSpace(input.DeliveryTo); to != "" {
+		delivery["to"] = to
+	}
+	if accountID := strings.TrimSpace(input.DeliveryAccountID); accountID != "" {
+		delivery["accountId"] = accountID
+	}
+	if input.BestEffortDeliver {
+		delivery["bestEffort"] = true
+	}
+	return delivery
+}
+
+func buildUpdateDeliveryPatch(input UpdateOpenClawCronJobInput) map[string]any {
+	delivery := make(map[string]any)
+	if input.DeliveryMode != nil {
+		if mode := normalizeDeliveryModeValue(*input.DeliveryMode); mode != "" {
+			delivery["mode"] = mode
+		}
+	}
+	if input.Announce != nil {
+		if *input.Announce {
+			delivery["mode"] = openClawCronDeliveryModeAnnounce
+		} else {
+			delivery["mode"] = openClawCronDeliveryModeNone
+		}
+	}
+	if input.DeliveryChannel != nil {
+		trimmed := strings.TrimSpace(*input.DeliveryChannel)
+		if trimmed != "" {
+			delivery["channel"] = strings.ToLower(trimmed)
+		}
+	}
+	if input.DeliveryTo != nil {
+		trimmed := strings.TrimSpace(*input.DeliveryTo)
+		if trimmed != "" {
+			delivery["to"] = trimmed
+		}
+	}
+	if input.DeliveryAccountID != nil {
+		trimmed := strings.TrimSpace(*input.DeliveryAccountID)
+		if trimmed != "" {
+			delivery["accountId"] = trimmed
+		}
+	}
+	if input.BestEffortDeliver != nil {
+		delivery["bestEffort"] = *input.BestEffortDeliver
+		if _, ok := delivery["mode"]; !ok {
+			delivery["mode"] = openClawCronDeliveryModeAnnounce
+		}
+	}
+	if len(delivery) == 0 {
+		return nil
+	}
+	return delivery
+}
+
+func appendAgentTurnCommonPayload(payload map[string]any, model, thinking string, timeoutMs int64, lightContext bool) {
+	if model != "" {
+		payload["model"] = model
+	}
+	if thinking != "" {
+		payload["thinking"] = thinking
+	}
+	if timeoutSeconds, ok := timeoutMsToSeconds(timeoutMs); ok {
+		payload["timeoutSeconds"] = timeoutSeconds
+	}
+	if lightContext {
+		payload["lightContext"] = true
+	}
+}
+
+func appendAgentTurnCommonPatch(payload map[string]any, input UpdateOpenClawCronJobInput) {
+	if input.Model != nil && strings.TrimSpace(*input.Model) != "" {
+		payload["model"] = strings.TrimSpace(*input.Model)
+	}
+	if input.Thinking != nil && strings.TrimSpace(*input.Thinking) != "" {
+		payload["thinking"] = strings.TrimSpace(*input.Thinking)
+	}
+	if input.TimeoutMs != nil {
+		if timeoutSeconds, ok := timeoutMsToSeconds(*input.TimeoutMs); ok {
+			payload["timeoutSeconds"] = timeoutSeconds
+		}
+	}
+	if input.LightContext != nil {
+		payload["lightContext"] = *input.LightContext
+	}
+}
+
+func hasAgentTurnCommonPatch(input UpdateOpenClawCronJobInput) bool {
+	return input.Model != nil || input.Thinking != nil || input.TimeoutMs != nil || input.LightContext != nil ||
+		input.Announce != nil || input.DeliveryMode != nil || input.DeliveryChannel != nil ||
+		input.DeliveryTo != nil || input.DeliveryAccountID != nil || input.BestEffortDeliver != nil
+}
+
+func normalizeSessionTargetForCreate(raw string, payloadKind string) string {
+	if sessionTarget := normalizeSessionTargetValue(raw); sessionTarget != "" {
+		return sessionTarget
+	}
+	if payloadKind == openClawCronPayloadSystemEvent {
+		return openClawCronSessionMain
+	}
+	return openClawCronSessionIsolated
+}
+
+func normalizeSessionTargetValue(raw string) string {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case openClawCronSessionMain:
+		return openClawCronSessionMain
+	case openClawCronSessionIsolated:
+		return openClawCronSessionIsolated
+	default:
+		return ""
+	}
+}
+
+func normalizeWakeModeOrDefault(raw string) string {
+	if wakeMode := normalizeWakeModeValue(raw); wakeMode != "" {
+		return wakeMode
+	}
+	return openClawCronWakeNow
+}
+
+func normalizeWakeModeValue(raw string) string {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case openClawCronWakeNow:
+		return openClawCronWakeNow
+	case "next-heartbeat":
+		return "next-heartbeat"
+	default:
+		return ""
+	}
+}
+
+func normalizeCreateDeliveryMode(announce bool, rawMode string) string {
+	if mode := normalizeDeliveryModeValue(rawMode); mode != "" {
+		return mode
+	}
+	if announce {
+		return openClawCronDeliveryModeAnnounce
+	}
+	return openClawCronDeliveryModeAnnounce
+}
+
+func normalizeDeliveryModeValue(raw string) string {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case openClawCronDeliveryModeNone:
+		return openClawCronDeliveryModeNone
+	case openClawCronDeliveryModeWebhook:
+		return openClawCronDeliveryModeWebhook
+	case openClawCronDeliveryModeAnnounce:
+		return openClawCronDeliveryModeAnnounce
+	default:
+		return ""
+	}
+}
+
+func normalizeDeleteAfterRun(deleteAfterRun bool, keepAfterRun bool) (bool, bool) {
+	if deleteAfterRun {
+		return true, true
+	}
+	if keepAfterRun {
+		return false, true
+	}
+	return false, false
+}
+
+func timeoutMsToSeconds(timeoutMs int64) (int64, bool) {
+	if timeoutMs <= 0 {
+		return 0, false
+	}
+	seconds := timeoutMs / 1000
+	if timeoutMs%1000 != 0 {
+		seconds++
+	}
+	if seconds <= 0 {
+		return 0, false
+	}
+	return seconds, true
+}
+
+func parseEveryDurationMs(value string) (int64, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return 0, fmt.Errorf("openclaw every duration is required")
+	}
+	duration, err := time.ParseDuration(trimmed)
+	if err != nil {
+		return 0, fmt.Errorf("invalid openclaw every duration: %w", err)
+	}
+	if duration <= 0 {
+		return 0, fmt.Errorf("openclaw every duration must be positive")
+	}
+	return int64(duration / time.Millisecond), nil
+}
+
+func boolPtrValue(value *bool) bool {
+	return value != nil && *value
 }
 
 func buildCreateArgs(input CreateOpenClawCronJobInput) ([]string, error) {
@@ -1036,6 +1842,246 @@ func matchSessionKey(got string, expected string) bool {
 		return false
 	}
 	return got == expected || strings.HasSuffix(got, ":"+expected)
+}
+
+func buildCronExternalID(jobID string, runPart string) string {
+	trimmedJobID := strings.TrimSpace(jobID)
+	trimmedRunPart := strings.TrimSpace(runPart)
+	if trimmedRunPart == "" {
+		return fmt.Sprintf("openclaw-cron:%s", trimmedJobID)
+	}
+	return fmt.Sprintf("openclaw-cron:%s:%s", trimmedJobID, trimmedRunPart)
+}
+
+func matchesCronExternalID(externalID string, jobID string) bool {
+	trimmedExternalID := strings.TrimSpace(externalID)
+	baseID := buildCronExternalID(jobID, "")
+	return trimmedExternalID == baseID || strings.HasPrefix(trimmedExternalID, baseID+":")
+}
+
+func buildCronConversationName(jobName string, primaryTimeMs int64, fallbackTimeMs int64) string {
+	trimmedJobName := strings.TrimSpace(jobName)
+	if trimmedJobName == "" {
+		trimmedJobName = openClawCronDefaultConversationName
+	}
+
+	runTimeMs := primaryTimeMs
+	if runTimeMs <= 0 {
+		runTimeMs = fallbackTimeMs
+	}
+	if runTimeMs <= 0 {
+		runTimeMs = time.Now().UnixMilli()
+	}
+	return fmt.Sprintf("%s / %s", trimmedJobName, time.UnixMilli(runTimeMs).Local().Format("2006-01-02 15:04:05"))
+}
+
+func chooseRunTimestamp(primaryTimeMs int64, fallbackTimeMs int64) int64 {
+	if primaryTimeMs > 0 {
+		return primaryTimeMs
+	}
+	if fallbackTimeMs > 0 {
+		return fallbackTimeMs
+	}
+	return time.Now().UnixMilli()
+}
+
+func isPendingRunAwaitingBinding(pending *pendingCronRun) bool {
+	if pending == nil {
+		return false
+	}
+	if strings.TrimSpace(pending.SessionKey) != "" {
+		return false
+	}
+	return pending.ConversationID <= 0
+}
+
+func hasMatchingRunHistory(pending *pendingCronRun, runEntries []OpenClawCronRunEntry, conversationItems []OpenClawCronHistoryListItem) bool {
+	if pending == nil {
+		return false
+	}
+	for _, entry := range runEntries {
+		if isCloseRunTimestamp(pending.TriggerAtMs, chooseRunTimestamp(entry.RunAtMs, entry.TimestampMs)) {
+			return true
+		}
+	}
+	for _, item := range conversationItems {
+		if isCloseRunTimestamp(pending.TriggerAtMs, item.RunAtMs) {
+			return true
+		}
+	}
+	return false
+}
+
+func isCloseRunTimestamp(leftMs int64, rightMs int64) bool {
+	if leftMs <= 0 || rightMs <= 0 {
+		return false
+	}
+	diff := leftMs - rightMs
+	if diff < 0 {
+		diff = -diff
+	}
+	return diff <= pendingRunReconcileWindowMs
+}
+
+func parseRunNowResult(output []byte, triggeredAt time.Time) (*OpenClawCronRunNowResult, error) {
+	var payload struct {
+		OK       bool   `json:"ok"`
+		Enqueued bool   `json:"enqueued"`
+		Ran      bool   `json:"ran"`
+		RunID    string `json:"runId"`
+	}
+	if err := json.Unmarshal(output, &payload); err != nil {
+		return nil, fmt.Errorf("decode cron run result: %w", err)
+	}
+	return &OpenClawCronRunNowResult{
+		RunID:       strings.TrimSpace(payload.RunID),
+		TriggerAtMs: triggeredAt.UnixMilli(),
+		Enqueued:    payload.Enqueued || payload.Ran,
+	}, nil
+}
+
+func extractGatewayRunContext(event string, payload json.RawMessage) (string, string) {
+	switch strings.TrimSpace(event) {
+	case "agent", "chat":
+	default:
+		return "", ""
+	}
+
+	var frame struct {
+		RunID      string `json:"runId"`
+		SessionKey string `json:"sessionKey"`
+	}
+	if err := json.Unmarshal(payload, &frame); err != nil {
+		return "", ""
+	}
+	return strings.TrimSpace(frame.RunID), strings.TrimSpace(frame.SessionKey)
+}
+
+func mergeHistoryItems(
+	runItems []OpenClawCronHistoryListItem,
+	conversationItems []OpenClawCronHistoryListItem,
+	pendingItems []OpenClawCronHistoryListItem,
+) []OpenClawCronHistoryListItem {
+	merged := make(map[string]OpenClawCronHistoryListItem)
+	order := make([]string, 0, len(runItems)+len(conversationItems)+len(pendingItems))
+
+	upsert := func(item OpenClawCronHistoryListItem) {
+		key := historyMergeKey(item)
+		if key == "" {
+			return
+		}
+		existing, exists := merged[key]
+		if !exists {
+			merged[key] = item
+			order = append(order, key)
+			return
+		}
+		merged[key] = preferHistoryItem(existing, item)
+	}
+
+	for _, item := range conversationItems {
+		upsert(item)
+	}
+	for _, item := range pendingItems {
+		upsert(item)
+	}
+	for _, item := range runItems {
+		upsert(item)
+	}
+
+	out := make([]OpenClawCronHistoryListItem, 0, len(order))
+	for _, key := range order {
+		out = append(out, merged[key])
+	}
+	slices.SortFunc(out, func(left, right OpenClawCronHistoryListItem) int {
+		switch {
+		case left.RunAtMs > right.RunAtMs:
+			return -1
+		case left.RunAtMs < right.RunAtMs:
+			return 1
+		default:
+			return strings.Compare(right.RunID, left.RunID)
+		}
+	})
+	return out
+}
+
+func historyMergeKey(item OpenClawCronHistoryListItem) string {
+	if sessionKey := strings.TrimSpace(item.SessionKey); sessionKey != "" {
+		return "session:" + sessionKey
+	}
+	if runID := strings.TrimSpace(item.RunID); runID != "" {
+		return "run:" + runID
+	}
+	if item.ConversationID > 0 {
+		return fmt.Sprintf("conversation:%d", item.ConversationID)
+	}
+	return ""
+}
+
+func preferHistoryItem(existing OpenClawCronHistoryListItem, incoming OpenClawCronHistoryListItem) OpenClawCronHistoryListItem {
+	preferred := existing
+	if historySourceRank(incoming.Source) >= historySourceRank(existing.Source) {
+		preferred = incoming
+	}
+
+	if preferred.ConversationID == 0 {
+		if existing.ConversationID > 0 {
+			preferred.ConversationID = existing.ConversationID
+		}
+		if preferred.ConversationID == 0 && incoming.ConversationID > 0 {
+			preferred.ConversationID = incoming.ConversationID
+		}
+	}
+	if preferred.SessionID == "" {
+		if existing.SessionID != "" {
+			preferred.SessionID = existing.SessionID
+		} else {
+			preferred.SessionID = incoming.SessionID
+		}
+	}
+	if preferred.SessionKey == "" {
+		if existing.SessionKey != "" {
+			preferred.SessionKey = existing.SessionKey
+		} else {
+			preferred.SessionKey = incoming.SessionKey
+		}
+	}
+	if preferred.RunID == "" {
+		if existing.RunID != "" {
+			preferred.RunID = existing.RunID
+		} else {
+			preferred.RunID = incoming.RunID
+		}
+	}
+	if preferred.Name == "" {
+		if existing.Name != "" {
+			preferred.Name = existing.Name
+		} else {
+			preferred.Name = incoming.Name
+		}
+	}
+	if preferred.RunAtMs <= 0 {
+		if existing.RunAtMs > 0 {
+			preferred.RunAtMs = existing.RunAtMs
+		} else {
+			preferred.RunAtMs = incoming.RunAtMs
+		}
+	}
+	return preferred
+}
+
+func historySourceRank(source string) int {
+	switch strings.TrimSpace(source) {
+	case OpenClawCronHistorySourceRunLog:
+		return 3
+	case OpenClawCronHistorySourcePending:
+		return 2
+	case OpenClawCronHistorySourceConversation:
+		return 1
+	default:
+		return 0
+	}
 }
 
 func readTranscriptMessages(filePath string) ([]OpenClawCronTranscriptMessage, error) {
