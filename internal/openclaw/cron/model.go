@@ -208,10 +208,32 @@ type OpenClawCronRunDetail struct {
 	IsLive              bool                            `json:"is_live"`
 }
 
-// OpenClawCronManualRunResult is returned when the user manually triggers a job as a chat conversation.
-// OpenClawCronManualRunResult 表示“立即运行”改走任务助手对话后返回的本地会话信息。
-type OpenClawCronManualRunResult struct {
-	ConversationID int64  `json:"conversation_id"`
-	AgentID        int64  `json:"agent_id"`
-	RequestID      string `json:"request_id"`
+const (
+	// OpenClawCronHistorySourceRunLog represents entries loaded from OpenClaw run logs.
+	OpenClawCronHistorySourceRunLog = "run_log"
+	// OpenClawCronHistorySourceConversation represents locally created conversations.
+	OpenClawCronHistorySourceConversation = "conversation"
+	// OpenClawCronHistorySourcePending represents in-memory runs waiting for session correlation.
+	OpenClawCronHistorySourcePending = "pending"
+)
+
+// OpenClawCronRunNowResult is returned when a job is manually enqueued.
+type OpenClawCronRunNowResult struct {
+	RunID       string `json:"run_id"`
+	TriggerAtMs int64  `json:"trigger_at_ms"`
+	Enqueued    bool   `json:"enqueued"`
+}
+
+// OpenClawCronHistoryListItem is the merged history item shown in the cron history dialog.
+type OpenClawCronHistoryListItem struct {
+	JobID          string `json:"job_id"`
+	RunID          string `json:"run_id,omitempty"`
+	SessionID      string `json:"session_id,omitempty"`
+	SessionKey     string `json:"session_key,omitempty"`
+	ConversationID int64  `json:"conversation_id,omitempty"`
+	Name           string `json:"name"`
+	Status         string `json:"status"`
+	RunAtMs        int64  `json:"run_at_ms"`
+	Source         string `json:"source"`
+	IsPendingLocal bool   `json:"is_pending_local"`
 }

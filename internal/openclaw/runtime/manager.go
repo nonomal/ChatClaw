@@ -50,6 +50,14 @@ type Manager struct {
 	eventListeners   map[string]EventListener // keyed by caller-chosen ID
 }
 
+func gatewayOperatorScopes() []string {
+	return []string{"operator.read", "operator.write", "operator.admin"}
+}
+
+func gatewayQueryOperatorScopes() []string {
+	return gatewayOperatorScopes()
+}
+
 func NewManager(app *application.App, settingsSvc *settings.SettingsService) *Manager {
 	store := newConfigStore(settingsSvc)
 	cfg := store.Get()
@@ -396,7 +404,7 @@ func (m *Manager) connectClient(cfg OpenClawConfig, bundle *bundledRuntime) erro
 			Token:           cfg.GatewayToken,
 			DeviceIdentity:  identity,
 			StoredDeviceTok: storedTok,
-			Scopes:          []string{"operator.read", "operator.write", "operator.admin"},
+			Scopes:          gatewayOperatorScopes(),
 			OnEvent:         m.dispatchEvent,
 			OnDisconnect:    m.handleGatewayDisconnect,
 		})
@@ -413,7 +421,7 @@ func (m *Manager) connectClient(cfg OpenClawConfig, bundle *bundledRuntime) erro
 				Token:           cfg.GatewayToken,
 				DeviceIdentity:  identity,
 				StoredDeviceTok: storedTok,
-				Scopes:          []string{"operator.read"},
+				Scopes:          gatewayQueryOperatorScopes(),
 			})
 			if _, qErr := qClient.Connect(ctx); qErr != nil {
 				m.app.Logger.Warn("openclaw: query client connect failed, will use main client", "err", qErr)
@@ -562,6 +570,15 @@ func (m *Manager) GatewayURL() string {
 // GatewayToken returns the auth token for the running OpenClaw Gateway.
 func (m *Manager) GatewayToken() string {
 	return m.store.Get().GatewayToken
+}
+
+// CLICommand returns the bundled OpenClaw CLI path and the isolated environment used by ChatClaw.
+func (m *Manager) CLICommand() (string, []string, error) {
+	bundle, err := resolveBundledRuntime()
+	if err != nil {
+		return "", nil, err
+	}
+	return bundle.CLIPath, buildGatewayEnv(m.store.Get(), bundle), nil
 }
 
 func (m *Manager) Request(ctx context.Context, method string, params any, out any) error {
