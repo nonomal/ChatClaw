@@ -330,8 +330,8 @@ onUnmounted(() => {
     <!-- 开发工具 -->
     <SettingsCard :title="t('settings.general.toolchain.title')">
       <!-- OpenClaw 运行环境（独立卡片，不走 toolDefs 循环） -->
-      <div class="flex items-center justify-between gap-4 p-4 border-b border-border dark:border-white/10">
-        <div class="flex items-center gap-3 min-w-0 flex-1">
+      <div class="flex items-start justify-between gap-4 p-4 border-b border-border dark:border-white/10">
+        <div class="flex min-w-0 flex-1 items-start gap-3">
           <div
             class="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/50 text-muted-foreground dark:border-white/10 dark:bg-white/5"
           >
@@ -347,6 +347,13 @@ onUnmounted(() => {
             >
               <FolderOpen class="size-3 shrink-0" />
               {{ openclawStatus.runtime_path }}
+            </p>
+            <p
+              v-if="openclawStatus?.installed && openclawStatus?.installed_version"
+              class="mt-0.5 text-xs text-muted-foreground/60"
+              :title="openclawStatus.installed_version"
+            >
+              {{ t('settings.general.toolchain.testInstall.version') }}: {{ openclawStatus.installed_version }}
             </p>
 
             <!-- Download Progress -->
@@ -372,19 +379,18 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div class="flex shrink-0 items-center gap-2">
-          <!-- Installed badge -->
+        <div class="flex shrink-0 flex-col items-end gap-2 pt-0.5">
+          <!-- Installed badge (same width pattern as uv/bun/codex — no long version here) -->
           <span
             v-if="openclawStatus?.installed && !openclawStatus?.installing"
-            class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border dark:ring-white/10"
+            class="inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border dark:ring-white/10"
           >
-            <Check class="size-3" />
+            <Check class="size-3 shrink-0" />
             {{ t('settings.general.toolchain.installed') }}
-            <span v-if="openclawStatus?.installed_version" class="text-muted-foreground/70">v{{ openclawStatus.installed_version }}</span>
           </span>
 
           <!-- Installing state -->
-          <span v-else-if="openclawStatus?.installing" class="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span v-else-if="openclawStatus?.installing" class="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
             <Loader2 class="size-3 animate-spin" />
             {{ t('settings.general.toolchain.installing') }}
           </span>
