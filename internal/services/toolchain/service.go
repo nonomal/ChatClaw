@@ -215,8 +215,9 @@ type OpenClawRuntimeStatus struct {
 }
 
 // GetOpenClawRuntimeStatus returns the installation status of the OpenClaw runtime
-// by inspecting ~/.chatclaw/openclaw/runtime/<target>/current/manifest.json and running
-// openclaw --version. It does not query the gateway — use the OpenClawRuntimeService for that.
+// by reading ~/.chatclaw/openclaw/runtime/<target>/current/manifest.json only.
+// We do not spawn openclaw --version here: on Windows that flashes a console window, and CLI
+// output is verbose while manifest.openclawVersion matches API semver for updates.
 func (s *ToolchainService) GetOpenClawRuntimeStatus() (*OpenClawRuntimeStatus, error) {
 	target := runtime.GOOS + "-" + runtime.GOARCH
 	currentDir, err := openclawRuntimeCurrentDir(target)
@@ -242,20 +243,7 @@ func (s *ToolchainService) GetOpenClawRuntimeStatus() (*OpenClawRuntimeStatus, e
 		return nil, fmt.Errorf("parse manifest: %w", err)
 	}
 
-	cliPath := filepath.Join(currentDir, "bin", openClawCLIName())
-	cliPath, err = filepath.EvalSymlinks(cliPath)
-	if err == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		out, err := exec.CommandContext(ctx, cliPath, "--version").CombinedOutput()
-		if err == nil {
-			status.InstalledVersion = strings.TrimSpace(string(out))
-		}
-	}
-	if status.InstalledVersion == "" {
-		status.InstalledVersion = manifest.OpenClawVersion
-	}
-
+	status.InstalledVersion = strings.TrimSpace(manifest.OpenClawVersion)
 	status.Installed = true
 	status.RuntimePath = currentDir
 
@@ -263,7 +251,7 @@ func (s *ToolchainService) GetOpenClawRuntimeStatus() (*OpenClawRuntimeStatus, e
 	latest, _, apiErr := s.fetchToolLatest("openclaw", runtime.GOOS, runtime.GOARCH)
 	if apiErr == nil && latest != "" {
 		status.LatestVersion = latest
-		status.HasUpdate = latest != status.InstalledVersion
+		status.HasUpdate = strings.TrimSpace(latest) != status.InstalledVersion
 	}
 
 	return status, nil
@@ -303,11 +291,16 @@ func verifyOpenClawLibLayout(dir string) error {
 }
 
 func verifyOpenClawCLI(cliPath string) error {
-	if runtime.GOOS != "windows" {
-		out, err := exec.Command(cliPath, "--version").CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("openclaw CLI check: %w: %s", err, strings.TrimSpace(string(out)))
-		}
+	if runtime.GOOS == "windows" {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, cliPath, "--version")
+	hideWindow(cmd)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("openclaw CLI check: %w: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }
