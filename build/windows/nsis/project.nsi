@@ -99,9 +99,22 @@ Section
     !insertmacro wails.files
 
     ; OpenClaw bundled CLI: must live under $INSTDIR\rt\<windows-amd64|windows-arm64> (embedded path in internal/openclaw/runtime/bundle.go)
+    ; Use robocopy instead of File /r so NSIS does not register one Delete per file (uninstall would walk the whole tree and be very slow).
     !ifdef ARG_OPENCLAW_RUNTIME
-        SetOutPath "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}"
-        File /r "${ARG_OPENCLAW_RUNTIME}\*.*"
+        CreateDirectory "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}"
+        DetailPrint "Copying OpenClaw runtime..."
+        SetDetailsPrint listonly
+        ExecWait 'cmd /c robocopy "${ARG_OPENCLAW_RUNTIME}" "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}" /E /COPY:DAT /R:2 /W:1 /NP /NFL /NDL /NJH /NJS'
+        SetDetailsPrint both
+        ; robocopy uses bitmask 0-7 for success; 8+ is failure
+        IntCmp $0 8 runtimeRobocopyFail runtimeRobocopyOk runtimeRobocopyFail
+        runtimeRobocopyOk:
+            Goto afterOpenclawRuntimeCopy
+        runtimeRobocopyFail:
+            DetailPrint "robocopy failed (exit $0)"
+            MessageBox MB_OK "Failed to copy OpenClaw runtime (robocopy exit code $0).$\n$\nPlease free disk space and retry."
+            Abort
+        afterOpenclawRuntimeCopy:
     !endif
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
@@ -123,6 +136,12 @@ SectionEnd
 
 Section "uninstall" 
     !insertmacro wails.setShellContext
+
+    ; Stop app and bundled Node so $INSTDIR (especially rt\) is not locked; avoids slow per-file uninstall and delete failures.
+    ExecWait 'cmd /c taskkill /F /IM "${PRODUCT_EXECUTABLE}" /T 2>nul'
+    ; Stops all node.exe; may affect other Node apps during uninstall only. Narrower kill would need a bundled script.
+    ExecWait 'cmd /c taskkill /F /IM node.exe /T 2>nul'
+    Sleep 400
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
 
