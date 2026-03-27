@@ -766,7 +766,7 @@ export default {
     "about": {
       "title": "정보",
       "appName": "ChatClaw",
-      "copyright": "© 2026 ChatClaw Sesame Network Technology · MIT License",
+      "copyright": "© 2026 ChatClaw Sesame Network Technology All Rights Reserved",
       "officialWebsite": "공식 웹사이트",
       "view": "보기",
       "checkUpdate": "업데이트 확인",
