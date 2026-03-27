@@ -295,9 +295,5 @@ ChatClaw_D2/
 └── images/                     # README 截图
 ```
 
-## 许可证
-
-本项目采用 [MIT License](../../LICENSE)。
-
 
 

@@ -722,7 +722,7 @@ export default {
     "about": {
       "title": "Über uns",
       "appName": "ChatClaw",
-      "copyright": "© 2026 ChatClaw Sesame Network Technology · MIT License",
+      "copyright": "© 2026 ChatClaw Sesame Netzwerktechnologie Alle Rechte vorbehalten",
       "officialWebsite": "Offizielle Website",
       "view": "Ansehen",
       "checkUpdate": "Nach Updates suchen",
