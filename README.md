@@ -298,12 +298,8 @@ ChatClaw_D2/
 └── images/                     # README screenshots (legacy)
 ```
 
-## License
-
-This project is licensed under the MIT License. See [LICENSE](./LICENSE).
-
 ### Changelog
-To view the complete update log, please click👉️👉️[UpdateLog.md](./UpdateLog.md)
+To view the complete update log, please click👉️👉️[UpdateLog.md](./docs/readmes/UpdateLog.md)
 
 
 ### 2026/03/18
