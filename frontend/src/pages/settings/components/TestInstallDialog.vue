@@ -20,7 +20,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import * as ToolchainService from '@bindings/chatclaw/internal/services/toolchain/toolchainservice'
-import * as OpenClawRuntimeService from '@bindings/chatclaw/internal/openclaw/runtime'
+import * as OpenClawRuntimeService from '@bindings/chatclaw/internal/openclaw/runtime/openclawruntimeservice'
 import {
   DownloadMethod,
   TestInstallConfig,
