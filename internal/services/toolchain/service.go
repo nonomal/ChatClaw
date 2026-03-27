@@ -84,7 +84,7 @@ var registry = map[string]toolSpec{
 }
 
 // openclawVersion is the bundled OpenClaw runtime version (matches build/runtime.yml).
-// Used for OSS downloads when no bundled runtime is available.
+// Used for OSS downloads when no bundled runtime is available. Must match backend tool-download registry format.
 const openclawVersion = "2026.3.24"
 
 // openclawSpec is a placeholder entry for the openclaw runtime in the registry.
@@ -108,7 +108,8 @@ var openclawSpec = toolSpec{
 //
 // This is called as a fallback when reconcileLocked cannot find any bundled runtime.
 // The installed layout matches the output of internal/tools/openclawbundle:
-//   tools/node/, lib/node_modules/openclaw/, bin/openclaw(.cmd), manifest.json
+//
+//	tools/node/, lib/node_modules/openclaw/, bin/openclaw(.cmd), manifest.json
 func (s *ToolchainService) InstallOpenClawRuntime() error {
 	target := runtime.GOOS + "-" + runtime.GOARCH
 	version := openclawVersion
@@ -208,14 +209,14 @@ func (s *ToolchainService) InstallOpenClawRuntime() error {
 
 // OpenClawRuntimeStatus mirrors the ToolStatus shape for the openclaw runtime entry in the UI.
 type OpenClawRuntimeStatus struct {
-	Name              string `json:"name"`
-	Installed         bool   `json:"installed"`
-	InstalledVersion  string `json:"installed_version"`
-	LatestVersion     string `json:"latest_version,omitempty"`
-	HasUpdate         bool   `json:"has_update"`
-	Installing        bool   `json:"installing"`
-	RuntimePath       string `json:"runtime_path"`
-	GatewayStatus     string `json:"gateway_status"` // "idle" | "running" | "error"
+	Name             string `json:"name"`
+	Installed        bool   `json:"installed"`
+	InstalledVersion string `json:"installed_version"`
+	LatestVersion    string `json:"latest_version,omitempty"`
+	HasUpdate        bool   `json:"has_update"`
+	Installing       bool   `json:"installing"`
+	RuntimePath      string `json:"runtime_path"`
+	GatewayStatus    string `json:"gateway_status"` // "idle" | "running" | "error"
 }
 
 // GetOpenClawRuntimeStatus returns the installation status of the OpenClaw runtime
@@ -354,8 +355,8 @@ func (s *ToolchainService) downloadOpenClawArchive(ctx context.Context, dlURL, d
 	connectTimeout := 10 * time.Second
 	readTimeout := 50 * time.Minute
 	transport := &http.Transport{
-		DialContext: (&net.Dialer{Timeout: connectTimeout}).DialContext,
-		TLSHandshakeTimeout: connectTimeout,
+		DialContext:           (&net.Dialer{Timeout: connectTimeout}).DialContext,
+		TLSHandshakeTimeout:   connectTimeout,
 		ResponseHeaderTimeout: readTimeout,
 		DisableCompression:    true,
 	}
@@ -1401,7 +1402,14 @@ func (s *ToolchainService) fetchOSSDownloadURL(tool, version, goos, goarch strin
 		Arch    string `json:"arch"`
 	}
 
-	type Response struct {
+	// Response matches openapi: { "code": 0, "data": { "url": "..." }, "message": "ok" }
+	type toolDownloadResponse struct {
+		Code int `json:"code"`
+		Data struct {
+			URL string `json:"url"`
+		} `json:"data"`
+		Message string `json:"message"`
+		// Legacy: some deployments may return url at root
 		URL string `json:"url"`
 	}
 
@@ -1417,8 +1425,12 @@ func (s *ToolchainService) fetchOSSDownloadURL(tool, version, goos, goarch strin
 		return "", err
 	}
 
-	// 使用 ServerURL + /toolDownload（符合 /openapi 前缀约定）
-	apiURL := define.ServerURL + "/toolDownload"
+	// 使用 ServerURL + /tool-download（符合 /openapi 前缀约定）
+	apiURL := define.ServerURL + "/tool-download"
+	if s.app != nil {
+		s.app.Logger.Info("toolchain: tool-download request", "url", apiURL, "body", string(bodyBytes))
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return "", err
@@ -1431,20 +1443,41 @@ func (s *ToolchainService) fetchOSSDownloadURL(tool, version, goos, goarch strin
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API returned status %d", resp.StatusCode)
-	}
-
-	var result Response
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
 		return "", err
 	}
 
-	if result.URL == "" {
+	if resp.StatusCode != http.StatusOK {
+		if s.app != nil {
+			s.app.Logger.Error("toolchain: tool-download HTTP error", "status", resp.StatusCode, "body", string(body))
+		}
+		return "", fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+
+	var result toolDownloadResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		if s.app != nil {
+			s.app.Logger.Error("toolchain: tool-download parse error", "error", err, "body", string(body))
+		}
+		return "", fmt.Errorf("decode tool-download response: %w", err)
+	}
+
+	dlURL := strings.TrimSpace(result.Data.URL)
+	if dlURL == "" {
+		dlURL = strings.TrimSpace(result.URL)
+	}
+	if dlURL == "" {
+		if s.app != nil {
+			s.app.Logger.Error("toolchain: tool-download empty url", "body", string(body))
+		}
 		return "", fmt.Errorf("API returned empty URL")
 	}
 
-	return result.URL, nil
+	if s.app != nil {
+		s.app.Logger.Info("toolchain: tool-download ok", "resolved_url_len", len(dlURL))
+	}
+	return dlURL, nil
 }
 
 // ToolLatestItem 单个工具的最新版本信息（与服务端对应）
