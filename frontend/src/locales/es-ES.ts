@@ -1610,6 +1610,7 @@ export default {
     },
     "toggle": {
       "enableSuccess": "Habilitado exitosamente",
+      "dingtalkPluginNotReady": "El complemento del conector DingTalk aún se está instalando o no está listo. Inténtelo de nuevo más tarde.",
       "disableSuccess": "Deshabilitado exitosamente",
       "enableTitle": "¿Habilitar este canal?",
       "disableTitle": "¿Deshabilitar este canal?",
