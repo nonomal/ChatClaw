@@ -14,6 +14,7 @@ func TestApplyOpenClawThinkingStreamHotfixFile(t *testing.T) {
 		openClawThinkingStreamPatchNeedle1,
 		openClawThinkingStreamPatchNeedle2,
 		openClawThinkingStreamPatchNeedle3,
+		openClawFallbackRetryPromptPatchNeedle,
 	}, "\n")
 	if err := os.WriteFile(path, []byte(original), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
@@ -36,6 +37,7 @@ func TestApplyOpenClawThinkingStreamHotfixFile(t *testing.T) {
 		openClawThinkingStreamPatchValue1,
 		openClawThinkingStreamPatchValue2,
 		openClawThinkingStreamPatchValue3,
+		openClawFallbackRetryPromptPatchValue,
 	} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("patched file missing %q", want)
@@ -50,6 +52,7 @@ func TestApplyOpenClawThinkingStreamHotfixFile_Idempotent(t *testing.T) {
 		openClawThinkingStreamPatchValue1,
 		openClawThinkingStreamPatchValue2,
 		openClawThinkingStreamPatchValue3,
+		openClawFallbackRetryPromptPatchValue,
 	}, "\n")
 	if err := os.WriteFile(path, []byte(patched), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)

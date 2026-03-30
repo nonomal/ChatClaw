@@ -112,17 +112,50 @@ function persistStreamingSegments(
 
 function mergeOpenClawFetchedWithLocalOptimistic(fetched: Message[], current: Message[]) {
   const normalizeContent = (v: unknown) => String(v ?? '').trim()
-  const optimisticUsers = current.filter((msg) => msg.id < 0 && msg.role === MessageRole.USER)
-  if (optimisticUsers.length === 0) return fetched
+  const messageKey = (msg: Pick<Message, 'role' | 'content'>) =>
+    `${String(msg.role)}\u0000${normalizeContent(msg.content)}`
+  const remainingFetched = new Map<string, number>()
 
-  const unmatched = optimisticUsers.filter((msg) => {
-    return !fetched.some(
-      (fm) => fm.role === msg.role && normalizeContent(fm.content) === normalizeContent(msg.content)
-    )
-  })
+  for (const msg of fetched) {
+    const key = messageKey(msg)
+    remainingFetched.set(key, (remainingFetched.get(key) ?? 0) + 1)
+  }
 
-  if (unmatched.length === 0) return fetched
-  return [...unmatched, ...fetched]
+  const consumeFetchedMatch = (msg: Pick<Message, 'role' | 'content'>) => {
+    const key = messageKey(msg)
+    const count = remainingFetched.get(key) ?? 0
+    if (count <= 0) return false
+    if (count === 1) {
+      remainingFetched.delete(key)
+    } else {
+      remainingFetched.set(key, count - 1)
+    }
+    return true
+  }
+
+  let matchedFetchedBefore = 0
+  const insertions: Array<{ index: number; msg: Message }> = []
+
+  for (const msg of current) {
+    if (consumeFetchedMatch(msg)) {
+      matchedFetchedBefore += 1
+      continue
+    }
+    if (msg.id < 0 && msg.role === MessageRole.USER) {
+      insertions.push({ index: matchedFetchedBefore, msg })
+    }
+  }
+
+  if (insertions.length === 0) return fetched
+
+  const merged = [...fetched]
+  let offset = 0
+  for (const insertion of insertions) {
+    const insertAt = Math.min(insertion.index + offset, merged.length)
+    merged.splice(insertAt, 0, insertion.msg)
+    offset += 1
+  }
+  return merged
 }
 
 export const useChatStore = defineStore('chat', () => {

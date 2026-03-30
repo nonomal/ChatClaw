@@ -16,6 +16,9 @@ const (
 
 	openClawThinkingStreamPatchNeedle3 = `params.onReasoningStream({ text: formatted });`
 	openClawThinkingStreamPatchValue3  = `if (params.onReasoningStream) params.onReasoningStream({ text: formatted });`
+
+	openClawFallbackRetryPromptPatchNeedle = `return "Continue where you left off. The previous model attempt failed or timed out.";`
+	openClawFallbackRetryPromptPatchValue  = `return params.body;/* chatclaw-hotfix: preserve original prompt on fallback */`
 )
 
 // applyBundledRuntimeHotfixes patches known upstream OpenClaw runtime issues in
@@ -63,17 +66,30 @@ func applyOpenClawThinkingStreamHotfixFile(path string) (bool, error) {
 	content := string(raw)
 	updated := content
 
-	if !strings.Contains(updated, openClawThinkingStreamPatchValue1) &&
-		strings.Contains(updated, openClawThinkingStreamPatchNeedle1) {
-		updated = strings.ReplaceAll(updated, openClawThinkingStreamPatchNeedle1, openClawThinkingStreamPatchValue1)
-	}
-	if !strings.Contains(updated, openClawThinkingStreamPatchValue2) &&
-		strings.Contains(updated, openClawThinkingStreamPatchNeedle2) {
-		updated = strings.ReplaceAll(updated, openClawThinkingStreamPatchNeedle2, openClawThinkingStreamPatchValue2)
-	}
-	if !strings.Contains(updated, openClawThinkingStreamPatchValue3) &&
-		strings.Contains(updated, openClawThinkingStreamPatchNeedle3) {
-		updated = strings.ReplaceAll(updated, openClawThinkingStreamPatchNeedle3, openClawThinkingStreamPatchValue3)
+	for _, patch := range []struct {
+		needle string
+		value  string
+	}{
+		{
+			needle: openClawThinkingStreamPatchNeedle1,
+			value:  openClawThinkingStreamPatchValue1,
+		},
+		{
+			needle: openClawThinkingStreamPatchNeedle2,
+			value:  openClawThinkingStreamPatchValue2,
+		},
+		{
+			needle: openClawThinkingStreamPatchNeedle3,
+			value:  openClawThinkingStreamPatchValue3,
+		},
+		{
+			needle: openClawFallbackRetryPromptPatchNeedle,
+			value:  openClawFallbackRetryPromptPatchValue,
+		},
+	} {
+		if !strings.Contains(updated, patch.value) && strings.Contains(updated, patch.needle) {
+			updated = strings.ReplaceAll(updated, patch.needle, patch.value)
+		}
 	}
 
 	if updated == content {
