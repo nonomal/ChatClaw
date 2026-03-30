@@ -1,8 +1,5 @@
 import { formatUtcDateTime } from '@/composables/useDateTime'
-import {
-  buildTimeZoneDateTime,
-  toDateTimeInputValue,
-} from '@/pages/scheduled-tasks/expirationDate'
+import { buildTimeZoneDateTime, toDateTimeInputValue } from '@/pages/scheduled-tasks/expirationDate'
 import {
   CreateOpenClawCronJobInput,
   UpdateOpenClawCronJobInput,
@@ -282,16 +279,24 @@ export function formatDurationMs(ms?: number | null) {
   return `${(ms / 3600000).toFixed(1)}h`
 }
 
-export function describeOpenClawSchedule(job: Pick<OpenClawCronJob, 'schedule_kind' | 'cron_expr' | 'every_ms' | 'at_iso'>) {
+type TranslateFn = (key: string, fallback?: string, params?: Record<string, unknown>) => string
+
+export function describeOpenClawSchedule(
+  job: Pick<OpenClawCronJob, 'schedule_kind' | 'cron_expr' | 'every_ms' | 'at_iso'>,
+  t?: TranslateFn
+) {
   if (job.schedule_kind === 'every' && job.every_ms) {
-    return `${SCHEDULE_PREFIX_EVERY} ${formatEvery(job.every_ms)}`
+    const prefix =
+      t?.('openclawCron.schedule.everyPrefix', SCHEDULE_PREFIX_EVERY) || SCHEDULE_PREFIX_EVERY
+    return `${prefix} ${formatEvery(job.every_ms)}`
   }
   if (job.schedule_kind === 'at' && job.at_iso) {
-    return `${SCHEDULE_PREFIX_AT} ${job.at_iso}`
+    const prefix = t?.('openclawCron.schedule.atPrefix', SCHEDULE_PREFIX_AT) || SCHEDULE_PREFIX_AT
+    return `${prefix} ${job.at_iso}`
   }
   const parsedCustom = parseCronExprToCustom(job.cron_expr)
   if (parsedCustom) {
-    return describeCustomSchedule(parsedCustom)
+    return describeCustomSchedule(parsedCustom, t)
   }
   return job.cron_expr || '-'
 }
@@ -453,7 +458,10 @@ function parseCronExprToCustom(cronExpr?: string | null) {
   }
 
   if (dayOfMonth === '*' && dayOfWeek !== '*') {
-    const weekdays = dayOfWeek.split(',').map((item) => Number(item)).filter((item) => !Number.isNaN(item))
+    const weekdays = dayOfWeek
+      .split(',')
+      .map((item) => Number(item))
+      .filter((item) => !Number.isNaN(item))
     if (weekdays.length === 1) {
       return {
         customMode: 'weekly' as OpenClawCronCustomMode,
@@ -479,40 +487,58 @@ function parseCronExprToCustom(cronExpr?: string | null) {
   return null
 }
 
-function describeCustomSchedule(schedule: {
-  customMode: OpenClawCronCustomMode
-  customHour: number
-  customMinute: number
-  customWeekdays: number[]
-  customDayOfMonth: number
-}) {
+function describeCustomSchedule(
+  schedule: {
+    customMode: OpenClawCronCustomMode
+    customHour: number
+    customMinute: number
+    customWeekdays: number[]
+    customDayOfMonth: number
+  },
+  t?: TranslateFn
+) {
   const timeLabel = `${String(schedule.customHour).padStart(2, '0')}:${String(schedule.customMinute).padStart(2, '0')}`
   if (schedule.customMode === 'monthly') {
-    return `每月 ${schedule.customDayOfMonth} 号 ${timeLabel}`
+    return (
+      t?.('openclawCron.schedule.monthly', 'Every month day {day} {time}', {
+        day: schedule.customDayOfMonth,
+        time: timeLabel,
+      }) || `Every month day ${schedule.customDayOfMonth} ${timeLabel}`
+    )
   }
   if (schedule.customMode === 'weekly') {
-    return `每周 ${weekdayLabel(schedule.customWeekdays[0] ?? 1)} ${timeLabel}`
+    const weekday = weekdayLabel(schedule.customWeekdays[0] ?? 1, t)
+    return (
+      t?.('openclawCron.schedule.weekly', 'Every week {weekday} {time}', {
+        weekday,
+        time: timeLabel,
+      }) || `Every week ${weekday} ${timeLabel}`
+    )
   }
-  return `每天 ${timeLabel}`
+  return (
+    t?.('openclawCron.schedule.daily', 'Every day {time}', {
+      time: timeLabel,
+    }) || `Every day ${timeLabel}`
+  )
 }
 
-function weekdayLabel(value: number) {
+function weekdayLabel(value: number, t?: TranslateFn) {
   switch (value) {
     case 0:
-      return '周日'
+      return t?.('openclawCron.schedule.weekdays.sunday', 'Sunday') || 'Sunday'
     case 1:
-      return '周一'
+      return t?.('openclawCron.schedule.weekdays.monday', 'Monday') || 'Monday'
     case 2:
-      return '周二'
+      return t?.('openclawCron.schedule.weekdays.tuesday', 'Tuesday') || 'Tuesday'
     case 3:
-      return '周三'
+      return t?.('openclawCron.schedule.weekdays.wednesday', 'Wednesday') || 'Wednesday'
     case 4:
-      return '周四'
+      return t?.('openclawCron.schedule.weekdays.thursday', 'Thursday') || 'Thursday'
     case 5:
-      return '周五'
+      return t?.('openclawCron.schedule.weekdays.friday', 'Friday') || 'Friday'
     case 6:
-      return '周六'
+      return t?.('openclawCron.schedule.weekdays.saturday', 'Saturday') || 'Saturday'
     default:
-      return '周一'
+      return t?.('openclawCron.schedule.weekdays.monday', 'Monday') || 'Monday'
   }
 }

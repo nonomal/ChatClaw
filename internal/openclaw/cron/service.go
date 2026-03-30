@@ -372,21 +372,16 @@ func (s *OpenClawCronService) RunJobNow(jobID string) (*OpenClawCronRunNowResult
 		return nil, fmt.Errorf("openclaw cron id is required")
 	}
 
-	job, err := s.findJobByID(jobID)
-	if err != nil {
-		return nil, err
-	}
 	triggeredAt := time.Now()
 	var payload struct {
 		Enqueued bool   `json:"enqueued"`
 		Ran      bool   `json:"ran"`
 		RunID    string `json:"runId"`
 	}
-	err = s.gatewayRequest(openClawCronMethodRun, map[string]any{
+	if err := s.gatewayRequest(openClawCronMethodRun, map[string]any{
 		"id":   jobID,
 		"mode": openClawCronRunModeForce,
-	}, &payload)
-	if err != nil {
+	}, &payload); err != nil {
 		return nil, fmt.Errorf("openclaw cron run %s failed: %w", jobID, err)
 	}
 	result := &OpenClawCronRunNowResult{
@@ -394,20 +389,22 @@ func (s *OpenClawCronService) RunJobNow(jobID string) (*OpenClawCronRunNowResult
 		TriggerAtMs: triggeredAt.UnixMilli(),
 		Enqueued:    payload.Enqueued || payload.Ran,
 	}
-	if result.RunID == "" {
-		return result, nil
-	}
-
-	if fixedSessionKey := strings.TrimSpace(job.SessionKey); fixedSessionKey != "" {
-		conversationID, conversationAgentID, ensureErr := s.ensureConversationForSession(jobID, *job, fixedSessionKey, result.RunID, result.TriggerAtMs)
-		if ensureErr != nil {
-			s.app.Logger.Warn("[openclaw-cron] ensure fixed-session conversation failed", "job_id", jobID, "run_id", result.RunID, "error", ensureErr)
-		} else if conversationID > 0 {
-			s.emitConversationActivated(conversationAgentID, conversationID)
-		}
-		return result, nil
-	}
-
+	// 注释掉 Cron 立即运行后自动创建/激活 conversations 的入口。
+	// 当前定时任务结果只保留在历史记录页查看，不再回显到任务助手会话列表。
+	//
+	// if result.RunID == "" {
+	// 	return result, nil
+	// }
+	//
+	// if fixedSessionKey := strings.TrimSpace(job.SessionKey); fixedSessionKey != "" {
+	// 	conversationID, conversationAgentID, ensureErr := s.ensureConversationForSession(jobID, *job, fixedSessionKey, result.RunID, result.TriggerAtMs)
+	// 	if ensureErr != nil {
+	// 		s.app.Logger.Warn("[openclaw-cron] ensure fixed-session conversation failed", "job_id", jobID, "run_id", result.RunID, "error", ensureErr)
+	// 	} else if conversationID > 0 {
+	// 		s.emitConversationActivated(conversationAgentID, conversationID)
+	// 	}
+	// 	return result, nil
+	// }
 	return result, nil
 }
 
@@ -578,23 +575,28 @@ func (s *OpenClawCronService) StopRunStream(watchID string) {
 func (s *OpenClawCronService) OnGatewayReady() {
 	s.manager.RemoveEventListener(globalCronTrackerListenerKey)
 	s.manager.AddEventListener(globalCronTrackerListenerKey, func(event string, payload json.RawMessage) {
-		runID, sessionKey := extractGatewayRunContext(event, payload)
-		if runID == "" || sessionKey == "" {
-			return
-		}
-		conversationID := s.bindRunSession(runID, sessionKey)
-		if conversationID <= 0 || s.app == nil {
-			return
-		}
+		// 注释掉 Cron 网关事件自动绑定 conversations 并向助手页转发消息的入口。
+		// 当前定时任务执行结果仅用于历史记录，不再同步回 conversations。
+		_ = event
+		_ = payload
 
-		forwardState := s.ensureCronForwardState(sessionKey, runID, conversationID)
-		forwardedEvents := buildCronForwardEvents(conversationID, sessionKey, runID, forwardState, event, payload)
-		for _, item := range forwardedEvents {
-			s.app.Event.Emit(item.Name, item.Payload)
-		}
-		if forwardState.Finished {
-			s.clearCronForwardState(sessionKey)
-		}
+		// runID, sessionKey := extractGatewayRunContext(event, payload)
+		// if runID == "" || sessionKey == "" {
+		// 	return
+		// }
+		// conversationID := s.bindRunSession(runID, sessionKey)
+		// if conversationID <= 0 || s.app == nil {
+		// 	return
+		// }
+		//
+		// forwardState := s.ensureCronForwardState(sessionKey, runID, conversationID)
+		// forwardedEvents := buildCronForwardEvents(conversationID, sessionKey, runID, forwardState, event, payload)
+		// for _, item := range forwardedEvents {
+		// 	s.app.Event.Emit(item.Name, item.Payload)
+		// }
+		// if forwardState.Finished {
+		// 	s.clearCronForwardState(sessionKey)
+		// }
 	})
 }
 
