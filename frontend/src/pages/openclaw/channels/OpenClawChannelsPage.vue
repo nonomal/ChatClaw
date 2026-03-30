@@ -66,9 +66,14 @@ defineProps<{ tabId: string }>()
 const { t, te } = useI18n()
 const { toast: addToast } = useToast()
 
-/** OpenClaw: Feishu, WeCom, and DingTalk are available; other platforms show coming soon. */
+/** OpenClaw: Feishu, WeCom, DingTalk, and QQ are available; other platforms show coming soon. */
 function isChannelPlatformSelectable(platformId: string) {
-  return platformId === 'feishu' || platformId === 'wecom' || platformId === 'dingtalk'
+  return (
+    platformId === 'feishu' ||
+    platformId === 'wecom' ||
+    platformId === 'dingtalk' ||
+    platformId === 'qq'
+  )
 }
 
 const channels = ref<Channel[]>([])

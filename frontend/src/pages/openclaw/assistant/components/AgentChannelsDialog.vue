@@ -55,11 +55,6 @@ const open = defineModel<boolean>('open', { required: true })
 const { t, te } = useI18n()
 const { toast: addToast } = useToast()
 
-/** Platforms that support create/bind in UI (feishu + wecom + dingtalk). */
-function isChannelPlatformSelectable(platformId: string) {
-  return platformId === 'feishu' || platformId === 'wecom' || platformId === 'dingtalk'
-}
-
 const channels = ref<Channel[]>([])
 const platforms = ref<PlatformMeta[]>([])
 const agents = ref<OpenClawAgent[]>([])
