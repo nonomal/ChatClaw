@@ -110,6 +110,21 @@ function persistStreamingSegments(
   })
 }
 
+function mergeOpenClawFetchedWithLocalOptimistic(fetched: Message[], current: Message[]) {
+  const normalizeContent = (v: unknown) => String(v ?? '').trim()
+  const optimisticUsers = current.filter((msg) => msg.id < 0 && msg.role === MessageRole.USER)
+  if (optimisticUsers.length === 0) return fetched
+
+  const unmatched = optimisticUsers.filter((msg) => {
+    return !fetched.some(
+      (fm) => fm.role === msg.role && normalizeContent(fm.content) === normalizeContent(msg.content)
+    )
+  })
+
+  if (unmatched.length === 0) return fetched
+  return [...unmatched, ...fetched]
+}
+
 export const useChatStore = defineStore('chat', () => {
   // Messages by conversation ID
   const messagesByConversation = ref<Record<number, Message[]>>({})
@@ -177,7 +192,7 @@ export const useChatStore = defineStore('chat', () => {
           // from Gateway with the live streaming assistant placeholder.
           const streamRow = current.find((m) => m.id === streaming.messageId)
           if (streamRow) {
-            let merged = [...fetched]
+            let merged = mergeOpenClawFetchedWithLocalOptimistic(fetched, current)
             if (merged.length > 0 && merged[merged.length - 1].role === MessageRole.ASSISTANT) {
               merged = merged.slice(0, -1)
             }
@@ -188,11 +203,14 @@ export const useChatStore = defineStore('chat', () => {
           // Gateway empty (lag) — keep local state; streaming events manage assistant.
         } else if (fetched.length > 0) {
           // Not streaming: Gateway history is authoritative — replace entirely.
+          // Keep local optimistic user turns when Gateway only stored OpenClaw's
+          // internal retry prompt instead of the original outbound user message.
+          const merged = mergeOpenClawFetchedWithLocalOptimistic(fetched, current)
           // Clean up old segment data for messages that will be replaced.
           for (const msg of current) {
             delete segmentsByMessage.value[msg.id]
           }
-          messagesByConversation.value[conversationId] = fetched
+          messagesByConversation.value[conversationId] = merged
         } else if (fetched.length === 0 && current.length > 0) {
           // Gateway returned empty but we have local messages (e.g. optimistic
           // user message just sent). Keep them until Gateway catches up.
