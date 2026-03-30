@@ -68,6 +68,24 @@ export type MessageSegment =
   | { type: 'tools'; toolCalls: ToolCallInfo[] }
   | { type: 'retrieval'; items: RetrievalItemInfo[] }
 
+function appendLateThinkingTail(segments: MessageSegment[], chunk: string) {
+  for (let i = segments.length - 1; i >= 0; i -= 1) {
+    const seg = segments[i]
+    if (seg.type === 'thinking') {
+      const trailing = segments.slice(i + 1)
+      if (trailing.length > 0 && trailing.every((item) => item.type === 'content')) {
+        seg.content += chunk
+        return true
+      }
+      return false
+    }
+    if (seg.type !== 'content') {
+      return false
+    }
+  }
+  return false
+}
+
 // Streaming message state (for the currently generating message)
 export interface StreamingMessageState {
   messageId: number
@@ -1087,6 +1105,11 @@ export const useChatStore = defineStore('chat', () => {
         streaming.segments.push({ type: 'thinking', content: chunk })
       } else if (lastSeg && lastSeg.type === 'thinking') {
         lastSeg.content += chunk
+      } else if (appendLateThinkingTail(streaming.segments, chunk)) {
+        console.log('[chat-thinking] merged late thinking tail into previous block', {
+          totalSegments: streaming.segments.length,
+          thinkingContentLen: streaming.thinkingContent.length,
+        })
       } else {
         streaming.segments.push({ type: 'thinking', content: chunk })
       }
@@ -1290,8 +1313,6 @@ export const useChatStore = defineStore('chat', () => {
         setTimeout(() => {
           delete streamingByConversation.value[conversation_id]
           delete activeRequestByConversation.value[conversation_id]
-          // Re-fetch Gateway transcript (includes channel user turns); IDs differ from stream placeholder.
-          void loadMessages(conversation_id)
         }, 0)
       } else {
         // Clear streaming state first
@@ -1324,7 +1345,6 @@ export const useChatStore = defineStore('chat', () => {
         setTimeout(() => {
           delete streamingByConversation.value[conversation_id]
           delete activeRequestByConversation.value[conversation_id]
-          void loadMessages(conversation_id)
         }, 0)
       } else {
         // Clear streaming state first
@@ -1382,16 +1402,14 @@ export const useChatStore = defineStore('chat', () => {
         status: MessageStatus.ERROR,
       } as any)
 
-      // Persist streaming segments locally for non-OpenClaw; OpenClaw refreshes from Gateway below.
+      // Persist streaming segments locally so the final rendered message can keep
+      // the same interleaved thinking/content structure after streaming ends.
       persistStreamingSegments(segmentsByMessage.value, streaming.messageId, streaming.segments)
 
       // Clear streaming state after a tick to let the UI read from segments first
       setTimeout(() => {
         delete streamingByConversation.value[conversation_id]
         delete activeRequestByConversation.value[conversation_id]
-        if (openClawConversations.value.has(conversation_id)) {
-          void loadMessages(conversation_id)
-        }
       }, 0)
     }
   }

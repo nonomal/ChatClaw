@@ -1593,11 +1593,13 @@ type openClawChatRunState struct {
 	seq             int32
 	// Cumulative content already emitted, used to compute deltas from
 	// the cumulative message object in chat events.
-	emittedThinking string
-	emittedContent  string
-	seenToolCalls   map[string]bool
-	seenToolResults map[string]bool
-	thinkingMu      sync.Mutex
+	emittedThinking  string
+	emittedContent   string
+	seenToolCalls    map[string]bool
+	seenToolResults  map[string]bool
+	thinkingMu       sync.Mutex
+	rawBridgeMu      sync.RWMutex
+	rawThinkingFlush func()
 }
 
 func (st *openClawChatRunState) nextSeq() int {
@@ -1624,6 +1626,21 @@ func (st *openClawChatRunState) currentThinkingLen() int {
 	st.thinkingMu.Lock()
 	defer st.thinkingMu.Unlock()
 	return len(st.emittedThinking)
+}
+
+func (st *openClawChatRunState) setRawThinkingFlush(fn func()) {
+	st.rawBridgeMu.Lock()
+	defer st.rawBridgeMu.Unlock()
+	st.rawThinkingFlush = fn
+}
+
+func (st *openClawChatRunState) flushRawThinking() {
+	st.rawBridgeMu.RLock()
+	fn := st.rawThinkingFlush
+	st.rawBridgeMu.RUnlock()
+	if fn != nil {
+		fn()
+	}
 }
 
 func normalizeOpenClawReasoningText(text string) string {
@@ -1755,6 +1772,7 @@ func (s *ChatService) bridgeOpenClawRawThinkingStream(
 		"startOffset", startOffset)
 
 	go func() {
+		var drainMu sync.Mutex
 		offset := startOffset
 		pending := make([]openClawRawStreamRecord, 0, 64)
 
@@ -1851,20 +1869,29 @@ func (s *ChatService) bridgeOpenClawRawThinkingStream(
 			flushPending(runID)
 		}
 
-		drain()
-		ticker := time.NewTicker(120 * time.Millisecond)
+		lockedDrain := func() {
+			drainMu.Lock()
+			defer drainMu.Unlock()
+			drain()
+		}
+
+		st.setRawThinkingFlush(lockedDrain)
+		defer st.setRawThinkingFlush(nil)
+
+		lockedDrain()
+		ticker := time.NewTicker(40 * time.Millisecond)
 		defer ticker.Stop()
 
 		for {
 			select {
 			case <-ctx.Done():
-				drain()
+				lockedDrain()
 				return
 			case <-done:
-				drain()
+				lockedDrain()
 				return
 			case <-ticker.C:
-				drain()
+				lockedDrain()
 			}
 		}
 	}()
@@ -1924,6 +1951,11 @@ func (s *ChatService) handleOpenClawAgentEvent(
 		if json.Unmarshal(frame.Data, &d) != nil || d.Delta == "" {
 			return
 		}
+
+		// Raw thinking is bridged from a file-backed stream, so it can lag slightly
+		// behind the websocket assistant chunks. Flush pending reasoning first so
+		// the UI keeps the final thinking tail ahead of the answer body.
+		st.flushRawThinking()
 
 		st.contentBuilder.WriteString(d.Delta)
 		st.emittedContent = st.contentBuilder.String()
@@ -2022,6 +2054,7 @@ func (s *ChatService) handleOpenClawAgentEvent(
 			"conv", conversationID, "phase", d.Phase)
 		switch d.Phase {
 		case "end":
+			st.flushRawThinking()
 			st.finishReason = "stop"
 			select {
 			case <-done:
@@ -2029,6 +2062,7 @@ func (s *ChatService) handleOpenClawAgentEvent(
 				close(done)
 			}
 		case "error":
+			st.flushRawThinking()
 			emitError("error.chat_generation_failed", map[string]any{"Error": d.Error})
 			select {
 			case <-done:
