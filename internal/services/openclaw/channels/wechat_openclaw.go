@@ -13,18 +13,27 @@ import (
 
 	qrcode "github.com/skip2/go-qrcode"
 
+	"chatclaw/internal/define"
 	"chatclaw/internal/errs"
 	"chatclaw/internal/services/channels"
 )
 
 const (
-	wechatCLIPackage           = "@tencent-weixin/openclaw-weixin-cli"
-	wechatCLIPackageWithTag    = "@tencent-weixin/openclaw-weixin-cli@latest"
-	wechatPluginID             = "openclaw-weixin"
-	wechatPluginInstallTimeout = 5 * time.Minute
-	wechatLoginWaitTimeout     = 5 * time.Minute
-	wechatExtensionSubdir      = "extensions/openclaw-weixin"
+	wechatCLIPackage            = "@tencent-weixin/openclaw-weixin-cli"
+	wechatCLIPackageWithTag     = "@tencent-weixin/openclaw-weixin-cli@latest"
+	wechatPluginID              = "openclaw-weixin"
+	wechatPluginInstallTimeout  = 5 * time.Minute
+	wechatLoginWaitTimeout      = 5 * time.Minute
+	wechatExtensionSubdir       = "extensions/openclaw-weixin"
+	wechatNPXInstallMaxAttempts = 4
 )
+
+// WechatChannelPreparation is returned by PrepareWechatChannel for the Wails UI before opening the WeChat flow.
+type WechatChannelPreparation struct {
+	Ready          bool `json:"ready"`
+	Installing     bool `json:"installing"`
+	StartedInstall bool `json:"started_install"`
+}
 
 // isWechatPluginInstalledLocally checks whether the WeChat OpenClaw plugin directory exists.
 func (s *OpenClawChannelService) isWechatPluginInstalledLocally() bool {
@@ -129,6 +138,116 @@ func (s *OpenClawChannelService) upsertWechatChannelConfig(accountID, name strin
 	return saveOpenClawJSONConfig(configPath, cfg)
 }
 
+// purgeWechatChannelFromOpenClawJSON removes route bindings (match.channel = openclaw-weixin)
+// and the channels.openclaw-weixin.accounts entry for this channel in one write.
+func (s *OpenClawChannelService) purgeWechatChannelFromOpenClawJSON(m *channelModel) error {
+	cfg, configPath, err := loadOpenClawJSONConfig()
+	if err != nil {
+		return err
+	}
+
+	nativeID := strings.TrimSpace(extractWechatAccountID(m.ExtraConfig))
+	legacyID := openClawWechatAccountID(m.ID)
+
+	bindings := configBindings(cfg)
+	if nativeID != "" {
+		bindings = removeManagedBindings(bindings, wechatPluginID, nativeID)
+	}
+	bindings = removeManagedBindings(bindings, wechatPluginID, legacyID)
+	cfg["bindings"] = bindings
+
+	if nativeID != "" {
+		channelsMap, _ := cfg["channels"].(map[string]any)
+		if channelsMap != nil {
+			weixinSection, _ := channelsMap[wechatPluginID].(map[string]any)
+			if weixinSection != nil {
+				accounts, _ := weixinSection["accounts"].(map[string]any)
+				if accounts != nil {
+					delete(accounts, nativeID)
+					if len(accounts) == 0 {
+						delete(channelsMap, wechatPluginID)
+						if len(channelsMap) == 0 {
+							delete(cfg, "channels")
+						} else {
+							cfg["channels"] = channelsMap
+						}
+					} else {
+						weixinSection["accounts"] = accounts
+						channelsMap[wechatPluginID] = weixinSection
+						cfg["channels"] = channelsMap
+					}
+				}
+			}
+		}
+	}
+
+	return saveOpenClawJSONConfig(configPath, cfg)
+}
+
+// removeWechatCredentialFiles deletes plugin-local credential storage for the given account id
+// (openclaw-weixin/accounts/{id}.json and index entry in accounts.json).
+func (s *OpenClawChannelService) removeWechatCredentialFiles(accountID string) error {
+	accountID = strings.TrimSpace(accountID)
+	if accountID == "" || s.openclawManager == nil {
+		return nil
+	}
+	stateDir, err := s.openclawManager.BundleStateDir()
+	if err != nil {
+		return fmt.Errorf("bundle state dir: %w", err)
+	}
+	accountPath := filepath.Join(stateDir, "openclaw-weixin", "accounts", accountID+".json")
+	if err := os.Remove(accountPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove wechat account file: %w", err)
+	}
+
+	indexPath := filepath.Join(stateDir, "openclaw-weixin", "accounts.json")
+	raw, err := os.ReadFile(indexPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read wechat accounts index: %w", err)
+	}
+	var ids []string
+	if err := json.Unmarshal(raw, &ids); err != nil {
+		return fmt.Errorf("parse wechat accounts index: %w", err)
+	}
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if strings.TrimSpace(id) != accountID {
+			out = append(out, id)
+		}
+	}
+	if len(out) == len(ids) {
+		return nil
+	}
+	indexJSON, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal wechat accounts index: %w", err)
+	}
+	if err := os.WriteFile(indexPath, append(indexJSON, '\n'), 0o644); err != nil {
+		return fmt.Errorf("write wechat accounts index: %w", err)
+	}
+	return nil
+}
+
+// purgeWechatChannelOpenClawIntegration removes openclaw.json state, credential files, and restarts the gateway.
+func (s *OpenClawChannelService) purgeWechatChannelOpenClawIntegration(m *channelModel) error {
+	if err := s.purgeWechatChannelFromOpenClawJSON(m); err != nil {
+		return err
+	}
+	nativeID := strings.TrimSpace(extractWechatAccountID(m.ExtraConfig))
+	if err := s.removeWechatCredentialFiles(nativeID); err != nil {
+		s.app.Logger.Warn("openclaw: wechat credential file cleanup incomplete", "accountId", nativeID, "error", err)
+	}
+	if s.openclawManager != nil {
+		if err := s.restartOpenClawGateway(); err != nil {
+			return fmt.Errorf("restart gateway after wechat purge: %w", err)
+		}
+	}
+	return nil
+}
+
 // removeStaleWechatChannelConfigEntry removes the channels.openclaw-weixin entry from
 // openclaw.json only when it is in stale (legacy) format — i.e. no "accounts" key.
 // Returns true if the file was modified.
@@ -163,7 +282,6 @@ func (s *OpenClawChannelService) removeStaleWechatChannelConfigEntry() (bool, er
 	}
 	return true, os.WriteFile(configPath, append(updated, '\n'), 0o644)
 }
-
 
 // isWechatPluginEnabled reads the openclaw.json config file and returns whether the
 // wechat plugin's enabled flag is set to true.
@@ -201,6 +319,130 @@ func (s *OpenClawChannelService) IsWechatPluginEnabled() bool {
 	return s.isWechatPluginEnabled()
 }
 
+func (s *OpenClawChannelService) isWechatPluginReadyForUse() bool {
+	return s.isWechatPluginInstalledLocally() && s.isWechatPluginEnabled()
+}
+
+func isWechatInstallTransientFailure(msg string) bool {
+	m := strings.ToLower(msg)
+	return strings.Contains(m, "rate limit") || strings.Contains(m, "429") ||
+		strings.Contains(m, "timeout") || strings.Contains(m, "deadline") ||
+		strings.Contains(m, "econnrefused") || strings.Contains(m, "enotfound") ||
+		strings.Contains(m, "etimedout") || strings.Contains(m, "network") ||
+		strings.Contains(m, "temporary failure") || strings.Contains(m, "connection reset") ||
+		strings.Contains(m, "context canceled")
+}
+
+// installWechatPluginViaNPXWithRetry runs the official CLI installer via npx with backoff (network / registry flakiness).
+func (s *OpenClawChannelService) installWechatPluginViaNPXWithRetry(ctx context.Context) error {
+	if s.openclawManager == nil {
+		return fmt.Errorf("openclaw manager not available")
+	}
+	baseDelay := 3 * time.Second
+	var lastErr error
+	for attempt := 0; attempt < wechatNPXInstallMaxAttempts; attempt++ {
+		if attempt > 0 {
+			delay := baseDelay * time.Duration(1<<uint(attempt-1))
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(delay):
+			}
+		}
+		out, err := s.openclawManager.ExecNpx(ctx, "-y", wechatCLIPackageWithTag, "install")
+		if err == nil {
+			s.app.Logger.Info("openclaw: wechat plugin installed successfully")
+			return nil
+		}
+		lastErr = err
+		combined := string(out) + " " + err.Error()
+		outStr := strings.ToLower(combined)
+		if strings.Contains(outStr, "already installed") || strings.Contains(outStr, "plugin already exists") {
+			s.app.Logger.Info("openclaw: wechat plugin already installed (marker in output)")
+			return nil
+		}
+		if isWechatInstallTransientFailure(combined) {
+			s.app.Logger.Warn("openclaw: wechat npx install transient failure, retrying",
+				"attempt", attempt+1, "error", err)
+			continue
+		}
+		return fmt.Errorf("install wechat plugin: %w", err)
+	}
+	return fmt.Errorf("install wechat plugin after %d attempts: %w", wechatNPXInstallMaxAttempts, lastErr)
+}
+
+// ensureWechatPluginBackgroundInstallStarted starts a background install if none is running. Returns true if this call started it.
+func (s *OpenClawChannelService) ensureWechatPluginBackgroundInstallStarted() bool {
+	s.wechatPluginInstallMu.Lock()
+	defer s.wechatPluginInstallMu.Unlock()
+	if s.wechatPluginInstallRunning {
+		return false
+	}
+	s.wechatPluginInstallRunning = true
+	go s.runWechatPluginInstallWithRetry()
+	return true
+}
+
+func (s *OpenClawChannelService) runWechatPluginInstallWithRetry() {
+	defer func() {
+		s.wechatPluginInstallMu.Lock()
+		s.wechatPluginInstallRunning = false
+		s.wechatPluginInstallMu.Unlock()
+	}()
+
+	const maxAttempts = 4
+	baseDelay := 3 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), wechatPluginInstallTimeout)
+	defer cancel()
+
+	var lastErr error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		if attempt > 0 {
+			delay := baseDelay * time.Duration(1<<uint(attempt-1))
+			select {
+			case <-ctx.Done():
+				s.app.Logger.Warn("openclaw: wechat plugin background install aborted", "error", ctx.Err())
+				return
+			case <-time.After(delay):
+			}
+		}
+		if err := s.ensureOpenClawReady(); err != nil {
+			lastErr = err
+			s.app.Logger.Debug("openclaw: wechat plugin install waiting for openclaw", "error", err)
+			continue
+		}
+		if err := s.ensureWechatPluginInstalled(ctx); err != nil {
+			lastErr = err
+			if isWechatInstallTransientFailure(err.Error()) {
+				s.app.Logger.Warn("openclaw: wechat plugin full install retry", "attempt", attempt+1, "error", err)
+				continue
+			}
+			s.app.Logger.Warn("openclaw: wechat plugin background install failed", "error", err)
+			return
+		}
+		s.app.Logger.Info("openclaw: wechat plugin background install completed")
+		return
+	}
+	s.app.Logger.Warn("openclaw: wechat plugin background install exhausted retries", "error", lastErr)
+}
+
+// PrepareWechatChannel validates OpenClaw + WeChat plugin readiness for the add-channel flow.
+// When the plugin is missing or disabled, starts asynchronous installation/enabling with retries and returns installing=true.
+func (s *OpenClawChannelService) PrepareWechatChannel() (*WechatChannelPreparation, error) {
+	if err := s.ensureOpenClawReady(); err != nil {
+		return nil, err
+	}
+	if s.isWechatPluginReadyForUse() {
+		return &WechatChannelPreparation{Ready: true}, nil
+	}
+	started := s.ensureWechatPluginBackgroundInstallStarted()
+	return &WechatChannelPreparation{
+		Ready:          false,
+		Installing:     true,
+		StartedInstall: started,
+	}, nil
+}
+
 // ensureWechatPluginInstalled checks the WeChat plugin's installed and enabled states,
 // installs or enables it as needed, and restarts the gateway only when the state changed.
 func (s *OpenClawChannelService) ensureWechatPluginInstalled(ctx context.Context) error {
@@ -209,16 +451,8 @@ func (s *OpenClawChannelService) ensureWechatPluginInstalled(ctx context.Context
 	// Step 1: install if the plugin directory is absent.
 	if !s.isWechatPluginInstalledLocally() {
 		s.app.Logger.Info("openclaw: wechat plugin not found, installing", "package", wechatCLIPackage)
-		out, err := s.openclawManager.ExecNpx(ctx, "-y", wechatCLIPackageWithTag, "install")
-		if err != nil {
-			outStr := strings.ToLower(string(out))
-			if strings.Contains(outStr, "already installed") || strings.Contains(outStr, "plugin already exists") {
-				s.app.Logger.Info("openclaw: wechat plugin already installed (marker in output)")
-			} else {
-				return fmt.Errorf("install wechat plugin: %w", err)
-			}
-		} else {
-			s.app.Logger.Info("openclaw: wechat plugin installed successfully")
+		if err := s.installWechatPluginViaNPXWithRetry(ctx); err != nil {
+			return err
 		}
 		needsRestart = true
 	} else {
@@ -288,7 +522,7 @@ const (
 
 // ilinkQRCodeResponse is the JSON response from the ilinkai get_bot_qrcode endpoint.
 type ilinkQRCodeResponse struct {
-	QRCode          string `json:"qrcode"`
+	QRCode           string `json:"qrcode"`
 	QRCodeImgContent string `json:"qrcode_img_content"`
 }
 
@@ -323,6 +557,8 @@ type WechatLoginResult struct {
 	Connected bool   `json:"connected"`
 	AccountID string `json:"account_id"` // normalised weixin bot ID (e.g. "abc-im-bot")
 	Message   string `json:"message"`
+	// ChannelID is the local channels row id after a successful login (0 if create failed).
+	ChannelID int64 `json:"channel_id"`
 }
 
 // normalizeWeixinAccountID converts a raw weixin bot ID (e.g. "abc@im.bot") to a
@@ -341,11 +577,9 @@ func (s *OpenClawChannelService) GenerateWechatQRCode() (*WechatQRCodeResult, er
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), wechatPluginInstallTimeout)
-	defer cancel()
-
-	if err := s.ensureWechatPluginInstalled(ctx); err != nil {
-		return nil, errs.Wrap("error.channel_connect_failed", err)
+	if !s.isWechatPluginReadyForUse() {
+		_ = s.ensureWechatPluginBackgroundInstallStarted()
+		return nil, errs.New("error.wechat_plugin_not_ready")
 	}
 
 	qrResp, err := s.fetchWechatQRCodeDirect()
@@ -408,8 +642,8 @@ func (s *OpenClawChannelService) fetchWechatQRCodeDirect() (*ilinkQRCodeResponse
 // the QR code. On success:
 //  1. Credentials are persisted to the plugin's file storage.
 //  2. A local channel record is created.
-//  3. A default agent is automatically created and bound to the channel.
-//  4. A routing binding is written to openclaw.json.
+//  3. The default OpenClaw "main" assistant is bound (no new assistant is created).
+//  4. Routing + channel config are written to openclaw.json.
 //  5. The gateway is restarted once to load credentials + binding.
 //
 // This is a Wails-exposed method called by the frontend.
@@ -461,55 +695,44 @@ func (s *OpenClawChannelService) WaitForWechatLogin(sessionKey string, channelNa
 	} else if ch != nil {
 		s.app.Logger.Info("openclaw: wechat channel record created", "channel_id", ch.ID, "accountId", lr.AccountID)
 
-		// Step 3: Auto-bind a default agent so the channel routes messages immediately.
-		agentID, agentErr := s.EnsureAgentForChannel(ch.ID)
-		if agentErr != nil {
-			s.app.Logger.Warn("openclaw: failed to ensure agent for wechat channel", "channel_id", ch.ID, "error", agentErr)
+		// Step 3: Bind the default OpenClaw "main" assistant (no per-channel agent creation).
+		if err := s.agentsSvc.EnsureMainAgent(); err != nil {
+			s.app.Logger.Warn("openclaw: failed to ensure main agent before wechat bind", "channel_id", ch.ID, "error", err)
+		}
+		mainLocalID, _ := s.agentsSvc.ResolveLocalIDByOpenClawAgentID(define.OpenClawMainAgentID)
+		var agentID int64
+		if mainLocalID > 0 {
+			if bindErr := s.channelSvc.BindAgent(ch.ID, mainLocalID); bindErr != nil {
+				s.app.Logger.Warn("openclaw: failed to bind main agent to wechat channel", "channel_id", ch.ID, "error", bindErr)
+			} else {
+				agentID = mainLocalID
+				s.app.Logger.Info("openclaw: wechat channel bound to main assistant", "channel_id", ch.ID, "agentId", agentID)
+			}
 		} else {
-			s.app.Logger.Info("openclaw: wechat channel agent bound", "channel_id", ch.ID, "agentId", agentID)
+			s.app.Logger.Warn("openclaw: main assistant local id not found; wechat channel left unbound", "channel_id", ch.ID)
+		}
 
-			// Step 4: Write agent entry + routing binding atomically in one openclaw.json
-			// write. Writing them separately would trigger two gateway auto-restarts, causing
-			// the agents.create RPC goroutine to fail on a closed connection. By combining
-			// both into one write, the gateway restarts exactly once and finds both the agent
-			// and the binding already present in the config.
+		if agentID > 0 {
 			bindCtx, bindCancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer bindCancel()
-			openclawAgentID := s.lookupOpenClawAgentID(bindCtx, agentID)
-			if openclawAgentID != "" {
-				// Remove any stale legacy binding (channel_{id}) first (separate write is ok
-				// here since gateway debounces restarts; alternatively skip if no stale binding).
-				_ = s.removeManagedRouteBinding(wechatPluginID, openClawWechatAccountID(ch.ID))
-
-				agentName := strings.TrimSpace(name)
-				if agentName == "" {
-					agentName = openclawAgentID
-				}
-				if bindErr := s.upsertManagedAgentAndBinding(openclawAgentID, agentName, wechatPluginID, lr.AccountID); bindErr != nil {
-					s.app.Logger.Warn("openclaw: failed to write wechat agent+binding", "error", bindErr)
-				} else {
-					s.app.Logger.Info("openclaw: wechat agent+binding written",
-						"accountId", lr.AccountID, "openclawAgentId", openclawAgentID)
-				}
-
-				// Write channels.openclaw-weixin entry so the gateway recognises
-				// the plugin as a configured channel and calls startAccount on
-				// the next restart (mirrors what triggerWeixinChannelReload does
-				// inside the plugin's own QR login flow).
-				if cfgErr := s.upsertWechatChannelConfig(lr.AccountID, agentName); cfgErr != nil {
-					s.app.Logger.Warn("openclaw: failed to write wechat channel config", "error", cfgErr)
-				} else {
-					s.app.Logger.Info("openclaw: wechat channel config written", "accountId", lr.AccountID)
-				}
+			mFetch, mErr := s.getChannelModel(bindCtx, ch.ID)
+			if mErr != nil {
+				s.app.Logger.Warn("openclaw: failed to load wechat channel model for routing", "channel_id", ch.ID, "error", mErr)
+			} else if err := s.applyWechatOpenClawRouting(bindCtx, ch.ID, agentID, mFetch, false); err != nil {
+				s.app.Logger.Warn("openclaw: failed to apply wechat openclaw routing after login", "channel_id", ch.ID, "error", err)
 			}
 		}
+	}
+
+	if ch != nil {
+		result.ChannelID = ch.ID
 	}
 
 	// Step 5: Restart gateway once — loads credentials AND the new binding together.
 	if err := s.restartOpenClawGateway(); err != nil {
 		s.app.Logger.Warn("openclaw: gateway restart after wechat login failed", "error", err)
 	} else {
-		time.Sleep(3 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 
 	// Step 6: Mark channel online.
@@ -657,6 +880,58 @@ func (s *OpenClawChannelService) saveWechatCredentials(lr *weixinDirectLoginResu
 	return nil
 }
 
+// applyWechatOpenClawRouting writes WeChat route binding + channels.openclaw-weixin entry to openclaw.json.
+// If restartGateway is true, restarts the gateway so the plugin picks up changes.
+func (s *OpenClawChannelService) applyWechatOpenClawRouting(
+	ctx context.Context,
+	channelID int64,
+	agentID int64,
+	m *channelModel,
+	restartGateway bool,
+) error {
+	accountID := extractWechatAccountID(m.ExtraConfig)
+	legacyID := openClawWechatAccountID(channelID)
+	if accountID == "" {
+		accountID = legacyID
+	}
+
+	openclawAgentID := s.lookupOpenClawAgentID(ctx, agentID)
+	if openclawAgentID == "" {
+		return nil
+	}
+
+	if accountID != legacyID {
+		if err := s.removeManagedRouteBinding(wechatPluginID, legacyID); err != nil {
+			s.app.Logger.Warn("openclaw: failed to remove stale wechat legacy binding",
+				"channelId", channelID, "legacyId", legacyID, "error", err)
+		}
+	}
+
+	agentName := openclawAgentID
+	if agent, agErr := s.agentsSvc.GetAgent(agentID); agErr == nil && agent != nil {
+		if n := strings.TrimSpace(agent.Name); n != "" {
+			agentName = n
+		}
+	}
+
+	if err := s.upsertManagedAgentAndBinding(openclawAgentID, agentName, wechatPluginID, accountID); err != nil {
+		s.app.Logger.Warn("openclaw: failed to write wechat agent+binding", "channelId", channelID, "error", err)
+	}
+
+	if cfgErr := s.upsertWechatChannelConfig(accountID, agentName); cfgErr != nil {
+		s.app.Logger.Warn("openclaw: failed to write wechat channel config", "channelId", channelID, "error", cfgErr)
+	} else {
+		s.app.Logger.Info("openclaw: wechat channel config written", "channelId", channelID, "accountId", accountID)
+	}
+
+	if restartGateway {
+		if err := s.restartOpenClawGateway(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // connectWechatViaPlugin enables the WeChat channel in OpenClaw config and marks it online.
 func (s *OpenClawChannelService) connectWechatViaPlugin(id int64, m *channelModel) error {
 	if m.AgentID == 0 {
@@ -666,63 +941,73 @@ func (s *OpenClawChannelService) connectWechatViaPlugin(id int64, m *channelMode
 	ctx, cancel := context.WithTimeout(context.Background(), openClawChannelSyncTimeout)
 	defer cancel()
 
-	if err := s.ensureWechatPluginInstalled(ctx); err != nil {
+	if !s.isWechatPluginReadyForUse() {
+		_ = s.ensureWechatPluginBackgroundInstallStarted()
+		return errs.New("error.wechat_plugin_not_ready")
+	}
+
+	if err := s.applyWechatOpenClawRouting(ctx, id, m.AgentID, m, true); err != nil {
 		return errs.Wrap("error.channel_connect_failed", err)
-	}
-
-	// Use the plugin-native weixin account ID (ilink_bot_id stored in extra_config.account_id).
-	// Fall back to the legacy "channel_{id}" key only for channels created before this field existed.
-	accountID := extractWechatAccountID(m.ExtraConfig)
-	legacyID := openClawWechatAccountID(id)
-	if accountID == "" {
-		accountID = legacyID
-	}
-
-	openclawAgentID := s.lookupOpenClawAgentID(ctx, m.AgentID)
-	if openclawAgentID != "" {
-		// Remove any stale binding that used the legacy "channel_{id}" key so there
-		// is no duplicate routing entry with an ID that the plugin will never emit.
-		if accountID != legacyID {
-			if err := s.removeManagedRouteBinding(wechatPluginID, legacyID); err != nil {
-				s.app.Logger.Warn("openclaw: failed to remove stale wechat legacy binding",
-					"channelId", id, "legacyId", legacyID, "error", err)
-			}
-		}
-
-		// Resolve agent name for the config entry (fall back to openclawAgentID if unavailable).
-		agentName := openclawAgentID
-		if agent, agErr := s.agentsSvc.GetAgent(m.AgentID); agErr == nil && agent != nil {
-			if n := strings.TrimSpace(agent.Name); n != "" {
-				agentName = n
-			}
-		}
-		// Write agent + binding in one atomic openclaw.json update to avoid the race where
-		// each individual write triggers a gateway restart, causing agents.create RPC to fail.
-		if err := s.upsertManagedAgentAndBinding(openclawAgentID, agentName, wechatPluginID, accountID); err != nil {
-			s.app.Logger.Warn("openclaw: failed to write wechat agent+binding", "channelId", id, "error", err)
-		}
-
-		// Ensure channels.openclaw-weixin entry exists so the gateway recognises
-		// the plugin as a configured channel and calls startAccount on restart.
-		if cfgErr := s.upsertWechatChannelConfig(accountID, agentName); cfgErr != nil {
-			s.app.Logger.Warn("openclaw: failed to write wechat channel config on reconnect", "channelId", id, "error", cfgErr)
-		} else {
-			s.app.Logger.Info("openclaw: wechat channel config written on reconnect", "channelId", id, "accountId", accountID)
-		}
-
-		if err := s.restartOpenClawGateway(); err != nil {
-			return errs.Wrap("error.channel_connect_failed", err)
-		}
 	}
 
 	return s.setChannelOnlineStatus(ctx, id, true)
 }
 
-// disconnectWechatViaPlugin marks the WeChat channel offline.
-func (s *OpenClawChannelService) disconnectWechatViaPlugin(id int64) error {
-	ctx, cancel := context.WithTimeout(context.Background(), openClawChannelSyncTimeout)
-	defer cancel()
-	return s.setChannelOnlineStatus(ctx, id, false)
+// disableWechatChannelInOpenClaw sets the plugin account to disabled, removes route bindings for this
+// channel, persists openclaw.json, and restarts the gateway so the plugin stops receiving/sending.
+func (s *OpenClawChannelService) disableWechatChannelInOpenClaw(m *channelModel) error {
+	cfg, configPath, err := loadOpenClawJSONConfig()
+	if err != nil {
+		return err
+	}
+
+	nativeID := strings.TrimSpace(extractWechatAccountID(m.ExtraConfig))
+	legacyID := openClawWechatAccountID(m.ID)
+
+	bindings := configBindings(cfg)
+	if nativeID != "" {
+		bindings = removeManagedBindings(bindings, wechatPluginID, nativeID)
+	}
+	bindings = removeManagedBindings(bindings, wechatPluginID, legacyID)
+	cfg["bindings"] = bindings
+
+	if nativeID != "" {
+		channelsMap, _ := cfg["channels"].(map[string]any)
+		if channelsMap != nil {
+			weixinSection, _ := channelsMap[wechatPluginID].(map[string]any)
+			if weixinSection != nil {
+				accounts, _ := weixinSection["accounts"].(map[string]any)
+				if accounts != nil {
+					if entry, ok := accounts[nativeID].(map[string]any); ok && entry != nil {
+						entry["enabled"] = false
+						accounts[nativeID] = entry
+						weixinSection["accounts"] = accounts
+						channelsMap[wechatPluginID] = weixinSection
+						cfg["channels"] = channelsMap
+					}
+				}
+			}
+		}
+	}
+
+	if err := saveOpenClawJSONConfig(configPath, cfg); err != nil {
+		return err
+	}
+	if s.openclawManager != nil {
+		if err := s.restartOpenClawGateway(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// disconnectWechatViaPlugin disables the account in OpenClaw config (and routing) then marks DB offline.
+func (s *OpenClawChannelService) disconnectWechatViaPlugin(ctx context.Context, m *channelModel) error {
+	if err := s.disableWechatChannelInOpenClaw(m); err != nil {
+		s.app.Logger.Warn("openclaw: failed to disable wechat in openclaw config", "channel_id", m.ID, "error", err)
+		return errs.Wrap("error.channel_disconnect_failed", err)
+	}
+	return s.setChannelOnlineStatus(ctx, m.ID, false)
 }
 
 func (s *OpenClawChannelService) countEnabledWechatChannels(ctx context.Context, excludeID int64) int {
@@ -747,5 +1032,3 @@ func (s *OpenClawChannelService) countEnabledWechatChannels(ctx context.Context,
 func openClawWechatAccountID(channelID int64) string {
 	return fmt.Sprintf("channel_%d", channelID)
 }
-
-

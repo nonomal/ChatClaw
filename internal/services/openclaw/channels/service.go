@@ -9,15 +9,16 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"chatclaw/internal/define"
 	"chatclaw/internal/errs"
-	"chatclaw/internal/services/i18n"
 	openclawagents "chatclaw/internal/openclaw/agents"
 	openclawruntime "chatclaw/internal/openclaw/runtime"
 	"chatclaw/internal/services/channels"
 	"chatclaw/internal/services/conversations"
+	"chatclaw/internal/services/i18n"
 	"chatclaw/internal/sqlite"
 
 	"github.com/uptrace/bun"
@@ -33,6 +34,9 @@ type OpenClawChannelService struct {
 	channelSvc      *channels.ChannelService
 	convSvc         *conversations.ConversationsService
 	openclawManager *openclawruntime.Manager
+
+	wechatPluginInstallMu      sync.Mutex
+	wechatPluginInstallRunning bool
 }
 
 const wecomPluginPackage = "@wecom/wecom-openclaw-plugin"
@@ -319,18 +323,24 @@ func (s *OpenClawChannelService) DeleteChannel(id int64) error {
 	if platform == "" {
 		platform = channels.PlatformFeishu
 	}
-	if err := s.ensureOpenClawReady(); err != nil {
-		return err
-	}
-	if platform == channels.PlatformDingTalk {
-		if err := s.removeOpenClawDingTalkAccount(ctx, accountKey); err != nil {
-			s.app.Logger.Warn("openclaw config unset dingtalk account failed, proceeding with local delete", "account", accountKey, "error", err)
+
+	if platform == channels.PlatformWechat {
+		// Remove openclaw.json bindings + channels.openclaw-weixin.accounts, plugin credential files, restart gateway.
+		// Do not require ensureOpenClawReady (file-based cleanup, same rationale as BindAgent for WeChat).
+		if err := s.purgeWechatChannelOpenClawIntegration(m); err != nil {
+			s.app.Logger.Warn("openclaw: wechat purge failed before DB delete", "channel_id", id, "error", err)
 		}
-	} else if platform == channels.PlatformWechat {
-		// WeChat sessions are managed by the plugin internally; no config entry to unset.
-		// Route bindings are cleaned up below after deletion.
-	} else if err := s.removeOpenClawChannelConfig(ctx, platform, accountKey); err != nil {
-		s.app.Logger.Warn("openclaw config unset channel failed, proceeding with local delete", "platform", platform, "account", accountKey, "error", err)
+	} else {
+		if err := s.ensureOpenClawReady(); err != nil {
+			return err
+		}
+		if platform == channels.PlatformDingTalk {
+			if err := s.removeOpenClawDingTalkAccount(ctx, accountKey); err != nil {
+				s.app.Logger.Warn("openclaw config unset dingtalk account failed, proceeding with local delete", "account", accountKey, "error", err)
+			}
+		} else if err := s.removeOpenClawChannelConfig(ctx, platform, accountKey); err != nil {
+			s.app.Logger.Warn("openclaw config unset channel failed, proceeding with local delete", "platform", platform, "account", accountKey, "error", err)
+		}
 	}
 
 	if err := s.channelSvc.DeleteChannel(id); err != nil {
@@ -345,16 +355,6 @@ func (s *OpenClawChannelService) DeleteChannel(id int64) error {
 	}
 
 	if platform == channels.PlatformWechat {
-		// Remove the plugin-native binding (ilink_bot_id) and the legacy channel_{id} binding.
-		if nativeID := extractWechatAccountID(m.ExtraConfig); nativeID != "" {
-			if err := s.removeManagedRouteBinding(channels.PlatformWechat, nativeID); err != nil {
-				s.app.Logger.Warn("openclaw wechat native binding cleanup failed after delete", "channel_id", id, "error", err)
-			}
-		}
-		legacyID := openClawWechatAccountID(id)
-		if err := s.removeManagedRouteBinding(channels.PlatformWechat, legacyID); err != nil {
-			s.app.Logger.Warn("openclaw wechat legacy binding cleanup failed after delete", "channel_id", id, "error", err)
-		}
 		return nil
 	}
 
@@ -375,16 +375,25 @@ func (s *OpenClawChannelService) BindAgent(id int64, agentID int64) error {
 	if err := s.channelSvc.BindAgent(id, agentID); err != nil {
 		return err
 	}
-	if err := s.ensureOpenClawReady(); err == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		m, err := s.getChannelModel(ctx, id)
-		if err == nil && m.Platform == channels.PlatformDingTalk && m.Enabled && s.isDingTalkPluginInstalledLocally() {
-			accountKey := openClawChannelAccountKey(id, m.ExtraConfig)
-			openclawAgentID := s.lookupOpenClawAgentID(ctx, agentID)
-			if openclawAgentID != "" {
-				if err := s.setOpenClawDingTalkAccount(ctx, accountKey, m.Name, m.ExtraConfig, openclawAgentID, true); err != nil {
-					s.app.Logger.Warn("openclaw: failed to sync agentId after BindAgent for dingtalk", "channelId", id, "error", err)
+	ctx, cancel := context.WithTimeout(context.Background(), openClawChannelSyncTimeout)
+	defer cancel()
+	m, mErr := s.getChannelModel(ctx, id)
+	if mErr == nil {
+		// WeChat routing is written to openclaw.json + gateway restart. Do not gate on
+		// ensureOpenClawReady (IsReady): otherwise DB agent_id updates while bindings still
+		// point at the previous assistant (e.g. main) until the user reconnects.
+		if m.Platform == channels.PlatformWechat && m.OpenClawScope {
+			if syncErr := s.applyWechatOpenClawRouting(ctx, id, agentID, m, true); syncErr != nil {
+				return errs.Wrap("error.channel_bind_failed", syncErr)
+			}
+		} else if err := s.ensureOpenClawReady(); err == nil {
+			if m.Platform == channels.PlatformDingTalk && m.Enabled && s.isDingTalkPluginInstalledLocally() {
+				accountKey := openClawChannelAccountKey(id, m.ExtraConfig)
+				openclawAgentID := s.lookupOpenClawAgentID(ctx, agentID)
+				if openclawAgentID != "" {
+					if err := s.setOpenClawDingTalkAccount(ctx, accountKey, m.Name, m.ExtraConfig, openclawAgentID, true); err != nil {
+						s.app.Logger.Warn("openclaw: failed to sync agentId after BindAgent for dingtalk", "channelId", id, "error", err)
+					}
 				}
 			}
 		}
@@ -479,13 +488,19 @@ func (s *OpenClawChannelService) DisconnectChannel(id int64) error {
 	if id <= 0 {
 		return errs.New("error.channel_id_required")
 	}
-	if err := s.ensureOpenClawReady(); err != nil {
-		return err
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), openClawChannelSyncTimeout)
 	defer cancel()
 	m, err := s.getChannelModel(ctx, id)
 	if err != nil {
+		return err
+	}
+
+	// WeChat: update openclaw.json + restart without requiring gateway IsReady (file-based).
+	if m.Platform == channels.PlatformWechat {
+		return s.disconnectWechatViaPlugin(ctx, m)
+	}
+
+	if err := s.ensureOpenClawReady(); err != nil {
 		return err
 	}
 
@@ -499,10 +514,6 @@ func (s *OpenClawChannelService) DisconnectChannel(id int64) error {
 			s.app.Logger.Warn("openclaw dingtalk config disable failed, proceeding with local disconnect", "error", err)
 		}
 		return s.setChannelOnlineStatus(ctx, id, false)
-	}
-
-	if m.Platform == channels.PlatformWechat {
-		return s.disconnectWechatViaPlugin(id)
 	}
 
 	accountKey := openClawChannelAccountKey(id, m.ExtraConfig)

@@ -1923,6 +1923,7 @@ export default {
     bindSuccess: "Assistant bound successfully",
     card: {
       appId: "App ID",
+      applicationId: "Application ID",
       bind: "Bind",
       switchBind: "Switch binding",
       unbind: "Unbind",
@@ -1987,6 +1988,18 @@ export default {
       waitingForScan: "Waiting for scan…",
       refresh: "Refresh",
       loginSuccess: "WeChat connected successfully!",
+      assistantPromptTitle: "Link an assistant",
+      useMainAssistant: "Done (keep main assistant)",
+      bindExistingAssistant: "Bind an existing assistant",
+      createAssistantManually: "Create a new assistant",
+      missingChannelId: "Channel info missing. Close and refresh the channel list, then try again.",
+      channelNotFound: "Channel not found. Refresh and try again.",
+      pluginInstallTryLater:
+        "The official WeChat plugin is installing or starting in the background. Please try again in a moment.",
+      editNotSupported:
+        "WeChat is linked via QR code and cannot be edited here. To change accounts, delete the channel on the Channels page and add it again by scanning.",
+      createAssistantHint: "新建助手时需手动填写名称等信息；创建成功后将自动绑定并刷新连接。",
+      missingChannelIdHint: "未获取到频道 ID，请关闭此窗口后在频道列表中手动绑定助手。",
     },
   },
   scheduledTasks: {

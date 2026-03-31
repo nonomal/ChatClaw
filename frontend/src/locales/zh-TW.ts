@@ -416,6 +416,7 @@ export default {
       switchBind: "切换绑定",
       unbind: "解绑",
       unbound: "未绑定",
+      applicationId: "应用 ID",
     },
     comingSoon: "即将上线",
     config: {
@@ -586,6 +587,19 @@ export default {
       step3: "点击生成二维码，ClawX 会在 OpenClaw 中安装并启用官方微信插件",
       step4: "使用微信扫描下方二维码，并在手机上确认连接",
       step5: "连接成功后，微信里会自动出现新的「微信 ClawBot」对话，之后可再次通过扫码流程添加更多微信账号，或重新连接已有账号",
+      assistantPromptTitle: "关联助手",
+      bindExistingAssistant: "绑定已有助手",
+      channelNotFound: "未找到对应频道，请刷新后重试。",
+      pluginInstallTryLater: "官方微信外掛正在背景安裝或啟用，請稍後再試。",
+      editNotSupported:
+        "微信以掃碼連線，無法在此編輯。若要更換帳號，請於頻道頁刪除該頻道後重新掃碼新增。",
+      createAssistantHint: "新建助手时需手动填写名称等信息；创建成功后将自动绑定并刷新连接。",
+      createAssistantManually: "新建助手",
+      loginSuccess: "微信连接成功！",
+      missingChannelId: "未获取到频道信息，请关闭后刷新频道列表再试。",
+      missingChannelIdHint: "未获取到频道 ID，请关闭此窗口后在频道列表中手动绑定助手。",
+      useMainAssistant: "完成（使用主助手）",
+      waitingForScan: "等待扫码中…",
     },
   },
   common: {

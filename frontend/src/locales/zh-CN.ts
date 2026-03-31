@@ -1548,6 +1548,7 @@ export default {
     bindSuccess: '绑定助手成功',
     card: {
       appId: 'Appid',
+      applicationId: '应用 ID',
       bind: '绑定',
       switchBind: '切换绑定',
       unbind: '解绑',
@@ -1612,6 +1613,19 @@ export default {
       waitingForScan: '等待扫码中…',
       refresh: '刷新',
       loginSuccess: '微信连接成功！',
+      assistantPromptTitle: '关联助手',
+      assistantPromptDesc:
+        '当前已默认关联主助手（main），消息会由主助手处理。若需要使用其他助手，可绑定已有助手，或新建助手并自动绑定到此微信频道。',
+      useMainAssistant: '完成（使用主助手）',
+      bindExistingAssistant: '绑定已有助手',
+      createAssistantManually: '新建助手',
+      createAssistantHint: '新建助手时需手动填写名称等信息；创建成功后将自动绑定并刷新连接。',
+      missingChannelId: '未获取到频道信息，请关闭后刷新频道列表再试。',
+      missingChannelIdHint: '未获取到频道 ID，请关闭此窗口后在频道列表中手动绑定助手。',
+      channelNotFound: '未找到对应频道，请刷新后重试。',
+      pluginInstallTryLater: "官方微信插件正在后台安装或启用，请稍后再试。",
+      editNotSupported:
+        "微信通过扫码连接，不支持在此处编辑。如需更换账号，请在频道页删除该频道后重新扫码添加。",
     },
   },
   scheduledTasks: {

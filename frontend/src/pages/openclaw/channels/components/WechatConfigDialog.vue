@@ -1,8 +1,7 @@
-
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { LoaderCircle, RefreshCw, QrCode, CheckCircle } from 'lucide-vue-next'
+import { LoaderCircle, RefreshCw, QrCode } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -16,18 +15,29 @@ import { OpenClawChannelService } from '@bindings/chatclaw/internal/services/ope
 import { openExternalLink } from '@/pages/common/platformDocs'
 
 const open = defineModel<boolean>('open', { required: true })
-const emit = defineEmits<{ connected: [] }>()
+const emit = defineEmits<{
+  connected: [channelId: number]
+}>()
 
 const { t } = useI18n()
 
-type Step = 'initial' | 'generating' | 'qrcode' | 'success'
+type Step = 'initial' | 'generating' | 'qrcode'
 
 const step = ref<Step>('initial')
 const qrcodeDataUrl = ref('')
 const sessionKey = ref('')
 const refreshing = ref(false)
 const isPolling = ref(false)
-const successMessage = ref('')
+
+function wechatResultChannelId(result: unknown): number {
+  if (!result || typeof result !== 'object') return 0
+  const r = result as { channel_id?: number; channelId?: number }
+  const a = r.channel_id
+  const b = r.channelId
+  if (typeof a === 'number' && a > 0) return a
+  if (typeof b === 'number' && b > 0) return b
+  return 0
+}
 
 watch(open, (val) => {
   if (!val) {
@@ -36,7 +46,6 @@ watch(open, (val) => {
     sessionKey.value = ''
     refreshing.value = false
     isPolling.value = false
-    successMessage.value = ''
   }
 })
 
@@ -48,7 +57,6 @@ async function handleGenerateQRCode() {
     qrcodeDataUrl.value = result.qrcode_data_url
     sessionKey.value = result.session_key
     step.value = 'qrcode'
-    // Start waiting for scan in background
     void startWaitingForScan(result.session_key)
   } catch (error) {
     toast.error(getErrorMessage(error))
@@ -63,11 +71,10 @@ async function startWaitingForScan(key: string) {
     const result = await OpenClawChannelService.WaitForWechatLogin(key, '')
     if (!result) return
     if (result.connected) {
-      successMessage.value = result.message || t('channels.wechat.loginSuccess')
-      step.value = 'success'
-      emit('connected')
+      const cid = wechatResultChannelId(result)
+      emit('connected', cid)
+      open.value = false
     }
-    // If not connected (timeout/cancelled), stay on qrcode step to allow refresh
   } catch {
     // On error or timeout, stay on qrcode step
   } finally {
@@ -113,7 +120,6 @@ function openConfigSteps() {
 
       <!-- Initial / Generating Step -->
       <div v-if="step === 'initial' || step === 'generating'" class="px-6 pb-6 space-y-5">
-        <!-- Instructions Box -->
         <div
           class="rounded-lg bg-muted/50 border border-border p-4 space-y-1.5 text-sm text-foreground"
         >
@@ -132,7 +138,6 @@ function openConfigSteps() {
           <p>{{ t('channels.wechat.step5') }}</p>
         </div>
 
-        <!-- Actions -->
         <div class="flex justify-end">
           <Button
             class="h-10 gap-2 bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
@@ -154,10 +159,9 @@ function openConfigSteps() {
       <div v-else-if="step === 'qrcode'" class="px-6 pb-6 space-y-5">
         <p class="text-sm text-muted-foreground">{{ t('channels.wechat.scanHint') }}</p>
 
-        <!-- QR Code Image — always clearly visible, no overlay -->
         <div class="flex justify-center">
           <div
-            class="flex h-[220px] w-[220px] items-center justify-center overflow-hidden rounded-xl border border-border bg-white shadow-sm"
+            class="flex h-[220px] w-[220px] items-center justify-center overflow-hidden rounded-xl border border-border bg-white shadow-sm dark:shadow-none dark:ring-1 dark:ring-white/10"
           >
             <img
               v-if="qrcodeDataUrl"
@@ -171,40 +175,21 @@ function openConfigSteps() {
           </div>
         </div>
 
-        <!-- Polling status — shown below QR, does not cover it -->
         <div v-if="isPolling" class="flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <LoaderCircle class="h-3.5 w-3.5 animate-spin shrink-0" />
           <span>{{ t('channels.wechat.waitingForScan') }}</span>
         </div>
 
-        <!-- Refresh Button -->
         <div class="flex justify-center">
           <Button
             variant="outline"
-            class="h-10 gap-2 border-border px-6 shadow-sm dark:ring-1 dark:ring-white/10"
+            class="h-10 gap-2 border-border px-6 shadow-sm dark:shadow-none dark:ring-1 dark:ring-white/10"
             :disabled="refreshing || isPolling"
             @click="handleRefreshQRCode"
           >
             <LoaderCircle v-if="refreshing" class="h-4 w-4 animate-spin" />
             <RefreshCw v-else class="h-4 w-4" />
             {{ t('channels.wechat.refresh') }}
-          </Button>
-        </div>
-      </div>
-
-      <!-- Success Step -->
-      <div v-else-if="step === 'success'" class="px-6 pb-6 space-y-5">
-        <div class="flex flex-col items-center gap-4 py-6 text-center">
-          <CheckCircle class="h-12 w-12 text-green-500" />
-          <div class="space-y-1">
-            <p class="text-base font-medium text-foreground">{{ t('channels.wechat.loginSuccess') }}</p>
-            <p class="text-sm text-muted-foreground">{{ successMessage }}</p>
-          </div>
-          <Button
-            class="mt-2 h-10 gap-2 bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
-            @click="open = false"
-          >
-            {{ t('common.close') }}
           </Button>
         </div>
       </div>

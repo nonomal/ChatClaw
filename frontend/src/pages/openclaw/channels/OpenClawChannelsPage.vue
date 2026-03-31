@@ -173,18 +173,36 @@ function handleAddChannel() {
   addDialogOpen.value = true
 }
 
-function handleSelectPlatform(platform: PlatformMeta) {
+/** Validates WeChat plugin readiness; opens QR dialog only when installed and enabled. Otherwise kicks off background install and prompts user to retry later. */
+async function tryOpenWechatConfigDialog() {
+  try {
+    const prep = await OpenClawChannelService.PrepareWechatChannel()
+    if (prep?.ready) {
+      wechatConfigOpen.value = true
+      return
+    }
+    toast.default(t('channels.wechat.pluginInstallTryLater'))
+  } catch (error) {
+    toast.error(getErrorMessage(error))
+  }
+}
+
+async function handleSelectPlatform(platform: PlatformMeta) {
   selectedPlatform.value = platform
   channelToEdit.value = null
   addDialogOpen.value = false
   if (platform.id === 'wechat') {
-    wechatConfigOpen.value = true
-  } else {
-    configDialogOpen.value = true
+    await tryOpenWechatConfigDialog()
+    return
   }
+  configDialogOpen.value = true
 }
 
 function handleEditChannel(channel: Channel) {
+  if (channel.platform === 'wechat') {
+    toast.default(t('channels.wechat.editNotSupported'))
+    return
+  }
   channelToEdit.value = channel
   selectedPlatform.value = platforms.value.find((p) => p.id === channel.platform) || null
   configDialogOpen.value = true
@@ -245,6 +263,20 @@ async function handleDisableChannel(channel: Channel) {
 }
 
 async function handleToggleConnection(channel: Channel, val: boolean) {
+  if (channel.platform === 'wechat' && val) {
+    try {
+      const prep = await OpenClawChannelService.PrepareWechatChannel()
+      if (!prep?.ready) {
+        toast.default(t('channels.wechat.pluginInstallTryLater'))
+        await loadData()
+        return
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+      await loadData()
+      return
+    }
+  }
   if (channel.platform === 'dingtalk') {
     try {
       const installed = await OpenClawChannelService.IsDingTalkPluginInstalled()
@@ -317,7 +349,7 @@ async function handleBindAgent(agentId: number) {
   try {
     await OpenClawChannelService.BindAgent(channelToBind.value.id, agentId)
     toast.success(t('channels.bindSuccess'))
-    loadData()
+    await loadData()
   } catch (error) {
     toast.error(getErrorMessage(error))
   } finally {
@@ -325,6 +357,20 @@ async function handleBindAgent(agentId: number) {
     channelToBind.value = null
     bindFromCreate.value = false
   }
+}
+
+/** Same as DingTalk after inline create: open shared BindAgentDialog with auto-generate + agent list. */
+async function handleWechatConnected(channelId: number) {
+  await loadData()
+  const ch = channelId > 0 ? channels.value.find((c) => c.id === channelId) : undefined
+  if (!ch) {
+    toast.error(t('channels.wechat.channelNotFound'))
+    return
+  }
+  toast.success(t('channels.wechat.loginSuccess'))
+  channelToBind.value = ch
+  bindFromCreate.value = true
+  bindDialogOpen.value = true
 }
 
 async function handleAutoGenerate() {
@@ -347,7 +393,7 @@ async function handleAutoGenerate() {
     await OpenClawChannelService.BindAgent(ch.id, created.id)
     await OpenClawChannelService.ConnectChannel(ch.id)
     toast.success(t('channels.bindAgent.autoGenerateSuccess'))
-    loadData()
+    await loadData()
   } catch (error) {
     toast.error(getErrorMessage(error))
   } finally {
@@ -452,10 +498,26 @@ function openPlatformDocs() {
   void openExternalLink(url)
 }
 
-function getAppId(extraConfig: string): string {
+/** Credential line on channel cards: WeChat uses plugin account_id (ilink bot id); others use app_id / bot_id / token. */
+function getChannelCredentialLabel(platform: string): string {
+  return platform === 'wechat' ? t('channels.card.applicationId') : t('channels.card.appId')
+}
+
+function getChannelCredentialDisplay(platform: string, extraConfig: string): string {
+  const p = (platform || '').trim()
   try {
-    const config = JSON.parse(extraConfig)
-    return config.app_id || config.bot_id || config.token || t('common.na')
+    const config = JSON.parse(extraConfig || '{}')
+    if (p === 'wechat') {
+      const aid =
+        typeof config.account_id === 'string' ? config.account_id.trim() : String(config.account_id || '').trim()
+      if (aid) return aid
+    }
+    const v =
+      config.app_id ||
+      config.bot_id ||
+      config.token ||
+      (typeof config.account_id === 'string' ? config.account_id.trim() : '')
+    return v ? String(v) : t('common.na')
   } catch {
     return t('common.na')
   }
@@ -661,6 +723,7 @@ onMounted(loadData)
                 >
                   <DropdownMenuItem
                     class="gap-2 rounded px-4 py-[5px]"
+                    :disabled="channel.platform === 'wechat'"
                     @click="handleEditChannel(channel)"
                   >
                     <Edit class="h-4 w-4" />
@@ -698,9 +761,10 @@ onMounted(loadData)
             </div>
           </div>
 
-          <!-- Appid -->
+          <!-- App / plugin account id (WeChat: account_id from ilink) -->
           <p class="text-xs leading-5 text-[#8c8c8c] dark:text-muted-foreground">
-            {{ t('channels.card.appId') }}: {{ getAppId(channel.extra_config) }}
+            {{ getChannelCredentialLabel(channel.platform) }}:
+            {{ getChannelCredentialDisplay(channel.platform, channel.extra_config) }}
           </p>
 
           <!-- Status tags: wrap on narrow card / long EN copy; pills truncate with title for full text -->
@@ -821,7 +885,7 @@ onMounted(loadData)
         </p>
         <Button
           class="mt-6 gap-1 bg-[#171717] text-white hover:bg-[#171717]/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
-          @click="wechatConfigOpen = true"
+          @click="tryOpenWechatConfigDialog"
         >
           <Plus class="h-4 w-4 shrink-0" />
           {{ t('channels.wechat.addNow') }}
@@ -930,10 +994,7 @@ onMounted(loadData)
     </div>
 
     <!-- WeChat Config Dialog (QR code flow) -->
-    <WechatConfigDialog
-      v-model:open="wechatConfigOpen"
-      @connected="loadData"
-    />
+    <WechatConfigDialog v-model:open="wechatConfigOpen" @connected="handleWechatConnected" />
 
     <!-- Add Channel Dialog -->
     <AddChannelDialog
