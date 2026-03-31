@@ -929,10 +929,13 @@ func buildGatewayEnv(cfg OpenClawConfig, bundle *bundledRuntime) []string {
 	} else {
 		pathKey, nodeBin = "PATH", filepath.Join(bundle.Root, "tools", "node", "bin")
 	}
+	// Also expose the bundled openclaw CLI itself so that plugin installers
+	// (e.g. npx @tencent-weixin/openclaw-weixin-cli install) can invoke `openclaw`.
+	cliBin := filepath.Join(bundle.Root, "bin")
 	if cur := envMap[pathKey]; cur != "" {
-		envMap[pathKey] = nodeBin + string(os.PathListSeparator) + cur
+		envMap[pathKey] = cliBin + string(os.PathListSeparator) + nodeBin + string(os.PathListSeparator) + cur
 	} else {
-		envMap[pathKey] = nodeBin
+		envMap[pathKey] = cliBin + string(os.PathListSeparator) + nodeBin
 	}
 
 	result := make([]string, 0, len(envMap))

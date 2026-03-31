@@ -345,9 +345,15 @@ func (s *OpenClawChannelService) DeleteChannel(id int64) error {
 	}
 
 	if platform == channels.PlatformWechat {
-		accountID := openClawWechatAccountID(id)
-		if err := s.removeManagedRouteBinding(channels.PlatformWechat, accountID); err != nil {
-			s.app.Logger.Warn("openclaw wechat route binding cleanup failed after delete", "channel_id", id, "error", err)
+		// Remove the plugin-native binding (ilink_bot_id) and the legacy channel_{id} binding.
+		if nativeID := extractWechatAccountID(m.ExtraConfig); nativeID != "" {
+			if err := s.removeManagedRouteBinding(channels.PlatformWechat, nativeID); err != nil {
+				s.app.Logger.Warn("openclaw wechat native binding cleanup failed after delete", "channel_id", id, "error", err)
+			}
+		}
+		legacyID := openClawWechatAccountID(id)
+		if err := s.removeManagedRouteBinding(channels.PlatformWechat, legacyID); err != nil {
+			s.app.Logger.Warn("openclaw wechat legacy binding cleanup failed after delete", "channel_id", id, "error", err)
 		}
 		return nil
 	}
@@ -621,6 +627,106 @@ func saveOpenClawJSONConfig(configPath string, cfg map[string]any) error {
 	return nil
 }
 
+// upsertManagedAgentAndBinding writes the agent entry into openclaw.json's agents.list
+// AND upserts the route binding — all in a single file write. This prevents the race where
+// two consecutive writes each trigger a gateway auto-restart: the first (agent) write causes
+// the gateway to restart before the second (binding) write is seen, and the goroutine that
+// calls agents.create RPC fails because the gateway is already closed.
+// Both the agent directory and workspace are created if absent.
+func (s *OpenClawChannelService) upsertManagedAgentAndBinding(
+	openclawAgentID, agentName string,
+	platform, accountID string,
+) error {
+	stateDir, err := define.OpenClawDataRootDir()
+	if err != nil {
+		return err
+	}
+
+	workspace := filepath.Join(stateDir, "workspace-"+openclawAgentID)
+	agentDir := filepath.Join(stateDir, "agents", openclawAgentID, "agent")
+
+	// Pre-create workspace directory and MEMORY.md so the gateway finds them on startup.
+	if mkErr := os.MkdirAll(workspace, 0o755); mkErr != nil {
+		return fmt.Errorf("mkdir agent workspace: %w", mkErr)
+	}
+	memPath := filepath.Join(workspace, "MEMORY.md")
+	if _, statErr := os.Stat(memPath); os.IsNotExist(statErr) {
+		_ = os.WriteFile(memPath, nil, 0o644)
+	}
+
+	cfg, configPath, err := loadOpenClawJSONConfig()
+	if err != nil {
+		return err
+	}
+
+	// Upsert agent into agents.list.
+	entry := map[string]any{
+		"id":        openclawAgentID,
+		"name":      agentName,
+		"workspace": workspace,
+		"agentDir":  agentDir,
+		"identity":  map[string]any{"name": agentName},
+	}
+	agentsList := configAgentsList(cfg)
+	agentsList = removeAgentFromConfigList(agentsList, openclawAgentID)
+	agentsList = append(agentsList, entry)
+	agentsSection, _ := cfg["agents"].(map[string]any)
+	if agentsSection == nil {
+		agentsSection = map[string]any{}
+	}
+	agentsSection["list"] = agentsList
+	cfg["agents"] = agentsSection
+
+	// Upsert route binding.
+	bindings := configBindings(cfg)
+	bindings = removeManagedBindings(bindings, platform, accountID)
+	bindings = append([]any{map[string]any{
+		"type":    "route",
+		"agentId": strings.TrimSpace(openclawAgentID),
+		"match": map[string]any{
+			"channel":   strings.TrimSpace(platform),
+			"accountId": strings.TrimSpace(accountID),
+		},
+	}}, bindings...)
+	cfg["bindings"] = bindings
+	ensurePerChannelPeerDMScope(cfg)
+
+	return saveOpenClawJSONConfig(configPath, cfg)
+}
+
+func configAgentsList(cfg map[string]any) []any {
+	agents, _ := cfg["agents"].(map[string]any)
+	if agents == nil {
+		return []any{}
+	}
+	list, _ := agents["list"].([]any)
+	if list == nil {
+		return []any{}
+	}
+	return append([]any(nil), list...)
+}
+
+func removeAgentFromConfigList(list []any, openclawAgentID string) []any {
+	if len(list) == 0 {
+		return list
+	}
+	normalized := strings.ToLower(openclawAgentID)
+	out := make([]any, 0, len(list))
+	for _, item := range list {
+		entry, _ := item.(map[string]any)
+		if entry == nil {
+			out = append(out, item)
+			continue
+		}
+		id, _ := entry["id"].(string)
+		if strings.ToLower(id) == normalized {
+			continue
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
 func configBindings(cfg map[string]any) []any {
 	bindings, _ := cfg["bindings"].([]any)
 	if bindings == nil {
@@ -788,7 +894,24 @@ type appCredentialsJSON struct {
 	AppID             string `json:"app_id"`
 	AppSecret         string `json:"app_secret"`
 	OpenClawChannelID string `json:"openclaw_channel_id,omitempty"`
-	StreamOutput      *bool  `json:"stream_output_enabled,omitempty"`
+	// AccountID stores the plugin-native account ID for channels whose account
+	// identity is determined by the provider (e.g. the weixin ilink_bot_id).
+	AccountID    string `json:"account_id,omitempty"`
+	StreamOutput *bool  `json:"stream_output_enabled,omitempty"`
+}
+
+// extractWechatAccountID returns the weixin plugin-native account ID stored in
+// extra_config.account_id (set during QR login). Returns "" when absent.
+func extractWechatAccountID(extraConfig string) string {
+	extraConfig = strings.TrimSpace(extraConfig)
+	if extraConfig == "" {
+		return ""
+	}
+	var cfg appCredentialsJSON
+	if err := json.Unmarshal([]byte(extraConfig), &cfg); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(cfg.AccountID)
 }
 
 func parseAppCredentialsPair(extraConfig string) (appID, appSecret string) {

@@ -20,12 +20,13 @@ const emit = defineEmits<{ connected: [] }>()
 
 const { t } = useI18n()
 
-type Step = 'initial' | 'generating' | 'qrcode' | 'waiting' | 'success'
+type Step = 'initial' | 'generating' | 'qrcode' | 'success'
 
 const step = ref<Step>('initial')
 const qrcodeDataUrl = ref('')
 const sessionKey = ref('')
 const refreshing = ref(false)
+const isPolling = ref(false)
 const successMessage = ref('')
 
 watch(open, (val) => {
@@ -34,6 +35,7 @@ watch(open, (val) => {
     qrcodeDataUrl.value = ''
     sessionKey.value = ''
     refreshing.value = false
+    isPolling.value = false
     successMessage.value = ''
   }
 })
@@ -56,7 +58,7 @@ async function handleGenerateQRCode() {
 
 async function startWaitingForScan(key: string) {
   if (!key) return
-  step.value = 'waiting'
+  isPolling.value = true
   try {
     const result = await OpenClawChannelService.WaitForWechatLogin(key, '')
     if (!result) return
@@ -65,15 +67,11 @@ async function startWaitingForScan(key: string) {
       step.value = 'success'
       emit('connected')
     }
-    // If not connected (timeout/cancelled), go back to qrcode step to allow refresh
-    if (!result.connected && step.value === 'waiting') {
-      step.value = 'qrcode'
-    }
+    // If not connected (timeout/cancelled), stay on qrcode step to allow refresh
   } catch {
-    // On error or timeout, go back to qrcode step
-    if (step.value === 'waiting') {
-      step.value = 'qrcode'
-    }
+    // On error or timeout, stay on qrcode step
+  } finally {
+    isPolling.value = false
   }
 }
 
@@ -152,25 +150,15 @@ function openConfigSteps() {
         </div>
       </div>
 
-      <!-- QR Code Step (waiting for scan) -->
-      <div v-else-if="step === 'qrcode' || step === 'waiting'" class="px-6 pb-6 space-y-5">
+      <!-- QR Code Step -->
+      <div v-else-if="step === 'qrcode'" class="px-6 pb-6 space-y-5">
         <p class="text-sm text-muted-foreground">{{ t('channels.wechat.scanHint') }}</p>
 
-        <!-- QR Code Image -->
+        <!-- QR Code Image — always clearly visible, no overlay -->
         <div class="flex justify-center">
           <div
-            class="relative flex h-[220px] w-[220px] items-center justify-center overflow-hidden rounded-xl border border-border bg-white shadow-sm"
+            class="flex h-[220px] w-[220px] items-center justify-center overflow-hidden rounded-xl border border-border bg-white shadow-sm"
           >
-            <!-- Scanning overlay -->
-            <div
-              v-if="step === 'waiting'"
-              class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/80 dark:bg-black/50 backdrop-blur-[2px] rounded-xl z-10"
-            >
-              <LoaderCircle class="h-7 w-7 animate-spin text-muted-foreground" />
-              <span class="text-xs text-muted-foreground px-4 text-center">
-                {{ t('channels.wechat.waitingForScan') }}
-              </span>
-            </div>
             <img
               v-if="qrcodeDataUrl"
               :src="qrcodeDataUrl"
@@ -183,15 +171,21 @@ function openConfigSteps() {
           </div>
         </div>
 
+        <!-- Polling status — shown below QR, does not cover it -->
+        <div v-if="isPolling" class="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <LoaderCircle class="h-3.5 w-3.5 animate-spin shrink-0" />
+          <span>{{ t('channels.wechat.waitingForScan') }}</span>
+        </div>
+
         <!-- Refresh Button -->
         <div class="flex justify-center">
           <Button
             variant="outline"
             class="h-10 gap-2 border-border px-6 shadow-sm dark:ring-1 dark:ring-white/10"
-            :disabled="refreshing || step === 'waiting'"
+            :disabled="refreshing || isPolling"
             @click="handleRefreshQRCode"
           >
-            <LoaderCircle v-if="refreshing || step === 'waiting'" class="h-4 w-4 animate-spin" />
+            <LoaderCircle v-if="refreshing" class="h-4 w-4 animate-spin" />
             <RefreshCw v-else class="h-4 w-4" />
             {{ t('channels.wechat.refresh') }}
           </Button>
