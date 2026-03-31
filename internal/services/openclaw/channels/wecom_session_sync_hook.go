@@ -7,22 +7,22 @@ import (
 	"chatclaw/internal/services/channels"
 )
 
-const feishuOpenClawSessionSyncListenerKey = "openclaw-feishu-session-sync"
+const wecomOpenClawSessionSyncListenerKey = "openclaw-wecom-session-sync"
 
-// OnGatewayReadyFeishuSessionSync registers a gateway listener so that when a Feishu
+// OnGatewayReadyWeComSessionSync registers a gateway listener so that when a WeCom
 // plugin-managed OpenClaw run finishes, we mirror sessions.json into local conversations.
-func (s *OpenClawChannelService) OnGatewayReadyFeishuSessionSync() {
+func (s *OpenClawChannelService) OnGatewayReadyWeComSessionSync() {
 	if s == nil || s.openclawManager == nil {
 		return
 	}
 	m := s.openclawManager
-	m.RemoveEventListener(feishuOpenClawSessionSyncListenerKey)
-	m.AddEventListener(feishuOpenClawSessionSyncListenerKey, func(event string, payload json.RawMessage) {
-		s.handleGatewayEventForFeishuSessionSync(event, payload)
+	m.RemoveEventListener(wecomOpenClawSessionSyncListenerKey)
+	m.AddEventListener(wecomOpenClawSessionSyncListenerKey, func(event string, payload json.RawMessage) {
+		s.handleGatewayEventForWeComSessionSync(event, payload)
 	})
 }
 
-func (s *OpenClawChannelService) handleGatewayEventForFeishuSessionSync(event string, payload json.RawMessage) {
+func (s *OpenClawChannelService) handleGatewayEventForWeComSessionSync(event string, payload json.RawMessage) {
 	sessionKey := ""
 	switch strings.TrimSpace(event) {
 	case "agent":
@@ -46,7 +46,7 @@ func (s *OpenClawChannelService) handleGatewayEventForFeishuSessionSync(event st
 	}
 
 	openclawAgentStr, platform, ok := parseOpenClawPluginSessionKeyPrefix(sessionKey)
-	if !ok || !isFeishuSessionPlatform(platform) {
+	if !ok || !isWeComSessionPlatform(platform) {
 		return
 	}
 
@@ -58,18 +58,18 @@ func (s *OpenClawChannelService) handleGatewayEventForFeishuSessionSync(event st
 	go func(agentID int64, sk string) {
 		if err := s.updateChannelLastReplyTargetBySessionKey(agentID, sk); err != nil {
 			if s.app != nil {
-				s.app.Logger.Warn("openclaw: feishu immediate last reply target update failed",
+				s.app.Logger.Warn("openclaw: wecom immediate last reply target update failed",
 					"agentId", agentID, "sessionKey", sk, "error", err)
 			}
 			return
 		}
 		if s.app != nil {
-			s.app.Logger.Info("openclaw: feishu immediate last reply target updated",
+			s.app.Logger.Info("openclaw: wecom immediate last reply target updated",
 				"agentId", agentID, "sessionKey", sk)
 		}
 	}(localID, sessionKey)
 }
 
-func isFeishuSessionPlatform(platform string) bool {
-	return strings.EqualFold(strings.TrimSpace(platform), channels.PlatformFeishu)
+func isWeComSessionPlatform(platform string) bool {
+	return strings.EqualFold(strings.TrimSpace(platform), channels.PlatformWeCom)
 }

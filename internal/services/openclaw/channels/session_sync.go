@@ -59,6 +59,61 @@ type syncedSessionCandidate struct {
 	rawSessionKey string
 }
 
+func (s *OpenClawChannelService) updateChannelLastReplyTargetBySessionKey(localAgentID int64, sessionKey string) error {
+	sessionKey = strings.TrimSpace(sessionKey)
+	if localAgentID <= 0 || sessionKey == "" {
+		return nil
+	}
+
+	_, platform, ok := parseOpenClawPluginSessionKeyPrefix(sessionKey)
+	if !ok || strings.TrimSpace(platform) == "" {
+		return nil
+	}
+
+	parts := strings.Split(sessionKey, ":")
+	if len(parts) < 5 {
+		return nil
+	}
+
+	rawScope := strings.TrimSpace(parts[3])
+	targetID := strings.TrimSpace(strings.Join(parts[4:], ":"))
+	if targetID == "" {
+		return nil
+	}
+
+	scope := normalizePluginConversationScope(platform, rawScope, targetID, "")
+	if scope == "" {
+		return nil
+	}
+
+	db, err := s.db()
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var rows []channelModel
+	if err := db.NewSelect().
+		Model(&rows).
+		Where(openClawChannelVisibilitySQL).
+		Where("ch.agent_id = ?", localAgentID).
+		Where("ch.enabled = ?", true).
+		Where("LOWER(TRIM(ch.platform)) = LOWER(TRIM(?))", platform).
+		OrderExpr("ch.id DESC").
+		Scan(ctx); err != nil {
+		return err
+	}
+
+	for i := range rows {
+		if err := s.updateSyncedChannelLastReplyTarget(rows[i].ID, scope, targetID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // SyncAgentConversations mirrors plugin-managed OpenClaw channel sessions into ChatClaw conversations.
 func (s *OpenClawChannelService) SyncAgentConversations(agentID int64) error {
 	if agentID <= 0 {
