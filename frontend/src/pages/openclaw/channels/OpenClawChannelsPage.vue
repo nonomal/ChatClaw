@@ -1,4 +1,3 @@
-
 <script setup lang="ts">
 import { onMounted, ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -43,13 +42,21 @@ import {
 } from '@/components/ui/dropdown-menu'
 import AddChannelDialog from './components/AddChannelDialog.vue'
 import ConfigChannelDialog from './components/ConfigChannelDialog.vue'
+import WecomAddDialog from './components/WecomAddDialog.vue'
 import BindAgentDialog from './components/BindAgentDialog.vue'
 import WechatConfigDialog from './components/WechatConfigDialog.vue'
 import { getPlatformDocsUrl, openExternalLink } from '@/pages/common/platformDocs'
 import { getPlatformIcon } from '@/pages/common/channelUtils'
 import {
-  OpenClawChannelService,
-} from '@bindings/chatclaw/internal/services/openclaw/channels'
+  addPendingAgentProvisioning,
+  addPendingGatewayProvisioning,
+  removePendingAgentProvisioning,
+  removePendingGatewayProvisioning,
+  syncPendingFromChannels,
+  isGatewayProvisioning,
+  isBindProvisioning,
+} from '@/composables/useOpenClawChannelProvisioning'
+import { OpenClawChannelService } from '@bindings/chatclaw/internal/services/openclaw/channels'
 import {
   OpenClawAgentsService,
   CreateOpenClawAgentInput,
@@ -66,13 +73,14 @@ defineProps<{ tabId: string }>()
 const { t, te } = useI18n()
 const { toast: addToast } = useToast()
 
-/** OpenClaw: Feishu, WeCom, DingTalk, and WeChat (personal) are available; others show coming soon. */
+/** OpenClaw: Feishu, WeCom, DingTalk, WeChat (personal), and QQ are available; others show coming soon. */
 function isChannelPlatformSelectable(platformId: string) {
   return (
     platformId === 'feishu' ||
     platformId === 'wecom' ||
     platformId === 'dingtalk' ||
-    platformId === 'wechat'
+    platformId === 'wechat' ||
+    platformId === 'qq'
   )
 }
 
@@ -82,6 +90,7 @@ const platforms = ref<PlatformMeta[]>([])
 const agents = ref<OpenClawAgent[]>([])
 const loading = ref(false)
 const addDialogOpen = ref(false)
+const wecomAddDialogOpen = ref(false)
 const configDialogOpen = ref(false)
 const selectedPlatform = ref<PlatformMeta | null>(null)
 const channelToEdit = ref<Channel | null>(null)
@@ -152,6 +161,7 @@ async function loadData() {
       OpenClawChannelService.ListAgents(),
     ])
     channels.value = channelList || []
+    syncPendingFromChannels(channels.value)
     stats.value = channelStats || { total: 0, connected: 0, disconnected: 0 }
     platforms.value = platformList || []
     agents.value = agentsList || []
@@ -195,6 +205,25 @@ async function handleSelectPlatform(platform: PlatformMeta) {
     await tryOpenWechatConfigDialog()
     return
   }
+  if (platform.id === 'wecom') {
+    wecomAddDialogOpen.value = true
+  } else {
+    configDialogOpen.value = true
+  }
+}
+
+function openWecomAddFromInline() {
+  selectedPlatform.value = platforms.value.find((p) => p.id === 'wecom') || null
+  channelToEdit.value = null
+  wecomAddDialogOpen.value = true
+}
+
+function handleWecomManualEntry() {
+  wecomAddDialogOpen.value = false
+  if (!selectedPlatform.value || selectedPlatform.value.id !== 'wecom') {
+    selectedPlatform.value = platforms.value.find((p) => p.id === 'wecom') || null
+  }
+  channelToEdit.value = null
   configDialogOpen.value = true
 }
 
@@ -212,6 +241,15 @@ function handleConfigSaved(channel: Channel, isEdit: boolean) {
   configDialogOpen.value = false
   selectedPlatform.value = null
   channelToEdit.value = null
+  if (!isEdit) {
+    addPendingGatewayProvisioning(channel.id)
+    addToast({
+      title: t('channels.provisioning.toastTitle'),
+      description: t('channels.provisioning.toastDescription'),
+      variant: 'default',
+      duration: 8000,
+    })
+  }
   loadData().then(() => {
     if (!isEdit) {
       channelToBind.value = channel
@@ -346,8 +384,16 @@ function handleOpenBind(channel: Channel) {
 
 async function handleBindAgent(agentId: number) {
   if (!channelToBind.value) return
+  const channel = channelToBind.value
   try {
-    await OpenClawChannelService.BindAgent(channelToBind.value.id, agentId)
+    await OpenClawChannelService.BindAgent(channel.id, agentId)
+    // Match QQ: after create→bind, enable OpenClaw plugin config + local enabled (Feishu/WeCom/DingTalk were missing).
+    const connectAfterCreateBind =
+      bindFromCreate.value &&
+      ['qq', 'feishu', 'wecom', 'dingtalk'].includes(channel.platform)
+    if (connectAfterCreateBind) {
+      await OpenClawChannelService.ConnectChannel(channel.id)
+    }
     toast.success(t('channels.bindSuccess'))
     await loadData()
   } catch (error) {
@@ -376,6 +422,14 @@ async function handleWechatConnected(channelId: number) {
 async function handleAutoGenerate() {
   const ch = channelToBind.value
   if (!ch) return
+  addPendingGatewayProvisioning(ch.id)
+  addPendingAgentProvisioning(ch.id)
+  addToast({
+    title: t('channels.provisioning.toastTitle'),
+    description: t('channels.provisioning.toastDescriptionWithAgent'),
+    variant: 'default',
+    duration: 8000,
+  })
   try {
     // Same payload shape as CreateAgentDialog / useAgents.createAgent (OpenClawAgentsService.CreateAgent).
     const baseName = ch.name.trim() || t('channels.agentFallback')
@@ -388,6 +442,8 @@ async function handleAutoGenerate() {
     )
     if (!created) {
       toast.error(t('assistant.errors.createFailed'))
+      removePendingGatewayProvisioning(ch.id)
+      removePendingAgentProvisioning(ch.id)
       return
     }
     await OpenClawChannelService.BindAgent(ch.id, created.id)
@@ -396,7 +452,10 @@ async function handleAutoGenerate() {
     await loadData()
   } catch (error) {
     toast.error(getErrorMessage(error))
+    removePendingGatewayProvisioning(ch.id)
+    removePendingAgentProvisioning(ch.id)
   } finally {
+    removePendingAgentProvisioning(ch.id)
     bindDialogOpen.value = false
     channelToBind.value = null
     bindFromCreate.value = false
@@ -433,9 +492,7 @@ async function handleInlinePickAvatar() {
       ],
     })
     if (!path) return
-    const { OpenClawAgentsService } = await import(
-      '@bindings/chatclaw/internal/openclaw/agents'
-    )
+    const { OpenClawAgentsService } = await import('@bindings/chatclaw/internal/openclaw/agents')
     inlineFormAvatar.value = await OpenClawAgentsService.ReadIconFile(path)
   } catch (error) {
     if (String(error).includes('cancelled by user')) return
@@ -455,20 +512,17 @@ async function handleInlineSave() {
       app_secret: inlineFormAppSecret.value.trim(),
     })
 
-    const firstAgent = agents.value[0]
-    if (!firstAgent) {
-      toast.error(t('channels.bindAgent.empty'))
-      return
-    }
-
     const channel = await OpenClawChannelService.CreateChannel({
       platform: selectedPlatformMeta.value.id,
       name: inlineFormName.value.trim(),
       avatar: inlineFormAvatar.value,
       extra_config: extraConfig,
-      agent_id: firstAgent.id,
+      agent_id: 0,
     })
 
+    if (channel) {
+      addPendingGatewayProvisioning(channel.id)
+    }
     if (selectedPlatformMeta.value?.id === 'dingtalk') {
       addToast({
         title: t('channels.config.dingtalkPluginInstalling'),
@@ -477,7 +531,12 @@ async function handleInlineSave() {
         duration: 6000,
       })
     } else {
-      toast.success(t('channels.config.success'))
+      addToast({
+        title: t('channels.provisioning.toastTitle'),
+        description: t('channels.provisioning.toastDescription'),
+        variant: 'default',
+        duration: 8000,
+      })
     }
     resetInlineForm()
     await loadData()
@@ -658,11 +717,7 @@ onMounted(loadData)
               : 'text-[#0a0a0a] hover:bg-white/50 dark:text-foreground dark:hover:bg-background/50',
             !isChannelPlatformSelectable(platform.id) ? 'opacity-50 cursor-not-allowed' : '',
           ]"
-          @click="
-            isChannelPlatformSelectable(platform.id)
-              ? (selectedFilter = platform.id)
-              : toast.default(t('channels.comingSoon'))
-          "
+          @click="isChannelPlatformSelectable(platform.id) ? (selectedFilter = platform.id) : toast.default(t('channels.comingSoon'))"
         >
           {{ getPlatformName(platform.id) }}
         </button>
@@ -742,8 +797,8 @@ onMounted(loadData)
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     class="gap-2 rounded px-4 py-[5px]"
-                    @click="openUnbindConfirm(channel)"
                     :disabled="channel.agent_id === 0"
+                    @click="openUnbindConfirm(channel)"
                   >
                     <Unlink class="h-4 w-4" />
                     {{ t('channels.card.unbind') }}
@@ -773,7 +828,12 @@ onMounted(loadData)
             <div
               class="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full bg-[#f0f0f0] px-2 py-0.5 dark:bg-muted"
             >
+              <LoaderCircle
+                v-if="isGatewayProvisioning(channel)"
+                class="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground"
+              />
               <div
+                v-else
                 class="h-2 w-2 shrink-0 rounded-full"
                 :class="{
                   'bg-green-500': channel.status === 'online',
@@ -784,19 +844,23 @@ onMounted(loadData)
               <span
                 class="min-w-0 truncate text-xs leading-4 text-[#595959] dark:text-muted-foreground"
                 :title="
-                  channel.status === 'online'
-                    ? t('channels.status.online')
-                    : channel.status === 'error'
-                      ? t('channels.status.error')
-                      : t('channels.status.offline')
+                  isGatewayProvisioning(channel)
+                    ? t('channels.status.provisioning')
+                    : channel.status === 'online'
+                      ? t('channels.status.online')
+                      : channel.status === 'error'
+                        ? t('channels.status.error')
+                        : t('channels.status.offline')
                 "
               >
                 {{
-                  channel.status === 'online'
-                    ? t('channels.status.online')
-                    : channel.status === 'error'
-                      ? t('channels.status.error')
-                      : t('channels.status.offline')
+                  isGatewayProvisioning(channel)
+                    ? t('channels.status.provisioning')
+                    : channel.status === 'online'
+                      ? t('channels.status.online')
+                      : channel.status === 'error'
+                        ? t('channels.status.error')
+                        : t('channels.status.offline')
                 }}
               </span>
             </div>
@@ -805,12 +869,16 @@ onMounted(loadData)
               class="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full bg-[#f0f0f0] px-2 py-0.5 dark:bg-muted"
               :class="{
                 'cursor-pointer hover:bg-[#e5e5e5] dark:hover:bg-muted/80 transition-colors':
-                  channel.agent_id === 0,
+                  channel.agent_id === 0 && !isBindProvisioning(channel),
               }"
-              @click="channel.agent_id === 0 ? handleOpenBind(channel) : undefined"
+              @click="channel.agent_id === 0 && !isBindProvisioning(channel) ? handleOpenBind(channel) : undefined"
             >
+              <LoaderCircle
+                v-if="isBindProvisioning(channel)"
+                class="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground"
+              />
               <IconCheck
-                v-if="channel.agent_id !== 0"
+                v-else-if="channel.agent_id !== 0"
                 class="h-3.5 w-3.5 shrink-0 text-[#595959] dark:text-muted-foreground"
               />
               <IconClose
@@ -820,10 +888,20 @@ onMounted(loadData)
               <span
                 class="min-w-0 truncate text-xs leading-4 text-[#595959] dark:text-muted-foreground"
                 :title="
-                  channel.agent_id !== 0 ? t('channels.card.bound') : t('channels.card.unbound')
+                  isBindProvisioning(channel)
+                    ? t('channels.card.provisioning')
+                    : channel.agent_id !== 0
+                      ? t('channels.card.bound')
+                      : t('channels.card.unbound')
                 "
               >
-                {{ channel.agent_id !== 0 ? t('channels.card.bound') : t('channels.card.unbound') }}
+                {{
+                  isBindProvisioning(channel)
+                    ? t('channels.card.provisioning')
+                    : channel.agent_id !== 0
+                      ? t('channels.card.bound')
+                      : t('channels.card.unbound')
+                }}
               </span>
             </div>
             <!-- Agent name: background wraps text only; long names truncate with max-width -->
@@ -1003,6 +1081,12 @@ onMounted(loadData)
       @select="handleSelectPlatform"
     />
 
+    <WecomAddDialog
+      v-model:open="wecomAddDialogOpen"
+      @saved="(ch, isEdit) => handleConfigSaved(ch, isEdit)"
+      @manual="handleWecomManualEntry"
+    />
+
     <!-- Config Channel Dialog -->
     <ConfigChannelDialog
       v-model:open="configDialogOpen"
@@ -1050,7 +1134,9 @@ onMounted(loadData)
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel :disabled="toggleConfirming" @click="cancelToggle">{{ t('common.cancel') }}</AlertDialogCancel>
+          <AlertDialogCancel :disabled="toggleConfirming" @click="cancelToggle">{{
+            t('common.cancel')
+          }}</AlertDialogCancel>
           <Button
             class="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
             :disabled="toggleConfirming"

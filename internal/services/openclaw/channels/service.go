@@ -164,7 +164,7 @@ func (s *OpenClawChannelService) GetChannelStats() (*channels.ChannelStats, erro
 }
 
 // GetSupportedPlatforms returns the same platform list as ChatClaw for UI parity (tabs + add dialog).
-// OpenClaw currently supports creating Feishu, WeCom, DingTalk, and WeChat (personal) channels.
+// OpenClaw currently supports creating Feishu, WeCom, DingTalk, WeChat (personal), and QQ channels.
 func (s *OpenClawChannelService) GetSupportedPlatforms() []channels.PlatformMeta {
 	return []channels.PlatformMeta{
 		{ID: channels.PlatformDingTalk, Name: "DingTalk", AuthType: "token"},
@@ -221,6 +221,8 @@ func (s *OpenClawChannelService) CreateChannel(input CreateChannelInput) (*chann
 	} else if platform == channels.PlatformWechat {
 		// WeChat uses QR code authentication; no credentials to sync on create.
 		// Plugin installation and QR code generation happen via GenerateWechatQRCode().
+	} else if platform == channels.PlatformQQ {
+		// QQ is provisioned on connect so drafts do not create remote OpenClaw state yet.
 	} else if err := s.syncOpenClawChannelConfig(ctx, platform, accountKey, name, input.ExtraConfig, false); err != nil {
 		_ = s.channelSvc.DeleteChannel(ch.ID)
 		return nil, wrapOpenClawSyncErr(err, "error.channel_create_failed", nil)
@@ -231,8 +233,10 @@ func (s *OpenClawChannelService) CreateChannel(input CreateChannelInput) (*chann
 			return nil, err
 		}
 		ch.AgentID = input.AgentID
-		if err := s.syncChannelRoutingBinding(ch.ID, input.AgentID); err != nil {
-			return nil, wrapOpenClawSyncErr(err, "error.channel_create_failed", nil)
+		if platform != channels.PlatformQQ {
+			if err := s.syncChannelRoutingBinding(ch.ID, input.AgentID); err != nil {
+				return nil, wrapOpenClawSyncErr(err, "error.channel_create_failed", nil)
+			}
 		}
 	}
 
@@ -289,6 +293,29 @@ func (s *OpenClawChannelService) UpdateChannel(id int64, input channels.UpdateCh
 	} else if platform == channels.PlatformWechat {
 		// WeChat channel name updates are local-only; no credentials to push.
 		// Enable/disable is handled via ConnectChannel / DisconnectChannel.
+	} else if platform == channels.PlatformQQ {
+		if enabled {
+			if m.AgentID == 0 {
+				return nil, errs.New("error.channel_connect_requires_agent")
+			}
+			if err := s.setOpenClawQQChannel(ctx, name, extraConfig); err != nil {
+				return nil, wrapOpenClawSyncErr(err, "error.channel_update_failed", nil)
+			}
+			if err := s.syncChannelRoutingBinding(id, m.AgentID); err != nil {
+				return nil, wrapOpenClawSyncErr(err, "error.channel_update_failed", nil)
+			}
+		} else if input.Enabled != nil && !enabled {
+			if err := s.removeOpenClawQQChannel(ctx); err != nil {
+				return nil, wrapOpenClawSyncErr(err, "error.channel_update_failed", nil)
+			}
+			accountID := openClawManagedAccountID(platform, id, extraConfig)
+			if err := s.removeManagedRouteBinding(platform, accountID); err != nil {
+				return nil, errs.Wrap("error.channel_update_failed", err)
+			}
+			if err := s.restartOpenClawGateway(); err != nil {
+				return nil, errs.Wrap("error.channel_update_failed", err)
+			}
+		}
 	} else if err := s.syncOpenClawChannelConfig(ctx, platform, accountKey, name, extraConfig, enabled); err != nil {
 		return nil, wrapOpenClawSyncErr(err, "error.channel_update_failed", nil)
 	}
@@ -338,6 +365,17 @@ func (s *OpenClawChannelService) DeleteChannel(id int64) error {
 			if err := s.removeOpenClawDingTalkAccount(ctx, accountKey); err != nil {
 				s.app.Logger.Warn("openclaw config unset dingtalk account failed, proceeding with local delete", "account", accountKey, "error", err)
 			}
+		} else if platform == channels.PlatformQQ {
+			if err := s.removeOpenClawQQChannel(ctx); err != nil {
+				s.app.Logger.Warn("openclaw qq channel remove failed, proceeding with local delete", "error", err)
+			}
+			accountID := openClawManagedAccountID(platform, id, m.ExtraConfig)
+			if err := s.removeManagedRouteBinding(platform, accountID); err != nil {
+				s.app.Logger.Warn("openclaw qq route binding cleanup failed before delete", "channel_id", id, "error", err)
+			}
+			if err := s.restartOpenClawGateway(); err != nil {
+				s.app.Logger.Warn("openclaw qq gateway restart failed after delete cleanup", "channel_id", id, "error", err)
+			}
 		} else if err := s.removeOpenClawChannelConfig(ctx, platform, accountKey); err != nil {
 			s.app.Logger.Warn("openclaw config unset channel failed, proceeding with local delete", "platform", platform, "account", accountKey, "error", err)
 		}
@@ -351,6 +389,9 @@ func (s *OpenClawChannelService) DeleteChannel(id int64) error {
 		if err := s.syncOpenClawDingTalkDefaultAccount(ctx); err != nil {
 			s.app.Logger.Warn("openclaw dingtalk default account sync failed after delete", "error", err)
 		}
+		return nil
+	}
+	if platform == channels.PlatformQQ {
 		return nil
 	}
 
@@ -379,14 +420,19 @@ func (s *OpenClawChannelService) BindAgent(id int64, agentID int64) error {
 	defer cancel()
 	m, mErr := s.getChannelModel(ctx, id)
 	if mErr == nil {
-		// WeChat routing is written to openclaw.json + gateway restart. Do not gate on
-		// ensureOpenClawReady (IsReady): otherwise DB agent_id updates while bindings still
-		// point at the previous assistant (e.g. main) until the user reconnects.
+		// WeChat routing: update openclaw.json + restart (file-based, no ensureOpenClawReady needed).
 		if m.Platform == channels.PlatformWechat && m.OpenClawScope {
 			if syncErr := s.applyWechatOpenClawRouting(ctx, id, agentID, m, true); syncErr != nil {
 				return errs.Wrap("error.channel_bind_failed", syncErr)
 			}
-		} else if err := s.ensureOpenClawReady(); err == nil {
+			return nil
+		}
+		// QQ: skip route sync when channel is not yet enabled.
+		if m.Platform == channels.PlatformQQ && !m.Enabled {
+			return nil
+		}
+		// DingTalk: sync agent ID when plugin is installed.
+		if err := s.ensureOpenClawReady(); err == nil {
 			if m.Platform == channels.PlatformDingTalk && m.Enabled && s.isDingTalkPluginInstalledLocally() {
 				accountKey := openClawChannelAccountKey(id, m.ExtraConfig)
 				openclawAgentID := s.lookupOpenClawAgentID(ctx, agentID)
@@ -445,6 +491,9 @@ func (s *OpenClawChannelService) ConnectChannel(id int64) error {
 
 	if m.Platform == channels.PlatformDingTalk {
 		return s.connectDingTalkViaPlugin(id, m)
+	}
+	if m.Platform == channels.PlatformQQ {
+		return s.connectQQViaPlugin(id, m)
 	}
 
 	if m.Platform == channels.PlatformWechat {
@@ -515,6 +564,9 @@ func (s *OpenClawChannelService) DisconnectChannel(id int64) error {
 		}
 		return s.setChannelOnlineStatus(ctx, id, false)
 	}
+	if m.Platform == channels.PlatformQQ {
+		return s.disconnectQQViaPlugin(id, m)
+	}
 
 	accountKey := openClawChannelAccountKey(id, m.ExtraConfig)
 	platform := strings.TrimSpace(m.Platform)
@@ -547,10 +599,19 @@ func (s *OpenClawChannelService) isPluginManagedChannelOnline(ch channels.Channe
 
 func isPluginManagedOpenClawPlatform(platform string) bool {
 	switch strings.TrimSpace(platform) {
-	case channels.PlatformFeishu, channels.PlatformWeCom:
+	case channels.PlatformFeishu, channels.PlatformWeCom, channels.PlatformQQ:
 		return true
 	default:
 		return false
+	}
+}
+
+func openClawManagedRouteChannel(platform string) string {
+	switch strings.TrimSpace(platform) {
+	case channels.PlatformQQ:
+		return openClawQQChannelID
+	default:
+		return strings.TrimSpace(platform)
 	}
 }
 
@@ -572,14 +633,22 @@ func (s *OpenClawChannelService) syncChannelRoutingBinding(channelID int64, agen
 	if err != nil {
 		return err
 	}
+	openclawAgentKey := strings.TrimSpace(agent.OpenClawAgentID)
+	if openclawAgentKey == "" {
+		return fmt.Errorf("openclaw channel bind: empty openclaw_agent_id for local agent %d", agentID)
+	}
+	if err := s.agentsSvc.EnsureAgentSyncedWithGateway(*agent); err != nil {
+		return err
+	}
 	accountID := openClawManagedAccountID(platform, channelID, m.ExtraConfig)
-	if err := s.upsertManagedRouteBinding(platform, accountID, strings.TrimSpace(agent.OpenClawAgentID)); err != nil {
+	if err := s.upsertManagedRouteBinding(openClawManagedRouteChannel(platform), accountID, openclawAgentKey); err != nil {
 		return err
 	}
 	return s.restartOpenClawGateway()
 }
 
 func (s *OpenClawChannelService) upsertManagedRouteBinding(platform string, accountID string, openclawAgentID string) error {
+	platform = openClawManagedRouteChannel(platform)
 	cfg, configPath, err := loadOpenClawJSONConfig()
 	if err != nil {
 		return err
@@ -600,6 +669,7 @@ func (s *OpenClawChannelService) upsertManagedRouteBinding(platform string, acco
 }
 
 func (s *OpenClawChannelService) removeManagedRouteBinding(platform string, accountID string) error {
+	platform = openClawManagedRouteChannel(platform)
 	cfg, configPath, err := loadOpenClawJSONConfig()
 	if err != nil {
 		return err
@@ -841,6 +911,13 @@ func (s *OpenClawChannelService) VerifyChannelConfig(platform string, extraConfi
 			return errs.Wrap("error.channel_verify_failed", err)
 		}
 	}
+	if p == channels.PlatformQQ {
+		ctx, cancel := context.WithTimeout(context.Background(), openClawChannelSyncTimeout)
+		defer cancel()
+		if err := s.ensureOpenClawQQPluginInstalled(ctx); err != nil {
+			return errs.Wrap("error.channel_verify_failed", err)
+		}
+	}
 	return s.channelSvc.VerifyChannelConfig(p, extraConfig)
 }
 
@@ -959,6 +1036,8 @@ func openClawPlatformFromInput(explicitPlatform, extraConfig string) string {
 		return channels.PlatformWeCom
 	case channels.PlatformDingTalk:
 		return channels.PlatformDingTalk
+	case channels.PlatformQQ:
+		return channels.PlatformQQ
 	case channels.PlatformFeishu:
 		return channels.PlatformFeishu
 	case channels.PlatformWechat:
@@ -1075,6 +1154,8 @@ func (s *OpenClawChannelService) syncOpenClawPlatformConfigAfterDelete(ctx conte
 			return err
 		}
 		return s.restartOpenClawGateway()
+	case channels.PlatformQQ:
+		return nil
 	default:
 		return s.syncOpenClawFeishuDefaultAccount(ctx)
 	}
