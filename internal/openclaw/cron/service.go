@@ -1417,7 +1417,7 @@ func (s *OpenClawCronService) resolveDeliverySelection(input cronDeliverySelecti
 	if err != nil {
 		return "", "", "", err
 	}
-	return deriveCronDeliveryChannelID(matchedChannel), resolvedTarget, deriveCronDeliveryAccountID(matchedChannel), nil
+	return deriveCronDeliveryChannelID(matchedChannel), resolvedTarget, resolveCronDeliveryAccountID(), nil
 }
 
 func (s *OpenClawCronService) resolveDeliveryAgentRowID(openClawAgentID string) (int64, error) {
@@ -1482,6 +1482,12 @@ func deriveCronDeliveryAccountID(option cronDeliveryChannelOption) string {
 		return ""
 	}
 	return fmt.Sprintf("channel_%d", option.ID)
+}
+
+// resolveCronDeliveryAccountID intentionally clears delivery.accountId for cron jobs.
+// resolveCronDeliveryAccountID 明确将定时任务的 delivery.accountId 置空，交给 OpenClaw 自行走默认账号匹配，兼容单实例和多实例配置。
+func resolveCronDeliveryAccountID() string {
+	return ""
 }
 
 // deriveCronDeliveryChannelID maps local platform ids to the OpenClaw delivery.channel value.

@@ -35,6 +35,12 @@ func TestDeriveCronDeliveryAccountIDPrefersOpenClawChannelID(t *testing.T) {
 	}
 }
 
+func TestResolveCronDeliveryAccountIDAlwaysReturnsEmpty(t *testing.T) {
+	if got := resolveCronDeliveryAccountID(); got != "" {
+		t.Fatalf("resolveCronDeliveryAccountID() = %q, want empty string", got)
+	}
+}
+
 func TestFlattenJobNormalizesDeliveryChannelForUI(t *testing.T) {
 	item := openClawJobStoreItem{}
 	item.Delivery.Channel = "dingtalk-connector"
