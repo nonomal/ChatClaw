@@ -1787,7 +1787,7 @@ export default {
       configSubtitle: 'Tencent 공식 OpenClaw 플러그인으로 QR 코드를 스캔해 개인 WeChat을 연결합니다',
       howToConnect: '연결 방법',
       step1: 'Tencent 공식 OpenClaw 플러그인으로 QR 코드를 스캔해 개인 WeChat을 연결합니다',
-      step3: 'QR 코드 생성 을 클릭하면 ClawX가 OpenClaw에 공식 WeChat 플러그인을 설치하고 활성화합니다',
+      step3: 'QR 코드 생성 을 클릭하면 ChatClaw가 OpenClaw에 공식 WeChat 플러그인을 설치하고 활성화합니다',
       step4: '아래 QR 코드를 WeChat으로 스캔하고 휴대폰에서 연결을 확인하세요',
       step5: '연결에 성공하면 WeChat에 새로운 "WeChat ClawBot" 대화가 자동으로 표시됩니다. 이후 같은 스캔 절차로 더 많은 WeChat 계정을 추가하거나 기존 계정을 다시 연결할 수 있습니다.',
       configStepsLink: '설정 단계',

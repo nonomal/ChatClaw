@@ -536,10 +536,6 @@ function handleOpenAddBotDialog() {
 }
 
 function handleEditChannel(channel: Channel) {
-  if (channel.platform === 'wechat') {
-    toast.default(t('channels.wechat.editNotSupported'))
-    return
-  }
   channelToEdit.value = channel
   showConfigChannelDialog.value = true
 }
@@ -932,7 +928,6 @@ function handleWecomManualFromQr() {
                         >
                           <DropdownMenuItem
                             class="gap-2 rounded px-4 py-[5px]"
-                            :disabled="channel.platform === 'wechat'"
                             @click="handleEditChannel(channel)"
                           >
                             <Edit class="size-4" />

@@ -228,10 +228,6 @@ function handleWecomManualEntry() {
 }
 
 function handleEditChannel(channel: Channel) {
-  if (channel.platform === 'wechat') {
-    toast.default(t('channels.wechat.editNotSupported'))
-    return
-  }
   channelToEdit.value = channel
   selectedPlatform.value = platforms.value.find((p) => p.id === channel.platform) || null
   configDialogOpen.value = true
@@ -778,7 +774,6 @@ onMounted(loadData)
                 >
                   <DropdownMenuItem
                     class="gap-2 rounded px-4 py-[5px]"
-                    :disabled="channel.platform === 'wechat'"
                     @click="handleEditChannel(channel)"
                   >
                     <Edit class="h-4 w-4" />

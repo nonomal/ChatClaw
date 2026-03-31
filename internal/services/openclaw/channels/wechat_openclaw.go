@@ -26,6 +26,7 @@ const (
 	wechatLoginWaitTimeout      = 5 * time.Minute
 	wechatExtensionSubdir       = "extensions/openclaw-weixin"
 	wechatNPXInstallMaxAttempts = 4
+	wechatDefaultAppID          = "bot"
 )
 
 // WechatChannelPreparation is returned by PrepareWechatChannel for the Wails UI before opening the WeChat flow.
@@ -33,6 +34,39 @@ type WechatChannelPreparation struct {
 	Ready          bool `json:"ready"`
 	Installing     bool `json:"installing"`
 	StartedInstall bool `json:"started_install"`
+}
+
+type wechatPluginPackageJSON struct {
+	ILinkAppID string `json:"ilink_appid"`
+}
+
+func (s *OpenClawChannelService) readWechatPluginAppID() (string, error) {
+	stateDir, err := define.OpenClawDataRootDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve openclaw data dir: %w", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(stateDir, wechatExtensionSubdir, "package.json"))
+	if err != nil {
+		return "", fmt.Errorf("read wechat plugin package.json: %w", err)
+	}
+	var pkg wechatPluginPackageJSON
+	if err := json.Unmarshal(raw, &pkg); err != nil {
+		return "", fmt.Errorf("parse wechat plugin package.json: %w", err)
+	}
+	return strings.TrimSpace(pkg.ILinkAppID), nil
+}
+
+// GetWechatAppID returns the current appid exposed by the installed WeChat plugin.
+// When the plugin package is not readable yet, fall back to the plugin's default appid.
+func (s *OpenClawChannelService) GetWechatAppID() string {
+	appID, err := s.readWechatPluginAppID()
+	if err != nil {
+		return wechatDefaultAppID
+	}
+	if appID == "" {
+		return wechatDefaultAppID
+	}
+	return appID
 }
 
 // isWechatPluginInstalledLocally checks whether the WeChat OpenClaw plugin directory exists.
@@ -688,12 +722,20 @@ func (s *OpenClawChannelService) WaitForWechatLogin(sessionKey string, channelNa
 	if name == "" {
 		name = "微信"
 	}
+	extraConfig, extraErr := json.Marshal(appCredentialsJSON{
+		Platform:  channels.PlatformWechat,
+		AppID:     s.GetWechatAppID(),
+		AccountID: lr.AccountID,
+	})
+	if extraErr != nil {
+		extraConfig = []byte(fmt.Sprintf(`{"platform":"wechat","app_id":%q,"account_id":%q}`, s.GetWechatAppID(), lr.AccountID))
+	}
 	ch, chErr := s.channelSvc.CreateChannel(channels.CreateChannelInput{
 		Platform:       channels.PlatformWechat,
 		Name:           name,
 		Avatar:         "",
 		ConnectionType: channels.ConnTypeGateway,
-		ExtraConfig:    fmt.Sprintf(`{"platform":"wechat","account_id":%q}`, lr.AccountID),
+		ExtraConfig:    string(extraConfig),
 		OpenClawScope:  true,
 	})
 	if chErr != nil {

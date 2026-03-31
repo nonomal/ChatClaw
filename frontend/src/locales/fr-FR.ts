@@ -1661,7 +1661,7 @@ export default {
       configSubtitle: 'Connectez votre WeChat personnel en scannant un QR code avec le plugin officiel Tencent OpenClaw',
       howToConnect: 'Comment se connecter',
       step1: 'Connectez votre WeChat personnel en scannant un QR code avec le plugin officiel Tencent OpenClaw',
-      step3: 'Cliquez sur Générer le QR code. ClawX installera et activera le plugin officiel WeChat dans OpenClaw',
+      step3: 'Cliquez sur Générer le QR code. ChatClaw installera et activera le plugin officiel WeChat dans OpenClaw',
       step4: 'Scannez le QR code ci-dessous avec WeChat, puis confirmez la connexion sur votre téléphone',
       step5: 'Une fois la connexion réussie, une nouvelle conversation nommée "WeChat ClawBot" apparaîtra automatiquement dans WeChat. Vous pourrez ensuite ajouter d’autres comptes WeChat avec le même processus de scan, ou reconnecter un compte existant.',
       configStepsLink: 'Étapes de configuration',

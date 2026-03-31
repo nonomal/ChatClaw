@@ -1638,7 +1638,7 @@ export default {
       configSubtitle: '透過騰訊官方 OpenClaw 外掛掃描 QR Code 連線個人微信',
       howToConnect: '如何連線',
       step1: '透過騰訊官方 OpenClaw 外掛掃描 QR Code 連線個人微信',
-      step3: '點擊產生 QR Code，ClawX 會在 OpenClaw 中安裝並啟用官方微信外掛',
+      step3: '點擊產生 QR Code，ChatClaw 會在 OpenClaw 中安裝並啟用官方微信外掛',
       step4: '請使用微信掃描下方 QR Code，並在手機上確認連線',
       step5: '連線成功後，微信中會自動出現新的「微信 ClawBot」對話。之後也可以再次透過掃描 QR Code 流程新增更多微信帳號，或重新連線既有帳號。',
       configStepsLink: '設定步驟',

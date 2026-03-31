@@ -1658,7 +1658,7 @@ export default {
       configSubtitle: 'Povežite svoj osebni WeChat tako, da z uradnim vtičnikom Tencent OpenClaw skenirate QR kodo',
       howToConnect: 'Kako povezati',
       step1: 'Povežite svoj osebni WeChat tako, da z uradnim vtičnikom Tencent OpenClaw skenirate QR kodo',
-      step3: 'Kliknite Ustvari QR kodo. ClawX bo v OpenClaw namestil in omogočil uradni vtičnik WeChat',
+      step3: 'Kliknite Ustvari QR kodo. ChatClaw bo v OpenClaw namestil in omogočil uradni vtičnik WeChat',
       step4: 'Spodnjo QR kodo skenirajte z WeChat in na telefonu potrdite povezavo',
       step5: 'Ko bo povezava uspešna, se bo v WeChat samodejno prikazal nov pogovor z imenom "WeChat ClawBot". Pozneje lahko z istim postopkom skeniranja dodate več računov WeChat ali znova povežete obstoječi račun.',
       configStepsLink: 'Koraki nastavitve',
