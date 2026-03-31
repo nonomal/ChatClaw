@@ -18,7 +18,6 @@ import {
   CreateChannelInput,
 } from '@bindings/chatclaw/internal/services/openclaw/channels'
 import type { Channel } from '@bindings/chatclaw/internal/services/channels'
-import { getPlatformDocsUrl, openExternalLink } from '@/pages/common/platformDocs'
 
 /** Poll interval: avoid high frequency (rate limits). */
 const POLL_INTERVAL_MS = 2000
@@ -205,19 +204,12 @@ function handleManualEntry() {
   emit('manual')
 }
 
-async function openDocs() {
-  await openExternalLink(getPlatformDocsUrl('wecom'))
-}
-
-async function openGuide() {
-  await openExternalLink(getPlatformDocsUrl('wecom'))
-}
 </script>
 
 <template>
   <Dialog v-model:open="open">
     <DialogContent
-      class="sm:max-w-[480px] gap-0 overflow-hidden p-0 shadow-sm dark:shadow-none dark:ring-1 dark:ring-white/10"
+      class="sm:max-w-[500px] gap-0 overflow-hidden p-0 shadow-sm dark:shadow-none dark:ring-1 dark:ring-white/10"
     >
       <DialogHeader class="gap-1 px-6 pb-2 pt-5 text-left sm:text-left">
         <DialogTitle class="text-lg font-semibold tracking-tight text-foreground">
@@ -235,27 +227,13 @@ async function openGuide() {
           class="rounded-lg bg-[#f5f5f5] px-4 py-4 text-sm leading-6 text-[#171717] dark:bg-muted/60 dark:text-foreground"
         >
           <p class="font-medium">{{ t('channels.wecomAdd.howTitle') }}</p>
-          <p class="mt-2">
-            {{ t('channels.wecomAdd.line1Before') }}
-            <button
-              type="button"
-              class="text-primary underline-offset-2 hover:underline"
-              @click="openGuide"
-            >
-              {{ t('channels.wecomAdd.line1Link') }}
-            </button>
-          </p>
-          <p class="mt-2">
-            <button
-              type="button"
-              class="text-primary underline-offset-2 hover:underline"
-              @click="openDocs"
-            >
-              {{ t('channels.wecomAdd.viewDocs') }}
-            </button>
-          </p>
-          <p class="mt-2">{{ t('channels.wecomAdd.line2') }}</p>
-          <p class="mt-2">{{ t('channels.wecomAdd.line3') }}</p>
+          <p class="mt-2">{{ t('channels.wecomAdd.tipsIntro') }}</p>
+          <p class="mt-2 font-medium">{{ t('channels.wecomAdd.stepsLabel') }}</p>
+          <ol class="mt-2 list-decimal space-y-2 pl-5 [list-style-position:outside]">
+            <li>{{ t('channels.wecomAdd.step1') }}</li>
+            <li>{{ t('channels.wecomAdd.step2') }}</li>
+          </ol>
+          <p class="mt-2">{{ t('channels.wecomAdd.tipsOrManual') }}</p>
         </div>
 
         <!-- Scan state -->
@@ -278,7 +256,7 @@ async function openGuide() {
             />
           </div>
           <p class="mt-3 max-w-sm text-center text-xs text-muted-foreground">
-            {{ t('channels.wecomAdd.line3') }}
+            {{ t('channels.wecomAdd.scanHint') }}
           </p>
           <p
             v-if="registering"

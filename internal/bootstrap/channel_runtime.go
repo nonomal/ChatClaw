@@ -252,6 +252,15 @@ func handleChannelMessage(
 	// OpenClaw agents: route through the OpenClaw Gateway when available,
 	// fall back to standard eino pipeline only if the gateway is down.
 	if agentType == conversations.AgentTypeOpenClaw {
+		// QQ: OpenClaw qqbot plugin already handles the same WS events and sends
+		// the reply. Avoid a second SendOpenClawMessage + sendReply (duplicate /
+		// empty-final-response error bubble).
+		if msg.Platform == channels.PlatformQQ {
+			app.Logger.Info("openclaw channel: qq reply handled by gateway qqbot plugin, skipping RunChannelReply",
+				"conv", conv.ID, "channel_id", msg.ChannelID)
+			openclawchannels.SyncOpenClawChannelIncomingPreview(app, convService, conv.ID, agentID, aiContent, msg.SenderName)
+			return
+		}
 		openclawchannels.RunChannelReply(app, chatService, convService, gateway, conv.ID, agentID, aiContent, msg, replyTarget, channelRow.ExtraConfig, useQuickMode, sendReply)
 		return
 	}
@@ -1139,7 +1148,7 @@ func lockChannelConversation(agentID int64, externalIDs ...string) func() {
 func buildChannelConversationExternalIDs(msg channels.IncomingMessage) (string, []string) {
 	scope := ""
 	switch msg.Platform {
-	case channels.PlatformWeCom, channels.PlatformFeishu:
+	case channels.PlatformWeCom, channels.PlatformFeishu, channels.PlatformQQ:
 		if msg.IsGroup {
 			scope = channels.ChannelConversationScopeGroup
 		} else {
@@ -1178,12 +1187,24 @@ func buildChannelConversationExternalIDs(msg channels.IncomingMessage) (string, 
 		}
 	}
 
+	if msg.Platform == channels.PlatformQQ && targetID != "" {
+		targetID = channels.NormalizeQQChannelConversationTargetID(targetID)
+	}
+
 	if targetID == "" {
 		return "", legacyIDs
 	}
 
 	externalID := channels.BuildChannelConversationExternalID(msg.ChannelID, scope, targetID)
 	appendLegacy(channels.BuildChannelConversationExternalID(msg.ChannelID, "", targetID))
+	if msg.Platform == channels.PlatformQQ {
+		switch scope {
+		case channels.ChannelConversationScopeDM:
+			appendLegacy(channels.BuildChannelConversationExternalID(msg.ChannelID, "", "user:"+targetID))
+		case channels.ChannelConversationScopeGroup:
+			appendLegacy(channels.BuildChannelConversationExternalID(msg.ChannelID, "", "group:"+targetID))
+		}
+	}
 	return externalID, legacyIDs
 }
 

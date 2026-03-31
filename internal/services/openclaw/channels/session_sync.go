@@ -192,6 +192,39 @@ func openClawSyncAccountID(ch channels.Channel) string {
 	}
 }
 
+// openClawQQSessionSyncLegacyExternalIDs lists older ChatClaw QQ conversation keys so session
+// sync merges with rows created before QQ used scoped external_ids (ch:{id}:dm:{target}).
+func openClawQQSessionSyncLegacyExternalIDs(platform string, channelID int64, scope, targetID string) []string {
+	if strings.TrimSpace(platform) != channels.PlatformQQ {
+		return nil
+	}
+	targetID = channels.NormalizeChannelConversationTargetID(targetID)
+	if channelID <= 0 || targetID == "" {
+		return nil
+	}
+	var out []string
+	add := func(id string) {
+		id = channels.CanonicalChannelConversationExternalID(strings.TrimSpace(id))
+		if id == "" {
+			return
+		}
+		for _, x := range out {
+			if x == id {
+				return
+			}
+		}
+		out = append(out, id)
+	}
+	add(channels.BuildChannelConversationExternalID(channelID, "", targetID))
+	switch scope {
+	case channels.ChannelConversationScopeDM:
+		add(channels.BuildChannelConversationExternalID(channelID, "", "user:"+targetID))
+	case channels.ChannelConversationScopeGroup:
+		add(channels.BuildChannelConversationExternalID(channelID, "", "group:"+targetID))
+	}
+	return out
+}
+
 func (s *OpenClawChannelService) syncSessionConversation(
 	agentID int64,
 	ch channels.Channel,
@@ -206,7 +239,8 @@ func (s *OpenClawChannelService) syncSessionConversation(
 	}
 
 	name := s.buildSyncedConversationName(ch, entry, scope, targetID)
-	convID, err := s.convSvc.FindOrCreateByExternalID(agentID, externalID, name, conversations.AgentTypeOpenClaw)
+	legacy := openClawQQSessionSyncLegacyExternalIDs(ch.Platform, ch.ID, scope, targetID)
+	convID, err := s.convSvc.FindOrCreateByExternalID(agentID, externalID, name, conversations.AgentTypeOpenClaw, legacy...)
 	if err != nil {
 		return err
 	}
