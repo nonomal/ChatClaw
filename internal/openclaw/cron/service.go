@@ -326,7 +326,7 @@ func (s *OpenClawCronService) UpdateJob(jobID string, input UpdateOpenClawCronJo
 		return s.findJobByID(jobID)
 	}
 	if err := s.gatewayRequest(openClawCronMethodUpdate, map[string]any{
-		"id":    strings.TrimSpace(jobID),
+		"jobId": strings.TrimSpace(jobID),
 		"patch": patch,
 	}, nil); err != nil {
 		return nil, err
@@ -336,13 +336,13 @@ func (s *OpenClawCronService) UpdateJob(jobID string, input UpdateOpenClawCronJo
 
 func (s *OpenClawCronService) DeleteJob(jobID string) error {
 	return s.gatewayRequest(openClawCronMethodRemove, map[string]any{
-		"id": strings.TrimSpace(jobID),
+		"jobId": strings.TrimSpace(jobID),
 	}, nil)
 }
 
 func (s *OpenClawCronService) EnableJob(jobID string) (*OpenClawCronJob, error) {
 	if err := s.gatewayRequest(openClawCronMethodUpdate, map[string]any{
-		"id": strings.TrimSpace(jobID),
+		"jobId": strings.TrimSpace(jobID),
 		"patch": map[string]any{
 			"enabled": true,
 		},
@@ -354,7 +354,7 @@ func (s *OpenClawCronService) EnableJob(jobID string) (*OpenClawCronJob, error) 
 
 func (s *OpenClawCronService) DisableJob(jobID string) (*OpenClawCronJob, error) {
 	if err := s.gatewayRequest(openClawCronMethodUpdate, map[string]any{
-		"id": strings.TrimSpace(jobID),
+		"jobId": strings.TrimSpace(jobID),
 		"patch": map[string]any{
 			"enabled": false,
 		},
@@ -379,8 +379,8 @@ func (s *OpenClawCronService) RunJobNow(jobID string) (*OpenClawCronRunNowResult
 		RunID    string `json:"runId"`
 	}
 	if err := s.gatewayRequest(openClawCronMethodRun, map[string]any{
-		"id":   jobID,
-		"mode": openClawCronRunModeForce,
+		"jobId": jobID,
+		"mode":  openClawCronRunModeForce,
 	}, &payload); err != nil {
 		return nil, fmt.Errorf("openclaw cron run %s failed: %w", jobID, err)
 	}
@@ -419,7 +419,7 @@ func (s *OpenClawCronService) ListRuns(jobID string, limit int) ([]OpenClawCronR
 		Entries []openClawRunEntryCLI `json:"entries"`
 	}
 	err := s.gatewayQuery(openClawCronMethodRuns, map[string]any{
-		"id":    strings.TrimSpace(jobID),
+		"jobId": strings.TrimSpace(jobID),
 		"limit": limit,
 	}, &result)
 	if err == nil {
@@ -1776,8 +1776,8 @@ func appendAgentTurnCommonPayload(payload map[string]any, model, thinking string
 	if thinking != "" {
 		payload["thinking"] = thinking
 	}
-	if timeoutMs > 0 {
-		payload["timeoutMs"] = timeoutMs
+	if timeoutSeconds, ok := timeoutMsToSeconds(timeoutMs); ok {
+		payload["timeoutSeconds"] = timeoutSeconds
 	}
 	if lightContext {
 		payload["lightContext"] = true
@@ -1796,8 +1796,10 @@ func appendAgentTurnCommonPatch(payload map[string]any, input UpdateOpenClawCron
 	if input.Thinking != nil && strings.TrimSpace(*input.Thinking) != "" {
 		payload["thinking"] = strings.TrimSpace(*input.Thinking)
 	}
-	if input.TimeoutMs != nil && *input.TimeoutMs > 0 {
-		payload["timeoutMs"] = *input.TimeoutMs
+	if input.TimeoutMs != nil {
+		if timeoutSeconds, ok := timeoutMsToSeconds(*input.TimeoutMs); ok {
+			payload["timeoutSeconds"] = timeoutSeconds
+		}
 	}
 	if input.LightContext != nil {
 		payload["lightContext"] = *input.LightContext
@@ -1986,8 +1988,10 @@ func buildUpdateArgs(jobID string, input UpdateOpenClawCronJobInput) ([]string, 
 	appendOptionalStringArg(&args, "--thinking", input.Thinking)
 	appendOptionalBoolArg(&args, "--expect-final", input.ExpectFinal)
 	appendOptionalBoolArg(&args, "--light-context", input.LightContext)
-	if input.TimeoutMs != nil && *input.TimeoutMs > 0 {
-		args = append(args, "--timeout", strconv.FormatInt(*input.TimeoutMs, 10))
+	if input.TimeoutMs != nil {
+		if timeoutSeconds, ok := timeoutMsToSeconds(*input.TimeoutMs); ok {
+			args = append(args, "--timeout-seconds", strconv.FormatInt(timeoutSeconds, 10))
+		}
 	}
 	appendOptionalStringArg(&args, "--session", input.SessionTarget)
 	if input.ClearSessionKey {
@@ -2106,8 +2110,8 @@ func appendCommonArgs(
 	if lightContext {
 		*args = append(*args, "--light-context")
 	}
-	if timeoutMs > 0 {
-		*args = append(*args, "--timeout", strconv.FormatInt(timeoutMs, 10))
+	if timeoutSeconds, ok := timeoutMsToSeconds(timeoutMs); ok {
+		*args = append(*args, "--timeout-seconds", strconv.FormatInt(timeoutSeconds, 10))
 	}
 	if sessionTarget != "" {
 		*args = append(*args, "--session", sessionTarget)
@@ -2851,15 +2855,17 @@ type openClawJobStoreItem struct {
 		Exact    bool   `json:"exact"`
 	} `json:"schedule"`
 	Payload struct {
-		Kind         string `json:"kind"`
-		AgentID      string `json:"agentId"`
-		Message      string `json:"message"`
-		SystemEvent  string `json:"systemEvent"`
-		Model        string `json:"model"`
-		Thinking     string `json:"thinking"`
-		ExpectFinal  bool   `json:"expectFinal"`
-		LightContext bool   `json:"lightContext"`
-		TimeoutMs    int64  `json:"timeoutMs"`
+		Kind           string `json:"kind"`
+		AgentID        string `json:"agentId"`
+		Message        string `json:"message"`
+		Text           string `json:"text"`
+		SystemEvent    string `json:"systemEvent"`
+		Model          string `json:"model"`
+		Thinking       string `json:"thinking"`
+		ExpectFinal    bool   `json:"expectFinal"`
+		LightContext   bool   `json:"lightContext"`
+		TimeoutSeconds int64  `json:"timeoutSeconds"`
+		TimeoutMs      int64  `json:"timeoutMs"`
 	} `json:"payload"`
 	Delivery struct {
 		Mode      string `json:"mode"`
@@ -2907,12 +2913,12 @@ func flattenJob(item openClawJobStoreItem) OpenClawCronJob {
 		Exact:              item.Schedule.Exact,
 		PayloadKind:        item.Payload.Kind,
 		Message:            item.Payload.Message,
-		SystemEvent:        item.Payload.SystemEvent,
+		SystemEvent:        firstNonEmpty(item.Payload.SystemEvent, item.Payload.Text),
 		Model:              item.Payload.Model,
 		Thinking:           item.Payload.Thinking,
 		ExpectFinal:        item.Payload.ExpectFinal,
 		LightContext:       item.Payload.LightContext,
-		TimeoutMs:          item.Payload.TimeoutMs,
+		TimeoutMs:          firstNonZero(item.Payload.TimeoutMs, item.Payload.TimeoutSeconds*1000),
 		DeliveryMode:       firstNonEmpty(item.Delivery.Mode, "announce"),
 		DeliveryChannel:    item.Delivery.Channel,
 		DeliveryTo:         item.Delivery.To,
@@ -2941,6 +2947,15 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func firstNonZero(values ...int64) int64 {
+	for _, value := range values {
+		if value != 0 {
+			return value
+		}
+	}
+	return 0
 }
 
 func inferCronDeliveryTargetMode(deliveryTo string) string {
