@@ -1417,7 +1417,7 @@ func (s *OpenClawCronService) resolveDeliverySelection(input cronDeliverySelecti
 	if err != nil {
 		return "", "", "", err
 	}
-	return platform, resolvedTarget, deriveCronDeliveryAccountID(matchedChannel), nil
+	return deriveCronDeliveryChannelID(matchedChannel), resolvedTarget, deriveCronDeliveryAccountID(matchedChannel), nil
 }
 
 func (s *OpenClawCronService) resolveDeliveryAgentRowID(openClawAgentID string) (int64, error) {
@@ -1482,6 +1482,23 @@ func deriveCronDeliveryAccountID(option cronDeliveryChannelOption) string {
 		return ""
 	}
 	return fmt.Sprintf("channel_%d", option.ID)
+}
+
+// deriveCronDeliveryChannelID maps local platform ids to the OpenClaw delivery.channel value.
+// deriveCronDeliveryChannelID 将本地平台标识映射为 OpenClaw delivery.channel，避免把 accountId 或本地别名误写进 channel 字段。
+func deriveCronDeliveryChannelID(option cronDeliveryChannelOption) string {
+	switch strings.ToLower(strings.TrimSpace(option.Platform)) {
+	case "qq":
+		return "qqbot"
+	case "dingtalk":
+		return "dingtalk-connector"
+	case "feishu":
+		return "feishu"
+	case "wecom":
+		return "wecom"
+	default:
+		return strings.TrimSpace(option.Platform)
+	}
 }
 
 func extractOpenClawChannelIDFromExtraConfig(extraConfig string) string {
@@ -2952,7 +2969,9 @@ func flattenJob(item openClawJobStoreItem) OpenClawCronJob {
 		LightContext:       item.Payload.LightContext,
 		TimeoutMs:          firstNonZero(item.Payload.TimeoutMs, item.Payload.TimeoutSeconds*1000),
 		DeliveryMode:       firstNonEmpty(item.Delivery.Mode, "announce"),
-		DeliveryChannel:    item.Delivery.Channel,
+		// Surface UI-friendly platform aliases so the cron edit form can keep using configured local channel options.
+		// 返回前端时保留 UI 友好的平台别名，避免编辑弹窗拿到插件 channel id 后无法匹配本地已配置频道。
+		DeliveryChannel:    normalizeCronDeliveryChannelForUI(item.Delivery.Channel),
 		DeliveryTo:         item.Delivery.To,
 		DeliveryAccountID:  item.Delivery.AccountID,
 		Announce:           item.Delivery.Mode == "announce" || item.Delivery.Announce,
@@ -2969,6 +2988,19 @@ func flattenJob(item openClawJobStoreItem) OpenClawCronJob {
 		LastError:          item.State.LastError,
 		LastDurationMs:     item.State.LastDurationMs,
 		LastDeliveryStatus: item.State.LastDeliveryStatus,
+	}
+}
+
+// normalizeCronDeliveryChannelForUI maps OpenClaw plugin channel ids back to local platform aliases.
+// normalizeCronDeliveryChannelForUI 将 OpenClaw 插件 channel id 映射回本地平台别名，保持前端表单和历史任务兼容。
+func normalizeCronDeliveryChannelForUI(channel string) string {
+	switch strings.ToLower(strings.TrimSpace(channel)) {
+	case "qqbot":
+		return "qq"
+	case "dingtalk-connector":
+		return "dingtalk"
+	default:
+		return strings.TrimSpace(channel)
 	}
 }
 

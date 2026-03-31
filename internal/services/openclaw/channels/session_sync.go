@@ -69,6 +69,9 @@ func (s *OpenClawChannelService) updateChannelLastReplyTargetBySessionKey(localA
 	if !ok || strings.TrimSpace(platform) == "" {
 		return nil
 	}
+	// 统一平台别名，确保 dingtalk-connector / qqbot 也能命中本地渠道和 scope 规则。
+	// Normalize platform aliases so dingtalk-connector / qqbot can match local channels and scope rules.
+	platform = canonicalOpenClawLastReplyTargetPlatform(platform)
 
 	parts := strings.Split(sessionKey, ":")
 	if len(parts) < 5 {
