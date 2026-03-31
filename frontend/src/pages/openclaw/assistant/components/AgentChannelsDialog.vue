@@ -45,6 +45,12 @@ import { toast, useToast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
 import { platformIconMap } from '@/assets/icons/snap/platformIcons'
 import { getPlatformDocsUrl, openExternalLink } from '@/pages/channels/platformDocs'
+import {
+  addPendingGatewayProvisioning,
+  syncPendingFromChannels,
+  isGatewayProvisioning,
+  isBindProvisioning,
+} from '@/composables/useOpenClawChannelProvisioning'
 
 const props = defineProps<{
   agent: OpenClawAgent | null
@@ -171,6 +177,7 @@ function getAgentName(agentId: number): string {
 }
 
 function getBindStatusText(channel: Channel): string {
+  if (isBindProvisioning(channel)) return t('channels.card.provisioning')
   if (channel.agent_id === currentAgentId.value) return t('assistant.channels.boundCurrent')
   if (channel.agent_id === 0) return t('assistant.channels.unbound')
   return t('assistant.channels.boundOther')
@@ -183,6 +190,7 @@ function getBindActionText(channel: Channel): string {
 }
 
 function getChannelStatusText(channel: Channel): string {
+  if (isGatewayProvisioning(channel)) return t('channels.status.provisioning')
   if (channel.status === 'online') return t('assistant.channels.statusOnline', '已连接')
   if (channel.status === 'error') return t('assistant.channels.statusError', '错误')
   return t('assistant.channels.statusOffline', '未连接')
@@ -213,6 +221,7 @@ async function loadData() {
     ])
 
     channels.value = channelList || []
+    syncPendingFromChannels(channels.value)
     platforms.value = platformList || []
     agents.value = agentList || []
 
@@ -294,6 +303,7 @@ async function handleCreateChannel() {
     })
 
     const platformId = selectedPlatformMeta.value.id
+    let createdChannel: Channel | null = null
     if (platformId === 'feishu' || platformId === 'dingtalk' || platformId === 'qq') {
       const channel = await OpenClawChannelService.CreateChannel(
         new CreateChannelInput({
@@ -304,6 +314,7 @@ async function handleCreateChannel() {
           agent_id: props.agent.id,
         })
       )
+      createdChannel = channel
       if (platformId === 'qq' && channel) {
         await OpenClawChannelService.ConnectChannel(channel.id)
       }
@@ -316,11 +327,15 @@ async function handleCreateChannel() {
         extra_config: extraConfig,
         openclaw_scope: true,
       })
+      createdChannel = channel
       if (channel) {
         await OpenClawChannelService.BindAgent(channel.id, props.agent.id)
       }
     }
 
+    if (createdChannel?.id) {
+      addPendingGatewayProvisioning(createdChannel.id)
+    }
     if (platformId === 'dingtalk') {
       addToast({
         title: t('channels.config.dingtalkPluginInstalling'),
@@ -329,7 +344,12 @@ async function handleCreateChannel() {
         duration: 6000,
       })
     } else {
-      toast.success(t('assistant.channels.createAndBindSuccess'))
+      addToast({
+        title: t('channels.provisioning.toastTitle'),
+        description: t('channels.provisioning.toastDescription'),
+        variant: 'default',
+        duration: 8000,
+      })
     }
     resetInlineForm()
     await loadData()
@@ -479,8 +499,14 @@ async function handleConfigChannelSaved(channel: Channel, isEdit: boolean) {
 
   try {
     if (!isEdit) {
+      addPendingGatewayProvisioning(channel.id)
+      addToast({
+        title: t('channels.provisioning.toastTitle'),
+        description: t('channels.provisioning.toastDescription'),
+        variant: 'default',
+        duration: 8000,
+      })
       await OpenClawChannelService.BindAgent(channel.id, props.agent.id)
-      toast.success(t('assistant.channels.createAndBindSuccess'))
     }
     channelToEdit.value = null
     await loadData()
@@ -815,7 +841,12 @@ function handleWecomManualFromQr() {
                     <div
                       class="inline-flex items-center gap-1.5 rounded-full bg-[#f0f0f0] px-2 py-0.5 dark:bg-muted"
                     >
+                      <LoaderCircle
+                        v-if="isGatewayProvisioning(channel)"
+                        class="size-3.5 shrink-0 animate-spin text-muted-foreground"
+                      />
                       <div
+                        v-else
                         class="h-2 w-2 rounded-full"
                         :class="{
                           'bg-green-500': channel.status === 'online',
@@ -831,8 +862,12 @@ function handleWecomManualFromQr() {
                     <div
                       class="inline-flex items-center gap-1 rounded-full bg-[#f0f0f0] px-2 py-0.5 dark:bg-muted"
                     >
+                      <LoaderCircle
+                        v-if="isBindProvisioning(channel)"
+                        class="size-3.5 shrink-0 animate-spin text-muted-foreground"
+                      />
                       <Check
-                        v-if="channel.agent_id !== 0"
+                        v-else-if="channel.agent_id !== 0"
                         class="size-3.5 text-[#595959] dark:text-muted-foreground"
                       />
                       <Unlink v-else class="size-3.5 text-[#595959] dark:text-muted-foreground" />

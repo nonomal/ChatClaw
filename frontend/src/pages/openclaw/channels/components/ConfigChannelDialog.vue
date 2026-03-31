@@ -223,9 +223,8 @@ async function handleSave() {
           variant: 'default',
           duration: 6000,
         })
-      } else {
-        toast.success(t('channels.config.success'))
       }
+      // Success / provisioning toast is shown by the parent (OpenClawChannelsPage / AgentChannelsDialog).
     }
 
     open.value = false

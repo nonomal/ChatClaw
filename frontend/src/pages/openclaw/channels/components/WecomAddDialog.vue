@@ -151,7 +151,6 @@ async function handlePollTick() {
       registering.value = true
       try {
         const channel = await registerChannel(creds.botId, creds.secret)
-        toast.success(t('channels.config.success'))
         open.value = false
         emit('saved', channel, false)
       } catch (e) {
@@ -203,7 +202,6 @@ function handleManualEntry() {
   open.value = false
   emit('manual')
 }
-
 </script>
 
 <template>
@@ -258,10 +256,7 @@ function handleManualEntry() {
           <p class="mt-3 max-w-sm text-center text-xs text-muted-foreground">
             {{ t('channels.wecomAdd.scanHint') }}
           </p>
-          <p
-            v-if="registering"
-            class="mt-2 flex items-center gap-2 text-sm text-muted-foreground"
-          >
+          <p v-if="registering" class="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
             <LoaderCircle class="size-4 animate-spin text-muted-foreground" />
             {{ t('channels.wecomAdd.registering') }}
           </p>

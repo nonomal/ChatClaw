@@ -17,12 +17,7 @@
 type SvgComponent = any
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  useNavigationStore,
-  useAppStore,
-  type NavModule,
-  type SystemOwner,
-} from '@/stores'
+import { useNavigationStore, useAppStore, type NavModule, type SystemOwner } from '@/stores'
 import { cn } from '@/lib/utils'
 import IconAssistant from '@/assets/icons/assistant.svg'
 import IconKnowledge from '@/assets/icons/knowledge.svg'
@@ -314,7 +309,6 @@ const navIconClass = (item: NavItem) =>
             <IconDown class="size-3.5" />
           </span>
         </button>
-
       </div>
 
       <!-- Dropdown teleported to body to escape SideNav's overflow-hidden / stacking-context constraints.
