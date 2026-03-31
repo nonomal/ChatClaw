@@ -99,6 +99,16 @@ const agentOptions = computed(() => {
   })
 })
 
+const filteredDeliveryPlatforms = computed(() => {
+  const agentID = props.form.agentId.trim()
+  if (!agentID) {
+    return []
+  }
+  return props.deliveryPlatforms.filter((platform) =>
+    Array.isArray(platform.openclaw_agent_ids) && platform.openclaw_agent_ids.includes(agentID)
+  )
+})
+
 const scheduleKindOptions = computed(() => {
   if (props.form.scheduleKind === LEGACY_CUSTOM_SCHEDULE_KIND) {
     return [...BASE_SCHEDULE_KIND_OPTIONS, LEGACY_CUSTOM_SCHEDULE_KIND_OPTION]
@@ -349,6 +359,38 @@ watch(
       return
     }
     void refreshLatestDeliveryTarget()
+  },
+  { immediate: true }
+)
+
+watch(
+  () => [props.open, props.form.agentId, filteredDeliveryPlatforms.value.map((item) => item.platform).join('|')] as const,
+  ([open, agentId]) => {
+    if (!open) return
+
+    const normalizedAgentID = agentId.trim()
+    const platformOptions = filteredDeliveryPlatforms.value
+    const currentPlatform = props.form.channelPlatform.trim()
+    const hasCurrentPlatform = platformOptions.some((item) => item.platform === currentPlatform)
+
+    if (!normalizedAgentID) {
+      props.form.channelPlatform = ''
+      props.form.deliveryTargetId = ''
+      return
+    }
+
+    if (hasCurrentPlatform) {
+      return
+    }
+
+    if (platformOptions.length === 1) {
+      props.form.channelPlatform = platformOptions[0].platform
+      return
+    }
+
+    if (currentPlatform) {
+      props.form.channelPlatform = ''
+    }
   },
   { immediate: true }
 )
@@ -796,7 +838,7 @@ useEventListener(window, 'keydown', (event) => {
                   >
                     <option value="">{{ t('openclawCron.dialog.channelPlatformPlaceholder', '请选择已配置频道') }}</option>
                     <option
-                      v-for="platform in deliveryPlatforms"
+                      v-for="platform in filteredDeliveryPlatforms"
                       :key="platform.platform"
                       :value="platform.platform"
                     >

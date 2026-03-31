@@ -195,25 +195,57 @@ func (s *OpenClawCronService) ListDeliveryPlatforms() ([]OpenClawCronDeliveryPla
 		return nil, err
 	}
 
-	seen := make(map[string]struct{})
-	out := make([]OpenClawCronDeliveryPlatformOption, 0, len(options))
+	agentIDByRowID, err := s.openClawAgentIDByRowID()
+	if err != nil {
+		return nil, err
+	}
+
+	outByPlatform := make(map[string]*OpenClawCronDeliveryPlatformOption)
 	for _, option := range options {
 		platform := strings.TrimSpace(option.Platform)
 		if platform == "" {
 			continue
 		}
-		if _, exists := seen[platform]; exists {
-			continue
+		entry, exists := outByPlatform[platform]
+		if !exists {
+			entry = &OpenClawCronDeliveryPlatformOption{
+				Platform:         platform,
+				Label:            platform,
+				OpenClawAgentIDs: []string{},
+			}
+			outByPlatform[platform] = entry
 		}
-		seen[platform] = struct{}{}
-		out = append(out, OpenClawCronDeliveryPlatformOption{
-			Platform: platform,
-			Label:    platform,
-		})
+		if openClawAgentID := strings.TrimSpace(agentIDByRowID[option.AgentRowID]); openClawAgentID != "" && !slices.Contains(entry.OpenClawAgentIDs, openClawAgentID) {
+			entry.OpenClawAgentIDs = append(entry.OpenClawAgentIDs, openClawAgentID)
+		}
+	}
+
+	out := make([]OpenClawCronDeliveryPlatformOption, 0, len(outByPlatform))
+	for _, option := range outByPlatform {
+		slices.Sort(option.OpenClawAgentIDs)
+		out = append(out, *option)
 	}
 	slices.SortFunc(out, func(left, right OpenClawCronDeliveryPlatformOption) int {
 		return strings.Compare(left.Platform, right.Platform)
 	})
+	return out, nil
+}
+
+func (s *OpenClawCronService) openClawAgentIDByRowID() (map[int64]string, error) {
+	items, err := s.agentsSvc.ListAgents()
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[int64]string, len(items))
+	for _, item := range items {
+		if item.ID <= 0 {
+			continue
+		}
+		if openClawAgentID := strings.TrimSpace(item.OpenClawAgentID); openClawAgentID != "" {
+			out[item.ID] = openClawAgentID
+		}
+	}
 	return out, nil
 }
 

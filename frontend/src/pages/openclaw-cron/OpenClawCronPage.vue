@@ -140,12 +140,6 @@ async function loadDialogOptions() {
   return [agentList || [], deliveryPlatformList || []] as const
 }
 
-function applySingleDeliveryPlatformDefault() {
-  if (!form.value.channelPlatform && deliveryPlatforms.value.length === 1) {
-    form.value.channelPlatform = deliveryPlatforms.value[0].platform
-  }
-}
-
 onMounted(() => {
   void reloadAll()
 })
@@ -155,7 +149,6 @@ async function openCreateDialog() {
     editingJob.value = null
     form.value = createEmptyOpenClawCronForm()
     ;[agents.value, deliveryPlatforms.value] = await loadDialogOptions()
-    applySingleDeliveryPlatformDefault()
     createDialogOpen.value = true
   } catch (error) {
     toast.error(getErrorMessage(error))
@@ -167,7 +160,6 @@ async function openEditDialog(job: OpenClawCronJob) {
     editingJob.value = job
     form.value = jobToForm(job)
     ;[agents.value, deliveryPlatforms.value] = await loadDialogOptions()
-    applySingleDeliveryPlatformDefault()
     createDialogOpen.value = true
   } catch (error) {
     toast.error(getErrorMessage(error))
