@@ -1655,7 +1655,6 @@ export default {
       emptyDesc: 'Povežite svoj osebni WeChat tako, da s pomočjo uradnega vtičnika Tencent OpenClaw skenirate QR kodo, nato pa začnite prejemati in obdelovati sporočila WeChat.',
       addNow: 'Dodaj zdaj',
       configTitle: 'Nastavi WeChat',
-      configSubtitle: 'Povežite svoj osebni WeChat tako, da z uradnim vtičnikom Tencent OpenClaw skenirate QR kodo',
       howToConnect: 'Kako povezati',
       step1: '1. Povežite svoj osebni WeChat tako, da z uradnim vtičnikom Tencent OpenClaw skenirate QR kodo',
       step3: '2. Kliknite Ustvari QR kodo, da v OpenClaw namestite in omogočite uradni vtičnik WeChat',

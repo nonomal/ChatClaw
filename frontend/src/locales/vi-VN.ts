@@ -1655,7 +1655,6 @@ export default {
       emptyDesc: 'Kết nối WeChat cá nhân bằng cách quét mã QR với plugin OpenClaw chính thức của Tencent và bắt đầu nhận, xử lý tin nhắn WeChat.',
       addNow: 'Thêm ngay',
       configTitle: 'Cấu hình WeChat',
-      configSubtitle: 'Kết nối WeChat cá nhân bằng cách quét mã QR với plugin OpenClaw chính thức của Tencent',
       howToConnect: 'Cách kết nối',
       step1: '1. Kết nối WeChat cá nhân bằng cách quét mã với plugin OpenClaw chính thức của Tencent',
       step3: '2. Nhấn Tạo mã QR để cài đặt và bật plugin WeChat chính thức trong OpenClaw',

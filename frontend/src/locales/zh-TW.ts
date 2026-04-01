@@ -1635,7 +1635,6 @@ export default {
       emptyDesc: '透過騰訊官方 OpenClaw 外掛掃描 QR Code 連線個人微信，開始接收並處理微信訊息。',
       addNow: '立即新增',
       configTitle: '設定微信',
-      configSubtitle: '透過騰訊官方 OpenClaw 外掛掃描 QR Code 連線個人微信',
       howToConnect: '如何連線',
       step1: '1、透過騰訊官方 OpenClaw 外掛掃碼連線個人微信',
       step3: '2、點擊產生 QR Code，會在 OpenClaw 中安裝並啟用官方微信外掛',

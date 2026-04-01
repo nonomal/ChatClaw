@@ -1653,7 +1653,6 @@ export default {
       emptyDesc: 'Tencent resmi OpenClaw eklentisi ile QR kodunu tarayarak kişisel WeChat hesabınızı bağlayın ve WeChat mesajlarını almaya ve işlemeye başlayın.',
       addNow: 'Şimdi ekle',
       configTitle: 'WeChat yapılandır',
-      configSubtitle: 'Tencent resmi OpenClaw eklentisi ile QR kodu tarayarak kişisel WeChat hesabınızı bağlayın',
       howToConnect: 'Nasıl bağlanır',
       step1: '1. Kişisel WeChat hesabınızı Tencent resmi OpenClaw eklentisi ile QR kodu tarayarak bağlayın',
       step3: '2. QR kodu oluştur seçeneğine tıklayın; OpenClaw içinde resmi WeChat eklentisi kurulur ve etkinleştirilir',

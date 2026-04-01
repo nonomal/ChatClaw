@@ -1638,7 +1638,6 @@ export default {
       emptyDesc: '通过腾讯官方 OpenClaw 插件扫码连接个人微信，开始接收并处理微信消息。',
       addNow: '立即添加',
       configTitle: '配置微信',
-      configSubtitle: '通过腾讯官方 OpenClaw 插件扫码连接个人微信',
       howToConnect: '如何连接',
       step1: '1、通过腾讯官方 OpenClaw 插件扫码连接个人微信',
       step3: '2、点击生成二维码，会在 OpenClaw 中安装并启用官方微信插件',

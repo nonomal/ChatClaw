@@ -1655,7 +1655,6 @@ export default {
       emptyDesc: 'امسح رمز الاستجابة السريعة عبر الإضافة الرسمية من Tencent OpenClaw لربط WeChat الشخصي والبدء في استقبال رسائل WeChat ومعالجتها.',
       addNow: 'أضف الآن',
       configTitle: 'إعداد WeChat',
-      configSubtitle: 'اربط WeChat الشخصي عبر مسح رمز الاستجابة السريعة باستخدام الإضافة الرسمية من Tencent OpenClaw',
       howToConnect: 'كيفية الاتصال',
       step1: '1. اربط WeChat الشخصي بمسح رمز الاستجابة السريعة عبر الإضافة الرسمية Tencent OpenClaw',
       step3: '2. انقر على إنشاء رمز الاستجابة السريعة لتثبيت الإضافة الرسمية لـ WeChat وتمكينها في OpenClaw',

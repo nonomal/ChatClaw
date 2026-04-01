@@ -1728,7 +1728,6 @@ export default {
       emptyDesc: 'Connect your personal WeChat by scanning a QR code with the official Tencent OpenClaw plugin and start receiving and processing WeChat messages.',
       addNow: 'Add now',
       configTitle: 'Configure WeChat',
-      configSubtitle: 'Connect your personal WeChat by scanning a QR code with the official Tencent OpenClaw plugin',
       howToConnect: 'How to connect',
       step1: '1. Connect your personal WeChat by scanning with Tencent\'s official OpenClaw plugin',
       step3: '2. Click Generate QR code to install and enable the official WeChat plugin in OpenClaw',

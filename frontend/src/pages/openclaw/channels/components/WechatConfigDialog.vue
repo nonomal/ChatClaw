@@ -124,9 +124,6 @@ async function handleRefreshQRCode() {
         <DialogTitle class="text-lg font-semibold text-foreground">
           {{ t('channels.wechat.configTitle') }}
         </DialogTitle>
-        <p class="mt-1 text-sm text-muted-foreground">
-          {{ t('channels.wechat.configSubtitle') }}
-        </p>
       </DialogHeader>
 
       <!-- Initial / Generating Step -->

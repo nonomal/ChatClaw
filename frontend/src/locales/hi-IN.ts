@@ -1672,7 +1672,6 @@ export default {
       emptyDesc: 'Tencent के आधिकारिक OpenClaw प्लगइन से QR कोड स्कैन करके अपना व्यक्तिगत WeChat कनेक्ट करें और WeChat संदेश प्राप्त व संसाधित करना शुरू करें।',
       addNow: 'अभी जोड़ें',
       configTitle: 'WeChat कॉन्फ़िगर करें',
-      configSubtitle: 'Tencent के आधिकारिक OpenClaw प्लगइन से QR कोड स्कैन करके अपना व्यक्तिगत WeChat कनेक्ट करें',
       howToConnect: 'कैसे कनेक्ट करें',
       step1: '1. Tencent के आधिकारिक OpenClaw प्लगइन से QR कोड स्कैन करके अपना व्यक्तिगत WeChat कनेक्ट करें',
       step3: '2. QR कोड जनरेट करें पर क्लिक करें; OpenClaw में आधिकारिक WeChat प्लगइन इंस्टॉल और सक्षम होगा',

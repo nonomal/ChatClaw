@@ -1654,7 +1654,6 @@ export default {
       emptyDesc: 'Tencent 公式の OpenClaw プラグインで QR コードをスキャンして個人 WeChat を接続し、WeChat メッセージの受信と処理を開始します。',
       addNow: '今すぐ追加',
       configTitle: 'WeChat を設定',
-      configSubtitle: 'Tencent 公式の OpenClaw プラグインで QR コードをスキャンして個人 WeChat を接続します',
       howToConnect: '接続方法',
       step1: '1. Tencent 公式の OpenClaw プラグインで QR コードをスキャンし、個人 WeChat を接続します',
       step3: '2. 「QR コードを生成」をクリックすると、OpenClaw に公式 WeChat プラグインがインストール・有効化されます',
