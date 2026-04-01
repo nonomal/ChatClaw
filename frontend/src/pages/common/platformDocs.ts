@@ -5,6 +5,8 @@ const DEFAULT_PLATFORM_DOCS_URL = 'https://docs.ichatclaw.com/docs/chatClaw-acce
 const PLATFORM_DOCS_URLS: Record<string, string> = {
   feishu: 'https://docs.ichatclaw.com/docs/chatClaw-access-to-feishu',
   wecom: 'https://docs.ichatclaw.com/docs/chatClaw-access-to-work-weixin-robot',
+  // Personal WeChat (OpenClaw plugin): update when a dedicated guide exists on docs.ichatclaw.com
+  wechat: 'https://docs.ichatclaw.com/docs/About-Chatclaw',
   dingtalk: 'https://docs.ichatclaw.com/docs/chatClaw-access-to-dingtalk-robot',
   qq: 'https://docs.ichatclaw.com/docs/chatClaw-access-to-qq-robot',
 }

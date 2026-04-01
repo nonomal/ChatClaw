@@ -720,7 +720,8 @@ func (s *OpenClawChannelService) WaitForWechatLogin(sessionKey string, channelNa
 	// Step 2: Create a local channel record.
 	name := strings.TrimSpace(channelName)
 	if name == "" {
-		name = "微信"
+		n := s.countOpenClawWechatChannels(waitCtx)
+		name = fmt.Sprintf("微信%d", n+1)
 	}
 	extraConfig, extraErr := json.Marshal(appCredentialsJSON{
 		Platform:  channels.PlatformWechat,
@@ -1070,6 +1071,25 @@ func (s *OpenClawChannelService) countEnabledWechatChannels(ctx context.Context,
 		Where("ch.platform = ?", channels.PlatformWechat).
 		Where("ch.enabled = ?", true).
 		Where("ch.id != ?", excludeID).
+		Where(openClawChannelVisibilitySQL).
+		Scan(listCtx); err != nil {
+		return 0
+	}
+	return len(models)
+}
+
+// countOpenClawWechatChannels returns how many WeChat channels exist in OpenClaw scope (any enabled state),
+// used to default new channel names to 微信1, 微信2, ...
+func (s *OpenClawChannelService) countOpenClawWechatChannels(ctx context.Context) int {
+	db, err := s.db()
+	if err != nil {
+		return 0
+	}
+	listCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	var models []channelModel
+	if err := db.NewSelect().Model(&models).
+		Where("ch.platform = ?", channels.PlatformWechat).
 		Where(openClawChannelVisibilitySQL).
 		Scan(listCtx); err != nil {
 		return 0
