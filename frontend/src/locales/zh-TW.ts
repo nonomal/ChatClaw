@@ -1445,7 +1445,6 @@ export default {
       stepsLabel: '步驟：',
       step1: '點擊產生 QR Code，會在 OpenClaw 中安裝並啟用官方企業微信外掛',
       step2: '使用企業微信掃描下方 QR Code，並在手機上確認連線',
-      step3: '同時支援接入既有機器人',
       scanHint: '使用企業微信掃描下方 QR Code，並在手機上確認連線',
       manualEntry: '已有機器人接入',
       generateQr: '產生 QR Code',

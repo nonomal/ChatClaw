@@ -1462,7 +1462,6 @@ export default {
       stepsLabel: 'Adimlar:',
       step1: 'OpenClaw icinde resmi WeCom eklentisini kurup etkinlestirmek icin QR kodu olustur\'a dokunun',
       step2: 'Asagidaki QR kodunu WeCom ile tarayin ve telefonunuzda onaylayin',
-      step3: 'Mevcut bir botun bağlanması da desteklenir',
       scanHint: 'Asagidaki QR kodunu WeCom ile tarayin ve telefonunuzda onaylayin',
       manualEntry: 'Zaten bir botum var',
       generateQr: 'QR kodu olustur',

@@ -1464,7 +1464,6 @@ export default {
       stepsLabel: 'Koraki:',
       step1: 'Kliknite Ustvari QR-kodo, da v OpenClaw namestite in omogočite uradni vtičnik WeCom',
       step2: 'Spodnjo QR-kodo skenirajte z WeCom in povezavo potrdite na telefonu',
-      step3: 'Podprto je tudi povezovanje obstoječega bota',
       scanHint: 'Spodnjo QR-kodo skenirajte z WeCom in povezavo potrdite na telefonu',
       manualEntry: 'Bot že imam',
       generateQr: 'Ustvari QR-kodo',

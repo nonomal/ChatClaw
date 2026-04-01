@@ -1463,7 +1463,6 @@ export default {
       stepsLabel: '手順:',
       step1: '「QR コードを生成」を押して OpenClaw に公式 WeCom プラグインをインストール・有効化します',
       step2: '下の QR コードを WeCom で読み取り、スマートフォンで確認してください',
-      step3: '既存のボットの接続にも対応しています',
       scanHint: '下の QR コードを WeCom で読み取り、スマートフォンで確認してください',
       manualEntry: 'すでにボットがあります',
       generateQr: 'QR コードを生成',

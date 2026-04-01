@@ -1464,7 +1464,6 @@ export default {
       stepsLabel: 'Các bước:',
       step1: 'Nhấn Tạo mã QR để cài đặt và bật plugin WeCom chính thức trong OpenClaw',
       step2: 'Quét mã QR bên dưới bằng WeCom và xác nhận trên điện thoại',
-      step3: 'Cũng hỗ trợ kết nối bot đã có sẵn',
       scanHint: 'Quét mã QR bên dưới bằng WeCom và xác nhận trên điện thoại',
       manualEntry: 'Tôi đã có bot',
       generateQr: 'Tạo mã QR',

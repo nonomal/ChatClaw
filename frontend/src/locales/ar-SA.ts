@@ -1464,7 +1464,6 @@ export default {
       stepsLabel: 'الخطوات:',
       step1: 'اضغط على "إنشاء رمز QR" لتثبيت الإضافة الرسمية لـ WeCom في OpenClaw وتفعيلها.',
       step2: 'امسح رمز QR أدناه باستخدام WeCom ثم أكّد على هاتفك.',
-      step3: 'يدعم أيضًا ربط بوت موجود',
       scanHint: 'امسح رمز QR أدناه باستخدام WeCom ثم أكّد على هاتفك.',
       manualEntry: 'لديّ بوت بالفعل',
       generateQr: 'إنشاء رمز QR',

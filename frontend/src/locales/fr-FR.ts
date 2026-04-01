@@ -1467,7 +1467,6 @@ export default {
       stepsLabel: 'Etapes :',
       step1: 'Appuyez sur Generer le code QR pour installer et activer le plugin officiel WeCom dans OpenClaw',
       step2: 'Scannez le code QR ci-dessous avec WeCom et confirmez sur votre telephone',
-      step3: 'Prise en charge de la connexion d’un bot existant',
       scanHint: 'Scannez le code QR ci-dessous avec WeCom et confirmez sur votre telephone',
       manualEntry: 'J\'ai deja un bot',
       generateQr: 'Generer le code QR',

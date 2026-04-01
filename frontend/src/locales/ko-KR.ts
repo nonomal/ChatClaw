@@ -1579,7 +1579,6 @@ export default {
       stepsLabel: '단계:',
       step1: 'OpenClaw에 공식 WeCom 플러그인을 설치하고 활성화하려면 "QR 코드 생성"을 누르세요',
       step2: '아래 QR 코드를 WeCom으로 스캔하고 휴대폰에서 확인하세요',
-      step3: '기존 봇 연결도 지원합니다',
       scanHint: '아래 QR 코드를 WeCom으로 스캔하고 휴대폰에서 확인하세요',
       manualEntry: '이미 봇이 있습니다',
       generateQr: 'QR 코드 생성',
