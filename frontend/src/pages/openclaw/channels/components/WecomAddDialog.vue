@@ -1,14 +1,8 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { LoaderCircle, RefreshCw } from 'lucide-vue-next'
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { LoaderCircle, QrCode, RefreshCw } from 'lucide-vue-next'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { toast, useToast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
@@ -16,6 +10,7 @@ import {
   OpenClawChannelService,
   CreateChannelInput,
 } from '@bindings/chatclaw/internal/services/openclaw/channels'
+import { getPlatformDocsUrl, openExternalLink } from '@/pages/common/platformDocs'
 import type { Channel } from '@bindings/chatclaw/internal/services/channels'
 
 /** Poll interval: avoid high frequency (rate limits). */
@@ -201,38 +196,74 @@ function handleManualEntry() {
   open.value = false
   emit('manual')
 }
+
+function openWecomConfigSteps() {
+  void openExternalLink(getPlatformDocsUrl('wecom'))
+}
 </script>
 
 <template>
   <Dialog v-model:open="open">
-    <DialogContent
-      class="sm:max-w-[500px] gap-0 overflow-hidden p-0 shadow-sm dark:shadow-none dark:ring-1 dark:ring-white/10"
-    >
-      <DialogHeader class="gap-1 px-6 pb-2 pt-5 text-left sm:text-left">
-        <DialogTitle class="text-lg font-semibold tracking-tight text-foreground">
+    <DialogContent class="max-w-[520px] gap-0 overflow-hidden p-0">
+      <DialogHeader class="px-6 pt-6 pb-4">
+        <DialogTitle class="text-lg font-semibold text-foreground">
           {{ t('channels.wecomAdd.title') }}
         </DialogTitle>
       </DialogHeader>
 
-      <div v-if="uiState === 'tips'" class="px-6 pb-4 pt-2">
+      <!-- Tips step: card + actions (aligned with WechatConfigDialog initial step) -->
+      <div v-if="uiState === 'tips'" class="px-6 pb-6 space-y-5">
         <div
-          class="rounded-lg bg-[#f5f5f5] px-4 py-4 text-sm leading-6 text-[#171717] dark:bg-muted/60 dark:text-foreground"
+          class="rounded-lg border border-border bg-muted/50 p-4 space-y-1.5 text-sm text-foreground"
         >
-          <p class="font-medium">{{ t('channels.wecomAdd.howTitle') }}</p>
-          <p class="mt-2">{{ t('channels.wecomAdd.tipsIntro') }}</p>
-          <p class="mt-2 font-medium">{{ t('channels.wecomAdd.stepsLabel') }}</p>
+          <p class="font-medium text-muted-foreground">{{ t('channels.wecomAdd.howTitle') }}</p>
+          <p class="mt-2">
+            {{ t('channels.wecomAdd.tipsIntro') }}
+            <a
+              :href="getPlatformDocsUrl('wecom')"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="ml-1 text-[#EF4444] underline underline-offset-2 hover:opacity-90"
+              @click.prevent="openWecomConfigSteps"
+            >
+              {{ t('channels.inline.configSteps') }}
+            </a>
+          </p>
+          <p class="mt-2 font-medium text-muted-foreground">{{ t('channels.wecomAdd.stepsLabel') }}</p>
           <ol class="mt-2 list-decimal space-y-2 pl-5 [list-style-position:outside]">
             <li>{{ t('channels.wecomAdd.step1') }}</li>
             <li>{{ t('channels.wecomAdd.step2') }}</li>
           </ol>
         </div>
+
+        <div class="flex flex-wrap justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            class="h-10 gap-2 border-border px-4 shadow-sm dark:shadow-none dark:ring-1 dark:ring-white/10"
+            :disabled="generating"
+            @click="handleManualEntry"
+          >
+            {{ t('channels.wecomAdd.manualEntry') }}
+          </Button>
+          <Button
+            type="button"
+            class="h-10 gap-2 bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+            :disabled="generating"
+            @click="handleGenerateQr"
+          >
+            <LoaderCircle v-if="generating" class="h-4 w-4 animate-spin" />
+            <QrCode v-else class="h-4 w-4" />
+            {{
+              generating ? t('channels.wecomAdd.generating') : t('channels.wecomAdd.generateQr')
+            }}
+          </Button>
+        </div>
       </div>
 
-      <!-- Scan state: hint under title (same pattern as WeChat config dialog) -->
-      <div v-else class="px-6 pb-6 space-y-5 pt-2">
-        <p class="text-sm text-muted-foreground">
-          {{ t('channels.wecomAdd.scanHint') }}
-        </p>
+      <!-- Scan step (aligned with WechatConfigDialog qrcode step) -->
+      <div v-else class="px-6 pb-6 space-y-5">
+        <p class="text-sm text-muted-foreground">{{ t('channels.wecomAdd.scanHint') }}</p>
 
         <div
           v-if="qrExpired"
@@ -243,27 +274,40 @@ function handleManualEntry() {
 
         <div class="flex justify-center">
           <div
-            class="relative flex h-[220px] w-[220px] items-center justify-center overflow-hidden rounded-xl border border-border bg-white shadow-sm dark:bg-card dark:shadow-none dark:ring-1 dark:ring-white/10"
-            :class="{ 'opacity-50': qrExpired }"
+            class="relative flex h-[220px] w-[220px] items-center justify-center overflow-hidden rounded-xl border border-border bg-white shadow-sm dark:shadow-none dark:ring-1 dark:ring-white/10"
           >
             <img
               v-if="qrImageSrc"
               :src="qrImageSrc"
               alt=""
-              class="h-full w-full object-contain p-3"
+              class="h-full w-full object-contain p-3 transition-[filter,opacity] duration-200"
+              :class="{ 'grayscale opacity-[0.42]': qrExpired }"
             />
+            <div v-else class="flex h-full w-full items-center justify-center">
+              <LoaderCircle class="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+            <div
+              v-if="qrExpired && qrImageSrc"
+              class="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-background/55 dark:bg-background/50"
+            >
+              <span
+                class="rounded-md border border-border bg-popover px-3 py-1.5 text-sm font-medium text-muted-foreground shadow-sm dark:shadow-none dark:ring-1 dark:ring-white/10"
+              >
+                {{ t('channels.wecomAdd.qrExpired') }}
+              </span>
+            </div>
           </div>
         </div>
 
-        <p
+        <div
           v-if="registering"
           class="flex items-center justify-center gap-2 text-xs text-muted-foreground"
         >
-          <LoaderCircle class="size-3.5 shrink-0 animate-spin text-muted-foreground" />
-          {{ t('channels.wecomAdd.registering') }}
-        </p>
+          <LoaderCircle class="h-3.5 w-3.5 shrink-0 animate-spin" />
+          <span>{{ t('channels.wecomAdd.registering') }}</span>
+        </div>
 
-        <div class="flex justify-end">
+        <div class="flex justify-center">
           <Button
             type="button"
             variant="outline"
@@ -271,36 +315,12 @@ function handleManualEntry() {
             :disabled="generating || registering"
             @click="handleRefreshQr"
           >
-            <LoaderCircle v-if="generating" class="size-4 shrink-0 animate-spin" />
-            <RefreshCw v-else class="size-4 shrink-0" />
+            <LoaderCircle v-if="generating" class="h-4 w-4 animate-spin" />
+            <RefreshCw v-else class="h-4 w-4" />
             {{ t('channels.wecomAdd.refreshQr') }}
           </Button>
         </div>
       </div>
-
-      <DialogFooter
-        v-if="uiState === 'tips'"
-        class="flex flex-row items-center justify-end gap-3 border-t border-[#f0f0f0] bg-background px-6 py-4 dark:border-border/50 dark:bg-muted/20"
-      >
-        <Button
-          type="button"
-          variant="outline"
-          class="h-9 border-border bg-background text-foreground shadow-sm dark:shadow-none dark:ring-1 dark:ring-white/10"
-          :disabled="generating"
-          @click="handleManualEntry"
-        >
-          {{ t('channels.wecomAdd.manualEntry') }}
-        </Button>
-        <Button
-          type="button"
-          class="h-9 bg-[#171717] px-4 text-white shadow-none hover:bg-[#171717]/90 disabled:opacity-50 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
-          :disabled="generating"
-          @click="handleGenerateQr"
-        >
-          <LoaderCircle v-if="generating" class="mr-2 size-4 shrink-0 animate-spin" />
-          {{ generating ? t('channels.wecomAdd.generating') : t('channels.wecomAdd.generateQr') }}
-        </Button>
-      </DialogFooter>
     </DialogContent>
   </Dialog>
 </template>

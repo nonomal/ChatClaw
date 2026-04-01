@@ -12,6 +12,7 @@ import {
 import { toast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
 import { OpenClawChannelService } from '@bindings/chatclaw/internal/services/openclaw/channels'
+import { getPlatformDocsUrl, openExternalLink } from '@/pages/common/platformDocs'
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{
   connected: [channelId: number]
@@ -115,6 +116,10 @@ async function handleRefreshQRCode() {
   }
 }
 
+function openWechatConfigSteps() {
+  void openExternalLink(getPlatformDocsUrl('wechat'))
+}
+
 </script>
 
 <template>
@@ -132,7 +137,18 @@ async function handleRefreshQRCode() {
           class="rounded-lg bg-muted/50 border border-border p-4 space-y-1.5 text-sm text-foreground"
         >
           <p class="font-medium text-muted-foreground">{{ t('channels.wechat.howToConnect') }}</p>
-          <p class="mt-2">{{ t('channels.wechat.tipsIntro') }}</p>
+          <p class="mt-2">
+            {{ t('channels.wechat.tipsIntro') }}
+            <a
+              :href="getPlatformDocsUrl('wechat')"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="ml-1 text-[#EF4444] underline underline-offset-2 hover:opacity-90"
+              @click.prevent="openWechatConfigSteps"
+            >
+              {{ t('channels.inline.configSteps') }}
+            </a>
+          </p>
           <p class="mt-2 font-medium text-muted-foreground">{{ t('channels.wechat.stepsLabel') }}</p>
           <ol class="mt-2 list-decimal space-y-2 pl-5 [list-style-position:outside]">
             <li>{{ t('channels.wechat.step1') }}</li>
