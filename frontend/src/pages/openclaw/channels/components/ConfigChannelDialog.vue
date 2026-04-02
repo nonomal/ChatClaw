@@ -70,9 +70,13 @@ watch(open, (val) => {
 const currentPlatformId = computed(() => props.platform?.id || props.channel?.platform || 'feishu')
 const isWeComPlatform = computed(() => currentPlatformId.value === 'wecom')
 const isWechatPlatform = computed(() => currentPlatformId.value === 'wechat')
+const isWhatsappPlatform = computed(() => currentPlatformId.value === 'whatsapp')
+const isQrLinkedOpenClawPlatform = computed(
+  () => isWechatPlatform.value || isWhatsappPlatform.value
+)
 
 const platformTipConfig = computed(() => {
-  if (isWechatPlatform.value) {
+  if (isQrLinkedOpenClawPlatform.value) {
     return null
   }
   if (isWeComPlatform.value) {
@@ -112,6 +116,8 @@ const dialogTitle = computed(() => {
   let botName: string
   if (isWechatPlatform.value) {
     botName = t('channels.platforms.wechat')
+  } else if (isWhatsappPlatform.value) {
+    botName = t('channels.platforms.whatsapp')
   } else if (isWeComPlatform.value) {
     botName = t('channels.meta.wecom.botName', 'wecom')
   } else if (currentPlatformId.value === 'dingtalk') {
@@ -126,7 +132,7 @@ const dialogTitle = computed(() => {
 })
 
 const appIdLabelKey = computed(() =>
-  isWechatPlatform.value
+  isWechatPlatform.value || isWhatsappPlatform.value
     ? 'channels.card.applicationId'
     : isWeComPlatform.value
       ? 'channels.config.wecomBotId'
@@ -148,7 +154,7 @@ const appSecretPlaceholderKey = computed(() =>
 
 const isFormValid = computed(() => {
   if (!name.value.trim()) return false
-  if (isWechatPlatform.value) return true
+  if (isQrLinkedOpenClawPlatform.value) return true
   return !!(appId.value.trim() && appSecret.value.trim())
 })
 
@@ -181,7 +187,7 @@ const handlePickIcon = async () => {
 }
 
 async function handleVerify() {
-  if (isWechatPlatform.value) return
+  if (isQrLinkedOpenClawPlatform.value) return
   if (!isFormValid.value) {
     toast.error(t('channels.inline.fillRequired'))
     return
@@ -208,7 +214,7 @@ async function handleSave() {
   saving.value = true
   try {
     let extraConfig: string
-    if (isWechatPlatform.value) {
+    if (isQrLinkedOpenClawPlatform.value) {
       const existingConfig = parseExtraConfig(props.channel?.extra_config)
       extraConfig = JSON.stringify({
         ...existingConfig,
@@ -357,11 +363,11 @@ async function handleOpenExternalLink(url: string) {
             id="app-id"
             v-model="appId"
             :placeholder="t(appIdPlaceholderKey)"
-            :disabled="isWechatPlatform"
+            :disabled="isQrLinkedOpenClawPlatform"
             maxlength="60"
           />
         </div>
-        <div v-if="!isWechatPlatform" class="mt-4 space-y-1">
+        <div v-if="!isQrLinkedOpenClawPlatform" class="mt-4 space-y-1">
           <Label
             for="app-secret"
             class="flex items-center gap-1 text-sm font-medium text-[#0a0a0a] dark:text-foreground"
@@ -374,14 +380,14 @@ async function handleOpenExternalLink(url: string) {
             v-model="appSecret"
             type="password"
             :placeholder="t(appSecretPlaceholderKey)"
-            :disabled="isWechatPlatform"
+            :disabled="isQrLinkedOpenClawPlatform"
             maxlength="200"
           />
         </div>
 
         <DialogFooter class="mt-6 pt-4">
           <Button
-            v-if="!isWechatPlatform"
+            v-if="!isQrLinkedOpenClawPlatform"
             type="button"
             variant="outline"
             class="gap-2 bg-[#f5f5f5] text-[#171717] hover:bg-[#e5e5e5] dark:bg-muted dark:text-foreground dark:hover:bg-muted/80"

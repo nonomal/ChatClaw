@@ -1558,6 +1558,7 @@ export default {
       feishu: "Feishu",
       wecom: "WeCom",
       wechat: "WeChat",
+      whatsapp: "WhatsApp",
       qq: "QQ",
       twitter: "X (Twitter)",
     },
@@ -1752,6 +1753,32 @@ export default {
       pluginInstallTryLater: "The official WeChat plugin is being installed or enabled in the background. Please try again later.",
       editNotSupported: "WeChat is connected by QR-code scanning and cannot be edited here. To switch accounts, delete this channel on the channels page and add it again by scanning.",
       qrExpiredHint: "二维码已失效或等待超时，请点击下方「刷新」重新获取。",
+    },
+    whatsapp: {
+      emptyTitle: 'No WhatsApp added yet',
+      emptyDesc:
+        'Connect WhatsApp via the official OpenClaw plugin (@openclaw/whatsapp) using WhatsApp Web (QR login).',
+      addNow: 'Add now',
+      configTitle: 'Configure WhatsApp',
+      configSubtitle: 'OpenClaw CLI: openclaw channels login --channel whatsapp',
+      howToConnect: 'How to connect',
+      step1: 'Installs the official plugin: openclaw plugins install @openclaw/whatsapp',
+      step2:
+        'After you tap the button below, the app runs the CLI login flow in the background. Scan the QR code with WhatsApp on your phone.',
+      step3:
+        'After linking, bind an assistant on this page. Deleting the channel logs out and removes OpenClaw bindings.',
+      configStepsLink: 'Official docs',
+      generateQRCode: 'Generate QR Code',
+      generating: 'Generating…',
+      scanHint: 'Scan the QR code below with WhatsApp to authorize',
+      waitingForScan: 'Waiting for scan…',
+      refresh: 'Refresh',
+      loginSuccess: 'WhatsApp connected successfully!',
+      pluginInstallTryLater:
+        'The WhatsApp OpenClaw plugin is still installing or not ready. Please try again later.',
+      channelNotFound: 'The corresponding channel was not found. Refresh and try again.',
+      editNotSupported:
+        'WhatsApp is connected by QR-code scanning and cannot be edited here. To switch accounts, delete this channel and add it again.',
     },
   },
   scheduledTasks: {

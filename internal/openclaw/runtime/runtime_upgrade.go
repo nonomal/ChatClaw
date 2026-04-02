@@ -236,8 +236,8 @@ func installUserRuntimeOverride(activeBundle *bundledRuntime, version, registryU
 		if err := writeRuntimeManifest(filepath.Join(stagingDir, "manifest.json"), bundledRuntimeManifest{
 			OpenClawVersion: version,
 			NodeVersion:     activeBundle.Manifest.NodeVersion,
-			Platform:       runtime.GOOS,
-			Arch:           runtime.GOARCH,
+			Platform:        runtime.GOOS,
+			Arch:            runtime.GOARCH,
 		}); err != nil {
 			_ = os.RemoveAll(targetStagingDir)
 			return nil, nil, nil, fmt.Errorf("write runtime manifest: %w", err)

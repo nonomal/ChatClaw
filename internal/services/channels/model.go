@@ -15,6 +15,7 @@ const (
 	PlatformFeishu   = "feishu"
 	PlatformWeCom    = "wecom"
 	PlatformWechat   = "wechat"
+	PlatformWhatsapp = "whatsapp"
 	PlatformQQ       = "qq"
 	PlatformTwitter  = "twitter"
 )
