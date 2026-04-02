@@ -45,6 +45,7 @@ import ConfigChannelDialog from './components/ConfigChannelDialog.vue'
 import WecomAddDialog from './components/WecomAddDialog.vue'
 import BindAgentDialog from './components/BindAgentDialog.vue'
 import WechatConfigDialog from './components/WechatConfigDialog.vue'
+import WhatsappConfigDialog from './components/WhatsappConfigDialog.vue'
 import { getPlatformDocsUrl, openExternalLink } from '@/pages/common/platformDocs'
 import { getPlatformIcon } from '@/pages/common/channelUtils'
 import {
@@ -84,6 +85,7 @@ function isChannelPlatformSelectable(platformId: string) {
     platformId === 'wecom' ||
     platformId === 'dingtalk' ||
     platformId === 'wechat' ||
+    platformId === 'whatsapp' ||
     platformId === 'qq'
   )
 }
@@ -109,6 +111,7 @@ const channelToToggle = ref<{ channel: Channel; val: boolean } | null>(null)
 const unbindDialogOpen = ref(false)
 const channelToUnbind = ref<Channel | null>(null)
 const wechatConfigOpen = ref(false)
+const whatsappConfigOpen = ref(false)
 
 watch(unbindDialogOpen, (open) => {
   if (!open) channelToUnbind.value = null
@@ -201,14 +204,24 @@ async function tryOpenWechatConfigDialog() {
   }
 }
 
+function tryOpenWhatsappConfigDialog() {
+  addDialogOpen.value = false
+  whatsappConfigOpen.value = true
+}
+
 async function handleSelectPlatform(platform: PlatformMeta) {
   selectedPlatform.value = platform
   channelToEdit.value = null
-  addDialogOpen.value = false
   if (platform.id === 'wechat') {
+    addDialogOpen.value = false
     await tryOpenWechatConfigDialog()
     return
   }
+  if (platform.id === 'whatsapp') {
+    tryOpenWhatsappConfigDialog()
+    return
+  }
+  addDialogOpen.value = false
   if (platform.id === 'wecom') {
     wecomAddDialogOpen.value = true
   } else {
@@ -337,6 +350,20 @@ async function handleToggleConnection(channel: Channel, val: boolean) {
       return
     }
   }
+  if (channel.platform === 'whatsapp' && val) {
+    try {
+      const prep = await OpenClawChannelService.PrepareWhatsappChannel()
+      if (!prep?.ready) {
+        toast.default(t('channels.whatsapp.pluginInstallTryLater'))
+        await loadData()
+        return
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+      await loadData()
+      return
+    }
+  }
   if (channel.platform === 'dingtalk') {
     try {
       const installed = await OpenClawChannelService.IsDingTalkPluginInstalled()
@@ -412,7 +439,7 @@ async function handleBindAgent(agentId: number) {
     // Match QQ: after create→bind, enable OpenClaw plugin config + local enabled (Feishu/WeCom/DingTalk were missing).
     const connectAfterCreateBind =
       bindFromCreate.value &&
-      ['qq', 'feishu', 'wecom', 'dingtalk'].includes(channel.platform)
+      ['qq', 'feishu', 'wecom', 'dingtalk', 'whatsapp'].includes(channel.platform)
     if (connectAfterCreateBind) {
       await OpenClawChannelService.ConnectChannel(channel.id)
     }
@@ -436,6 +463,19 @@ async function handleWechatConnected(channelId: number) {
     return
   }
   toast.success(t('channels.wechat.loginSuccess'))
+  channelToBind.value = ch
+  bindFromCreate.value = true
+  bindDialogOpen.value = true
+}
+
+async function handleWhatsappConnected(channelId: number) {
+  await loadData()
+  const ch = channelId > 0 ? channels.value.find((c) => c.id === channelId) : undefined
+  if (!ch) {
+    toast.error(t('channels.whatsapp.channelNotFound'))
+    return
+  }
+  toast.success(t('channels.whatsapp.loginSuccess'))
   channelToBind.value = ch
   bindFromCreate.value = true
   bindDialogOpen.value = true
@@ -581,14 +621,16 @@ function openPlatformDocs() {
 
 /** Credential line on channel cards: WeChat uses plugin account_id (ilink bot id); others use app_id / bot_id / token. */
 function getChannelCredentialLabel(platform: string): string {
-  return platform === 'wechat' ? t('channels.card.applicationId') : t('channels.card.appId')
+  return platform === 'wechat' || platform === 'whatsapp'
+    ? t('channels.card.applicationId')
+    : t('channels.card.appId')
 }
 
 function getChannelCredentialDisplay(platform: string, extraConfig: string): string {
   const p = (platform || '').trim()
   try {
     const config = JSON.parse(extraConfig || '{}')
-    if (p === 'wechat') {
+    if (p === 'wechat' || p === 'whatsapp') {
       const aid =
         typeof config.account_id === 'string' ? config.account_id.trim() : String(config.account_id || '').trim()
       if (aid) return aid
@@ -980,6 +1022,30 @@ watch(isTabActive, (active) => {
         </Button>
       </div>
 
+      <div
+        v-else-if="selectedFilter === 'whatsapp'"
+        class="flex flex-col items-center justify-center py-16 text-center"
+      >
+        <div
+          class="flex h-12 w-12 items-center justify-center rounded-full bg-[#f5f5f5] dark:bg-muted mb-4"
+        >
+          <SquareDashed class="h-6 w-6 text-[#737373] dark:text-muted-foreground" />
+        </div>
+        <h3 class="text-base font-medium text-[#262626] dark:text-foreground">
+          {{ t('channels.whatsapp.emptyTitle') }}
+        </h3>
+        <p class="mt-2 max-w-sm text-sm text-[#737373] dark:text-muted-foreground">
+          {{ t('channels.whatsapp.emptyDesc') }}
+        </p>
+        <Button
+          class="mt-6 gap-1 bg-[#171717] text-white hover:bg-[#171717]/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+          @click="tryOpenWhatsappConfigDialog"
+        >
+          <Plus class="h-4 w-4 shrink-0" />
+          {{ t('channels.whatsapp.addNow') }}
+        </Button>
+      </div>
+
       <!-- Inline Add Form - Feishu/WeCom/DingTalk platform selected (no channels in this filter) -->
       <div v-else class="space-y-6">
         <div class="flex items-end gap-4">
@@ -1083,6 +1149,7 @@ watch(isTabActive, (active) => {
 
     <!-- WeChat Config Dialog (QR code flow) -->
     <WechatConfigDialog v-model:open="wechatConfigOpen" @connected="handleWechatConnected" />
+    <WhatsappConfigDialog v-model:open="whatsappConfigOpen" @connected="handleWhatsappConnected" />
 
     <!-- Add Channel Dialog -->
     <AddChannelDialog

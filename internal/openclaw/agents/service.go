@@ -301,6 +301,69 @@ func (s *OpenClawAgentsService) CreateAgent(input CreateOpenClawAgentInput) (*Op
 	return &dto, nil
 }
 
+// EnsureAgentRecordByOpenClawAgentID makes sure a local openclaw_agents row exists for a
+// known gateway agent id from openclaw.json/bindings. This is used when a channel route
+// points at an OpenClaw agent id that has not yet been mirrored into the local DB.
+func (s *OpenClawAgentsService) EnsureAgentRecordByOpenClawAgentID(openclawAgentID string, name string) (*OpenClawAgent, error) {
+	openclawAgentID = strings.TrimSpace(openclawAgentID)
+	if openclawAgentID == "" {
+		return nil, errs.New("error.agent_id_required")
+	}
+
+	if localID, err := s.ResolveLocalIDByOpenClawAgentID(openclawAgentID); err != nil {
+		return nil, err
+	} else if localID > 0 {
+		return s.GetAgent(localID)
+	}
+
+	db, err := s.db()
+	if err != nil {
+		return nil, err
+	}
+
+	name = strings.TrimSpace(name)
+	switch {
+	case name != "":
+	case openclawAgentID == define.OpenClawMainAgentID:
+		name = define.DefaultAgentNameForLocale(i18n.GetLocale())
+	default:
+		name = openclawAgentID
+	}
+
+	m := newOpenClawAgentModel(name, openclawAgentID, "")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result, err := db.NewInsert().
+		Model(m).
+		On("CONFLICT (openclaw_agent_id) DO NOTHING").
+		Exec(ctx)
+	if err != nil {
+		return nil, errs.Wrap("error.agent_create_failed", err)
+	}
+
+	localID, err := s.ResolveLocalIDByOpenClawAgentID(openclawAgentID)
+	if err != nil {
+		return nil, err
+	}
+	if localID <= 0 {
+		return nil, errs.New("error.agent_create_failed")
+	}
+
+	dto, err := s.GetAgent(localID)
+	if err != nil {
+		return nil, err
+	}
+
+	if gw := s.getGateway(); gw != nil {
+		if rowsAffected, _ := result.RowsAffected(); rowsAffected > 0 {
+			go gw.OnAgentCreated(*dto)
+		}
+	}
+	return dto, nil
+}
+
 func (s *OpenClawAgentsService) GetDefaultPrompt() string {
 	return ""
 }

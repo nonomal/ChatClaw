@@ -114,6 +114,8 @@ func isOpenClawPluginSessionSyncPlatform(platform string) bool {
 		return true
 	case strings.ToLower(channels.PlatformWechat), "openclaw-weixin", "weixin":
 		return true
+	case strings.ToLower(channels.PlatformWhatsapp), "whatsapp":
+		return true
 	default:
 		return false
 	}

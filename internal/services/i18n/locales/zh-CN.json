@@ -234,5 +234,10 @@
   "error.chat_too_many_files": "文件数量超过限制",
   "error.chat_file_too_large": "文件大小超过限制",
   "error.chat_invalid_file_type": "不支持的文件类型",
-  "error.file_not_found": "文件未找到"
+  "error.file_not_found": "文件未找到",
+  "error.whatsapp_plugin_not_ready": "WhatsApp 通道尚未启用或未就绪，请稍后再试。",
+  "error.whatsapp_qr_not_found": "未能从 OpenClaw 命令行输出中解析二维码，请更新 OpenClaw 或重试。",
+  "error.whatsapp_qr_timeout": "等待 OpenClaw 输出 WhatsApp 二维码超时。",
+  "error.whatsapp_login_failed": "WhatsApp 登录会话无效或已失效。",
+  "error.whatsapp_login_timeout": "WhatsApp 扫码登录超时，请在时限内完成扫描。"
 }

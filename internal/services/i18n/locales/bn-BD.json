@@ -234,5 +234,10 @@
   "error.chat_too_many_files": "ফাইলের সংখ্যা সীমা অতিক্রম করেছে",
   "error.chat_file_too_large": "ফাইলের আকার সীমা অতিক্রম করেছে",
   "error.chat_invalid_file_type": "অবৈধ ফাইলের ধরন",
-  "error.file_not_found": "ফাইল পাওয়া যায়নি"
+  "error.file_not_found": "ফাইল পাওয়া যায়নি",
+  "error.whatsapp_plugin_not_ready": "WhatsApp OpenClaw plugin is still installing or not ready. Please try again later.",
+  "error.whatsapp_qr_not_found": "Could not read a QR code from the OpenClaw CLI output. Update OpenClaw or try again.",
+  "error.whatsapp_qr_timeout": "Timed out waiting for a WhatsApp QR code from OpenClaw.",
+  "error.whatsapp_login_failed": "WhatsApp login session is missing or invalid.",
+  "error.whatsapp_login_timeout": "WhatsApp QR login timed out. Please scan the code within the time limit."
 }

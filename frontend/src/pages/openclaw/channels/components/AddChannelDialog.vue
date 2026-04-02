@@ -40,7 +40,6 @@ function handleSelect(platform: PlatformMeta) {
 function handleConfirm() {
   if (localSelected.value) {
     emit('select', localSelected.value)
-    open.value = false
   }
 }
 
@@ -52,7 +51,7 @@ function getPlatformDisplayName(platformId: string, fallbackName?: string): stri
 
 /** OpenClaw: Feishu, WeCom, DingTalk, WeChat (QR), and QQ are available; others show coming soon. */
 function isChannelPlatformSelectable(platformId: string) {
-  return ['feishu', 'wecom', 'dingtalk', 'wechat', 'qq'].includes(platformId)
+  return ['feishu', 'wecom', 'dingtalk', 'wechat', 'whatsapp', 'qq'].includes(platformId)
 }
 </script>
 
