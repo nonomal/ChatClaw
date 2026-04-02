@@ -19,6 +19,23 @@ const (
 
 	openClawFallbackRetryPromptPatchNeedle = `return "Continue where you left off. The previous model attempt failed or timed out.";`
 	openClawFallbackRetryPromptPatchValue  = `return params.body;/* chatclaw-hotfix: preserve original prompt on fallback */`
+
+	openClawWhatsappDirectEchoPatchNeedle = `		if (group && Boolean(msg.key?.fromMe) && id && isRecentOutboundMessage({
+			accountId: options.accountId,
+			remoteJid,
+			messageId: id
+		})) {
+			logVerbose(` + "`Skipping recent outbound WhatsApp group echo ${id} for ${remoteJid}`" + `);
+			return null;
+		}`
+	openClawWhatsappDirectEchoPatchValue = `		if (Boolean(msg.key?.fromMe) && id && isRecentOutboundMessage({
+			accountId: options.accountId,
+			remoteJid,
+			messageId: id
+		})) {
+			logVerbose(` + "`Skipping recent outbound WhatsApp ${group ? \"group\" : \"direct\"} echo ${id} for ${remoteJid}`" + `);
+			return null;
+		}`
 )
 
 // applyBundledRuntimeHotfixes patches known upstream OpenClaw runtime issues in
@@ -45,9 +62,23 @@ func applyBundledRuntimeHotfixes(bundle *bundledRuntime) (int, error) {
 		return 0, nil
 	}
 
+	whatsappPattern := filepath.Join(
+		bundle.Root,
+		"lib",
+		"node_modules",
+		"openclaw",
+		"dist",
+		"channel.runtime-*.js",
+	)
+	whatsappFiles, err := filepath.Glob(whatsappPattern)
+	if err != nil {
+		return 0, fmt.Errorf("glob whatsapp runtime hotfix target: %w", err)
+	}
+	files = append(files, whatsappFiles...)
+
 	patched := 0
 	for _, path := range files {
-		changed, err := applyOpenClawThinkingStreamHotfixFile(path)
+		changed, err := applyOpenClawRuntimeHotfixFile(path)
 		if err != nil {
 			return patched, err
 		}
@@ -58,7 +89,7 @@ func applyBundledRuntimeHotfixes(bundle *bundledRuntime) (int, error) {
 	return patched, nil
 }
 
-func applyOpenClawThinkingStreamHotfixFile(path string) (bool, error) {
+func applyOpenClawRuntimeHotfixFile(path string) (bool, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return false, fmt.Errorf("read runtime hotfix target %s: %w", path, err)
@@ -85,6 +116,10 @@ func applyOpenClawThinkingStreamHotfixFile(path string) (bool, error) {
 		{
 			needle: openClawFallbackRetryPromptPatchNeedle,
 			value:  openClawFallbackRetryPromptPatchValue,
+		},
+		{
+			needle: openClawWhatsappDirectEchoPatchNeedle,
+			value:  openClawWhatsappDirectEchoPatchValue,
 		},
 	} {
 		if !strings.Contains(updated, patch.value) && strings.Contains(updated, patch.needle) {
