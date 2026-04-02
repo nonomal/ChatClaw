@@ -325,7 +325,7 @@ func (s *OpenClawAgentsService) EnsureAgentRecordByOpenClawAgentID(openclawAgent
 	switch {
 	case name != "":
 	case openclawAgentID == define.OpenClawMainAgentID:
-		name = define.DefaultAgentNameForLocale(i18n.GetLocale())
+		name = define.DefaultAgentNameForLocale(i18n.GetLocale(), define.SystemOwnerOpenClaw)
 	default:
 		name = openclawAgentID
 	}
