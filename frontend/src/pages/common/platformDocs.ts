@@ -9,6 +9,7 @@ const PLATFORM_DOCS_URLS: Record<string, string> = {
   wechat: 'https://docs.ichatclaw.com/docs/About-Chatclaw',
   dingtalk: 'https://docs.ichatclaw.com/docs/chatClaw-access-to-dingtalk-robot',
   qq: 'https://docs.ichatclaw.com/docs/chatClaw-access-to-qq-robot',
+  whatsapp: 'https://docs.openclaw.ai/channels/whatsapp',
 }
 
 export function getPlatformDocsUrl(platformId?: string | null): string {

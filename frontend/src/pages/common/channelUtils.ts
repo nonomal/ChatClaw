@@ -13,6 +13,8 @@ export function getPlatformIconBg(platformId: string): string {
       return '#E5F3FF'
     case 'feishu':
       return '#E1FAF7'
+    case 'whatsapp':
+      return '#E8F8EC'
     default:
       return '#F5F5F5'
   }

@@ -6,13 +6,13 @@ import feishuIcon from './feishu.svg?url'
 import wecomIcon from './wecom.svg?url'
 import wechatIcon from './wechat.svg?url'
 import qqIcon from './qq.svg?url'
-import twitterIcon from './twitter.svg?url'
+import whatsappIcon from './whatsapp.svg?url'
 
 export const platformIconMap: Record<string, string> = {
   dingtalk: dingtalkIcon,
   feishu: feishuIcon,
   wecom: wecomIcon,
   wechat: wechatIcon,
+  whatsapp: whatsappIcon,
   qq: qqIcon,
-  twitter: twitterIcon,
 }
