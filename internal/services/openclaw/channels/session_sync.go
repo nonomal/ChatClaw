@@ -643,6 +643,17 @@ func normalizeFeishuPluginConversationScope(scope string, targetID string, chatT
 }
 
 func (s *OpenClawChannelService) buildSyncedConversationName(ch channels.Channel, entry openClawSessionStoreEntry, scope string, targetID string) string {
+	nativeName := strings.TrimSpace(entry.Origin.Label)
+
+	// WhatsApp plugin sessions already carry the native chat title. Keep that
+	// instead of deriving a title from the first synced message.
+	if ch.Platform == channels.PlatformWhatsapp {
+		if nativeName != "" {
+			return nativeName
+		}
+		return formatAssistantConversationName(scope, channels.NormalizeChannelConversationTargetID(targetID))
+	}
+
 	title := channels.ConversationTitleFromFirstMessage(extractFirstSessionUserMessageText(entry.SessionFile))
 	if title == "" {
 		title = channels.ConversationTitleFromFirstMessage(extractLastSessionMessage(entry.SessionFile))
@@ -655,9 +666,8 @@ func (s *OpenClawChannelService) buildSyncedConversationName(ch channels.Channel
 		}
 	}
 
-	name := strings.TrimSpace(entry.Origin.Label)
-	if name != "" && !isSyncedConversationPlaceholderName(name, scope, targetID) {
-		return name
+	if nativeName != "" && !isSyncedConversationPlaceholderName(nativeName, scope, targetID) {
+		return nativeName
 	}
 
 	if title != "" {

@@ -147,9 +147,6 @@ function openDocs() {
         <DialogTitle class="text-lg font-semibold text-foreground">
           {{ t("channels.whatsapp.configTitle") }}
         </DialogTitle>
-        <p class="mt-1 text-sm text-muted-foreground">
-          {{ t("channels.whatsapp.configSubtitle") }}
-        </p>
       </DialogHeader>
 
       <div v-if="preparing" class="px-6 pb-6">

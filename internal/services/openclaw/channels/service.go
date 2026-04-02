@@ -38,9 +38,6 @@ type OpenClawChannelService struct {
 	wechatPluginInstallMu      sync.Mutex
 	wechatPluginInstallRunning bool
 
-	whatsappPluginInstallMu      sync.Mutex
-	whatsappPluginInstallRunning bool
-
 	whatsappLoginMu sync.Mutex
 	whatsappLogins  map[string]*whatsappLoginSession
 }
