@@ -627,7 +627,12 @@ const toggleSort = () => {
   resetAndLoad()
 }
 
-const ensureEmbeddingConfiguredBeforeUpload = async (): Promise<boolean> => {
+const openEmbeddingSettingsRequired = () => {
+  toast.error(t('knowledge.embeddingSettings.required'))
+  emit('embedding-settings-required')
+}
+
+const ensureEmbeddingConfiguredBeforeUpload = async (notify = true): Promise<boolean> => {
   try {
     const ready = await isGlobalEmbeddingConfigReady()
     if (ready) return true
@@ -635,9 +640,17 @@ const ensureEmbeddingConfiguredBeforeUpload = async (): Promise<boolean> => {
     console.error('Failed to read embedding settings:', error)
   }
 
-  toast.error(t('knowledge.embeddingSettings.required'))
-  emit('embedding-settings-required')
+  if (notify) {
+    openEmbeddingSettingsRequired()
+  }
   return false
+}
+
+const maybeOpenEmbeddingSettingsAfterUploadError = async (): Promise<boolean> => {
+  const ready = await ensureEmbeddingConfiguredBeforeUpload(false)
+  if (ready) return false
+  openEmbeddingSettingsRequired()
+  return true
 }
 
 const handleAddDocument = async () => {
@@ -694,6 +707,7 @@ const handleAddDocument = async () => {
     // User cancelled the file dialog — not an error
     if (String(error).includes('cancelled by user')) return
     console.error('Failed to upload documents:', error)
+    if (await maybeOpenEmbeddingSettingsAfterUploadError()) return
     toast.error(getErrorMessage(error) || t('knowledge.content.upload.failed'))
   } finally {
     isUploading.value = false
@@ -752,6 +766,7 @@ const uploadBrowserFiles = async (files: FileList | File[]) => {
     toast.success(t('knowledge.content.upload.count', { count: uploaded.length }))
   } catch (error) {
     console.error('Failed to upload browser documents:', error)
+    if (await maybeOpenEmbeddingSettingsAfterUploadError()) return
     toast.error(getErrorMessage(error) || t('knowledge.content.upload.failed'))
   } finally {
     isUploading.value = false
@@ -795,6 +810,7 @@ const handleFileDrop = async (filePaths: string[]) => {
     toast.success(t('knowledge.content.upload.count', { count: uploaded.length }))
   } catch (error) {
     console.error('Failed to upload dropped files:', error)
+    if (await maybeOpenEmbeddingSettingsAfterUploadError()) return
     toast.error(getErrorMessage(error) || t('knowledge.content.upload.failed'))
   } finally {
     isUploading.value = false
