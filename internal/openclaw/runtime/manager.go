@@ -244,10 +244,6 @@ func (m *Manager) reconcileLocked(restart bool) error {
 
 	cfg := m.store.Get()
 
-	// Best-effort cleanup: kill stray node.exe processes that could be holding
-	// file locks on any runtime directory we are about to read/write.
-	_ = killAllNodeProcesses()
-
 	fail := func(msg string, err error, version string, pid int) error {
 		m.app.Logger.Error("openclaw: "+msg, "error", err)
 		m.broadcastStatus(RuntimeStatus{
