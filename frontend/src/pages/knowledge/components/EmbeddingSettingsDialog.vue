@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, nextTick, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { LoaderCircle } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
+import { useNavigationStore, useSettingsStore } from '@/stores'
 import FieldLabel from './FieldLabel.vue'
 import OrangeWarning from './OrangeWarning.vue'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -42,9 +43,12 @@ const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 
 const { t } = useI18n()
+const navigationStore = useNavigationStore()
+const settingsStore = useSettingsStore()
 
 const loading = ref(false)
 const saving = ref(false)
+const embeddingSelectOpen = ref(false)
 const chatwikiAvailability = ref<'available' | 'unbound' | 'non_cloud'>('available')
 let unsubscribeChatwikiBindingChanged: (() => void) | null = null
 
@@ -104,6 +108,15 @@ const selectedProviderIsFree = computed(() => {
 })
 
 const close = () => emit('update:open', false)
+
+async function goToChatwikiLogin() {
+  embeddingSelectOpen.value = false
+  close()
+  await nextTick()
+  settingsStore.requestChatwikiCloudLogin()
+  settingsStore.setActiveMenu('chatwiki')
+  navigationStore.navigateToModule('settings')
+}
 
 const isEmbeddingSelectionAvailable = computed(() => {
   return isSelectionAvailable(
@@ -286,7 +299,11 @@ const handleSave = async () => {
             :help="t('knowledge.help.embeddingModel')"
             required
           />
-          <Select v-model="embeddingSelectedKey" :disabled="loading || saving">
+          <Select
+            v-model="embeddingSelectedKey"
+            v-model:open="embeddingSelectOpen"
+            :disabled="loading || saving"
+          >
             <SelectTrigger class="w-full">
               <SelectValue :placeholder="t('knowledge.create.selectPlaceholder')">
                 <template v-if="embeddingCurrentLabel">
@@ -304,20 +321,41 @@ const handleSave = async () => {
             </SelectTrigger>
             <SelectContent>
               <SelectGroup v-for="g in embeddingGroups" :key="g.provider.provider_id">
-                <SelectLabel class="flex items-center gap-1.5">
-                  <span>{{
-                    formatProviderDisplayLabel(
-                      g.provider.provider_id,
-                      g.provider.name,
-                      chatwikiAvailability
-                    )
-                  }}</span>
-                  <span
-                    v-if="isProviderFree(g)"
-                    class="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border"
-                  >
-                    {{ t('assistant.chat.freeBadge') }}
+                <SelectLabel
+                  :class="
+                    [
+                      'flex items-center gap-1.5',
+                      g.provider.provider_id === 'chatwiki' &&
+                      chatwikiAvailability === 'unbound'
+                        ? 'justify-between gap-2 pr-1'
+                        : '',
+                    ].filter(Boolean)
+                  "
+                >
+                  <span class="flex min-w-0 flex-1 items-center gap-1.5">
+                    <span class="truncate">{{
+                      formatProviderDisplayLabel(
+                        g.provider.provider_id,
+                        g.provider.name,
+                        chatwikiAvailability
+                      )
+                    }}</span>
+                    <span
+                      v-if="isProviderFree(g)"
+                      class="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-border"
+                    >
+                      {{ t('assistant.chat.freeBadge') }}
+                    </span>
                   </span>
+                  <button
+                    v-if="g.provider.provider_id === 'chatwiki' && chatwikiAvailability === 'unbound'"
+                    type="button"
+                    class="shrink-0 border-0 bg-transparent p-0 text-xs font-medium text-[color:var(--color-blue-600)] underline-offset-2 hover:underline hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    @click.stop="goToChatwikiLogin"
+                    @pointerdown.stop
+                  >
+                    {{ t('assistant.chat.goToChatwikiLogin') }}
+                  </button>
                 </SelectLabel>
                 <SelectItem
                   v-for="m in g.models"
