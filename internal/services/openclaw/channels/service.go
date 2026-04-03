@@ -37,6 +37,9 @@ type OpenClawChannelService struct {
 
 	wechatPluginInstallMu      sync.Mutex
 	wechatPluginInstallRunning bool
+
+	whatsappLoginMu sync.Mutex
+	whatsappLogins  map[string]*whatsappLoginSession
 }
 
 const wecomPluginPackage = "@wecom/wecom-openclaw-plugin"
@@ -160,15 +163,15 @@ func (s *OpenClawChannelService) GetChannelStats() (*channels.ChannelStats, erro
 }
 
 // GetSupportedPlatforms returns the same platform list as ChatClaw for UI parity (tabs + add dialog).
-// OpenClaw currently supports creating Feishu, WeCom, DingTalk, WeChat (personal), and QQ channels.
+// OpenClaw currently supports creating Feishu, WeCom, DingTalk, WeChat (personal), QQ, and WhatsApp channels.
 func (s *OpenClawChannelService) GetSupportedPlatforms() []channels.PlatformMeta {
 	return []channels.PlatformMeta{
 		{ID: channels.PlatformDingTalk, Name: "DingTalk", AuthType: "token"},
 		{ID: channels.PlatformFeishu, Name: "Feishu", AuthType: "token"},
 		{ID: channels.PlatformWeCom, Name: "WeCom", AuthType: "token"},
 		{ID: channels.PlatformWechat, Name: "WeChat", AuthType: "qrcode"},
+		{ID: channels.PlatformWhatsapp, Name: "WhatsApp", AuthType: "qrcode"},
 		{ID: channels.PlatformQQ, Name: "QQ", AuthType: "token"},
-		{ID: channels.PlatformTwitter, Name: "X (Twitter)", AuthType: "token"},
 	}
 }
 
@@ -217,6 +220,9 @@ func (s *OpenClawChannelService) CreateChannel(input CreateChannelInput) (*chann
 	} else if platform == channels.PlatformWechat {
 		// WeChat uses QR code authentication; no credentials to sync on create.
 		// Plugin installation and QR code generation happen via GenerateWechatQRCode().
+	} else if platform == channels.PlatformWhatsapp {
+		// WhatsApp uses the OpenClaw gateway QR-login flow; provisioning happens via
+		// GenerateWhatsappQRCode()/WaitForWhatsappLogin(), not through config sync on draft create.
 	} else if platform == channels.PlatformQQ {
 		// QQ is provisioned on connect so drafts do not create remote OpenClaw state yet.
 	} else if err := s.syncOpenClawChannelConfig(ctx, platform, accountKey, name, input.ExtraConfig, false); err != nil {
@@ -229,7 +235,7 @@ func (s *OpenClawChannelService) CreateChannel(input CreateChannelInput) (*chann
 			return nil, err
 		}
 		ch.AgentID = input.AgentID
-		if platform != channels.PlatformQQ {
+		if platform != channels.PlatformQQ && platform != channels.PlatformWhatsapp {
 			if err := s.syncChannelRoutingBinding(ch.ID, input.AgentID); err != nil {
 				return nil, wrapOpenClawSyncErr(err, "error.channel_create_failed", nil)
 			}
@@ -289,6 +295,8 @@ func (s *OpenClawChannelService) UpdateChannel(id int64, input channels.UpdateCh
 	} else if platform == channels.PlatformWechat {
 		// WeChat channel name updates are local-only; no credentials to push.
 		// Enable/disable is handled via ConnectChannel / DisconnectChannel.
+	} else if platform == channels.PlatformWhatsapp {
+		// WhatsApp name updates are local-only; connect/disconnect handles routing.
 	} else if platform == channels.PlatformQQ {
 		if enabled {
 			if m.AgentID == 0 {
@@ -356,15 +364,19 @@ func (s *OpenClawChannelService) DeleteChannel(id int64) error {
 	if platform == "" {
 		platform = channels.PlatformFeishu
 	}
-    if err := s.ensureOpenClawReady(); err != nil {
-        return err
-    }
+	if err := s.ensureOpenClawReady(); err != nil {
+		return err
+	}
 
 	if platform == channels.PlatformWechat {
 		// Remove openclaw.json bindings + channels.openclaw-weixin.accounts, plugin credential files, restart gateway.
 		// Do not require ensureOpenClawReady (file-based cleanup, same rationale as BindAgent for WeChat).
 		if err := s.purgeWechatChannelOpenClawIntegration(m); err != nil {
 			s.app.Logger.Warn("openclaw: wechat purge failed before DB delete", "channel_id", id, "error", err)
+		}
+	} else if platform == channels.PlatformWhatsapp {
+		if err := s.purgeWhatsappChannelOpenClawIntegration(m); err != nil {
+			s.app.Logger.Warn("openclaw: whatsapp purge failed before DB delete", "channel_id", id, "error", err)
 		}
 	} else {
 		if err := s.ensureOpenClawReady(); err != nil {
@@ -407,6 +419,9 @@ func (s *OpenClawChannelService) DeleteChannel(id int64) error {
 	if platform == channels.PlatformWechat {
 		return nil
 	}
+	if platform == channels.PlatformWhatsapp {
+		return nil
+	}
 
 	if isPluginManagedOpenClawPlatform(platform) {
 		accountID := openClawManagedAccountID(platform, id, m.ExtraConfig)
@@ -433,6 +448,12 @@ func (s *OpenClawChannelService) BindAgent(id int64, agentID int64) error {
 		if m.Platform == channels.PlatformWechat && m.OpenClawScope {
 			if syncErr := s.applyWechatOpenClawRouting(ctx, id, agentID, m, true); syncErr != nil {
 				return errs.Wrap("error.channel_bind_failed", syncErr)
+			}
+			return nil
+		}
+		if m.Platform == channels.PlatformWhatsapp && m.OpenClawScope && m.Enabled {
+			if err := s.syncChannelRoutingBinding(id, agentID); err != nil {
+				return errs.Wrap("error.channel_bind_failed", err)
 			}
 			return nil
 		}
@@ -508,6 +529,9 @@ func (s *OpenClawChannelService) ConnectChannel(id int64) error {
 	if m.Platform == channels.PlatformWechat {
 		return s.connectWechatViaPlugin(id, m)
 	}
+	if m.Platform == channels.PlatformWhatsapp {
+		return s.connectWhatsappViaPlugin(id, m)
+	}
 
 	accountKey := openClawChannelAccountKey(id, m.ExtraConfig)
 	platform := strings.TrimSpace(m.Platform)
@@ -558,6 +582,9 @@ func (s *OpenClawChannelService) DisconnectChannel(id int64) error {
 	// WeChat: update openclaw.json + restart without requiring gateway IsReady (file-based).
 	if m.Platform == channels.PlatformWechat {
 		return s.disconnectWechatViaPlugin(ctx, m)
+	}
+	if m.Platform == channels.PlatformWhatsapp {
+		return s.disconnectWhatsappViaPlugin(id, m)
 	}
 
 	if err := s.ensureOpenClawReady(); err != nil {
@@ -646,7 +673,7 @@ func (s *OpenClawChannelService) setOpenClawPluginChannelStatus(ctx context.Cont
 
 func isPluginManagedOpenClawPlatform(platform string) bool {
 	switch strings.TrimSpace(platform) {
-	case channels.PlatformFeishu, channels.PlatformWeCom, channels.PlatformQQ:
+	case channels.PlatformFeishu, channels.PlatformWeCom, channels.PlatformQQ, channels.PlatformWhatsapp:
 		return true
 	default:
 		return false
@@ -657,6 +684,8 @@ func openClawManagedRouteChannel(platform string) string {
 	switch strings.TrimSpace(platform) {
 	case channels.PlatformQQ:
 		return openClawQQChannelID
+	case channels.PlatformWhatsapp:
+		return openClawWhatsappChannelID
 	default:
 		return strings.TrimSpace(platform)
 	}
@@ -931,6 +960,11 @@ func openClawManagedAccountID(platform string, channelID int64, extraConfig stri
 			return fmt.Sprintf("channel_%d", channelID)
 		}
 		return ""
+	case channels.PlatformWhatsapp:
+		if id := extractWhatsappAccountID(extraConfig); id != "" {
+			return id
+		}
+		return "default"
 	case channels.PlatformQQ:
 		// Must match OpenClaw `channels add/remove --account` for this row so multiple QQ bots
 		// do not overwrite each other and route bindings stay per-channel.
@@ -969,6 +1003,13 @@ func (s *OpenClawChannelService) VerifyChannelConfig(platform string, extraConfi
 		ctx, cancel := context.WithTimeout(context.Background(), openClawChannelSyncTimeout)
 		defer cancel()
 		if err := s.ensureOpenClawQQPluginInstalled(ctx); err != nil {
+			return errs.Wrap("error.channel_verify_failed", err)
+		}
+	}
+	if p == channels.PlatformWhatsapp {
+		ctx, cancel := context.WithTimeout(context.Background(), openClawChannelSyncTimeout)
+		defer cancel()
+		if err := s.ensureOpenClawWhatsappPluginInstalled(ctx); err != nil {
 			return errs.Wrap("error.channel_verify_failed", err)
 		}
 	}
@@ -1056,6 +1097,19 @@ func extractWechatAccountID(extraConfig string) string {
 	return strings.TrimSpace(cfg.AccountID)
 }
 
+// extractWhatsappAccountID returns channels.whatsapp account id from extra_config (OpenClaw multi-account key).
+func extractWhatsappAccountID(extraConfig string) string {
+	extraConfig = strings.TrimSpace(extraConfig)
+	if extraConfig == "" {
+		return ""
+	}
+	var cfg appCredentialsJSON
+	if err := json.Unmarshal([]byte(extraConfig), &cfg); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(cfg.AccountID)
+}
+
 func parseAppCredentialsPair(extraConfig string) (appID, appSecret string) {
 	extraConfig = strings.TrimSpace(extraConfig)
 	if extraConfig == "" {
@@ -1096,6 +1150,8 @@ func openClawPlatformFromInput(explicitPlatform, extraConfig string) string {
 		return channels.PlatformFeishu
 	case channels.PlatformWechat:
 		return channels.PlatformWechat
+	case channels.PlatformWhatsapp:
+		return channels.PlatformWhatsapp
 	default:
 		return channels.PlatformFeishu
 	}
@@ -1208,7 +1264,7 @@ func (s *OpenClawChannelService) syncOpenClawPlatformConfigAfterDelete(ctx conte
 			return err
 		}
 		return s.restartOpenClawGateway()
-	case channels.PlatformQQ:
+	case channels.PlatformQQ, channels.PlatformWhatsapp:
 		return nil
 	default:
 		return s.syncOpenClawFeishuDefaultAccount(ctx)

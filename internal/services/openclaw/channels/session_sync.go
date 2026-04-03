@@ -171,7 +171,7 @@ func (s *OpenClawChannelService) SyncAgentConversations(agentID int64) error {
 
 	for _, candidate := range selected {
 		target := channelTargets[buildSyncedChannelTargetKey(candidate.source.Platform, candidate.source.AccountID)]
-		if err := s.syncSessionConversation(agentID, target.Channel, candidate.source.Scope, candidate.source.TargetID, candidate.entry, candidate.rawSessionKey); err != nil {
+		if err := s.syncSessionConversation(agentID, agent.OpenClawAgentID, target.Channel, candidate.source.Scope, candidate.source.TargetID, candidate.entry, candidate.rawSessionKey); err != nil {
 			return errs.Wrap("error.channel_list_failed", err)
 		}
 	}
@@ -250,6 +250,11 @@ func openClawSyncAccountID(ch channels.Channel) string {
 			return id
 		}
 		return openClawWechatAccountID(ch.ID)
+	case channels.PlatformWhatsapp:
+		if id := extractWhatsappAccountID(ch.ExtraConfig); id != "" {
+			return id
+		}
+		return openClawManagedAccountID(ch.Platform, ch.ID, ch.ExtraConfig)
 	default:
 		return openClawManagedAccountID(ch.Platform, ch.ID, ch.ExtraConfig)
 	}
@@ -290,6 +295,7 @@ func openClawQQSessionSyncLegacyExternalIDs(platform string, channelID int64, sc
 
 func (s *OpenClawChannelService) syncSessionConversation(
 	agentID int64,
+	openclawAgentID string,
 	ch channels.Channel,
 	scope string,
 	targetID string,
@@ -335,7 +341,7 @@ func (s *OpenClawChannelService) syncSessionConversation(
 	if lastMessage != "" {
 		q = q.Set("last_message = ?", lastMessage)
 	}
-	if sk := strings.TrimSpace(openClawSessionKey); sk != "" {
+	if sk := normalizeOpenClawPluginSessionKeyAgent(openClawSessionKey, openclawAgentID); sk != "" {
 		q = q.Set("openclaw_session_key = ?", sk)
 	}
 	if _, err := q.Exec(context.Background()); err != nil {
@@ -425,6 +431,8 @@ func parseOpenClawPluginSessionKey(agentID string, sessionKey string, entry open
 		platform = channels.PlatformWechat
 	case openClawQQChannelID:
 		platform = channels.PlatformQQ
+	case "whatsapp":
+		platform = channels.PlatformWhatsapp
 	}
 	scope := strings.TrimSpace(parts[3])
 	targetID := strings.TrimSpace(strings.Join(parts[4:], ":"))
@@ -444,6 +452,22 @@ func parseOpenClawPluginSessionKey(agentID string, sessionKey string, entry open
 		Scope:     scope,
 		TargetID:  targetID,
 	}, true
+}
+
+func normalizeOpenClawPluginSessionKeyAgent(sessionKey string, openclawAgentID string) string {
+	sessionKey = strings.TrimSpace(sessionKey)
+	openclawAgentID = strings.TrimSpace(openclawAgentID)
+	if sessionKey == "" || openclawAgentID == "" {
+		return sessionKey
+	}
+	if !strings.HasPrefix(sessionKey, "agent:") {
+		return sessionKey
+	}
+	parts := strings.SplitN(sessionKey, ":", 3)
+	if len(parts) < 3 {
+		return sessionKey
+	}
+	return "agent:" + openclawAgentID + ":" + parts[2]
 }
 
 func collectSyncSourceAgentIDs(openclawAgentID string) []string {
@@ -507,6 +531,8 @@ func normalizePluginConversationScope(platform string, scope string, targetID st
 		return normalizeDingTalkPluginConversationScope(scope, targetID, chatType)
 	case channels.PlatformWechat:
 		// Weixin OpenClaw plugin uses the same scope/chatType conventions as DingTalk.
+		return normalizeDingTalkPluginConversationScope(scope, targetID, chatType)
+	case channels.PlatformWhatsapp:
 		return normalizeDingTalkPluginConversationScope(scope, targetID, chatType)
 	case channels.PlatformQQ:
 		return normalizeQQPluginConversationScope(scope, targetID, chatType)
@@ -617,6 +643,17 @@ func normalizeFeishuPluginConversationScope(scope string, targetID string, chatT
 }
 
 func (s *OpenClawChannelService) buildSyncedConversationName(ch channels.Channel, entry openClawSessionStoreEntry, scope string, targetID string) string {
+	nativeName := strings.TrimSpace(entry.Origin.Label)
+
+	// WhatsApp plugin sessions already carry the native chat title. Keep that
+	// instead of deriving a title from the first synced message.
+	if ch.Platform == channels.PlatformWhatsapp {
+		if nativeName != "" {
+			return nativeName
+		}
+		return formatAssistantConversationName(scope, channels.NormalizeChannelConversationTargetID(targetID))
+	}
+
 	title := channels.ConversationTitleFromFirstMessage(extractFirstSessionUserMessageText(entry.SessionFile))
 	if title == "" {
 		title = channels.ConversationTitleFromFirstMessage(extractLastSessionMessage(entry.SessionFile))
@@ -629,9 +666,8 @@ func (s *OpenClawChannelService) buildSyncedConversationName(ch channels.Channel
 		}
 	}
 
-	name := strings.TrimSpace(entry.Origin.Label)
-	if name != "" && !isSyncedConversationPlaceholderName(name, scope, targetID) {
-		return name
+	if nativeName != "" && !isSyncedConversationPlaceholderName(nativeName, scope, targetID) {
+		return nativeName
 	}
 
 	if title != "" {

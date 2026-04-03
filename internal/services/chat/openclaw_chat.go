@@ -401,6 +401,26 @@ func (s *ChatService) resolveOpenClawSessionKeys(conversationID int64, openClawA
 				fmt.Sprintf("agent:%s:dingtalk-connector:dm:%s", id, targetID),
 			}, candidates...)
 		}
+	case channels.PlatformWhatsapp:
+		targetID := strings.TrimSpace(source.TargetID)
+		scope := strings.TrimSpace(source.Scope)
+		switch scope {
+		case channels.ChannelConversationScopeDM:
+			candidates = append([]string{
+				fmt.Sprintf("agent:%s:whatsapp:dm:%s", id, targetID),
+				fmt.Sprintf("agent:%s:whatsapp:direct:%s", id, targetID),
+			}, candidates...)
+		case channels.ChannelConversationScopeGroup:
+			candidates = append([]string{
+				fmt.Sprintf("agent:%s:whatsapp:group:%s", id, targetID),
+			}, candidates...)
+		default:
+			candidates = append([]string{
+				fmt.Sprintf("agent:%s:whatsapp:group:%s", id, targetID),
+				fmt.Sprintf("agent:%s:whatsapp:dm:%s", id, targetID),
+				fmt.Sprintf("agent:%s:whatsapp:direct:%s", id, targetID),
+			}, candidates...)
+		}
 	}
 
 	return dedupeStrings(candidates)
@@ -498,9 +518,28 @@ func (s *ChatService) getOpenClawAgentConfig(conversationID int64) (openClawAgen
 // When the stored value is missing, it falls back to the canonical conv_<id> key.
 func resolveOpenClawSessionKey(cfg openClawAgentConfig, conversationID int64) string {
 	if strings.TrimSpace(cfg.SessionKey) != "" {
-		return strings.TrimSpace(cfg.SessionKey)
+		return normalizeOpenClawSessionKeyAgent(strings.TrimSpace(cfg.SessionKey), cfg.OpenClawAgentID, conversationID)
 	}
 	return openClawSessionKey(cfg.OpenClawAgentID, conversationID)
+}
+
+func normalizeOpenClawSessionKeyAgent(sessionKey string, openclawAgentID string, conversationID int64) string {
+	sessionKey = strings.TrimSpace(sessionKey)
+	openclawAgentID = strings.TrimSpace(openclawAgentID)
+	if sessionKey == "" {
+		return openClawSessionKey(openclawAgentID, conversationID)
+	}
+	if openclawAgentID == "" {
+		openclawAgentID = define.OpenClawMainAgentID
+	}
+	if !strings.HasPrefix(sessionKey, "agent:") {
+		return openClawSessionKey(openclawAgentID, conversationID)
+	}
+	parts := strings.SplitN(sessionKey, ":", 3)
+	if len(parts) < 3 {
+		return openClawSessionKey(openclawAgentID, conversationID)
+	}
+	return "agent:" + openclawAgentID + ":" + parts[2]
 }
 
 func buildOpenClawMessagesFromTranscript(conversationID int64, transcriptMessages []openClawTranscriptMsg) []Message {

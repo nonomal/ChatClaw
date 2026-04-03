@@ -234,5 +234,10 @@
   "error.chat_too_many_files": "파일 수가 제한을 초과합니다",
   "error.chat_file_too_large": "파일 크기가 제한을 초과합니다",
   "error.chat_invalid_file_type": "유효하지 않은 파일 유형",
-  "error.file_not_found": "파일을 찾을 수 없습니다"
+  "error.file_not_found": "파일을 찾을 수 없습니다",
+  "error.whatsapp_plugin_not_ready": "WhatsApp OpenClaw plugin is still installing or not ready. Please try again later.",
+  "error.whatsapp_qr_not_found": "Could not read a QR code from the OpenClaw CLI output. Update OpenClaw or try again.",
+  "error.whatsapp_qr_timeout": "Timed out waiting for a WhatsApp QR code from OpenClaw.",
+  "error.whatsapp_login_failed": "WhatsApp login session is missing or invalid.",
+  "error.whatsapp_login_timeout": "WhatsApp QR login timed out. Please scan the code within the time limit."
 }

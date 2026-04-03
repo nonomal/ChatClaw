@@ -1148,7 +1148,7 @@ func lockChannelConversation(agentID int64, externalIDs ...string) func() {
 func buildChannelConversationExternalIDs(msg channels.IncomingMessage) (string, []string) {
 	scope := ""
 	switch msg.Platform {
-	case channels.PlatformWeCom, channels.PlatformFeishu, channels.PlatformQQ:
+	case channels.PlatformWeCom, channels.PlatformFeishu, channels.PlatformQQ, channels.PlatformWhatsapp:
 		if msg.IsGroup {
 			scope = channels.ChannelConversationScopeGroup
 		} else {
@@ -1247,9 +1247,10 @@ func ensureConversationAgentType(ctx context.Context, db *bun.DB, conv *conversa
 }
 
 var platformLabel = map[string]string{
-	channels.PlatformFeishu: "飞书",
-	channels.PlatformWeCom:  "企微",
-	channels.PlatformQQ:     "QQ",
+	channels.PlatformFeishu:   "飞书",
+	channels.PlatformWeCom:    "企微",
+	channels.PlatformQQ:       "QQ",
+	channels.PlatformWhatsapp: "WhatsApp",
 }
 
 func channelDisplayName(platform string, isGroup bool, content string) string {

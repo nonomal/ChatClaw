@@ -820,6 +820,25 @@ func (m *Manager) ExecCLI(ctx context.Context, args ...string) ([]byte, error) {
 	return out, nil
 }
 
+// PrepareCLICommand builds an *exec.Cmd for the bundled openclaw CLI with the same
+// environment and working directory as ExecCLI, without starting it.
+// Callers may attach StdoutPipe / Stderr and use Start + Wait for interactive flows
+// (e.g. WhatsApp QR login).
+func (m *Manager) PrepareCLICommand(ctx context.Context, args ...string) (*exec.Cmd, error) {
+	if m == nil {
+		return nil, errors.New("openclaw manager is nil")
+	}
+	bundle, err := resolveBundledRuntime()
+	if err != nil {
+		return nil, fmt.Errorf("resolve openclaw runtime for CLI exec: %w", err)
+	}
+	cmd := exec.CommandContext(ctx, bundle.CLIPath, args...)
+	cmd.Env = buildGatewayEnv(m.store.Get(), bundle)
+	cmd.Dir = bundle.Root
+	setCmdHideWindow(cmd)
+	return cmd, nil
+}
+
 // ExecNpx runs an npx command using the bundled Node.js runtime with the same
 // isolated environment as the OpenClaw gateway process.
 func (m *Manager) ExecNpx(ctx context.Context, args ...string) ([]byte, error) {
