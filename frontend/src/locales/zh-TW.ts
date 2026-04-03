@@ -336,6 +336,7 @@ export default {
         running: "running",
         starting: "starting",
         stop: "stop",
+        upgrading: "升级中",
       },
     },
     general: {

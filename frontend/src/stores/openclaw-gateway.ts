@@ -15,6 +15,8 @@ export enum GatewayVisualStatus {
   Error = 'error',
   Stop = 'stop',
   Starting = 'starting',
+  /** Runtime bundle download/install; distinct from gateway process starting. */
+  Upgrading = 'upgrading',
 }
 
 export const gatewayBadgeClass: Record<GatewayVisualStatus, string> = {
@@ -25,6 +27,8 @@ export const gatewayBadgeClass: Record<GatewayVisualStatus, string> = {
   [GatewayVisualStatus.Stop]:
     'inline-flex items-center rounded-md border border-neutral-300 px-1.5 py-0.5 text-sm text-neutral-600 dark:border-white/20 dark:text-muted-foreground',
   [GatewayVisualStatus.Starting]:
+    'inline-flex items-center rounded-md border border-amber-300 px-1.5 py-0.5 text-sm text-amber-700 dark:border-amber-600/50 dark:text-amber-400',
+  [GatewayVisualStatus.Upgrading]:
     'inline-flex items-center rounded-md border border-amber-300 px-1.5 py-0.5 text-sm text-amber-700 dark:border-amber-600/50 dark:text-amber-400',
 }
 
@@ -38,6 +42,8 @@ export const gatewaySidebarTagShellClass: Record<GatewayVisualStatus, string> = 
     'border-neutral-300 bg-neutral-100/90 dark:border-white/20 dark:bg-neutral-900/55 dark:ring-1 dark:ring-white/10',
   [GatewayVisualStatus.Starting]:
     'border-amber-300 bg-amber-50/95 dark:border-amber-600/50 dark:bg-amber-950/45 dark:ring-1 dark:ring-amber-500/25',
+  [GatewayVisualStatus.Upgrading]:
+    'border-amber-300 bg-amber-50/95 dark:border-amber-600/50 dark:bg-amber-950/45 dark:ring-1 dark:ring-amber-500/25',
 }
 
 /** Prefix + separator text (same hue family as border). */
@@ -48,6 +54,8 @@ export const gatewaySidebarTagLabelClass: Record<GatewayVisualStatus, string> = 
   [GatewayVisualStatus.Stop]: 'text-neutral-700 dark:text-neutral-400',
   [GatewayVisualStatus.Starting]:
     'text-amber-950/90 dark:text-amber-200/88',
+  [GatewayVisualStatus.Upgrading]:
+    'text-amber-950/90 dark:text-amber-200/88',
 }
 
 /** Status word after colon (weight comes from parent font-bold). */
@@ -57,6 +65,7 @@ export const gatewaySidebarTagStatusClass: Record<GatewayVisualStatus, string> =
   [GatewayVisualStatus.Error]: 'text-rose-600 dark:text-rose-400',
   [GatewayVisualStatus.Stop]: 'text-neutral-600 dark:text-neutral-300',
   [GatewayVisualStatus.Starting]: 'text-amber-700 dark:text-amber-400',
+  [GatewayVisualStatus.Upgrading]: 'text-amber-700 dark:text-amber-400',
 }
 
 /** Spinner icon on starting state. */
@@ -66,6 +75,8 @@ export const gatewaySidebarTagLoaderClass: Record<GatewayVisualStatus, string> =
   [GatewayVisualStatus.Error]: 'text-rose-600 dark:text-rose-400',
   [GatewayVisualStatus.Stop]: 'text-neutral-500 dark:text-neutral-400',
   [GatewayVisualStatus.Starting]:
+    'text-amber-600 dark:text-amber-400',
+  [GatewayVisualStatus.Upgrading]:
     'text-amber-600 dark:text-amber-400',
 }
 
@@ -80,12 +91,8 @@ function mapToVisual(
 ): GatewayVisualStatus {
   const phase = status.phase || 'idle'
   if (phase === 'error') return GatewayVisualStatus.Error
-  if (
-    phase === 'starting' ||
-    phase === 'connecting' ||
-    phase === 'restarting' ||
-    phase === 'upgrading'
-  ) {
+  if (phase === 'upgrading') return GatewayVisualStatus.Upgrading
+  if (phase === 'starting' || phase === 'connecting' || phase === 'restarting') {
     return GatewayVisualStatus.Starting
   }
   if (phase === 'connected') return GatewayVisualStatus.Running

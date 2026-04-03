@@ -273,6 +273,7 @@ export default {
         error: "error",
         stop: "stop",
         starting: "starting",
+        upgrading: "upgrading",
       },
       restart: "Restart",
       logs: "Logs",
@@ -323,6 +324,7 @@ export default {
         gatewayTagError: "Gateway error",
         gatewayTagStop: "Gateway stopped",
         gatewayTagStarting: "Gateway starting",
+        gatewayTagUpgrading: "Runtime upgrading",
         gatewayDisabledHint: "Gateway is not enabled.",
       },
       doctor: {
@@ -2038,6 +2040,7 @@ export default {
   openclawGateway: {
     banner: {
       starting: "The gateway is starting. Please try again in a moment.",
+      upgrading: "OpenClaw runtime is upgrading. Please try again in a moment.",
       channels: "网关未运行，未启用网关时无法管理消息频道",
       scheduledTasks: "网关未运行，未启用网关时无法管理定时任务",
     },

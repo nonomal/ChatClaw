@@ -95,7 +95,9 @@ const badgeText = computed(() => {
 const badgeClass = computed(() => gatewayBadgeClass[gatewayStore.visualStatus])
 
 const isGatewayStartingUi = computed(
-  () => gatewayStore.visualStatus === GatewayVisualStatus.Starting
+  () =>
+    gatewayStore.visualStatus === GatewayVisualStatus.Starting ||
+    gatewayStore.visualStatus === GatewayVisualStatus.Upgrading
 )
 
 function syncGatewayStore() {

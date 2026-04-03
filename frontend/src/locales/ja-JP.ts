@@ -333,6 +333,7 @@ export default {
         running: "running",
         starting: "starting",
         stop: "stop",
+        upgrading: "アップグレード中",
       },
       stop: "停止",
       stopFailed: "网关停止失败",
