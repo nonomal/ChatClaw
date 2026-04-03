@@ -368,7 +368,6 @@ onMounted(() => {
         </div>
         <div class="flex shrink-0 flex-wrap items-center gap-2">
           <Button
-            v-if="!isGatewayStopped"
             size="sm"
             variant="outline"
             :disabled="stopping || restarting || upgrading"
