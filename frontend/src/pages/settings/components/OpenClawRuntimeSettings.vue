@@ -3,8 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Events } from '@wailsio/runtime'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { RefreshCw, Loader2, ExternalLink, Download } from 'lucide-vue-next'
+import { RefreshCw, Loader2, ExternalLink, Download, Square } from 'lucide-vue-next'
 import * as OpenClawRuntimeService from '@bindings/chatclaw/internal/openclaw/runtime/openclawruntimeservice'
 import {
   useNavigationStore,
@@ -22,7 +21,6 @@ import { toast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
 import SettingsCard from './SettingsCard.vue'
 import OpenClawDoctorConsole from '@/components/openclaw/OpenClawDoctorConsole.vue'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 /** When true, match Figma ChatClaw openclaw管家: page column 874px, cards 700px centered */
 const props = withDefaults(
@@ -36,31 +34,20 @@ const { t } = useI18n()
 const navigationStore = useNavigationStore()
 const gatewayStore = useOpenClawGatewayStore()
 
-/** Title-bar gateway switch: hidden in release; visible when Vite dev or VITE_DEV=true */
-const showDevGatewaySwitch =
+/** Stop button: hidden in release; visible when Vite dev or VITE_DEV=true */
+const showDevStopButton =
   import.meta.env.DEV || import.meta.env.VITE_DEV === 'true'
 
 const status = ref<RuntimeStatus>(new RuntimeStatus({ phase: 'idle' }))
 const gatewayState = ref<GatewayConnectionState>(new GatewayConnectionState())
 const restarting = ref(false)
+const stopping = ref(false)
 const upgrading = ref(false)
-/** True while handling gateway on/off from the title-bar switch */
-const gatewaySwitchBusy = ref(false)
 
 const isActive = computed(() => status.value.phase === 'connected')
 const isTransitioning = computed(() => {
   const p = status.value.phase
   return p === 'starting' || p === 'connecting' || p === 'restarting' || p === 'upgrading'
-})
-
-/**
- * Same source as sidebar + status badge: Pinia store is refreshed by global heartbeat poll,
- * while local `status` is only updated on mount/events — using `status.phase` here caused OFF while badge showed running.
- */
-const gatewaySwitchOn = computed(() => {
-  if (gatewayStore.runtimePhase === 'upgrading') return false
-  const v = gatewayStore.visualStatus
-  return v === GatewayVisualStatus.Running || v === GatewayVisualStatus.Starting
 })
 
 // 是否处于升级阶段（显示进度条）
@@ -129,26 +116,6 @@ const loadStatus = async () => {
   syncGatewayStore()
 }
 
-/** Title switch: off → stop + disable autostart; on → enable autostart + start/restart gateway */
-const handleGatewaySwitchToggle = async (checked: boolean) => {
-  if (gatewaySwitchBusy.value) return
-  gatewaySwitchBusy.value = true
-  try {
-    await OpenClawRuntimeService.SetAutoStart(checked)
-    if (checked) {
-      toast.success(t('settings.openclawRuntime.autoStartEnabled'))
-    } else {
-      toast.success(t('settings.openclawRuntime.autoStartDisabled'))
-    }
-    await loadStatus()
-  } catch (e) {
-    console.error('Failed to toggle gateway:', e)
-    toast.error(getErrorMessage(e) || t('settings.openclawRuntime.autoStartFailed'))
-  } finally {
-    gatewaySwitchBusy.value = false
-  }
-}
-
 const handleRestart = async () => {
   restarting.value = true
   try {
@@ -160,6 +127,21 @@ const handleRestart = async () => {
     toast.error(getErrorMessage(e) || t('settings.openclawRuntime.restartFailed'))
   } finally {
     restarting.value = false
+  }
+}
+
+const handleStop = async () => {
+  if (stopping.value) return
+  stopping.value = true
+  try {
+    await OpenClawRuntimeService.SetAutoStart(false)
+    toast.success(t('settings.openclawRuntime.stopSuccess'))
+    await loadStatus()
+  } catch (e) {
+    console.error('Failed to stop OpenClaw gateway:', e)
+    toast.error(getErrorMessage(e) || t('settings.openclawRuntime.stopFailed'))
+  } finally {
+    stopping.value = false
   }
 }
 
@@ -237,23 +219,7 @@ onUnmounted(() => {
       "
     >
     <SettingsCard :title="t('settings.openclawRuntime.title')" fullWidth>
-      <template #header-right>
-        <TooltipProvider v-if="showDevGatewaySwitch">
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Switch
-                :model-value="gatewaySwitchOn"
-                :disabled="gatewaySwitchBusy || gatewayStore.runtimePhase === 'upgrading'"
-                :aria-label="t('settings.openclawRuntime.autoStartLabel')"
-                @update:model-value="handleGatewaySwitchToggle"
-              />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p class="text-xs">{{ t('settings.openclawRuntime.autoStartTooltip') }}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </template>
+      <template #header-right />
 
       <!-- Gateway status row: badge + restart -->
       <div
@@ -279,6 +245,17 @@ onUnmounted(() => {
           </span>
         </div>
         <div class="flex shrink-0 flex-wrap items-center gap-2">
+          <Button
+            v-if="showDevStopButton"
+            size="sm"
+            variant="outline"
+            :disabled="stopping || restarting || upgrading || isTransitioning"
+            @click="handleStop"
+          >
+            <Square v-if="!stopping" class="mr-1.5 size-3.5" />
+            <Loader2 v-else class="mr-1.5 size-3.5 animate-spin" />
+            {{ t('settings.openclawRuntime.stop') }}
+          </Button>
           <Button
             size="sm"
             variant="outline"
