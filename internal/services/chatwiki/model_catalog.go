@@ -248,6 +248,21 @@ func cloneModelCatalog(in *ModelCatalog) *ModelCatalog {
 	return &out
 }
 
+// GetModelCatalogForSync returns the cached ChatWiki model catalog for OpenClaw sync.
+// It uses the cached value if available, otherwise returns nil.
+// This function is designed to be called from the openclawruntime package without
+// requiring access to ChatWikiService instance.
+func GetModelCatalogForSync() (*ModelCatalog, error) {
+	modelCatalogMu.RLock()
+	cached := modelCatalogCache
+	modelCatalogMu.RUnlock()
+	if cached != nil {
+		return cloneModelCatalog(cached), nil
+	}
+	// Return nil if no catalog is cached - the caller should handle this case.
+	return nil, nil
+}
+
 func (s *ChatWikiService) fetchModelCatalog(source modelCatalogSource) (*ModelCatalog, error) {
 	baseURL := normalizeManagementBaseURL(source.ServerURL)
 	modelURL := baseURL + "/manage/chatclaw/showModelConfigList"

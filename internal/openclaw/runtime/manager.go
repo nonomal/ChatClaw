@@ -212,6 +212,13 @@ func (m *Manager) RestartGateway() (RuntimeStatus, error) {
 	return m.GetStatus(), err
 }
 
+// StartGateway starts the OpenClaw gateway when it is stopped (idle state).
+// Unlike RestartGateway, this does not restart an already running gateway.
+func (m *Manager) StartGateway() (RuntimeStatus, error) {
+	err := m.reconcile(false)
+	return m.GetStatus(), err
+}
+
 // InstallAndStartRuntime downloads the OpenClaw runtime from OSS and starts the gateway.
 // This is the "OSS install" equivalent of UpgradeRuntime: it installs the runtime bundle,
 // stops any existing gateway, and starts a new one using the newly installed runtime.

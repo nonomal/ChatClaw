@@ -288,6 +288,10 @@ export default {
       restartButton: "Restart Service",
       upgrading: "Upgrading...",
       restarting: "Restarting...",
+      start: "Start",
+      starting: "Starting...",
+      startSuccess: "Gateway started",
+      startFailed: "Gateway failed to start",
       phase: {
         idle: "Idle",
         starting: "Starting",

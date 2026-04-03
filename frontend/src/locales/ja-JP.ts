@@ -269,6 +269,10 @@ export default {
       restartButton: "サービスを再起動",
       upgrading: "アップグレード中...",
       restarting: "再起動中...",
+      start: "起動",
+      starting: "起動中...",
+      startSuccess: "ゲートウェイが起動しました",
+      startFailed: "ゲートウェイの起動に失敗しました",
       phase: {
         idle: "待機中",
         starting: "起動中",

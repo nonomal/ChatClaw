@@ -5,13 +5,69 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
-	"chatclaw/internal/services/providers"
+	"chatclaw/internal/define"
+	"chatclaw/internal/services/chatwiki"
+	"chatclaw/internal/sqlite"
+
+	"github.com/uptrace/bun"
 )
+
+// ProvidersService is imported here for type reference only.
+// The actual provider listing is done via direct DB queries to avoid circular dependencies.
+type ProvidersService interface {
+	ListProviders() ([]ProviderDTO, error)
+	GetProviderWithModels(providerID string) (*ProviderWithModelsDTO, error)
+}
+
+// ProviderDTO is a minimal provider struct for model sync.
+type ProviderDTO struct {
+	ID          int64
+	ProviderID  string
+	Name        string
+	Type        string
+	Icon        string
+	IsBuiltin   bool
+	IsFree      bool
+	Enabled     bool
+	SortOrder   int
+	APIEndpoint string
+	APIKey      string
+	ExtraConfig string
+}
+
+// ProviderWithModelsDTO is a minimal provider with models struct.
+type ProviderWithModelsDTO struct {
+	Provider    ProviderDTO
+	ModelGroups []ModelGroupDTO
+}
+
+// ModelGroupDTO is a minimal model group struct.
+type ModelGroupDTO struct {
+	Type   string
+	Models []ModelDTO
+}
+
+// ModelDTO is a minimal model struct.
+type ModelDTO struct {
+	ID           int64
+	ProviderID   string
+	ModelID      string
+	Name         string
+	ModelSupplier string
+	UniModelName string
+	Type         string
+	Capabilities []string
+	IsBuiltin    bool
+	Enabled      bool
+	SortOrder    int
+}
 
 // NewModelsSectionBuilder returns a SectionBuilder that produces the OpenClaw
 // "models" config section from ChatClaw's enabled providers and LLM models.
-func NewModelsSectionBuilder(providersSvc *providers.ProvidersService) SectionBuilder {
+func NewModelsSectionBuilder(providersSvc ProvidersService) SectionBuilder {
 	return func(ctx context.Context) (map[string]any, error) {
 		allProviders, err := providersSvc.ListProviders()
 		if err != nil {
@@ -39,19 +95,57 @@ var chatclawTypeToOpenClawAPI = map[string]string{
 	"openai":    "openai-completions",
 	"azure":     "openai-completions",
 	"anthropic": "anthropic-messages",
-	"gemini":    "google-generative-ai",
+	"gemini":    "google-generativeai",
 	"ollama":    "openai-completions",
 	"qwen":      "openai-completions",
 }
 
-func buildModelsPatch(providersSvc *providers.ProvidersService, allProviders []providers.Provider) map[string]any {
+// chatWikiSyncMu protects the ChatWiki model catalog cache during sync.
+var chatWikiSyncMu sync.Mutex
+
+// chatWikiSyncCache caches the ChatWiki model catalog for the duration of a sync cycle.
+var chatWikiSyncCache *chatWikiSyncData
+
+type chatWikiSyncData struct {
+	Binding  *chatWikiBindingDTO
+	Catalog  *chatwiki.ModelCatalog
+	CachedAt time.Time
+}
+
+// chatWikiBindingDTO is a minimal binding struct for sync.
+type chatWikiBindingDTO struct {
+	ID        int64
+	ServerURL string
+	Token     string
+	UserID    string
+}
+
+func buildModelsPatch(providersSvc ProvidersService, allProviders []ProviderDTO) map[string]any {
 	providerMap := make(map[string]any)
+
+	// Pre-fetch ChatWiki binding and catalog for sync.
+	chatWikiData := fetchChatWikiSyncData()
+	hasChatWikiBinding := chatWikiData != nil && chatWikiData.Binding != nil && chatWikiData.Binding.Token != ""
 
 	for _, p := range allProviders {
 		if !p.Enabled {
 			continue
 		}
-		if p.ProviderID != "ollama" && strings.TrimSpace(p.APIKey) == "" {
+
+		// Skip providers without API key (except ollama and chatwiki which have special handling).
+		if p.ProviderID != "ollama" && p.ProviderID != "chatwiki" && strings.TrimSpace(p.APIKey) == "" {
+			continue
+		}
+
+		// Special handling for ChatWiki: get APIKey from binding and models from catalog.
+		if p.ProviderID == "chatwiki" {
+			if !hasChatWikiBinding {
+				continue // No ChatWiki binding, skip.
+			}
+			ocProvider := buildChatWikiProvider(chatWikiData)
+			if ocProvider != nil && len(ocProvider.Models) > 0 {
+				providerMap[p.ProviderID] = ocProvider
+			}
 			continue
 		}
 
@@ -93,7 +187,113 @@ func buildModelsPatch(providersSvc *providers.ProvidersService, allProviders []p
 	}
 }
 
-func buildSingleProvider(p providers.Provider) *openclawProviderConfig {
+// fetchChatWikiSyncData fetches ChatWiki binding and model catalog for sync.
+func fetchChatWikiSyncData() *chatWikiSyncData {
+	chatWikiSyncMu.Lock()
+	defer chatWikiSyncMu.Unlock()
+
+	// Check if cache is still valid (within last 5 minutes).
+	if chatWikiSyncCache != nil && time.Since(chatWikiSyncCache.CachedAt) < 5*time.Minute {
+		return chatWikiSyncCache
+	}
+
+	result := &chatWikiSyncData{CachedAt: time.Now()}
+
+	// Fetch binding from DB.
+	binding, err := fetchChatWikiBindingFromDB()
+	if err != nil || binding == nil || binding.Token == "" {
+		chatWikiSyncCache = result
+		return result
+	}
+	result.Binding = binding
+
+	// Fetch model catalog.
+	catalog, err := chatwiki.GetModelCatalogForSync()
+	if err != nil || catalog == nil {
+		chatWikiSyncCache = result
+		return result
+	}
+	result.Catalog = catalog
+
+	chatWikiSyncCache = result
+	return result
+}
+
+// ClearChatWikiSyncCache clears the cached ChatWiki sync data.
+func ClearChatWikiSyncCache() {
+	chatWikiSyncMu.Lock()
+	defer chatWikiSyncMu.Unlock()
+	chatWikiSyncCache = nil
+}
+
+// fetchChatWikiBindingFromDB reads the ChatWiki binding from sqlite.
+func fetchChatWikiBindingFromDB() (*chatWikiBindingDTO, error) {
+	db := sqlite.DB()
+	if db == nil {
+		return nil, fmt.Errorf("sqlite not initialized")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var m struct {
+		bun.BaseModel `bun:"table:chatwiki_bindings"`
+		ID            int64  `bun:"id,pk,autoincrement"`
+		ServerURL     string `bun:"server_url,notnull"`
+		Token         string `bun:"token,notnull"`
+		UserID        string `bun:"user_id,notnull"`
+	}
+	err := db.NewSelect().Model(&m).OrderExpr("id DESC").Limit(1).Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &chatWikiBindingDTO{
+		ID:        m.ID,
+		ServerURL: m.ServerURL,
+		Token:    m.Token,
+		UserID:   m.UserID,
+	}, nil
+}
+
+// buildChatWikiProvider builds an OpenClaw provider config for ChatWiki.
+func buildChatWikiProvider(data *chatWikiSyncData) *openclawProviderConfig {
+	if data == nil || data.Binding == nil || data.Binding.Token == "" {
+		return nil
+	}
+
+	// Build base URL for ChatWiki OpenAI-compatible API.
+	baseURL := strings.TrimRight(strings.TrimSpace(define.GetModelChatWikiURL()), "/")
+	if baseURL == "" {
+		baseURL = strings.TrimRight(data.Binding.ServerURL, "/")
+	}
+	apiBaseURL := baseURL + "/chatclaw/v1"
+
+	ocProvider := &openclawProviderConfig{
+		BaseURL: apiBaseURL,
+		APIKey:  data.Binding.Token,
+		API:     "openai-completions",
+	}
+
+	// Add models from catalog.
+	if data.Catalog != nil && len(data.Catalog.LLMModels) > 0 {
+		for _, m := range data.Catalog.LLMModels {
+			if !m.Enabled {
+				continue
+			}
+			entry := openclawModelEntry{
+				ID:   m.ModelID,
+				Name: m.Name,
+			}
+			if len(m.Capabilities) > 0 {
+				entry.Input = m.Capabilities
+			}
+			ocProvider.Models = append(ocProvider.Models, entry)
+		}
+	}
+
+	return ocProvider
+}
+
+func buildSingleProvider(p ProviderDTO) *openclawProviderConfig {
 	api, ok := chatclawTypeToOpenClawAPI[p.Type]
 	if !ok {
 		api = "openai-completions"

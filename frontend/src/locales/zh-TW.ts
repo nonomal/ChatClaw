@@ -273,6 +273,10 @@ export default {
       restartButton: "重啟服務",
       upgrading: "升級中...",
       restarting: "重啟中...",
+      start: "啟動",
+      starting: "啟動中...",
+      startSuccess: "網關已啟動",
+      startFailed: "網關啟動失敗",
       phase: {
         idle: "空閒",
         starting: "啟動中",
