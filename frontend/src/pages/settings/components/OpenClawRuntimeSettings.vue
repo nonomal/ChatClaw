@@ -33,18 +33,6 @@ const { t } = useI18n()
 const navigationStore = useNavigationStore()
 const gatewayStore = useOpenClawGatewayStore()
 
-/** Stop button: hidden in release; visible only when backend is in dev mode */
-const showDevStopButton = ref(false)
-
-const loadDevMode = async () => {
-  try {
-    showDevStopButton.value = await OpenClawRuntimeService.IsDevMode()
-  } catch (e) {
-    console.error('Failed to load dev mode:', e)
-    showDevStopButton.value = false
-  }
-}
-
 const status = ref<RuntimeStatus>(new RuntimeStatus({ phase: 'idle' }))
 const gatewayState = ref<GatewayConnectionState>(new GatewayConnectionState())
 const restarting = ref(false)
@@ -270,7 +258,6 @@ watch(
 
 onMounted(() => {
   void loadStatus()
-  void loadDevMode()
   // Store's heartbeat will subscribe to events and poll, keeping this component in sync
   void gatewayStore.poll()
 })
@@ -322,10 +309,9 @@ onMounted(() => {
         </div>
         <div class="flex shrink-0 flex-wrap items-center gap-2">
           <Button
-            v-if="showDevStopButton"
             size="sm"
             variant="outline"
-            :disabled="stopping || restarting || upgrading || isTransitioning"
+            :disabled="stopping || restarting || upgrading"
             @click="handleStop"
           >
             <Square v-if="!stopping" class="mr-1.5 size-3.5" />
