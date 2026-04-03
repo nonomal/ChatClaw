@@ -57,14 +57,16 @@ type Manager struct {
 	processDone  chan error
 	processLog   *os.File
 
-	expectedStopPID int
-	shuttingDown    bool
-	reconnecting    atomic.Bool
+	expectedStopPID   int
+	shuttingDown      bool
+	reconnecting      atomic.Bool
 
 	eventListenersMu sync.RWMutex
 	eventListeners   map[string]EventListener // keyed by caller-chosen ID
 
-	upgradeProgressCb func(progress int, message string)
+	upgradeProgressCb  func(progress int, message string)
+	upgradeMu         sync.Mutex  // serialises upgradeRuntimeLocked vs reconcileLocked to prevent OSS cascade
+	upgradeInProgress atomic.Bool // set during upgrade so reconcileLocked skips OSS fallback
 
 	doctorRunSeq uint64 // atomic: correlates streamed doctor chunks with the active UI run
 }
@@ -281,21 +283,28 @@ func (m *Manager) reconcileLocked(restart bool) error {
 
 	bundle, err := resolveBundledRuntime()
 	if err != nil {
-	// No bundled runtime found — try installing from OSS as a fallback
-	m.app.Logger.Info("openclaw: no bundled runtime found, attempting OSS install", "error", err)
-	m.broadcastStatus(RuntimeStatus{
-		Phase:      PhaseUpgrading,
-		Message:    "No OpenClaw runtime found, downloading from OSS...",
-		GatewayURL: gatewayURL(cfg.GatewayPort),
-	})
-	if m.toolchainSvc == nil {
-		return fail("resolveBundledRuntime", err, "", 0)
-	}
-	// Set up progress callback so the UI can show install progress
-	if m.upgradeProgressCb != nil {
-		m.toolchainSvc.SetUpgradeProgressCallback(m.upgradeProgressCb)
-	}
-	if installErr := m.toolchainSvc.InstallOpenClawRuntime(); installErr != nil {
+		// No bundled runtime found.
+		// If an upgrade is in progress, do NOT attempt OSS install here — let the upgrade path
+		// handle rollback and retry. Otherwise, fall back to OSS install.
+		if m.upgradeInProgress.Load() {
+			m.app.Logger.Warn("openclaw: no bundled runtime found during upgrade, skipping OSS fallback",
+				"error", err)
+			return fail("resolveBundledRuntime", err, "", 0)
+		}
+		m.app.Logger.Info("openclaw: no bundled runtime found, attempting OSS install", "error", err)
+		m.broadcastStatus(RuntimeStatus{
+			Phase:      PhaseUpgrading,
+			Message:    "No OpenClaw runtime found, downloading from OSS...",
+			GatewayURL: gatewayURL(cfg.GatewayPort),
+		})
+		if m.toolchainSvc == nil {
+			return fail("resolveBundledRuntime", err, "", 0)
+		}
+		// Set up progress callback so the UI can show install progress
+		if m.upgradeProgressCb != nil {
+			m.toolchainSvc.SetUpgradeProgressCallback(m.upgradeProgressCb)
+		}
+		if installErr := m.toolchainSvc.InstallOpenClawRuntime(); installErr != nil {
 			return fail("OSS runtime install", installErr, "", 0)
 		}
 		// Reload bundle after OSS install

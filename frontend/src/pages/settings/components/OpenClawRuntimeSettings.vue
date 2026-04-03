@@ -34,9 +34,17 @@ const { t } = useI18n()
 const navigationStore = useNavigationStore()
 const gatewayStore = useOpenClawGatewayStore()
 
-/** Stop button: hidden in release; visible when Vite dev or VITE_DEV=true */
-const showDevStopButton =
-  import.meta.env.DEV || import.meta.env.VITE_DEV === 'true'
+/** Stop button: hidden in release; visible only when backend is in dev mode */
+const showDevStopButton = ref(false)
+
+const loadDevMode = async () => {
+  try {
+    showDevStopButton.value = await OpenClawRuntimeService.IsDevMode()
+  } catch (e) {
+    console.error('Failed to load dev mode:', e)
+    showDevStopButton.value = false
+  }
+}
 
 const status = ref<RuntimeStatus>(new RuntimeStatus({ phase: 'idle' }))
 const gatewayState = ref<GatewayConnectionState>(new GatewayConnectionState())
@@ -181,6 +189,7 @@ watch([status, gatewayState], () => syncGatewayStore(), { deep: true })
 
 onMounted(() => {
   void loadStatus()
+  void loadDevMode()
   void gatewayStore.poll()
 
   unsubscribeStatus = Events.On('openclaw:status', (event: any) => {
