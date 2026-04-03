@@ -75,7 +75,8 @@ func buildModelsPatch(providersSvc *providers.ProvidersService, allProviders []p
 	providerMap := make(map[string]any)
 
 	// Pre-fetch ChatWiki binding and catalog for sync.
-	chatWikiData := fetchChatWikiSyncData()
+	// Force refresh to ensure we have the latest models when building config.
+	chatWikiData := fetchChatWikiSyncData(true)
 	hasChatWikiBinding := chatWikiData != nil && chatWikiData.Binding != nil && chatWikiData.Binding.Token != ""
 
 	for _, p := range allProviders {
@@ -140,12 +141,14 @@ func buildModelsPatch(providersSvc *providers.ProvidersService, allProviders []p
 
 // fetchChatWikiSyncData fetches ChatWiki binding and model catalog for sync.
 // It first triggers a catalog refresh to ensure we have the latest models.
-func fetchChatWikiSyncData() *chatWikiSyncData {
+// Parameters:
+//   - forceRefresh: if true, bypasses cache and forces a fresh fetch
+func fetchChatWikiSyncData(forceRefresh bool) *chatWikiSyncData {
 	chatWikiSyncMu.Lock()
 	defer chatWikiSyncMu.Unlock()
 
-	// Check if cache is still valid (within last 5 minutes).
-	if chatWikiSyncCache != nil && time.Since(chatWikiSyncCache.CachedAt) < 5*time.Minute {
+	// Check if cache is still valid (within last 5 minutes) - only use cache if not forcing refresh.
+	if !forceRefresh && chatWikiSyncCache != nil && time.Since(chatWikiSyncCache.CachedAt) < 5*time.Minute {
 		return chatWikiSyncCache
 	}
 
