@@ -95,6 +95,13 @@ const isGatewayStartingUi = computed(
     gatewayStore.visualStatus === GatewayVisualStatus.Upgrading
 )
 
+// 网关是否处于停止状态（idle 或未连接）
+const isGatewayStopped = computed(
+  () =>
+    gatewayStore.visualStatus === GatewayVisualStatus.Stop ||
+    status.value.phase === 'idle'
+)
+
 function syncGatewayStore() {
   gatewayStore.applySnapshot(status.value, gatewayState.value)
 }
@@ -160,6 +167,58 @@ const handleRestart = async () => {
   } catch (e) {
     console.error('Failed to restart OpenClaw gateway:', e)
     toast.error(getErrorMessage(e) || t('settings.openclawRuntime.restartFailed'))
+  } finally {
+    restarting.value = false
+  }
+}
+
+const handleStart = async () => {
+  restarting.value = true
+  try {
+    // First check if port is occupied
+    const portStatus = await OpenClawRuntimeService.CheckPortOccupied()
+    if (portStatus.occupied) {
+      const processName = portStatus.processName || 'Unknown'
+      toast.error(
+        t('settings.openclawRuntime.portOccupiedHint', {
+          port: portStatus.port,
+          process: processName,
+          pid: portStatus.pid,
+        })
+      )
+      await loadStatus()
+      restarting.value = false
+      return
+    }
+
+    status.value = await OpenClawRuntimeService.StartGateway()
+    syncGatewayStore()
+
+    // Check if start failed due to port occupation
+    if (status.value.phase === 'error' && status.value.message?.includes('port')) {
+      const portStatusAfter = await OpenClawRuntimeService.CheckPortOccupied()
+      if (portStatusAfter.occupied) {
+        const processName = portStatusAfter.processName || 'Unknown'
+        toast.error(
+          t('settings.openclawRuntime.portOccupiedHint', {
+            port: portStatusAfter.port,
+            process: processName,
+            pid: portStatusAfter.pid,
+          })
+        )
+        restarting.value = false
+        return
+      }
+    }
+
+    if (status.value.phase === 'error') {
+      toast.error(status.value.message || t('settings.openclawRuntime.startFailed'))
+    } else {
+      toast.success(t('settings.openclawRuntime.startSuccess'))
+    }
+  } catch (e) {
+    console.error('Failed to start OpenClaw gateway:', e)
+    toast.error(getErrorMessage(e) || t('settings.openclawRuntime.startFailed'))
   } finally {
     restarting.value = false
   }
@@ -309,6 +368,7 @@ onMounted(() => {
         </div>
         <div class="flex shrink-0 flex-wrap items-center gap-2">
           <Button
+            v-if="!isGatewayStopped"
             size="sm"
             variant="outline"
             :disabled="stopping || restarting || upgrading"
@@ -319,6 +379,17 @@ onMounted(() => {
             {{ t('settings.openclawRuntime.stop') }}
           </Button>
           <Button
+            v-if="isGatewayStopped"
+            size="sm"
+            variant="outline"
+            :disabled="restarting || upgrading || isTransitioning"
+            @click="handleStart"
+          >
+            <Loader2 v-if="restarting" class="mr-1.5 size-3.5 animate-spin" />
+            {{ restarting ? t('settings.openclawRuntime.starting') : t('settings.openclawRuntime.start') }}
+          </Button>
+          <Button
+            v-else
             size="sm"
             variant="outline"
             :disabled="restarting || upgrading || isTransitioning"

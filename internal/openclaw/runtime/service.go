@@ -32,6 +32,11 @@ func (s *OpenClawRuntimeService) RestartGateway() (RuntimeStatus, error) {
 	return s.manager.RestartGateway()
 }
 
+// StartGateway starts the OpenClaw gateway when it is stopped.
+func (s *OpenClawRuntimeService) StartGateway() (RuntimeStatus, error) {
+	return s.manager.StartGateway()
+}
+
 // StopGateway stops the OpenClaw gateway (used in DEV for quick testing).
 func (s *OpenClawRuntimeService) StopGateway() {
 	s.manager.Shutdown()

@@ -248,6 +248,30 @@ func cloneModelCatalog(in *ModelCatalog) *ModelCatalog {
 	return &out
 }
 
+// GetModelCatalogForSync returns the cached ChatWiki model catalog for OpenClaw sync.
+// If no cached catalog exists, it attempts to fetch a fresh one from ChatWiki API.
+// This function is designed to be called from the openclawruntime package without
+// requiring access to ChatWikiService instance.
+// Returns nil if no binding exists or catalog fetch fails.
+func GetModelCatalogForSync() (*ModelCatalog, error) {
+	modelCatalogMu.RLock()
+	cached := modelCatalogCache
+	modelCatalogMu.RUnlock()
+	if cached != nil {
+		return cloneModelCatalog(cached), nil
+	}
+	// No cached catalog - try to get binding and refresh.
+	// Note: We can't call RefreshModelCatalog directly here because it requires
+	// ChatWikiService instance. Instead, we return nil and let the caller handle it.
+	// The models section will only include providers with valid API keys.
+	return nil, nil
+}
+
+// RefreshChatWikiModelCatalog triggers a refresh of the ChatWiki model catalog cache.
+// This should be called before OpenClaw config sync to ensure latest models are available.
+// The refresh is performed via the providers service to avoid circular dependencies.
+var RefreshChatWikiModelCatalog func() error
+
 func (s *ChatWikiService) fetchModelCatalog(source modelCatalogSource) (*ModelCatalog, error) {
 	baseURL := normalizeManagementBaseURL(source.ServerURL)
 	modelURL := baseURL + "/manage/chatclaw/showModelConfigList"

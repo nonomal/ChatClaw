@@ -362,8 +362,16 @@ func (s *AgentService) createAgent(ctx context.Context, agent openclawagents.Ope
 		"name":      agent.OpenClawAgentID,
 		"workspace": s.resolveAgentWorkspace(agent),
 	}
+	// Pass identity (emoji/theme) for OpenClaw console UI display.
+	identity := map[string]any{}
 	if agent.IdentityEmoji != "" {
-		params["emoji"] = agent.IdentityEmoji
+		identity["emoji"] = agent.IdentityEmoji
+	}
+	if agent.IdentityTheme != "" {
+		identity["theme"] = agent.IdentityTheme
+	}
+	if len(identity) > 0 {
+		params["identity"] = identity
 	}
 	var resp map[string]any
 	if err := s.manager.Request(ctx, "agents.create", params, &resp); err != nil {
@@ -383,6 +391,17 @@ func (s *AgentService) updateAgent(ctx context.Context, agent openclawagents.Ope
 	}
 	params["name"] = agent.Name
 	params["workspace"] = s.resolveAgentWorkspace(agent)
+	// Pass identity (emoji/theme) for OpenClaw console UI display.
+	identity := map[string]any{}
+	if agent.IdentityEmoji != "" {
+		identity["emoji"] = agent.IdentityEmoji
+	}
+	if agent.IdentityTheme != "" {
+		identity["theme"] = agent.IdentityTheme
+	}
+	if len(identity) > 0 {
+		params["identity"] = identity
+	}
 	if agent.DefaultLLMProviderID != "" && agent.DefaultLLMModelID != "" {
 		params["model"] = agent.DefaultLLMProviderID + "/" + agent.DefaultLLMModelID
 	}

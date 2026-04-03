@@ -280,6 +280,10 @@ export default {
       restartButton: "서비스 다시 시작",
       upgrading: "업그레이드 중...",
       restarting: "재시작 중...",
+      start: "시작",
+      starting: "시작 중...",
+      startSuccess: "게이트웨이 시작됨",
+      startFailed: "게이트웨이 시작 실패",
       phase: {
         idle: "대기 중",
         starting: "시작 중",

@@ -288,6 +288,10 @@ export default {
       restartButton: "重启服务",
       upgrading: "升级中...",
       restarting: "重启中...",
+      start: "启动",
+      starting: "启动中...",
+      startSuccess: "网关已启动",
+      startFailed: "网关启动失败",
       phase: {
         idle: "空闲",
         starting: "启动中",

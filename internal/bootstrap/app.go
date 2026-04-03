@@ -406,6 +406,8 @@ func NewApp(opts Options) (app *application.App, cleanup func(), err error) {
 	app.RegisterService(application.NewService(openClawCronService))
 	app.RegisterService(application.NewService(openclawskills.NewOpenClawSkillsService(openClawAgentsService, openclawManager)))
 	app.Event.On("providers:config-changed", func(e *application.CustomEvent) {
+		// Clear ChatWiki sync cache to ensure fresh model catalog on next sync.
+		openclawruntime.ClearChatWikiSyncCache()
 		go configSvc.Sync(context.Background())
 	})
 	// 注册 ChatWiki 绑定服务
