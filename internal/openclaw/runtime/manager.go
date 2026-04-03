@@ -409,7 +409,10 @@ func (m *Manager) startProcess(cfg OpenClawConfig, bundle *bundledRuntime, insta
 		"--bind", "loopback",
 		"--auth", "token",
 		"--token", cfg.GatewayToken,
-		"--force",
+		// Note: Do NOT pass --force here. The Manager already calls stopProcess()
+		// (via reconcileLocked) before startProcess, so the port is guaranteed
+		// clean. On Windows, --force runs "fuser" which is unavailable and causes
+		// the gateway to exit with status 1, triggering an unwanted restart loop.
 	)
 	cmd.Env = buildGatewayEnv(cfg, bundle)
 	cmd.Stdout = logFile
