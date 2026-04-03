@@ -57,14 +57,16 @@ type Manager struct {
 	processDone  chan error
 	processLog   *os.File
 
-	expectedStopPID int
-	shuttingDown    bool
-	reconnecting    atomic.Bool
+	expectedStopPID   int
+	shuttingDown      bool
+	reconnecting      atomic.Bool
 
 	eventListenersMu sync.RWMutex
 	eventListeners   map[string]EventListener // keyed by caller-chosen ID
 
-	upgradeProgressCb func(progress int, message string)
+	upgradeProgressCb  func(progress int, message string)
+	upgradeMu         sync.Mutex  // serialises upgradeRuntimeLocked vs reconcileLocked to prevent OSS cascade
+	upgradeInProgress atomic.Bool // set during upgrade so reconcileLocked skips OSS fallback
 
 	doctorRunSeq uint64 // atomic: correlates streamed doctor chunks with the active UI run
 }
@@ -281,21 +283,28 @@ func (m *Manager) reconcileLocked(restart bool) error {
 
 	bundle, err := resolveBundledRuntime()
 	if err != nil {
-	// No bundled runtime found — try installing from OSS as a fallback
-	m.app.Logger.Info("openclaw: no bundled runtime found, attempting OSS install", "error", err)
-	m.broadcastStatus(RuntimeStatus{
-		Phase:      PhaseUpgrading,
-		Message:    "No OpenClaw runtime found, downloading from OSS...",
-		GatewayURL: gatewayURL(cfg.GatewayPort),
-	})
-	if m.toolchainSvc == nil {
-		return fail("resolveBundledRuntime", err, "", 0)
-	}
-	// Set up progress callback so the UI can show install progress
-	if m.upgradeProgressCb != nil {
-		m.toolchainSvc.SetUpgradeProgressCallback(m.upgradeProgressCb)
-	}
-	if installErr := m.toolchainSvc.InstallOpenClawRuntime(); installErr != nil {
+		// No bundled runtime found.
+		// If an upgrade is in progress, do NOT attempt OSS install here — let the upgrade path
+		// handle rollback and retry. Otherwise, fall back to OSS install.
+		if m.upgradeInProgress.Load() {
+			m.app.Logger.Warn("openclaw: no bundled runtime found during upgrade, skipping OSS fallback",
+				"error", err)
+			return fail("resolveBundledRuntime", err, "", 0)
+		}
+		m.app.Logger.Info("openclaw: no bundled runtime found, attempting OSS install", "error", err)
+		m.broadcastStatus(RuntimeStatus{
+			Phase:      PhaseUpgrading,
+			Message:    "No OpenClaw runtime found, downloading from OSS...",
+			GatewayURL: gatewayURL(cfg.GatewayPort),
+		})
+		if m.toolchainSvc == nil {
+			return fail("resolveBundledRuntime", err, "", 0)
+		}
+		// Set up progress callback so the UI can show install progress
+		if m.upgradeProgressCb != nil {
+			m.toolchainSvc.SetUpgradeProgressCallback(m.upgradeProgressCb)
+		}
+		if installErr := m.toolchainSvc.InstallOpenClawRuntime(); installErr != nil {
 			return fail("OSS runtime install", installErr, "", 0)
 		}
 		// Reload bundle after OSS install
@@ -394,7 +403,42 @@ func (m *Manager) reconcileLocked(restart bool) error {
 
 // --- Process management ---
 
+// ensurePortClean checks if the gateway port is in use by a stale process. If so,
+// it first tries the graceful "openclaw gateway stop" CLI command, then falls back
+// to killing the process directly. This handles the case where a previous gateway
+// instance was not launched by this Manager (e.g. manual run, other app instance).
+func (m *Manager) ensurePortClean(port int, cliPath string) {
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
+	if err == nil {
+		conn.Close()
+		return
+	}
+	if isConnRefused(err) {
+		return
+	}
+	// Port is in use by something other than a refused connection.
+	m.app.Logger.Info("openclaw: port in use, attempting graceful gateway stop", "port", port)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, cliPath, "gateway", "stop")
+	_ = cmd.Run()
+	time.Sleep(500 * time.Millisecond)
+	// Check again.
+	conn, err = net.DialTimeout("tcp", addr, 2*time.Second)
+	if err == nil {
+		conn.Close()
+		return // still in use; proceed and let start fail naturally
+	}
+	if isConnRefused(err) {
+		m.app.Logger.Info("openclaw: port cleared after graceful stop", "port", port)
+	}
+	// Something still using port — proceed; start will fail with clearer error.
+}
+
 func (m *Manager) startProcess(cfg OpenClawConfig, bundle *bundledRuntime, installedVersion string) error {
+	m.ensurePortClean(cfg.GatewayPort, bundle.CLIPath)
+
 	logFile, err := openGatewayLogFile(bundle.LogsDir)
 	if err != nil {
 		return err
@@ -409,7 +453,10 @@ func (m *Manager) startProcess(cfg OpenClawConfig, bundle *bundledRuntime, insta
 		"--bind", "loopback",
 		"--auth", "token",
 		"--token", cfg.GatewayToken,
-		"--force",
+		// Note: Do NOT pass --force here. The Manager already calls stopProcess()
+		// (via reconcileLocked) before startProcess, so the port is guaranteed
+		// clean. On Windows, --force runs "fuser" which is unavailable and causes
+		// the gateway to exit with status 1, triggering an unwanted restart loop.
 	)
 	cmd.Env = buildGatewayEnv(cfg, bundle)
 	cmd.Stdout = logFile
@@ -1297,6 +1344,11 @@ func ensureSandboxConfigured(bundle *bundledRuntime) {
 		return
 	}
 	_ = os.WriteFile(bundle.ConfigPath, out, 0o644)
+}
+
+func isConnRefused(err error) bool {
+	var opErr *net.OpError
+	return errors.As(err, &opErr) && strings.Contains(err.Error(), "refused")
 }
 
 func isDockerAvailable() bool {

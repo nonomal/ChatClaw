@@ -1,6 +1,10 @@
 package openclawruntime
 
-import "fmt"
+import (
+	"fmt"
+
+	"chatclaw/internal/define"
+)
 
 // OpenClawRuntimeService is the Wails-bound service that exposes
 // OpenClaw runtime management to the frontend.
@@ -74,11 +78,7 @@ func (s *OpenClawRuntimeService) GetDashboardURL() string {
 	return fmt.Sprintf("http://127.0.0.1:%d?token=%s", cfg.GatewayPort, cfg.GatewayToken)
 }
 
-// IsDevMode returns true when the frontend runs with DEV=true (dev server / Wails dev).
+// IsDevMode returns true when the application is running in development mode.
 func (s *OpenClawRuntimeService) IsDevMode() bool {
-	// Backend can also read from env if needed; here we just return false
-	// because the frontend already guards the button.
-	// The binding exists so the frontend can call it without hitting a missing-method error
-	// in production builds where the button is hidden anyway.
-	return false
+	return define.IsDev()
 }

@@ -262,6 +262,7 @@ export default {
       pageSubtitle: "配置网关等基础设置信息",
       gatewayStatusLabel: "网关状态",
       autoStartLabel: "网关运行开关",
+      autoStartTooltip: "点击开启或关闭 OpenClaw 网关自动启动，开启后应用启动时将自动启动网关",
       autoStartEnabled: "OpenClaw 网关已开启",
       autoStartDisabled: "OpenClaw 网关已关闭",
       autoStartFailed: "切换网关状态失败",
@@ -272,6 +273,7 @@ export default {
         error: "error",
         stop: "stop",
         starting: "starting",
+        upgrading: "升级中",
       },
       restart: "重启",
       logs: "日志",
@@ -322,6 +324,7 @@ export default {
         gatewayTagError: "网关异常",
         gatewayTagStop: "网关未运行",
         gatewayTagStarting: "网关启动中",
+        gatewayTagUpgrading: "运行时在升级",
         gatewayDisabledHint: "网关未启用",
       },
       doctor: {
@@ -1880,6 +1883,7 @@ export default {
       channels: "网关未运行，未启用网关时无法管理消息频道",
       scheduledTasks: "网关未运行，未启用网关时无法管理定时任务",
       starting: "网关正在启动，请稍后再试",
+      upgrading: "OpenClaw 运行包正在升级，请稍后再试",
     },
   },
   openclawCron: {
