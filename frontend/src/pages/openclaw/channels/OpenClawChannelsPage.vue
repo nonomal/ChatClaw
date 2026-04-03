@@ -981,7 +981,7 @@ watch(isTabActive, (active) => {
         </div>
       </div>
 
-      <!-- Empty State - All platforms -->
+      <!-- Empty State - All platforms tab (generic) or WeCom tab (WeCom-specific copy) -->
       <div
         v-else-if="selectedFilter === 'all' || selectedFilter === 'wecom'"
         class="flex flex-col items-center justify-center py-12 text-center"
@@ -992,10 +992,18 @@ watch(isTabActive, (active) => {
           <SquareDashed class="h-6 w-6 text-[#737373] dark:text-muted-foreground" />
         </div>
         <h3 class="text-base font-medium text-[#262626] dark:text-foreground">
-          {{ t('channels.empty.title') }}
+          {{
+            selectedFilter === 'wecom'
+              ? t('channels.wecom.emptyTitle')
+              : t('channels.empty.title')
+          }}
         </h3>
         <p class="mt-2 max-w-sm text-sm text-[#737373] dark:text-muted-foreground">
-          {{ t('channels.empty.desc') }}
+          {{
+            selectedFilter === 'wecom'
+              ? t('channels.wecom.emptyDesc')
+              : t('channels.empty.desc')
+          }}
         </p>
         <Button
           class="mt-6 gap-1 bg-[#171717] text-white hover:bg-[#171717]/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
