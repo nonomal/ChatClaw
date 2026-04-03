@@ -160,10 +160,6 @@ const inlineAppSecretPlaceholderKey = computed(() =>
     : 'channels.config.appSecretPlaceholder'
 )
 
-function shouldAutoProvisionAfterCreate(platformId: string) {
-  return platformId === 'wecom' || platformId === 'qq'
-}
-
 function clearProvisioningRefreshTimer() {
   if (provisioningRefreshTimer) {
     clearTimeout(provisioningRefreshTimer)
@@ -209,6 +205,12 @@ function getAgentName(agentId: number): string {
   if (!agentId) return t('channels.agentFallback')
   const agent = agents.value.find((a) => a.id === agentId)
   return agent ? agent.name : t('channels.agentFallback')
+}
+
+function applyLocalChannelAgentBinding(channelId: number, agentId: number) {
+  channels.value = channels.value.map((channel) =>
+    channel.id === channelId ? { ...channel, agent_id: agentId } : channel
+  )
 }
 
 async function handleAddChannel() {
@@ -297,7 +299,7 @@ function handleConfigSaved(channel: Channel, isEdit: boolean) {
     })
   }
   loadData().then(() => {
-    if (!isEdit && !shouldAutoProvisionAfterCreate(channel.platform)) {
+    if (!isEdit) {
       channelToBind.value = channel
       bindFromCreate.value = true
       bindDialogOpen.value = true
@@ -358,6 +360,10 @@ function channelConnDisplay(ch: Channel): 'provisioning' | 'online' | 'error' | 
 /** Connection status "creating" — only delete is allowed on the card. */
 function isChannelConnectionProvisioning(ch: Channel): boolean {
   return channelConnDisplay(ch) === 'provisioning'
+}
+
+function isBindStatusProvisioning(ch: Channel): boolean {
+  return isBindProvisioning(ch) && !isChannelConnectionProvisioning(ch)
 }
 
 function channelConnStatusI18nKey(ch: Channel) {
@@ -477,6 +483,7 @@ async function handleBindAgent(agentId: number) {
   const channel = channelToBind.value
   try {
     await OpenClawChannelService.BindAgent(channel.id, agentId)
+    applyLocalChannelAgentBinding(channel.id, agentId)
     // Match QQ: after create→bind, enable OpenClaw plugin config + local enabled (Feishu/WeCom/DingTalk were missing).
     const connectAfterCreateBind =
       bindFromCreate.value &&
@@ -550,6 +557,7 @@ async function handleAutoGenerate() {
       return
     }
     await OpenClawChannelService.BindAgent(ch.id, created.id)
+    applyLocalChannelAgentBinding(ch.id, created.id)
     await OpenClawChannelService.ConnectChannel(ch.id)
     toast.success(t('channels.bindAgent.autoGenerateSuccess'))
     await loadData()
@@ -643,7 +651,7 @@ async function handleInlineSave() {
     }
     resetInlineForm()
     await loadData()
-    if (channel && !shouldAutoProvisionAfterCreate(channel.platform)) {
+    if (channel) {
       channelToBind.value = channel
       bindFromCreate.value = true
       bindDialogOpen.value = true
@@ -981,26 +989,26 @@ watch(isTabActive, (active) => {
             <div
               class="inline-flex min-w-0 items-center gap-1 rounded-full bg-[#f0f0f0] px-2 py-0.5 dark:bg-muted"
               :class="[
-                channel.agent_id !== 0 && !isBindProvisioning(channel)
+                channel.agent_id !== 0 && !isBindStatusProvisioning(channel)
                   ? 'max-w-[12rem]'
                   : 'max-w-full',
                 {
                   'cursor-pointer hover:bg-[#e5e5e5] dark:hover:bg-muted/80 transition-colors':
                     channel.agent_id === 0 &&
-                    !isBindProvisioning(channel) &&
+                    !isBindStatusProvisioning(channel) &&
                     !isChannelConnectionProvisioning(channel),
                 },
               ]"
               @click="
                 channel.agent_id === 0 &&
-                !isBindProvisioning(channel) &&
+                !isBindStatusProvisioning(channel) &&
                 !isChannelConnectionProvisioning(channel)
                   ? handleOpenBind(channel)
                   : undefined
               "
             >
               <LoaderCircle
-                v-if="isBindProvisioning(channel)"
+                v-if="isBindStatusProvisioning(channel)"
                 class="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground"
               />
               <IconCheck
@@ -1014,7 +1022,7 @@ watch(isTabActive, (active) => {
               <span
                 class="min-w-0 truncate text-xs leading-4 text-[#595959] dark:text-muted-foreground"
                 :title="
-                  isBindProvisioning(channel)
+                  isBindStatusProvisioning(channel)
                     ? t('channels.card.provisioning')
                     : channel.agent_id !== 0
                       ? getAgentName(channel.agent_id)
@@ -1022,7 +1030,7 @@ watch(isTabActive, (active) => {
                 "
               >
                 {{
-                  isBindProvisioning(channel)
+                  isBindStatusProvisioning(channel)
                     ? t('channels.card.provisioning')
                     : channel.agent_id !== 0
                       ? getAgentName(channel.agent_id)

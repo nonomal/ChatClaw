@@ -45,6 +45,7 @@ type OpenClawChannelService struct {
 
 const wecomPluginPackage = "@wecom/wecom-openclaw-plugin"
 const wecomPluginID = "wecom-openclaw-plugin"
+const wecomPluginFallbackTimeout = 2 * time.Minute
 
 // Timeouts for OpenClaw CLI (config set), plugin install/list, and gateway restart.
 const (
@@ -231,8 +232,7 @@ func (s *OpenClawChannelService) CreateChannel(input CreateChannelInput) (*chann
 		return nil, errs.Wrap("error.channel_create_failed", err)
 	}
 	ch.ExtraConfig = extraConfigWithID
-	autoProvisionOnCreate := shouldAutoProvisionOpenClawChannelOnCreate(platform)
-
+	deferProvisionUntilConnect := shouldDeferOpenClawProvisioningUntilConnect(platform)
 	if platform == channels.PlatformDingTalk {
 		go s.installDingTalkPluginBackground(ch.ID)
 	} else if platform == channels.PlatformWechat {
@@ -241,11 +241,10 @@ func (s *OpenClawChannelService) CreateChannel(input CreateChannelInput) (*chann
 	} else if platform == channels.PlatformWhatsapp {
 		// WhatsApp uses the OpenClaw gateway QR-login flow; provisioning happens via
 		// GenerateWhatsappQRCode()/WaitForWhatsappLogin(), not through config sync on draft create.
-	} else if autoProvisionOnCreate {
-		// WeCom / QQ create only the local draft + bound assistant first.
-		// OpenClaw plugin install, remote agent/channel creation, and enable happen in background.
-	} else if platform == channels.PlatformQQ {
-		// QQ is provisioned on connect so drafts do not create remote OpenClaw state yet.
+	} else if deferProvisionUntilConnect {
+		// WeCom / QQ are provisioned only after the local draft is saved and the
+		// user has chosen an assistant. OpenClaw plugin install + remote channel
+		// creation happen asynchronously in ConnectChannel().
 	} else if err := s.syncOpenClawChannelConfig(ctx, platform, accountKey, name, input.ExtraConfig, false); err != nil {
 		_ = s.channelSvc.DeleteChannel(ch.ID)
 		return nil, wrapOpenClawSyncErr(err, "error.channel_create_failed", nil)
@@ -256,30 +255,11 @@ func (s *OpenClawChannelService) CreateChannel(input CreateChannelInput) (*chann
 			return nil, err
 		}
 		ch.AgentID = input.AgentID
-		if !autoProvisionOnCreate && platform != channels.PlatformWhatsapp {
+		if !deferProvisionUntilConnect && platform != channels.PlatformWhatsapp {
 			if err := s.syncChannelRoutingBinding(ch.ID, input.AgentID); err != nil {
 				return nil, wrapOpenClawSyncErr(err, "error.channel_create_failed", nil)
 			}
 		}
-	} else if autoProvisionOnCreate {
-		agentID, err := s.EnsureAgentForChannel(ch.ID)
-		if err != nil {
-			_ = s.channelSvc.DeleteChannel(ch.ID)
-			return nil, errs.Wrap("error.channel_create_failed", err)
-		}
-		ch.AgentID = agentID
-	}
-
-	if autoProvisionOnCreate && ch.AgentID > 0 {
-		enabled := true
-		bgCtx, bgCancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer bgCancel()
-		if err := s.setOpenClawChannelState(bgCtx, ch.ID, &enabled, channels.StatusProvisioning); err != nil {
-			return nil, errs.Wrap("error.channel_create_failed", err)
-		}
-		ch.Enabled = true
-		ch.Status = channels.StatusProvisioning
-		go s.connectChannelInBackground(ch.ID)
 	}
 
 	return ch, nil
@@ -428,8 +408,8 @@ func (s *OpenClawChannelService) BindAgent(id int64, agentID int64) error {
 			}
 			return nil
 		}
-		// QQ: skip route sync when channel is not yet enabled.
-		if m.Platform == channels.PlatformQQ && !m.Enabled {
+		// WeCom / QQ draft channels keep assistant binding local-only until enable.
+		if shouldDeferOpenClawProvisioningUntilConnect(m.Platform) && !m.Enabled {
 			return nil
 		}
 		// DingTalk: sync agent ID when plugin is installed.
@@ -685,7 +665,7 @@ func isPluginManagedOpenClawPlatform(platform string) bool {
 	}
 }
 
-func shouldAutoProvisionOpenClawChannelOnCreate(platform string) bool {
+func shouldDeferOpenClawProvisioningUntilConnect(platform string) bool {
 	switch strings.TrimSpace(platform) {
 	case channels.PlatformWeCom, channels.PlatformQQ:
 		return true
@@ -1419,6 +1399,23 @@ func (s *OpenClawChannelService) ensureOpenClawWeComPluginInstalled(ctx context.
 	}
 	if _, installErr := s.execOpenClawPluginCLI(ctx, "plugins", "install", wecomPluginPackage); installErr != nil {
 		installMsg := strings.ToLower(installErr.Error())
+		if isWeComPluginInstallRateLimited(installMsg) {
+			s.app.Logger.Warn("openclaw: wecom plugin install rate limited by ClawHub, falling back to npm pack install",
+				"plugin", wecomPluginPackage, "error", installErr)
+			fallbackCtx, fallbackCancel := context.WithTimeout(context.Background(), wecomPluginFallbackTimeout)
+			defer fallbackCancel()
+			if fallbackErr := s.installOpenClawWeComPluginFromLocalPackage(fallbackCtx); fallbackErr != nil {
+				return fmt.Errorf("openclaw plugins install %s rate-limited, fallback failed: %w", wecomPluginPackage, fallbackErr)
+			}
+			verifyOut, verifyErr := s.execOpenClawPluginCLI(ctx, "plugins", "list")
+			if verifyErr != nil {
+				return fmt.Errorf("verify installed plugin %s: %w", wecomPluginPackage, verifyErr)
+			}
+			if !containsWeComPluginMarker(string(verifyOut)) {
+				return fmt.Errorf("plugin %s not found after fallback installation", wecomPluginPackage)
+			}
+			return nil
+		}
 		installedButInterrupted := strings.Contains(installMsg, "installed plugin:") && containsWeComPluginMarker(installMsg)
 		if installedButInterrupted {
 			s.app.Logger.Warn("openclaw plugin install interrupted after success marker; will verify by listing plugins", "plugin", wecomPluginPackage, "error", installErr)
@@ -1440,6 +1437,78 @@ func (s *OpenClawChannelService) ensureOpenClawWeComPluginInstalled(ctx context.
 func containsWeComPluginMarker(out string) bool {
 	out = strings.ToLower(out)
 	return strings.Contains(out, strings.ToLower(wecomPluginPackage)) || strings.Contains(out, strings.ToLower(wecomPluginID))
+}
+
+func isWeComPluginInstallRateLimited(msg string) bool {
+	m := strings.ToLower(msg)
+	return strings.Contains(m, "rate limit") || strings.Contains(m, "429")
+}
+
+func (s *OpenClawChannelService) installOpenClawWeComPluginFromLocalPackage(ctx context.Context) error {
+	if s.openclawManager == nil {
+		return fmt.Errorf("openclaw manager not available")
+	}
+	tmpDir, err := os.MkdirTemp("", "openclaw-wecom-pack-*")
+	if err != nil {
+		return fmt.Errorf("create wecom plugin temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	registries := []string{
+		"https://registry.npmjs.org",
+		"https://mirrors.cloud.tencent.com/npm/",
+	}
+	var tgzPath string
+	var lastErr error
+	for _, registry := range registries {
+		out, packErr := s.openclawManager.ExecNpx(
+			ctx,
+			"-y",
+			"npm@latest",
+			"pack",
+			wecomPluginPackage,
+			"--pack-destination",
+			tmpDir,
+			"--registry",
+			registry,
+		)
+		if packErr == nil {
+			tgzPath = strings.TrimSpace(string(out))
+			if tgzPath != "" {
+				tgzPath = filepath.Join(tmpDir, filepath.Base(tgzPath))
+			} else {
+				matches, _ := filepath.Glob(filepath.Join(tmpDir, "*.tgz"))
+				if len(matches) > 0 {
+					tgzPath = matches[0]
+				}
+			}
+			if tgzPath != "" {
+				break
+			}
+			lastErr = fmt.Errorf("npm pack succeeded but no tgz found in %s", tmpDir)
+			continue
+		}
+		lastErr = fmt.Errorf("npm pack from %s: %w\n%s", registry, packErr, string(out))
+	}
+	if tgzPath == "" {
+		if lastErr != nil {
+			return lastErr
+		}
+		return fmt.Errorf("npm pack did not produce a package archive")
+	}
+
+	packageDir := filepath.Join(tmpDir, "package")
+	if err := extractTarGz(tgzPath, tmpDir); err != nil {
+		return fmt.Errorf("extract wecom plugin package: %w", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(packageDir, "package.json")); statErr != nil {
+		return fmt.Errorf("wecom plugin package missing package.json after extract: %w", statErr)
+	}
+
+	if _, err := s.execOpenClawPluginCLI(ctx, "plugins", "install", packageDir); err != nil {
+		return fmt.Errorf("install wecom plugin from local package dir: %w", err)
+	}
+	return nil
 }
 
 // execOpenClawPluginCLI uses the same retry strategy as other OpenClaw CLI calls (install/list can be slow).
