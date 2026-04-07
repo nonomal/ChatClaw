@@ -32,90 +32,56 @@
 ## Predogledi
 
 ### AI Chatbot Asistent
-
-Zastavite svojemu AI asistentu katerokoli vprašanje; pametno bo preiskal vašo bazo znanja in ustvaril ustrezni odgovor.
-
+Zastavite svoEMU AI asistentu katerokoli vprašanje; pametno bo preiskal vašo bazo znanja in ustvaril ustrezen odgovor.
 ![](../../images/previews/en/image1.png)
 
+### Dvojni način preklapljanja za učinkovito opravljanje nalog
+Način klepeta se prilagaja večscenarijskemu Q&A in sklepanju; način opravil je povezan z vgrajenim trgom spretnosti, kar agentom AI omogoča avtonomno razčlenjevanje in napredovanje večkorakčnih nalog za izboljšanje učinkovitosti.
+![](../../images/previews/en/image2.png)
+
 ### Hitro ustvarjanje PPT
-
-Pošljite enostavni ukaz pametnemu asistentu, da samodejno ustvari in pripravi predstavitev PowerPoint.
-
+Pošljite ukaz enega stavka inteligentnemu asistentu za samodejno ustvarjanje in generiranje predstavitve PowerPoint.
 ![](../../images/previews/en/image3.png)
 
 ### Upravitelj spretnosti
+Uporabite ukaz, da vas asistent poišče nameščene funkcije na vašem računalniku ali namesti nove razširitvene vtičnike. Trg spretnosti — prosto brskajte in nameščajte spretnosti.
+![](../../images/previews/en/image4.png)
 
-Z ukazom naj vam asistent pomaga najti nameščene funkcije na računalniku ali namestiti nove vtičnike razširitev.
-
+### Spomin: Bolj naravna in pametna interakcija
+Omogočite kontekstualne pogovore in personalizirano pomoč. Kontinuirano učenje in evolucija — asistent se počuti kot rastjoč partner, ki zagotavlja vse bolj preudarno in inteligentno storitev.
 ![](../../images/previews/en/image5.png)
 
-### MCP: neomejene razširitve zmožnosti
-
-Dodajte zunanje MCP strežnike za varno in učinkovito povezavo z različnimi viri podatkov in orodji; asistent lahko presega vsakodnevne naloge v profesionalne delovne tokove.
-
+### Brezplačno preizkušanje modela — Skupna baza znanja ekipe
+Poverilo z enim klikom za povezavo s ChatWiki, sinhronizacijo dobropisov računa ChatWiki in podporo za angepasste modele. Vgrajeni visokokakovostni domači in mednarodni LLM-ji, vključno z Ollama, Google Gemini in OpenAI — uporabljajte svoj priljubljeni model AI za vsakdanje pisarniško delo ali profesionalne scenarije.
 ![](../../images/previews/en/image6.png)
 
-### Način peskovnika: dvojna zaščita
-
-Izberite med izvajanjem v peskovniku (izolacija na ravni OS, omejen obseg ukazov) in izvajanjem v domačem okolju (bolj prilagodljivo). Prosto preklapljajte med varnostjo in udobjem.
-
-![](../../images/previews/en/image8.png)
-
-### Spomin: bolj naravna in pametna interakcija
-
-Omogočite kontekstualne pogovore in personalizirano pomoč. Asistent se lahko nenehno uči in razvija kot rastoči partner.
-
-![](../../images/previews/en/image9.png)
-
-### Skupna timska baza znanja
-
-Odobrite dostop z enim klikom do ChatWiki za sinhronizacijo robotov in baz znanja, skupno rabo nastavitev in nadzor dovoljenj članov.
-
-![](../../images/previews/en/image10.png)
-
-### Baza znanja | vektorska shramba dokumentov
-
-Naložite dokumente (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Sistem jih samodejno razčleni, razdeli in pretvori v vektorske vdelave za natančno iskanje.
-
-![](../../images/previews/en/image11.png)
+### Baza znanja | Vektorska shramba dokumentov
+Naložite svoje dokumente (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Sistem samodejno analizira, razdeli in pretvori v vektorske vložke, shranjene v vaši zasebni bazi znanja za natančno iskanje in uporabo s strani modelov AI.
+![](../../images/previews/en/image7.png)
 
 ### Bogate integracije IM kanalov
+Z integracijo SDK-jev, ki jih zagotavljajo ponudniki instant sporočil (Feishu, WeCom, QQ, DingTalk, WeChat, WhatsApp in drugi), hitro implementirajte popolne zmogljivosti IM komunikacije v aplikaciji, vključno z ustvarjanjem kanalov, upravljanjem uporabnikov in pošiljanjem/prejemanjem sporočil.
+![](../../images/previews/en/image8.png)
 
-Integrirajte ponudnike IM (Feishu, WeCom, QQ, DingTalk, LINE, Discord, WhatsApp, X/Twitter, Telegram itd.) prek SDK za hitro omogočanje ustvarjanja kanalov, upravljanja uporabnikov in sporočanja.
+### Načrtovane naloge — Samodejno izvajanje ukazov
+Asistentu dovolite, da samodejno izvaja določene operacije v vnaprej določenih časih ali intervalih, kot je zagotavljanje pravočasnih opomnikov, izvajanje ponavljajočih se del in izvajanje nalog vzdrževanja na ravni sistema.
+![](../../images/previews/en/image9.png)
 
-![](../../images/previews/en/image12.png)
-
-### Načrtovane naloge
-
-Naj asistent samodejno izvaja dejanja ob vnaprej določenih časih ali intervalih: opomniki, ponavljajoče delo in vzdrževanje na ravni sistema.
-
-![](../../images/previews/en/image13.png)
-
-### Izbira besedila za takojšnje vprašanje in odgovor
-
-Izberite poljubno besedilo na zaslonu; samodejno se kopira v lebdeče polje za hitro vprašanje. En klik za vprašanje, takojšnji odgovori.
-
-![](../../images/previews/en/image14.png)
-
-![](../../images/previews/en/image15.png)
+### Izbira besedila za takojšnje Vprašanje in odgovor
+Izberite katero koli besedilo na zaslonu in bo samodejno kopirano v plavajoče polje za hitro vprašanje. En klik za pošiljanje asistentu AI za takojšen odgovor.
+![](../../images/previews/en/image10.png)
 
 ### Pametna stranska vrstica
+Inteligentni asistent, ki ga lahko pripnete ob druga okna aplikacij. Hitro preklapljajte med različno konfiguriranimi AI asistenti za zastavljanje vprašanj. Robot ustvarja odgovore na podlagi vaše povezane baze znanja in podpira pošiljanje odgovorov z enim klikom v vaše pogovore.
+![](../../images/previews/en/image11.png)
 
-Pripnite asistenta ob druga okna, hitro preklapljajte med različno konfiguriranimi asistenti in z enim klikom pošljite ustvarjene odgovore v pogovore.
+### Eno vprašanje, več odgovorov: Enostavno primerjajte
+Ni potrebe po ponavljanju vprašanj. Hkrati se posvetujte z več "AI strokovnjaki" in si oglejte njihove odgovore drug poleg drugega v istem vmesniku. Preprosto primerjanje vam pomaga priti do najboljšega sklepa.
+![](../../images/previews/en/image12.png)
 
-![](../../images/previews/en/image16.png)
-
-### Eno vprašanje, več odgovorov: enostavna primerjava
-
-Posvetujte se z več "AI strokovnjaki" hkrati in si oglejte njihove odgovore drug ob drugem za lažjo primerjavo.
-
-![](../../images/previews/en/image17.png)
-
-### Žoga zagnanja z enim klikom
-
-Kliknite lebdečo žogo na namizju, da takoj odprete ali aktivirate glavno okno ChatClaw.
-
-![](../../images/previews/en/image18.png)
+### Žoga za zagon z enim klikom
+Kliknite plavajočo kroglo na namizju, da takoj prebudite ali odprete glavno okno aplikacije ChatClaw.
+![](../../images/previews/en/image13.png)
 
 ## Namestitev v načinu strežnika
 

@@ -32,90 +32,56 @@ Nhận AI cá nhân như OpenClaw trong 5 phút. Bảo mật Sandbox, với trì
 ## Xem trước
 
 ### Trợ lý Chat AI
-
-Đặt bất kỳ câu hỏi nào cho trợ lý AI; nó sẽ tìm kiếm thông minh trong cơ sở kiến thức của bạn để tạo câu trả lời phù hợp.
-
+Đặt câu hỏi bất kỳ cho trợ lý AI của bạn và nó sẽ tìm kiếm thông minh trong cơ sở tri thức của bạn để tạo câu trả lời liên quan.
 ![](../../images/previews/en/image1.png)
 
+### Chuyển đổi chế độ kép để xử lý công việc hiệu quả
+Chế độ Chat thích ứng với hỏi đáp và suy luận đa tình huống; Chế độ Tác vụ kết hợp với thị trường kỹ năng tích hợp, cho phép các tác tử AI tự động phân rã và tiến triển các tác vụ nhiều bước để cải thiện hiệu quả.
+![](../../images/previews/en/image2.png)
+
 ### Tạo PPT nhanh
-
-Gửi một lệnh một câu cho trợ lý thông minh để tự động tạo và tạo bản trình bày PowerPoint.
-
+Gửi một câu lệnh một câu cho trợ lý thông minh để tự động tạo và tạo bản trình chiếu PowerPoint.
 ![](../../images/previews/en/image3.png)
 
 ### Quản lý kỹ năng
-
-Dùng lệnh để trợ lý giúp bạn tìm các tính năng đã cài trên máy tính hoặc cài plugin mở rộng mới.
-
-![](../../images/previews/en/image5.png)
-
-### MCP: Mở rộng năng lực không giới hạn
-
-Thêm máy chủ MCP bên ngoài để kết nối an toàn và hiệu quả với nhiều nguồn dữ liệu và công cụ, giúp trợ lý vượt khỏi công việc hàng ngày sang quy trình chuyên nghiệp.
-
-![](../../images/previews/en/image6.png)
-
-### Chế độ Sandbox: Bảo vệ kép
-
-Chọn giữa thực thi cách ly sandbox (cách ly cấp OS, phạm vi lệnh hạn chế) và thực thi gốc (linh hoạt hơn). Chuyển đổi tự do để cân bằng bảo mật và tiện lợi.
-
-![](../../images/previews/en/image8.png)
+Sử dụng lệnh để trợ lý giúp bạn tìm các tính năng đã cài đặt trên máy tính hoặc cài đặt các plugin mở rộng mới. Thị trường Kỹ năng — duyệt và cài đặt kỹ năng một cách tự do.
+![](../../images/previews/en/image4.png)
 
 ### Bộ nhớ: Tương tác tự nhiên và thông minh hơn
+Bật hội thoại theo ngữ cảnh và hỗ trợ cá nhân hóa. Học tập liên tục và phát triển — trợ lý cảm thấy như một đối tác đang phát triển cung cấp dịch vụ ngày càng chu đáo và thông minh hơn.
+![](../../images/previews/en/image5.png)
 
-Bật hội thoại theo ngữ cảnh và hỗ trợ cá nhân hóa. Trợ lý có thể liên tục học và tiến hóa như một đối tác đang phát triển.
-
-![](../../images/previews/en/image9.png)
-
-### Cơ sở kiến thức nhóm dùng chung
-
-Cho phép truy cập một cú nhấp vào ChatWiki để đồng bộ robot và cơ sở kiến thức, chia sẻ cấu hình và kiểm soát quyền thành viên.
-
-![](../../images/previews/en/image10.png)
+### Dùng thử mô hình miễn phí — Cơ sở kiến thức nhóm dùng chung
+Ủy quyền một cú nhấp để kết nối với ChatWiki, đồng bộ hóa tín dụng tài khoản ChatWiki và hỗ trợ các mô hình tùy chỉnh. Các LLM trong nước và quốc tế chất lượng cao được tích hợp sẵn, bao gồm Ollama, Google Gemini và OpenAI — sử dụng mô hình AI yêu thích của bạn cho công việc văn phòng hàng ngày hoặc các tình huống chuyên nghiệp.
+![](../../images/previews/en/image6.png)
 
 ### Cơ sở kiến thức | Lưu trữ véc-tơ tài liệu
-
-Tải tài liệu lên (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Hệ thống tự động phân tích, tách và chuyển thành embedding véc-tơ để truy xuất chính xác.
-
-![](../../images/previews/en/image11.png)
+Tải lên tài liệu của bạn (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Hệ thống tự động phân tích, chia nhỏ và chuyển đổi chúng thành các vectơ embedding, được lưu trữ trong cơ sở tri thức riêng tư của bạn để truy xuất và sử dụng chính xác bởi các mô hình AI.
+![](../../images/previews/en/image7.png)
 
 ### Tích hợp kênh IM phong phú
+Thông qua việc tích hợp SDK do các nhà cung cấp dịch vụ nhắn tin tức thời (Feishu, WeCom, QQ, DingTalk, WeChat, WhatsApp, v.v.) cung cấp, nhanh chóng triển khai các khả năng giao tiếp IM đầy đủ trong ứng dụng, bao gồm tạo kênh, quản lý người dùng và gửi/nhận tin nhắn.
+![](../../images/previews/en/image8.png)
 
-Tích hợp nhà cung cấp IM (Feishu, WeCom, QQ, DingTalk, LINE, Discord, WhatsApp, X/Twitter, Telegram, v.v.) qua SDK để nhanh chóng bật tạo kênh, quản lý người dùng và nhắn tin.
-
-![](../../images/previews/en/image12.png)
-
-### Tác vụ theo lịch
-
-Để trợ lý tự động thực hiện hành động vào thời điểm hoặc khoảng thời gian đặt trước: nhắc nhở, công việc định kỳ và bảo trì cấp hệ thống.
-
-![](../../images/previews/en/image13.png)
+### Tác vụ theo lịch — Thực hiện lệnh tự động
+Để trợ lý tự động thực hiện các thao tác cụ thể vào thời điểm hoặc khoảng thời gian đặt trước, chẳng hạn như cung cấp lời nhắc kịp thời, thực hiện công việc định kỳ và thực hiện các tác vụ bảo trì cấp hệ thống.
+![](../../images/previews/en/image9.png)
 
 ### Chọn văn bản để Hỏi đáp tức thì
-
-Chọn bất kỳ văn bản nào trên màn hình; nó được tự động sao chép vào hộp hỏi nhanh nổi. Một cú nhấp để hỏi, câu trả lời tức thì.
-
-![](../../images/previews/en/image14.png)
-
-![](../../images/previews/en/image15.png)
+Chọn bất kỳ văn bản nào trên màn hình và nó sẽ được tự động sao chép vào hộp câu hỏi nhanh nổi. Một cú nhấp để gửi đến trợ lý AI và nhận câu trả lời tức thì.
+![](../../images/previews/en/image10.png)
 
 ### Thanh bên thông minh
-
-Gắn trợ lý bên cạnh các cửa sổ khác, chuyển nhanh giữa các trợ lý cấu hình khác nhau và gửi phản hồi đã tạo vào cuộc hội thoại bằng một cú nhấp.
-
-![](../../images/previews/en/image16.png)
+Một trợ lý thông minh có thể gắn bên cạnh các cửa sổ ứng dụng khác. Chuyển đổi nhanh giữa các trợ lý AI được cấu hình khác nhau để đặt câu hỏi. Robot tạo câu trả lời dựa trên cơ sở tri thức liên kết của bạn và hỗ trợ gửi câu trả lời bằng một cú nhấp vào cuộc trò chuyện của bạn.
+![](../../images/previews/en/image11.png)
 
 ### Một câu hỏi, nhiều câu trả lời: So sánh dễ dàng
-
-Tham khảo nhiều "chuyên gia AI" cùng lúc và xem phản hồi của họ cạnh nhau để so sánh dễ dàng.
-
-![](../../images/previews/en/image17.png)
+Không cần lặp lại câu hỏi. Tham khảo ý kiến nhiều "chuyên gia AI" cùng lúc và xem câu trả lời của họ cạnh nhau trong cùng một giao diện. Dễ dàng so sánh và giúp bạn đưa ra kết luận tốt nhất.
+![](../../images/previews/en/image12.png)
 
 ### Nút khởi chạy một cú nhấp
-
-Nhấp vào quả cầu nổi trên màn hình để ngay lập tức mở hoặc đánh thức cửa sổ chính ChatClaw.
-
-![](../../images/previews/en/image18.png)
+Nhấp vào quả bóng nổi trên màn hình để đánh thức hoặc mở ngay cửa sổ ứng dụng chính của ChatClaw.
+![](../../images/previews/en/image13.png)
 
 ## Triển khai Chế độ Máy chủ
 

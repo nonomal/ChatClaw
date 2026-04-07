@@ -32,90 +32,56 @@
 ## 功能預覽
 
 ### AI 聊天助手
-
 向 AI 助手提出任何問題，它會智能搜尋您的知識庫並產生相關回答。
-
 ![](../../images/previews/en/image1.png)
 
+### 雙模式切換，高效搞定各類需求
+聊天模式適配多場景多輪問答與推理；任務模式搭配內置技能市場，讓 AI Agent 自主拆解並推進多步驟任務，提升效率。
+![](../../images/previews/en/image2.png)
+
 ### PPT 快速生成
-
 向智能助手發送一句話指令，即可自動建立並生成 PowerPoint 簡報。
-
 ![](../../images/previews/en/image3.png)
 
 ### 技能管理員
+使用指令讓機器人幫您查找電腦上已安裝的功能或安裝新的擴充外掛。技能市場，自由選擇和安裝技能。
+![](../../images/previews/en/image4.png)
 
-使用指令讓助手協助您找出電腦上已安裝的功能或安裝新的擴充外掛。
-
+### 記憶功能 — 互動更自然、更智能
+實現上下文對話，提供個人化服務，完成複雜任務，持續學習和進化，讓機器人像不斷成長的夥伴，能提供越來越貼心、越來越智能的服務。
 ![](../../images/previews/en/image5.png)
 
-### MCP：無限擴展機器人能力
-
-支援新增外部 MCP，安全、高效地連接與調用各種外部資料來源與工具，讓機器人從日常任務走向更專業的領域。
-
+### 免費模型試用 — 共享團隊知識庫
+一鍵授權接入 ChatWiki，同步 ChatWiki 帳戶積分，同時支援自訂模型，內置優質海內外大模型，Ollama、Google Gemini、OpenAI 等。無論是日常辦公還是專業場景，使用您喜歡的 AI 模型。
 ![](../../images/previews/en/image6.png)
 
-### 沙箱模式雙重防護，電腦資料更安全
-
-內建沙箱模式與本機執行雙選項：沙箱模式採用 OS 級隔離技術限定指令執行範圍；本機執行更靈活。兩種模式自由切換，兼顧安全與便捷。
-
-![](../../images/previews/en/image8.png)
-
-### 記憶功能：互動更自然、更智能
-
-實現上下文對話，提供個人化服務，完成複雜任務，持續學習與進化，讓機器人像不斷成長的夥伴。
-
-![](../../images/previews/en/image9.png)
-
-### 共享團隊知識庫
-
-一鍵授權接入 ChatWiki，同步機器人與知識庫，完成設定同步與知識庫共享，並滿足成員存取與使用權限限制。
-
-![](../../images/previews/en/image10.png)
-
 ### 知識庫 | 文件向量化儲存
-
-上傳文件（TXT、PDF、Word、Excel、CSV、HTML、Markdown），系統會自動解析、分割並轉換為向量嵌入，儲存至私有知識庫供精準檢索與利用。
-
-![](../../images/previews/en/image11.png)
+上傳您的文件（如 TXT、PDF、Word、Excel、CSV、HTML、Markdown），系統會自動解析、分割並轉換為向量嵌入，存儲到您的私有知識庫中，供 AI 模型進行精準檢索和利用。
+![](../../images/previews/en/image7.png)
 
 ### 豐富的 IM 頻道接入
+通過集成即時通訊服務商（如飛書、企微、QQ、釘釘、IM、LINE、Discord、WhatsApp、Telegram 等）提供的 SDK，在應用中快速實現包括頻道建立、使用者管理、訊息收發在內的完整 IM 通訊能力。
+![](../../images/previews/en/image8.png)
 
-透過整合 IM 服務商（飛書、企微、QQ、釘釘、LINE、Discord、WhatsApp、X/Twitter、Telegram 等）SDK，快速實現頻道建立、使用者管理與訊息收發等能力。
-
-![](../../images/previews/en/image12.png)
-
-### 定時任務：自動化完成指令
-
-讓機器人在預設時間點或時間間隔自動執行特定操作：準時提醒、週期性工作、系統級維護任務等。
-
-![](../../images/previews/en/image13.png)
+### 定時任務 — 自動化完成指令
+讓機器人在預設的時間點或時間間隔，自動執行特定的操作，例如提供準時的提醒服務，執行週期性的工作，執行系統級的維護任務等。
+![](../../images/previews/en/image9.png)
 
 ### 劃詞即時問答
-
-選取畫面上的任意文字，會自動複製並填入懸浮快問框，一鍵發送給 AI 助手，即刻獲得回答。
-
-![](../../images/previews/en/image14.png)
-
-![](../../images/previews/en/image15.png)
+選中螢幕上的任意文字，它會被自動複製並填入懸浮快問框。一鍵傳送給 AI 助手，即刻獲得回答。
+![](../../images/previews/en/image10.png)
 
 ### 智能側邊欄
-
-可貼靠在其他應用視窗旁的智能助手，在其中快速切換不同設定的 AI 助手進行提問，並支援一鍵將回覆發送到對話中。
-
-![](../../images/previews/en/image16.png)
+可以貼靠在其他應用視窗旁的智能助手。在其中快速切換不同配置的 AI 助手進行提問。機器人根據您關聯的知識庫生成回答，並支援一鍵將回覆傳送到您的對話中。
+![](../../images/previews/en/image11.png)
 
 ### 一問多答：輕鬆比較
-
-無需重複提問，同時諮詢多個「AI 專家」，在同一介面中並排查看回覆，方便比較並得出最佳結論。
-
-![](../../images/previews/en/image17.png)
+無需重複提問。同時咨詢多個「AI 專家」，在同一介面中並排查看它們的回覆。方便比較，幫助您得出最佳結論。
+![](../../images/previews/en/image12.png)
 
 ### 一鍵啟動球
-
-點擊桌面上的懸浮球，即可喚醒或開啟 ChatClaw 主應用視窗。
-
-![](../../images/previews/en/image18.png)
+點擊桌面上的懸浮球，即可喚醒或打開 ChatClaw 主應用視窗。
+![](../../images/previews/en/image13.png)
 
 ## 伺服器模式部署
 
