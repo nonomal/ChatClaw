@@ -1279,6 +1279,20 @@ func (s *DocumentService) processDocument(jobCtx context.Context, docID, library
 	// 开始解析
 	updateAndEmit(StatusProcessing, 0, "", StatusPending, 0, "")
 
+	// Load global embedding config before acquiring per-library learn slot so init failures do not exhaust batch_max_documents.
+	embeddingConfig, err := processor.GetEmbeddingConfig(ctx, db)
+	if err != nil {
+		updateAndEmit(StatusFailed, 0, "获取嵌入模型配置失败: "+err.Error(), StatusPending, 0, "")
+		return
+	}
+
+	// 创建文档处理器
+	proc, err := processor.NewProcessor(db)
+	if err != nil {
+		updateAndEmit(StatusFailed, 0, "创建处理器失败: "+err.Error(), StatusPending, 0, "")
+		return
+	}
+
 	// Re-read library config on each wait spin so batch_max_documents changes apply and
 	// stale max values from older goroutines cannot shrink the shared gate.
 	var heldLibraryConfig *processor.LibraryConfig
@@ -1303,20 +1317,6 @@ func (s *DocumentService) processDocument(jobCtx context.Context, docID, library
 	libraryConfig := heldLibraryConfig
 	if libraryConfig == nil {
 		updateAndEmit(StatusFailed, 0, "获取知识库配置失败", StatusPending, 0, "")
-		return
-	}
-
-	// 获取全局嵌入模型配置
-	embeddingConfig, err := processor.GetEmbeddingConfig(ctx, db)
-	if err != nil {
-		updateAndEmit(StatusFailed, 0, "获取嵌入模型配置失败: "+err.Error(), StatusPending, 0, "")
-		return
-	}
-
-	// 创建文档处理器
-	proc, err := processor.NewProcessor(db)
-	if err != nil {
-		updateAndEmit(StatusFailed, 0, "创建处理器失败: "+err.Error(), StatusPending, 0, "")
 		return
 	}
 
