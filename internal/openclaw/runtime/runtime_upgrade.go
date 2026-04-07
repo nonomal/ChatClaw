@@ -117,36 +117,35 @@ func (m *Manager) upgradeRuntimeLocked() (*RuntimeUpgradeResult, error) {
 	for attempt := 1; attempt <= maxStartAttempts; attempt++ {
 		m.broadcastUpgradeProgress(90, fmt.Sprintf("Starting gateway (attempt %d/%d)...", attempt, maxStartAttempts))
 
-		// Safety check: if the port is still in use, log a warning and wait.
-		// reconcileLocked will call stopProcess first (which kills the old gateway),
-		// so the port will be freed before startProcess tries to bind it.
+		// If the port is already in use, the gateway is already running from a previous
+		// startup. This is normal on fresh app launch — skip the port check and let
+		// reconcileLocked figure out the state.
 		port := m.store.Get().GatewayPort
-		if !isPortAvailable(port) {
-			m.app.Logger.Warn("openclaw: gateway port may still be in use",
-				"port", port, "attempt", attempt)
-			m.broadcastUpgradeProgress(90, fmt.Sprintf("Waiting for port %d to be released...", port))
-			time.Sleep(1 * time.Second)
-		}
-
-		if reconcileErr := m.reconcileLocked(false); reconcileErr == nil {
-			// Gateway started successfully.
-			startupErr = nil
-			goto upgradeSucceeded
-		} else {
-			startupErr = reconcileErr
-			m.app.Logger.Warn("openclaw: gateway start attempt failed",
-				"attempt", attempt, "maxAttempts", maxStartAttempts, "error", startupErr)
-			if attempt == maxStartAttempts {
-				break
-			}
-			// Retry: roll back first-install failures; do nothing between attempts with a backup.
-			if !installResult.HadCurrent {
-				m.broadcastUpgradeProgress(0, fmt.Sprintf("Gateway failed (attempt %d/%d), running diagnostic...", attempt, maxStartAttempts))
-				if _, fixErr := m.RunDoctorCommand("check", true); fixErr != nil {
-					m.app.Logger.Warn("openclaw: doctor fix failed", "error", fixErr)
+		if isPortAvailable(port) {
+			if reconcileErr := m.reconcileLocked(false); reconcileErr == nil {
+				startupErr = nil
+				goto upgradeSucceeded
+			} else {
+				startupErr = reconcileErr
+				m.app.Logger.Warn("openclaw: gateway start attempt failed",
+					"attempt", attempt, "maxAttempts", maxStartAttempts, "error", startupErr)
+				if attempt == maxStartAttempts {
+					break
 				}
+				if !installResult.HadCurrent {
+					m.broadcastUpgradeProgress(0, fmt.Sprintf("Gateway failed (attempt %d/%d), running diagnostic...", attempt, maxStartAttempts))
+					if _, fixErr := m.RunDoctorCommand("check", true); fixErr != nil {
+						m.app.Logger.Warn("openclaw: doctor fix failed", "error", fixErr)
+					}
+				}
+				time.Sleep(2 * time.Second)
 			}
-			time.Sleep(2 * time.Second)
+		} else {
+			// Port is already in use — gateway is already running, proceed directly.
+			m.app.Logger.Info("openclaw: gateway already running, skipping start",
+				"port", port, "attempt", attempt)
+			m.broadcastUpgradeProgress(100, "Gateway already running")
+			goto upgradeSucceeded
 		}
 	}
 
