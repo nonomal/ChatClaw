@@ -1439,12 +1439,17 @@ export default {
       deleteCancel: 'Cancelar',
       deleteConfirm: 'Eliminar',
       deleteSuccess: 'Eliminado',
+      deleteDescBatch:
+        'Al eliminar {count} carpetas, los documentos debajo se moverán a "Sin categoría". Esta acción no se puede deshacer.',
+      deleteSuccessBatch: 'Se eliminaron {count} carpetas',
       move: {
         title: 'Mover carpeta',
+        titleBatch: 'Mover carpetas ({count})',
         action: 'Mover',
         selectFolder: 'Seleccionar carpeta de destino',
         moveToHere: 'Mover aquí',
         success: 'Movido exitosamente',
+        successBatch: 'Se movieron {count} carpetas correctamente',
         failed: 'Error al mover',
       },
       deleteFailed: 'Error al eliminar',

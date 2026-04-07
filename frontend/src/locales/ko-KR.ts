@@ -1521,12 +1521,17 @@ export default {
       deleteCancel: '취소',
       deleteConfirm: '삭제',
       deleteSuccess: '삭제 성공',
+      deleteDescBatch:
+        '{count}개의 폴더를 삭제하면 그 안의 문서는 "미분류"로 이동합니다. 이 작업은 취소할 수 없습니다.',
+      deleteSuccessBatch: '{count}개의 폴더를 삭제했습니다',
       move: {
         title: '폴더 이동',
+        titleBatch: '폴더 일괄 이동 ({count})',
         action: '이동',
         selectFolder: '대상 폴더 선택',
         moveToHere: '여기로 이동',
         success: '이동 성공',
+        successBatch: '{count}개의 폴더를 이동했습니다',
         failed: '이동 실패',
       },
       deleteFailed: '삭제 실패',

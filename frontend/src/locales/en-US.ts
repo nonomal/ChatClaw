@@ -1536,12 +1536,17 @@ export default {
       deleteCancel: 'Cancel',
       deleteConfirm: 'Delete',
       deleteSuccess: 'Deleted',
+      deleteDescBatch:
+        'Deleting {count} folders will move documents under them to "Uncategorized". This cannot be undone.',
+      deleteSuccessBatch: 'Deleted {count} folders',
       move: {
         title: 'Move Folder',
+        titleBatch: 'Move folders ({count})',
         action: 'Move',
         selectFolder: 'Select Target Folder',
         moveToHere: 'Move here',
         success: 'Moved successfully',
+        successBatch: 'Successfully moved {count} folders',
         failed: 'Failed to move',
       },
       deleteFailed: 'Failed to delete',

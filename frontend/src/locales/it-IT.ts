@@ -1446,12 +1446,17 @@ export default {
       deleteCancel: 'Annulla',
       deleteConfirm: 'Elimina',
       deleteSuccess: 'Eliminazione riuscita',
+      deleteDescBatch:
+        'Eliminando {count} cartelle, i documenti al loro interno verranno spostati in "Non raggruppato". Questa azione non può essere annullata.',
+      deleteSuccessBatch: '{count} cartelle eliminate',
       move: {
         title: 'Sposta cartella',
+        titleBatch: 'Sposta cartelle ({count})',
         action: 'Sposta',
         selectFolder: 'Seleziona cartella target',
         moveToHere: 'Sposta qui',
         success: 'Spostamento riuscito',
+        successBatch: '{count} cartelle spostate correttamente',
         failed: 'Spostamento fallito',
       },
       deleteFailed: 'Eliminazione fallita',

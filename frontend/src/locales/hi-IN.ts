@@ -1442,12 +1442,17 @@ export default {
       deleteCancel: 'रद्द करें',
       deleteConfirm: 'हटाएं',
       deleteSuccess: 'हटाया गया',
+      deleteDescBatch:
+        '{count} फोल्डर हटाने पर उनके अंतर्गत दस्तावेज़ "अवर्गीकृत" में चले जाएंगे। यह पूर्ववत नहीं किया जा सकता।',
+      deleteSuccessBatch: '{count} फोल्डर हटाए गए',
       move: {
         title: 'फोल्डर ले जाएं',
+        titleBatch: 'फोल्डर बैच में ले जाएं ({count})',
         action: 'ले जाएं',
         selectFolder: 'लक्ष्य फोल्डर चुनें',
         moveToHere: 'यहां ले जाएं',
         success: 'सफलतापूर्वक ले जाया गया',
+        successBatch: '{count} फोल्डर सफलतापूर्वक ले जाए गए',
         failed: 'ले जाने में विफल',
       },
       deleteFailed: 'हटाने में विफल',

@@ -1440,12 +1440,17 @@ export default {
       deleteCancel: 'Cancelar',
       deleteConfirm: 'Excluir',
       deleteSuccess: 'Excluído',
+      deleteDescBatch:
+        'Excluir {count} pastas moverá os documentos para "Sem categoria". Esta ação não pode ser desfeita.',
+      deleteSuccessBatch: '{count} pastas excluídas',
       move: {
         title: 'Mover Pasta',
+        titleBatch: 'Mover pastas ({count})',
         action: 'Mover',
         selectFolder: 'Selecionar pasta de destino',
         moveToHere: 'Mover aqui',
         success: 'Movido com sucesso',
+        successBatch: '{count} pastas movidas com sucesso',
         failed: 'Falha ao mover',
       },
       deleteFailed: 'Falha ao excluir',

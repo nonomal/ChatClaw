@@ -1403,12 +1403,17 @@ export default {
       deleteCancel: '取消',
       deleteConfirm: '刪除',
       deleteSuccess: '刪除成功',
+      deleteDescBatch:
+        '將刪除 {count} 個資料夾，其下檔案將移動到「未分類」。此作業無法復原。',
+      deleteSuccessBatch: '已刪除 {count} 個資料夾',
       move: {
         title: '移動資料夾',
+        titleBatch: '批量移動資料夾（{count}）',
         action: '移動',
         selectFolder: '選擇目標資料夾',
         moveToHere: '移動到此',
         success: '移動成功',
+        successBatch: '已成功移動 {count} 個資料夾',
         failed: '移動失敗',
       },
       deleteFailed: '刪除失敗',

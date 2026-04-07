@@ -1436,12 +1436,17 @@ export default {
       deleteCancel: 'キャンセル',
       deleteConfirm: '削除',
       deleteSuccess: '削除しました',
+      deleteDescBatch:
+        '{count} 個のフォルダを削除すると、その配下のドキュメントは「未分類」へ移動されます。この操作は元に戻せません。',
+      deleteSuccessBatch: '{count} 個のフォルダを削除しました',
       move: {
         title: 'フォルダを移動',
+        titleBatch: 'フォルダを一括移動（{count}）',
         action: '移動',
         selectFolder: 'ターゲットフォルダを選択',
         moveToHere: 'ここに移動',
         success: '移動しました',
+        successBatch: '{count} 個のフォルダを移動しました',
         failed: '移動に失敗しました',
       },
       deleteFailed: '削除に失敗しました',

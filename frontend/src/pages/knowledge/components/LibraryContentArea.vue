@@ -126,17 +126,26 @@ const renameFolderDialogOpen = ref(false)
 const deleteFolderDialogOpen = ref(false)
 const moveFolderDialogOpen = ref(false)
 const folderToRename = ref<Folder | null>(null)
-const folderToDelete = ref<Folder | null>(null)
-const folderToMove = ref<Folder | null>(null)
+const foldersToDelete = ref<Folder[]>([])
+const foldersToMove = ref<Folder[]>([])
 
 /** Multi-select document IDs (card checkbox); cleared when folder or library changes. */
 const selectedDocumentIds = ref<Set<number>>(new Set())
+/** Multi-select folder IDs at the current grid level; cleared when folder or library changes. */
+const selectedFolderIds = ref<Set<number>>(new Set())
 
 const toggleDocumentSelection = (doc: Document) => {
   const next = new Set(selectedDocumentIds.value)
   if (next.has(doc.id)) next.delete(doc.id)
   else next.add(doc.id)
   selectedDocumentIds.value = next
+}
+
+const toggleFolderSelection = (folder: Folder) => {
+  const next = new Set(selectedFolderIds.value)
+  if (next.has(folder.id)) next.delete(folder.id)
+  else next.add(folder.id)
+  selectedFolderIds.value = next
 }
 
 // 文件夹查找缓存 Map（优化性能，避免重复递归查找）
@@ -349,6 +358,7 @@ watch(
   () => {
     searchQuery.value = ''
     selectedDocumentIds.value = new Set()
+    selectedFolderIds.value = new Set()
     activeFolderId.value = props.selectedFolderId ?? null
     void loadFolders()
     resetAndLoad()
@@ -367,6 +377,7 @@ watch(
 // 监听文件夹变化，重新加载文档
 watch(activeFolderId, () => {
   selectedDocumentIds.value = new Set()
+  selectedFolderIds.value = new Set()
   // If a folder is selected, load documents in that folder.
   // If root (null) is selected, show root folders and uncategorized documents only.
   resetAndLoad()
@@ -565,14 +576,31 @@ const handleFolderRename = (folder: Folder) => {
 
 // 处理文件夹删除
 const handleFolderDelete = (folder: Folder) => {
-  folderToDelete.value = folder
+  foldersToDelete.value = [folder]
   deleteFolderDialogOpen.value = true
 }
 
 // 处理文件夹移动
 const handleFolderMove = (folder: Folder) => {
-  folderToMove.value = folder
+  foldersToMove.value = [folder]
   moveFolderDialogOpen.value = true
+}
+
+const selectedFoldersInList = (): Folder[] =>
+  displayFolders.value.filter((f) => selectedFolderIds.value.has(f.id))
+
+const handleBatchMoveFolders = () => {
+  const targets = selectedFoldersInList()
+  if (!targets.length) return
+  foldersToMove.value = targets
+  moveFolderDialogOpen.value = true
+}
+
+const handleBatchDeleteFolders = () => {
+  const targets = selectedFoldersInList()
+  if (!targets.length) return
+  foldersToDelete.value = targets
+  deleteFolderDialogOpen.value = true
 }
 
 const handleOpenCreateFolder = () => {
@@ -602,10 +630,11 @@ const handleFolderUpdated = () => {
 const handleFolderMoved = () => {
   void loadFolders()
   emit('folder-updated')
-  // 如果移动的是当前文件夹，需要更新 activeFolderId
-  if (folderToMove.value && activeFolderId.value === folderToMove.value.id) {
-    // 移动后，文件夹的 parent_id 会变化，但 id 不变，所以不需要特别处理
-    // 但如果移动到根目录，可能需要刷新显示
+  const movedIds = new Set(foldersToMove.value.map((f) => f.id))
+  selectedFolderIds.value = new Set(
+    [...selectedFolderIds.value].filter((id) => !movedIds.has(id))
+  )
+  if (foldersToMove.value.some((f) => activeFolderId.value === f.id)) {
     void resetAndLoad()
   }
 }
@@ -613,11 +642,14 @@ const handleFolderMoved = () => {
 // 处理文件夹删除完成
 const handleFolderDeleted = () => {
   void loadFolders()
-  const deletedFolderId = folderToDelete.value?.id
-  if (deletedFolderId !== undefined && activeFolderId.value === deletedFolderId) {
+  const deletedIds = new Set(foldersToDelete.value.map((f) => f.id))
+  if (activeFolderId.value !== null && deletedIds.has(activeFolderId.value)) {
     activeFolderId.value = null
     emit('folder-selected', null)
   }
+  selectedFolderIds.value = new Set(
+    [...selectedFolderIds.value].filter((id) => !deletedIds.has(id))
+  )
   emit('folder-deleted')
 }
 
@@ -1415,10 +1447,15 @@ onUnmounted(() => {
                 :folder="folder"
                 :document-count="getFolderItemCount(folder)"
                 :latest-updated-at="getFolderLatestUpdatedAt(folder)"
+                :selected="selectedFolderIds.has(folder.id)"
+                :selected-count="selectedFolderIds.size"
                 @click="handleFolderClick"
                 @rename="handleFolderRename"
                 @delete="handleFolderDelete"
                 @move="handleFolderMove"
+                @toggle-select="toggleFolderSelection"
+                @batch-move-to-folder="handleBatchMoveFolders"
+                @batch-delete="handleBatchDeleteFolders"
                 @contextmenu.stop
               />
               <!-- 文档卡片 -->
@@ -1507,12 +1544,12 @@ onUnmounted(() => {
     />
     <DeleteFolderDialog
       v-model:open="deleteFolderDialogOpen"
-      :folder="folderToDelete"
+      :folders="foldersToDelete"
       @deleted="handleFolderDeleted"
     />
     <MoveFolderDialog
       v-model:open="moveFolderDialogOpen"
-      :folder="folderToMove"
+      :folders-to-move="foldersToMove"
       :folders="folders"
       @moved="handleFolderMoved"
     />

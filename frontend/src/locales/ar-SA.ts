@@ -1415,12 +1415,17 @@ export default {
       deleteCancel: 'إلغاء',
       deleteConfirm: 'حذف',
       deleteSuccess: 'تم الحذف',
+      deleteDescBatch:
+        'سيؤدي حذف {count} مجلدات إلى نقل المستندات تحتها إلى "غير مصنف". لا يمكن التراجع عن هذا الإجراء.',
+      deleteSuccessBatch: 'تم حذف {count} مجلدات',
       move: {
         title: 'نقل المجلد',
+        titleBatch: 'نقل مجلدات ({count})',
         action: 'نقل',
         selectFolder: 'اختر المجلد المستهدف',
         moveToHere: 'نقل إلى هنا',
         success: 'تم النقل بنجاح',
+        successBatch: 'تم نقل {count} مجلدات بنجاح',
         failed: 'فشل النقل',
       },
       deleteFailed: 'فشل الحذف',

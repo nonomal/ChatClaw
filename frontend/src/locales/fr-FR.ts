@@ -1433,12 +1433,17 @@ export default {
       deleteCancel: 'Annuler',
       deleteConfirm: 'Supprimer',
       deleteSuccess: 'Supprimé',
+      deleteDescBatch:
+        'La suppression de {count} dossiers déplacera les documents vers "Non catégorisé". Cette action est irréversible.',
+      deleteSuccessBatch: '{count} dossiers supprimés',
       move: {
         title: 'Déplacer le dossier',
+        titleBatch: 'Déplacer les dossiers ({count})',
         action: 'Déplacer',
         selectFolder: 'Sélectionner le dossier cible',
         moveToHere: 'Déplacer ici',
         success: 'Déplacé avec succès',
+        successBatch: '{count} dossiers déplacés avec succès',
         failed: 'Échec du déplacement',
       },
       deleteFailed: 'Échec de la suppression',

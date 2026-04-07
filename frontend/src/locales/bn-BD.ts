@@ -1423,12 +1423,17 @@ export default {
       deleteCancel: 'বাতিল',
       deleteConfirm: 'মুছুন',
       deleteSuccess: 'মুছে গেছে',
+      deleteDescBatch:
+        '{count}টি ফোল্ডার মুছলে এর নিচের ডকুমেন্টগুলো "আনক্যাটাগরাইজড"-এ চলে যাবে। এটি পূর্বাবস্থায় ফেরানো যাবে না।',
+      deleteSuccessBatch: '{count}টি ফোল্ডার মুছে ফেলা হয়েছে',
       move: {
         title: 'ফোল্ডার মুভ',
+        titleBatch: 'একাধিক ফোল্ডার মুভ ({count})',
         action: 'মুভ',
         selectFolder: 'টার্গেট ফোল্ডার সিলেক্ট',
         moveToHere: 'এখানে মুভ',
         success: 'মুভ সফল',
+        successBatch: '{count}টি ফোল্ডার সফলভাবে মুভ হয়েছে',
         failed: 'মুভ ব্যর্থ',
       },
       deleteFailed: 'মুছতে ব্যর্থ',

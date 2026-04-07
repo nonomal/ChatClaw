@@ -1430,12 +1430,17 @@ export default {
       deleteCancel: 'Hủy',
       deleteConfirm: 'Xóa',
       deleteSuccess: 'Xóa thành công',
+      deleteDescBatch:
+        'Xóa {count} thư mục sẽ chuyển tài liệu bên trong sang "Chưa phân loại". Không thể hoàn tác.',
+      deleteSuccessBatch: 'Đã xóa {count} thư mục',
       move: {
         title: 'Di chuyển thư mục',
+        titleBatch: 'Di chuyển nhiều thư mục ({count})',
         action: 'Di chuyển',
         selectFolder: 'Chọn thư mục đích',
         moveToHere: 'Di chuyển đến đây',
         success: 'Di chuyển thành công',
+        successBatch: 'Đã di chuyển {count} thư mục thành công',
         failed: 'Di chuyển thất bại',
       },
       deleteFailed: 'Xóa thất bại',

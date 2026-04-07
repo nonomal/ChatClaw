@@ -1439,12 +1439,17 @@ export default {
       deleteCancel: 'Abbrechen',
       deleteConfirm: 'Löschen',
       deleteSuccess: 'Gelöscht',
+      deleteDescBatch:
+        'Beim Löschen von {count} Ordnern werden Dokumente darunter nach "Nicht kategorisiert" verschoben. Dies kann nicht rückgängig gemacht werden.',
+      deleteSuccessBatch: '{count} Ordner gelöscht',
       move: {
         title: 'Ordner verschieben',
+        titleBatch: 'Ordner verschieben ({count})',
         action: 'Verschieben',
         selectFolder: 'Zielordner auswählen',
         moveToHere: 'Hierher verschieben',
         success: 'Erfolgreich verschoben',
+        successBatch: '{count} Ordner erfolgreich verschoben',
         failed: 'Verschieben fehlgeschlagen',
       },
       deleteFailed: 'Löschen fehlgeschlagen',

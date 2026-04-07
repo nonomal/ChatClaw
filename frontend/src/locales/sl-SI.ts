@@ -1432,12 +1432,17 @@ export default {
       deleteCancel: 'Prekliči',
       deleteConfirm: 'Izbriši',
       deleteSuccess: 'Uspešno izbrisano',
+      deleteDescBatch:
+        'Brisanje {count} map bo dokumente pod njimi premaknilo v "Nekategorizirano". Tega ni mogoče razveljaviti.',
+      deleteSuccessBatch: 'Izbrisano {count} map',
       move: {
         title: 'Premakni mapo',
+        titleBatch: 'Premakni mape ({count})',
         action: 'Premakni',
         selectFolder: 'Izberi ciljno mapo',
         moveToHere: 'Premakni sem',
         success: 'Uspešno premaknjeno',
+        successBatch: 'Uspešno premaknjeno {count} map',
         failed: 'Premikanje ni uspelo',
       },
       deleteFailed: 'Brisanje ni uspelo',

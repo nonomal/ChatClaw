@@ -1426,12 +1426,17 @@ export default {
       deleteCancel: 'İptal',
       deleteConfirm: 'Sil',
       deleteSuccess: 'Silindi',
+      deleteDescBatch:
+        '{count} klasör silindiğinde altındaki belgeler "Kategorize edilmemiş"e taşınır. Bu işlem geri alınamaz.',
+      deleteSuccessBatch: '{count} klasör silindi',
       move: {
         title: 'Klasörü taşı',
+        titleBatch: 'Klasörleri toplu taşı ({count})',
         action: 'Taşı',
         selectFolder: 'Hedef klasör seç',
         moveToHere: 'Buraya taşı',
         success: 'Başarıyla taşındı',
+        successBatch: '{count} klasör başarıyla taşındı',
         failed: 'Taşıma başarısız',
       },
       deleteFailed: 'Silme başarısız',
