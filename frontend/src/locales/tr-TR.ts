@@ -1167,6 +1167,9 @@ export default {
       name: "Farklı bilgi tabanlarını ayırt etmek için bir isim (maks 30 karakter).",
       chunkSize: "Parca boyutu (karakter cinsinden, 500~5000). Daha buyuk parcalar daha tam baglam saglar ancak geri getirme ayrintisi daha kabadir.",
       chunkOverlap: "Bitisik parcalar arasindaki ortusme boyutu (karakter cinsinden, 0~1000), parcalar arasi cumle bolunmelerinden kaynaklanan bilgi kaybini azaltir.",
+      batchMaxDocuments:
+        "For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.",
+      batchMaxChunks: "Maximum number of segments per embedding request during learning. Range: 1~20.",
       matchThreshold: "Bu eşik değerinin altındaki benzerlik sonuçları filtrelenecektir (0~1).",
       embeddingModel: "Metni vektörlere dönüştürmek için kullanılan gömme modeli.",
       embeddingDimension: "Gömme vektör boyutu seçilen modelin çıktısıyla eşleşmelidir.",
@@ -1263,6 +1266,8 @@ export default {
       noRaptorLLM: "Devre dışı",
       chunkSize: "Parça boyutu",
       chunkOverlap: "Örtüşme boyutu",
+      batchMaxDocuments: "Max documents per batch",
+      batchMaxChunks: "Max segments per embedding batch",
       matchThreshold: "Eşik değeri",
       advancedWarning: "Parca boyutu ve ortusme degisiklikleri yalnizca yeni eklenen icerige uygulanir",
       cancel: "İptal",

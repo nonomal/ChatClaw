@@ -24,7 +24,13 @@ type Library struct {
 
 	ChunkSize    int `json:"chunk_size"`
 	ChunkOverlap int `json:"chunk_overlap"`
-	SortOrder    int `json:"sort_order"`
+
+	// BatchMaxDocuments: max concurrent document learning jobs for this library (1~5).
+	BatchMaxDocuments int `json:"batch_max_documents"`
+	// BatchMaxChunks: max segments per embedding API call during learning (1~20).
+	BatchMaxChunks int `json:"batch_max_chunks"`
+
+	SortOrder int `json:"sort_order"`
 }
 
 // CreateLibraryInput 创建知识库的输入参数
@@ -38,6 +44,9 @@ type CreateLibraryInput struct {
 
 	ChunkSize    *int `json:"chunk_size"`
 	ChunkOverlap *int `json:"chunk_overlap"`
+
+	BatchMaxDocuments *int `json:"batch_max_documents"`
+	BatchMaxChunks    *int `json:"batch_max_chunks"`
 }
 
 // UpdateLibraryInput 更新知识库的输入参数
@@ -50,6 +59,9 @@ type UpdateLibraryInput struct {
 
 	ChunkSize    *int `json:"chunk_size"`
 	ChunkOverlap *int `json:"chunk_overlap"`
+
+	BatchMaxDocuments *int `json:"batch_max_documents"`
+	BatchMaxChunks    *int `json:"batch_max_chunks"`
 }
 
 // libraryModel 数据库模型
@@ -68,7 +80,11 @@ type libraryModel struct {
 
 	ChunkSize    int `bun:"chunk_size,notnull"`
 	ChunkOverlap int `bun:"chunk_overlap,notnull"`
-	SortOrder    int `bun:"sort_order,notnull"`
+
+	BatchMaxDocuments int `bun:"batch_max_documents,notnull"`
+	BatchMaxChunks    int `bun:"batch_max_chunks,notnull"`
+
+	SortOrder int `bun:"sort_order,notnull"`
 }
 
 // BeforeInsert 在 INSERT 时自动设置 created_at 和 updated_at（字符串格式）
@@ -103,6 +119,10 @@ func (m *libraryModel) toDTO() Library {
 
 		ChunkSize:    m.ChunkSize,
 		ChunkOverlap: m.ChunkOverlap,
-		SortOrder:    m.SortOrder,
+
+		BatchMaxDocuments: m.BatchMaxDocuments,
+		BatchMaxChunks:    m.BatchMaxChunks,
+
+		SortOrder: m.SortOrder,
 	}
 }

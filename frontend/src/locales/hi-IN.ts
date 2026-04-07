@@ -1186,6 +1186,9 @@ export default {
       name: "विभिन्न नॉलेज बेस को अलग करने के लिए नाम (अधिकतम 30 अक्षर)।",
       chunkSize: "चंक आकार (अक्षरों में, 500~5000)। बड़े चंक अधिक पूरा संदर्भ देते हैं, लेकिन खोज की सूक्ष्मता कम कर देते हैं।",
       chunkOverlap: "सूचना हानि कम करने के लिए आसन्न चंक के बीच ओवरलैप साइज (अक्षरों में, 0~1000)।",
+      batchMaxDocuments:
+        "For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.",
+      batchMaxChunks: "Maximum number of segments per embedding request during learning. Range: 1~20.",
       matchThreshold: "इस थ्रेशोल्ड से कम समानता वाले परिणाम फ़िल्टर किए जाएंगे (0~1)।",
       embeddingModel: "टेक्स्ट को वेक्टर में बदलने के लिए उपयोग किया जाने वाला एम्बेडिंग मॉडल।",
       embeddingDimension: "एम्बेडिंग वेक्टर डाइमेंशन चुने गए मॉडल आउटपुट से मेल खाना चाहिए।",
@@ -1282,6 +1285,8 @@ export default {
       noRaptorLLM: "अक्षम",
       chunkSize: "चंक साइज",
       chunkOverlap: "ओवरलैप साइज",
+      batchMaxDocuments: "Max documents per batch",
+      batchMaxChunks: "Max segments per embedding batch",
       matchThreshold: "मैच थ्रेशोल्ड",
       advancedWarning: "चंक साइज और ओवरलैप में परिवर्तन केवल नई जोड़ी गई सामग्री पर लागू होते हैं",
       cancel: "रद्द करें",

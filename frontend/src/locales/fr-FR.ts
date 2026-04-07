@@ -1171,6 +1171,9 @@ export default {
       name: "Un nom pour distinguer les différentes bases de connaissances (max 30 caractères).",
       chunkSize: "Taille des fragments (en caracteres, 500~5000). Des fragments plus grands donnent un contexte plus complet mais une granularite de recherche plus grossiere.",
       chunkOverlap: "Taille de chevauchement entre fragments adjacents (en caracteres, 0~1000), pour reduire la perte d'information due aux coupures de phrases entre fragments.",
+      batchMaxDocuments:
+        "For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.",
+      batchMaxChunks: "Maximum number of segments per embedding request during learning. Range: 1~20.",
       matchThreshold: "Les resultats dont la similarite est inferieure a ce seuil seront filtres (0~1).",
       embeddingModel: "Modèle d",
       embeddingDimension: "La dimension du vecteur d",
@@ -1268,6 +1271,8 @@ export default {
       noRaptorLLM: "Désactivé",
       chunkSize: "Taille du fragment",
       chunkOverlap: "Taille du chevauchement",
+      batchMaxDocuments: "Max documents per batch",
+      batchMaxChunks: "Max segments per embedding batch",
       matchThreshold: "Seuil de correspondance",
       advancedWarning: "Les modifications de la taille du fragment et du chevauchement ne s",
       cancel: "Annuler",

@@ -1168,6 +1168,9 @@ export default {
       name: "اسم للتمييز بين قواعد المعرفة المختلفة (بحد أقصى 30 حرفًا).",
       chunkSize: "حجم الشريحة (بعدد الأحرف، من 500 إلى 5000). تمنح الشرائح الأكبر سياقًا أكمل ولكن بدقة استرجاع أقل.",
       chunkOverlap: "حجم التداخل (بالأحرف، 0~1000) بين الشرائح المتجاورة لتقليل فقدان المعلومات.",
+      batchMaxDocuments:
+        "For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.",
+      batchMaxChunks: "Maximum number of segments per embedding request during learning. Range: 1~20.",
       matchThreshold: "ستتم تصفية النتائج ذات التشابه الأقل من هذه العتبة (0~1).",
       embeddingModel: "نموذج التضمين المستخدم لتحويل النص إلى ناقلات.",
       embeddingDimension: "يجب أن يتطابق بُعد متجه التضمين مع مخرجات النموذج المحدد.",
@@ -1265,6 +1268,8 @@ export default {
       noRaptorLLM: "معطل",
       chunkSize: "حجم الشريحة",
       chunkOverlap: "حجم التداخل",
+      batchMaxDocuments: "Max documents per batch",
+      batchMaxChunks: "Max segments per embedding batch",
       matchThreshold: "عتبة المطابقة",
       advancedWarning: "التغييرات في حجم الشريحة والتداخل تنطبق فقط على المحتوى المضاف حديثًا",
       cancel: "إلغاء",

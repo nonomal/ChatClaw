@@ -1167,6 +1167,9 @@ export default {
       name: "Um nome para distinguir diferentes bases de conhecimento (máx 30 caracteres).",
       chunkSize: "Tamanho do trecho (em caracteres, 500~5000). Trechos maiores fornecem contexto mais completo, mas com granularidade de recuperacao mais ampla.",
       chunkOverlap: "Tamanho da sobreposicao entre trechos adjacentes (em caracteres, 0~1000), para reduzir a perda de informacao causada por quebras de frase entre trechos.",
+      batchMaxDocuments:
+        "For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.",
+      batchMaxChunks: "Maximum number of segments per embedding request during learning. Range: 1~20.",
       matchThreshold: "Resultados com similaridade menor que este limite serão filtrados (0~1).",
       embeddingModel: "Modelo de embedding usado para converter texto em vetores.",
       embeddingDimension: "A dimensao do vetor de embedding deve corresponder a saida do modelo selecionado.",
@@ -1263,6 +1266,8 @@ export default {
       noRaptorLLM: "Desativado",
       chunkSize: "Tamanho do Trecho",
       chunkOverlap: "Tamanho da Sobreposição",
+      batchMaxDocuments: "Max documents per batch",
+      batchMaxChunks: "Max segments per embedding batch",
       matchThreshold: "Limite de Correspondência",
       advancedWarning: "Alteracoes no tamanho do trecho e na sobreposicao so se aplicam ao conteudo adicionado a partir de agora",
       cancel: "Cancelar",

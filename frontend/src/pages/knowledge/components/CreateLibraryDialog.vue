@@ -74,6 +74,8 @@ const raptorLLMKey = ref<string>(RAPTOR_LLM_NONE) // `${providerId}::${modelId}`
 // advanced fields（用字符串承接输入，提交时再转 number）
 const chunkSize = ref<string>('1024')
 const chunkOverlap = ref<string>('100')
+const batchMaxDocuments = ref<string>('3')
+const batchMaxChunks = ref<string>('3')
 
 const close = () => emit('update:open', false)
 
@@ -85,6 +87,8 @@ const resetForm = () => {
   raptorLLMKey.value = RAPTOR_LLM_NONE
   chunkSize.value = '1024'
   chunkOverlap.value = '100'
+  batchMaxDocuments.value = '3'
+  batchMaxChunks.value = '3'
 }
 
 const currentRaptorLLMLabel = computed(() => {
@@ -112,8 +116,12 @@ const isFormValid = computed(() => {
   if (advanced.value) {
     const cs = Number.parseInt(chunkSize.value, 10)
     const co = Number.parseInt(chunkOverlap.value, 10)
+    const bd = Number.parseInt(batchMaxDocuments.value, 10)
+    const bc = Number.parseInt(batchMaxChunks.value, 10)
     if (!Number.isFinite(cs) || cs < 500 || cs > 5000) return false
     if (!Number.isFinite(co) || co < 0 || co > 1000) return false
+    if (!Number.isFinite(bd) || bd < 1 || bd > 5) return false
+    if (!Number.isFinite(bc) || bc < 1 || bc > 20) return false
   }
 
   return true
@@ -231,6 +239,8 @@ const handleSubmit = async () => {
       raptor_llm_model_id: raptorModelId || '',
       chunk_size: toInt(chunkSize.value) ?? 1024,
       chunk_overlap: toInt(chunkOverlap.value) ?? 100,
+      batch_max_documents: toInt(batchMaxDocuments.value) ?? 3,
+      batch_max_chunks: toInt(batchMaxChunks.value) ?? 3,
     })
 
     const lib = await LibraryService.CreateLibrary(input)
@@ -278,6 +288,35 @@ const handleSubmit = async () => {
         >
           <div class="text-base font-semibold text-foreground">
             {{ t('knowledge.create.advanced') }}
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <FieldLabel
+              :label="t('knowledge.create.batchMaxDocuments')"
+              :help="t('knowledge.help.batchMaxDocuments')"
+            />
+            <Input
+              v-model="batchMaxDocuments"
+              type="number"
+              min="1"
+              max="5"
+              step="1"
+              :disabled="isSubmitting"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <FieldLabel
+              :label="t('knowledge.create.batchMaxChunks')"
+              :help="t('knowledge.help.batchMaxChunks')"
+            />
+            <Input
+              v-model="batchMaxChunks"
+              type="number"
+              min="1"
+              max="20"
+              step="1"
+              :disabled="isSubmitting"
+            />
           </div>
 
           <div class="flex flex-col gap-1.5">

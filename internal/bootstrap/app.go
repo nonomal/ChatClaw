@@ -252,7 +252,7 @@ func NewApp(opts Options) (app *application.App, cleanup func(), err error) {
 	if err := taskmanager.Init(app, sqlite.DB().DB, taskmanager.Config{
 		Queues: map[string]taskmanager.QueueConfig{
 			taskmanager.QueueThumbnail: {Workers: 10, PollInterval: 50 * time.Millisecond}, // 缩略图任务
-			taskmanager.QueueDocument:  {Workers: 3, PollInterval: 100 * time.Millisecond}, // 文档处理任务
+			taskmanager.QueueDocument:  {Workers: 8, PollInterval: 100 * time.Millisecond}, // 文档处理任务（单库并发由 library.batch_max_documents 限制）
 		},
 	}); err != nil {
 		sqlite.Close()

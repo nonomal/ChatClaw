@@ -239,5 +239,7 @@
   "error.whatsapp_qr_not_found": "未能从 OpenClaw 命令行输出中解析二维码，请更新 OpenClaw 或重试。",
   "error.whatsapp_qr_timeout": "等待 OpenClaw 输出 WhatsApp 二维码超时。",
   "error.whatsapp_login_failed": "WhatsApp 登录会话无效或已失效。",
-  "error.whatsapp_login_timeout": "WhatsApp 扫码登录超时，请在时限内完成扫描。"
+  "error.whatsapp_login_timeout": "WhatsApp 扫码登录超时，请在时限内完成扫描。",
+  "error.library_batch_max_documents_invalid": "单次处理文档数量不合法（允许 1~5）",
+  "error.library_batch_max_chunks_invalid": "单次处理分段数量不合法（允许 1~20）"
 }

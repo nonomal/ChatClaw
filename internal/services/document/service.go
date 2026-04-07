@@ -98,7 +98,7 @@ func (s *DocumentService) registerTaskHandlers() {
 			s.app.Logger.Error("failed to unmarshal process job data", "error", err)
 			return nil // Don't retry malformed jobs
 		}
-		s.processDocument(jobData.DocID, jobData.LibraryID, jobData.RunID, info)
+		s.processDocument(ctx, jobData.DocID, jobData.LibraryID, jobData.RunID, info)
 		return nil
 	})
 
@@ -1200,7 +1200,7 @@ func (s *DocumentService) generateThumbnail(docID, libraryID int64, localPath st
 }
 
 // processDocument 处理文档（解析 + 分段 + 向量化 + RAPTOR）
-func (s *DocumentService) processDocument(docID, libraryID int64, runID string, info *taskmanager.TaskInfo) {
+func (s *DocumentService) processDocument(jobCtx context.Context, docID, libraryID int64, runID string, info *taskmanager.TaskInfo) {
 	tm := taskmanager.Get()
 	db, err := s.db()
 	if err != nil {
@@ -1285,6 +1285,13 @@ func (s *DocumentService) processDocument(docID, libraryID int64, runID string, 
 		updateAndEmit(StatusFailed, 0, "获取知识库配置失败: "+err.Error(), StatusPending, 0, "")
 		return
 	}
+
+	releaseSlot, err := acquireLibraryLearnSlot(jobCtx, libraryID, libraryConfig.BatchMaxDocuments)
+	if err != nil {
+		updateAndEmit(StatusFailed, 0, "文档处理已取消或等待并发槽位失败: "+err.Error(), StatusPending, 0, "")
+		return
+	}
+	defer releaseSlot()
 
 	// 获取全局嵌入模型配置
 	embeddingConfig, err := processor.GetEmbeddingConfig(ctx, db)

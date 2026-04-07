@@ -1169,6 +1169,9 @@ export default {
       name: "Ime za razlikovanje različnih baz znanja (največ 30 znakov).",
       chunkSize: "Velikost odseka (v znakih, 500~5000). Večji odseki nudijo popolnejši kontekst, vendar manj natančno iskanje.",
       chunkOverlap: "Velikost prekrivanja med sosednjimi odseki (v znakih, 0~1000), da se zmanjša izguba informacij na mejah odsekov.",
+      batchMaxDocuments:
+        "For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.",
+      batchMaxChunks: "Maximum number of segments per embedding request during learning. Range: 1~20.",
       matchThreshold: "Rezultati z nižjo podobnostjo od tega praga bodo filtrirani (0~1).",
       embeddingModel: "Model vdelave za pretvorbo besedila v vektorje.",
       embeddingDimension: "Dimenzija vdelanega vektorja mora ustrezati izhodu izbranega modela.",
@@ -1265,6 +1268,8 @@ export default {
       noRaptorLLM: "Onemogočeno",
       chunkSize: "Velikost kosa",
       chunkOverlap: "Velikost prekrivanja",
+      batchMaxDocuments: "Max documents per batch",
+      batchMaxChunks: "Max segments per embedding batch",
       matchThreshold: "Prag ujemanja",
       advancedWarning: "Spremembe velikosti odsekov in prekrivanja veljajo samo za novo dodano vsebino",
       cancel: "Prekliči",

@@ -1174,6 +1174,9 @@ export default {
       name: "知识库名称，用于区分不同的知识库（最多30个字符）。",
       chunkSize: "分片大小（字符数，500~5000）。分片越大，上下文越完整，但召回粒度更粗。",
       chunkOverlap: "相邻分片的重叠大小（字符数，0~1000），用于减少跨分片断句导致的信息丢失。",
+      batchMaxDocuments:
+        "例如设为 3 时，一次上传 10 个文档会按每批 3 个依次处理，共分 4 批执行。取值范围 1~5。",
+      batchMaxChunks: "学习嵌入阶段，每次向量化请求中最多包含的分段数量。取值范围 1~20。",
       matchThreshold: "相似度低于该阈值的结果将被过滤（0~1）。",
       embeddingModel: "用于将文本转换为向量的嵌入模型。",
       embeddingDimension: "嵌入向量维度需与所选模型的输出一致。",
@@ -1270,6 +1273,8 @@ export default {
       noRaptorLLM: "不启用",
       chunkSize: "分片大小",
       chunkOverlap: "重叠大小",
+      batchMaxDocuments: "单次处理文档最大数",
+      batchMaxChunks: "单次处理分段最大数",
       matchThreshold: "匹配度阈值",
       advancedWarning: "分段大小和重叠大小修改只针对新添加的内容有效",
       cancel: "取消",

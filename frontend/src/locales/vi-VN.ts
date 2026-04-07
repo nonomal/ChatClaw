@@ -1169,6 +1169,9 @@ export default {
       name: "Tên để phân biệt các Cơ sở tri thức khác nhau (tối đa 30 ký tự).",
       chunkSize: "Kích thước đoạn (tính theo ký tự, 500~5000). Đoạn lớn hơn cho ngữ cảnh đầy đủ hơn nhưng mức độ truy xuất sẽ thô hơn.",
       chunkOverlap: "Kích thước chồng lấp giữa các đoạn liền kề (tính theo ký tự, 0~1000) để giảm mất mát thông tin do câu bị cắt giữa các đoạn.",
+      batchMaxDocuments:
+        "For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.",
+      batchMaxChunks: "Maximum number of segments per embedding request during learning. Range: 1~20.",
       matchThreshold: "Các kết quả có độ tương tự thấp hơn ngưỡng này sẽ được lọc (0~1).",
       embeddingModel: "Mô hình embedding được sử dụng để chuyển văn bản thành vector.",
       embeddingDimension: "Kích thước vector embedding phải khớp với đầu ra của mô hình đã chọn.",
@@ -1265,6 +1268,8 @@ export default {
       noRaptorLLM: "Tắt",
       chunkSize: "Kích thước mảnh",
       chunkOverlap: "Kích thước chồng lấp",
+      batchMaxDocuments: "Max documents per batch",
+      batchMaxChunks: "Max segments per embedding batch",
       matchThreshold: "Ngưỡng khớp",
       advancedWarning: "Các thay đổi về kích thước đoạn và độ chồng lấp chỉ áp dụng cho nội dung mới được thêm vào",
       cancel: "Hủy",

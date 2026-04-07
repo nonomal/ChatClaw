@@ -1167,6 +1167,9 @@ export default {
       name: "Un nombre para distinguir diferentes bases de conocimientos (máx 30 caracteres).",
       chunkSize: "Tamano del fragmento (en caracteres, 500~5000). Los fragmentos mas grandes ofrecen un contexto mas completo pero una granularidad de recuperacion mas gruesa.",
       chunkOverlap: "Tamano de solapamiento entre fragmentos adyacentes (en caracteres, 0~1000) para reducir la perdida de informacion por cortes entre fragmentos.",
+      batchMaxDocuments:
+        "For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.",
+      batchMaxChunks: "Maximum number of segments per embedding request during learning. Range: 1~20.",
       matchThreshold: "Los resultados con similitud menor a este umbral se filtrarán (0~1).",
       embeddingModel: "Modelo de embedding usado para convertir texto en vectores.",
       embeddingDimension: "La dimension del vector de embedding debe coincidir con la salida del modelo seleccionado.",
@@ -1263,6 +1266,8 @@ export default {
       noRaptorLLM: "Deshabilitado",
       chunkSize: "Tamaño de fragmento",
       chunkOverlap: "Tamaño de superposición",
+      batchMaxDocuments: "Max documents per batch",
+      batchMaxChunks: "Max segments per embedding batch",
       matchThreshold: "Umbral de coincidencia",
       advancedWarning: "Changes to chunk size and overlap only apply to newly added content",
       cancel: "Cancelar",

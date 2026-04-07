@@ -122,6 +122,21 @@ func (s *LibraryService) CreateLibrary(input CreateLibraryInput) (*Library, erro
 		chunkOverlap = *input.ChunkOverlap
 	}
 
+	batchMaxDocuments := 3
+	batchMaxChunks := 3
+	if input.BatchMaxDocuments != nil {
+		if *input.BatchMaxDocuments < 1 || *input.BatchMaxDocuments > 5 {
+			return nil, errs.New("error.library_batch_max_documents_invalid")
+		}
+		batchMaxDocuments = *input.BatchMaxDocuments
+	}
+	if input.BatchMaxChunks != nil {
+		if *input.BatchMaxChunks < 1 || *input.BatchMaxChunks > 20 {
+			return nil, errs.New("error.library_batch_max_chunks_invalid")
+		}
+		batchMaxChunks = *input.BatchMaxChunks
+	}
+
 	// embedding 配置为全局 settings（不落库到 library 表），创建前需确保配置真实可用，
 	// 避免默认 openai/text-embedding-* 在未填写 API Key 时被误判为“已配置”。
 	if _, err := processor.GetEmbeddingConfig(ctx, db); err != nil {
@@ -150,7 +165,11 @@ func (s *LibraryService) CreateLibrary(input CreateLibraryInput) (*Library, erro
 
 		ChunkSize:    chunkSize,
 		ChunkOverlap: chunkOverlap,
-		SortOrder:    sortOrder,
+
+		BatchMaxDocuments: batchMaxDocuments,
+		BatchMaxChunks:    batchMaxChunks,
+
+		SortOrder: sortOrder,
 	}
 
 	if _, err := db.NewInsert().Model(m).Exec(ctx); err != nil {
@@ -253,6 +272,19 @@ func (s *LibraryService) UpdateLibrary(id int64, input UpdateLibraryInput) (*Lib
 			return nil, errs.New("error.library_chunk_overlap_invalid")
 		}
 		q = q.Set("chunk_overlap = ?", *input.ChunkOverlap)
+	}
+
+	if input.BatchMaxDocuments != nil {
+		if *input.BatchMaxDocuments < 1 || *input.BatchMaxDocuments > 5 {
+			return nil, errs.New("error.library_batch_max_documents_invalid")
+		}
+		q = q.Set("batch_max_documents = ?", *input.BatchMaxDocuments)
+	}
+	if input.BatchMaxChunks != nil {
+		if *input.BatchMaxChunks < 1 || *input.BatchMaxChunks > 20 {
+			return nil, errs.New("error.library_batch_max_chunks_invalid")
+		}
+		q = q.Set("batch_max_chunks = ?", *input.BatchMaxChunks)
 	}
 
 	res, err := q.Exec(ctx)

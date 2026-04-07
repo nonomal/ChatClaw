@@ -76,6 +76,8 @@ const raptorLLMKey = ref<string>(RAPTOR_LLM_NONE)
 // Smaller chunks (512 vs 1024) provide more granular semantic matching
 const chunkSize = ref<string>('512')
 const chunkOverlap = ref<string>('50')
+const batchMaxDocuments = ref<string>('3')
+const batchMaxChunks = ref<string>('3')
 
 const close = () => emit('update:open', false)
 
@@ -143,6 +145,16 @@ watch(
     // init from library
     chunkSize.value = String(props.library?.chunk_size ?? 1024)
     chunkOverlap.value = String(props.library?.chunk_overlap ?? 100)
+    batchMaxDocuments.value = String(
+      props.library?.batch_max_documents != null && props.library.batch_max_documents > 0
+        ? props.library.batch_max_documents
+        : 3
+    )
+    batchMaxChunks.value = String(
+      props.library?.batch_max_chunks != null && props.library.batch_max_chunks > 0
+        ? props.library.batch_max_chunks
+        : 3
+    )
 
     // 初始化语义分段开关
     semanticSegmentationEnabled.value = props.library?.semantic_segmentation_enabled ?? false
@@ -196,8 +208,21 @@ const isValid = computed(() => {
   if (!props.library) return false
   const cs = Number.parseInt(chunkSize.value, 10)
   const co = Number.parseInt(chunkOverlap.value, 10)
+  const bd = Number.parseInt(batchMaxDocuments.value, 10)
+  const bc = Number.parseInt(batchMaxChunks.value, 10)
   return (
-    Number.isFinite(cs) && cs >= 500 && cs <= 5000 && Number.isFinite(co) && co >= 0 && co <= 1000
+    Number.isFinite(cs) &&
+    cs >= 500 &&
+    cs <= 5000 &&
+    Number.isFinite(co) &&
+    co >= 0 &&
+    co <= 1000 &&
+    Number.isFinite(bd) &&
+    bd >= 1 &&
+    bd <= 5 &&
+    Number.isFinite(bc) &&
+    bc >= 1 &&
+    bc <= 20
   )
 })
 
@@ -216,6 +241,8 @@ const handleSave = async () => {
         raptor_llm_model_id: raptorMid || '',
         chunk_size: Number.parseInt(chunkSize.value, 10),
         chunk_overlap: Number.parseInt(chunkOverlap.value, 10),
+        batch_max_documents: Number.parseInt(batchMaxDocuments.value, 10),
+        batch_max_chunks: Number.parseInt(batchMaxChunks.value, 10),
       })
     )
     if (!updated) throw new Error(t('knowledge.settings.saveFailed'))
@@ -239,6 +266,35 @@ const handleSave = async () => {
       </DialogHeader>
 
       <div class="flex flex-col gap-4 py-4">
+        <div class="flex flex-col gap-1.5">
+          <FieldLabel
+            :label="t('knowledge.create.batchMaxDocuments')"
+            :help="t('knowledge.help.batchMaxDocuments')"
+          />
+          <Input
+            v-model="batchMaxDocuments"
+            type="number"
+            min="1"
+            max="5"
+            step="1"
+            :disabled="saving"
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <FieldLabel
+            :label="t('knowledge.create.batchMaxChunks')"
+            :help="t('knowledge.help.batchMaxChunks')"
+          />
+          <Input
+            v-model="batchMaxChunks"
+            type="number"
+            min="1"
+            max="20"
+            step="1"
+            :disabled="saving"
+          />
+        </div>
+
         <div class="flex flex-col gap-1.5">
           <FieldLabel
             :label="t('knowledge.create.chunkSize')"

@@ -1171,6 +1171,9 @@ export default {
       name: "知識庫名稱，用於區分不同的知識庫（最多30個字符）。",
       chunkSize: "分片大小（字符數，500~5000）。分片越大，上下文越完整，但召回粒度更粗。",
       chunkOverlap: "相鄰分片的重疊大小（字符數，0~1000），用於減少跨分片斷句導致的資訊丟失。",
+      batchMaxDocuments:
+        "例如設為 3 時，一次上傳 10 個文件會按每批 3 個依序處理，共分 4 批執行。取值範圍 1~5。",
+      batchMaxChunks: "學習嵌入階段，每次向量化請求中最多包含的分段數量。取值範圍 1~20。",
       matchThreshold: "相似度低於該閾值的結果將被過濾（0~1）。",
       embeddingModel: "用於將文字轉換為向量的嵌入模型。",
       embeddingDimension: "嵌入向量維度需與所選模型的輸出一致。",
@@ -1268,6 +1271,8 @@ export default {
       noRaptorLLM: "不啟用",
       chunkSize: "分片大小",
       chunkOverlap: "重疊大小",
+      batchMaxDocuments: "單次處理文件最大數",
+      batchMaxChunks: "單次處理分段最大數",
       matchThreshold: "匹配度閾值",
       advancedWarning: "分段大小和重疊大小修改只針對新新增的內容有效",
       cancel: "取消",

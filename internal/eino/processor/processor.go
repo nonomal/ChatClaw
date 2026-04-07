@@ -78,6 +78,19 @@ type LibraryConfig struct {
 	SemanticSegmentationEnabled bool
 	RaptorLLMProviderID         string
 	RaptorLLMModelID            string
+	BatchMaxDocuments           int
+	BatchMaxChunks              int
+}
+
+// NormalizeEmbeddingBatchSize clamps per-request embedding segment count (1~20).
+func NormalizeEmbeddingBatchSize(n int) int {
+	if n <= 0 {
+		return 3
+	}
+	if n > 20 {
+		return 20
+	}
+	return n
 }
 
 // EmbeddingConfig 包含全局嵌入配置
@@ -147,7 +160,17 @@ func (p *Processor) ReembedDocumentNodes(
 		return errors.New("no document nodes")
 	}
 
-	return p.embedNodes(ctx, nodes, embedder, onProgress)
+	var libID int64
+	if err := p.db.NewSelect().Table("documents").Column("library_id").Where("id = ?", docID).Scan(ctx, &libID); err != nil {
+		return fmt.Errorf("读取文档 library_id 失败: %w", err)
+	}
+	lc, err := GetLibraryConfig(ctx, p.db, libID)
+	if err != nil {
+		return fmt.Errorf("读取知识库配置失败: %w", err)
+	}
+	batch := NormalizeEmbeddingBatchSize(lc.BatchMaxChunks)
+
+	return p.embedNodes(ctx, nodes, embedder, onProgress, batch)
 }
 
 // NewProcessor 创建新的文档处理器
@@ -290,6 +313,8 @@ func (p *Processor) ProcessDocument(
 		onProgress("parsing", 100)
 	}
 
+	embedBatch := NormalizeEmbeddingBatchSize(libraryConfig.BatchMaxChunks)
+
 	// 阶段 4：嵌入 level-0 节点（内存中）
 	slog.Info("[processor] embedding level-0 nodes", "count", len(level0))
 	embedStart := time.Now()
@@ -300,7 +325,7 @@ func (p *Processor) ProcessDocument(
 		if onProgress != nil {
 			onProgress("embedding", 10+progress*70/100)
 		}
-	}); err != nil {
+	}, embedBatch); err != nil {
 		result.Error = wrapPhase(PhaseEmbedding, fmt.Errorf("嵌入失败: %w", err))
 		return result, result.Error
 	}
@@ -460,7 +485,7 @@ func (p *Processor) createEmbedder(ctx context.Context, config *EmbeddingConfig)
 }
 
 // embedNodes 为节点生成嵌入向量并存储
-func (p *Processor) embedNodes(ctx context.Context, nodes []*DocumentNode, embedder embedding.Embedder, onProgress func(int)) error {
+func (p *Processor) embedNodes(ctx context.Context, nodes []*DocumentNode, embedder embedding.Embedder, onProgress func(int), embedBatchSize int) error {
 	if len(nodes) == 0 {
 		slog.Debug("[processor] no nodes to embed")
 		return nil
@@ -468,9 +493,8 @@ func (p *Processor) embedNodes(ctx context.Context, nodes []*DocumentNode, embed
 
 	slog.Info("[processor] embedding nodes", "count", len(nodes))
 
-	// 批量嵌入以提高效率
-	// 注意：通义千问等部分 API 限制 batch size 最大为 10
-	batchSize := 10
+	// 批量嵌入以提高效率（每批段数由知识库配置；底层 Embedder 仍可能按供应商上限再拆分）
+	batchSize := NormalizeEmbeddingBatchSize(embedBatchSize)
 	storedCount := 0
 	for i := 0; i < len(nodes); i += batchSize {
 		end := i + batchSize
@@ -673,7 +697,7 @@ func tokenizeContent(content string) string {
 }
 
 // embedRaptorNodes embeds contents for raptor nodes (in-memory, no DB writes).
-func embedRaptorNodes(ctx context.Context, nodes []*raptor.DocumentNode, embedder embedding.Embedder, onProgress func(int)) error {
+func embedRaptorNodes(ctx context.Context, nodes []*raptor.DocumentNode, embedder embedding.Embedder, onProgress func(int), embedBatchSize int) error {
 	if len(nodes) == 0 {
 		return nil
 	}
@@ -681,7 +705,7 @@ func embedRaptorNodes(ctx context.Context, nodes []*raptor.DocumentNode, embedde
 		return errors.New("embedder is nil")
 	}
 
-	batchSize := 10
+	batchSize := NormalizeEmbeddingBatchSize(embedBatchSize)
 	for i := 0; i < len(nodes); i += batchSize {
 		end := i + batchSize
 		if end > len(nodes) {
@@ -832,11 +856,17 @@ func GetLibraryConfig(ctx context.Context, db *bun.DB, libraryID int64) (*Librar
 	var config LibraryConfig
 	err := db.NewSelect().
 		TableExpr("library").
-		Column("id", "chunk_size", "chunk_overlap", "semantic_segmentation_enabled", "raptor_llm_provider_id", "raptor_llm_model_id").
+		Column("id", "chunk_size", "chunk_overlap", "semantic_segmentation_enabled", "raptor_llm_provider_id", "raptor_llm_model_id", "batch_max_documents", "batch_max_chunks").
 		Where("id = ?", libraryID).
 		Scan(ctx, &config)
 	if err != nil {
 		return nil, err
+	}
+	if config.BatchMaxDocuments < 1 || config.BatchMaxDocuments > 5 {
+		config.BatchMaxDocuments = 3
+	}
+	if config.BatchMaxChunks < 1 || config.BatchMaxChunks > 20 {
+		config.BatchMaxChunks = 3
 	}
 	return &config, nil
 }

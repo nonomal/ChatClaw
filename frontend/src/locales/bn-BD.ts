@@ -1169,6 +1169,9 @@ export default {
       name: "বিভিন্ন নলেজ বেস আলাদা করতে নাম (সর্বোচ্চ 30 অক্ষর)।",
       chunkSize: "চাঙ্কের আকার (অক্ষরে, 500~5000)। বড় চাঙ্ক বেশি সম্পূর্ণ কনটেক্সট দেয়, তবে অনুসন্ধানের সূক্ষ্মতা কমায়।",
       chunkOverlap: "পাশাপাশি চাঙ্কের ওভারল্যাপ সাইজ (অক্ষরে, 0~1000), তথ্য হারানো কমাতে।",
+      batchMaxDocuments:
+        "For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.",
+      batchMaxChunks: "Maximum number of segments per embedding request during learning. Range: 1~20.",
       matchThreshold: "এই থ্রেশহোল্ডের কম মিল ফিল্টার হবে (0~1)।",
       embeddingModel: "টেক্সট ভেক্টরে রূপান্তর করতে ব্যবহৃত এম্বেডিং মডেল।",
       embeddingDimension: "এম্বেডিং ভেক্টর ডাইমেনশন নির্বাচিত মডেলের আউটপুটের সাথে মিলতে হবে।",
@@ -1265,6 +1268,8 @@ export default {
       noRaptorLLM: "নিষ্ক্রিয়",
       chunkSize: "চাঙ্ক সাইজ",
       chunkOverlap: "ওভারল্যাপ সাইজ",
+      batchMaxDocuments: "Max documents per batch",
+      batchMaxChunks: "Max segments per embedding batch",
       matchThreshold: "ম্যাথ থ্রেশহোল্ড",
       advancedWarning: "চাঙ্ক সাইজ এবং ওভারল্যাপের পরিবর্তন শুধু নতুন যোগ করা কনটেন্টে প্রযোজ্য।",
       cancel: "বাতিল",

@@ -1278,6 +1278,9 @@ export default {
       embeddingDimension: "Embedding vector dimension must match the selected model output.",
       chunkOverlap: "Overlap size between adjacent chunks (in characters, 0~1000), to reduce information loss from cross-chunk sentence breaks.",
       chunkSize: "Chunk size (in characters, 500~5000). Larger chunks give more complete context but coarser retrieval granularity.",
+      batchMaxDocuments:
+        "For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.",
+      batchMaxChunks: "Maximum number of segments per embedding request during learning. Range: 1~20.",
     },
     tabs: {
       personal: "Personal",
@@ -1371,6 +1374,8 @@ export default {
       noRaptorLLM: "Disabled",
       chunkSize: "Chunk size",
       chunkOverlap: "Overlap size",
+      batchMaxDocuments: "Max documents per batch",
+      batchMaxChunks: "Max segments per embedding batch",
       matchThreshold: "Match threshold",
       advancedWarning: "Changes to chunk size and overlap only apply to newly added content",
       cancel: "Cancel",

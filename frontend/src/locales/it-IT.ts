@@ -1168,6 +1168,9 @@ export default {
       name: "Nome della knowledge base, usato per distinguere diverse knowledge base (max 30 caratteri).",
       chunkSize: "Dimensione del frammento (in caratteri, 500~5000). Frammenti piu grandi offrono un contesto piu completo ma una granularita di recupero piu grossolana.",
       chunkOverlap: "Dimensione della sovrapposizione tra frammenti adiacenti (in caratteri, 0~1000), per ridurre la perdita di informazioni dovuta all'interruzione delle frasi tra i frammenti.",
+      batchMaxDocuments:
+        "For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.",
+      batchMaxChunks: "Maximum number of segments per embedding request during learning. Range: 1~20.",
       matchThreshold: "I risultati con similarita inferiore a questa soglia verranno filtrati (0~1).",
       embeddingModel: "Modello embedding usato per convertire testo in vettori.",
       embeddingDimension: "La dimensione del vettore di embedding deve corrispondere all'output del modello selezionato.",
@@ -1264,6 +1267,8 @@ export default {
       noRaptorLLM: "Non attivato",
       chunkSize: "Dimensione frammento",
       chunkOverlap: "Sovrapposizione",
+      batchMaxDocuments: "Max documents per batch",
+      batchMaxChunks: "Max segments per embedding batch",
       matchThreshold: "Soglia corrispondenza",
       advancedWarning: "Le modifiche a dimensione e sovrapposizione dei frammenti si applicano solo ai contenuti aggiunti di recente",
       cancel: "Annulla",

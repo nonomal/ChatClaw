@@ -1172,6 +1172,9 @@ export default {
       name: "異なるナレッジベースを区別するための名前（最大 30 文字）",
       chunkSize: "チャンクサイズ（文字数、500〜5000）。大きいほど文脈は豊富になりますが、検索粒度は粗くなります",
       chunkOverlap: "隣接チャンク間の重なりサイズ（文字数、0〜1000）。チャンク境界での情報損失を減らします",
+      batchMaxDocuments:
+        "例: 3 にすると、10 件アップロード時に 3 件ずつ 4 回に分けて処理します。設定範囲は 1〜5 です。",
+      batchMaxChunks: "学習時の埋め込みで、1 回のリクエストに含める最大セグメント数です。設定範囲は 1〜20 です。",
       matchThreshold: "このしきい値より低い類似度の結果は除外されます（0〜1）",
       embeddingModel: "テキストをベクトルへ変換するために使う埋め込みモデルです",
       embeddingDimension: "埋め込みベクトルの次元は選択したモデルの出力と一致する必要があります",
@@ -1268,6 +1271,8 @@ export default {
       noRaptorLLM: "無効",
       chunkSize: "チャンクサイズ",
       chunkOverlap: "重なりサイズ",
+      batchMaxDocuments: "1 回あたりの最大ドキュメント数",
+      batchMaxChunks: "1 回あたりの最大セグメント数",
       matchThreshold: "一致しきい値",
       advancedWarning: "チャンクサイズや重なりの変更は新しく追加されたコンテンツにのみ適用されます",
       cancel: "キャンセル",

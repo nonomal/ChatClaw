@@ -1222,6 +1222,9 @@ export default {
       name: "서로 다른 지식베이스를 구분하는 이름 (최대 30자).",
       chunkSize: "청크 크기(문자 수, 500~5000)입니다. 더 큰 청크는 더 완전한 문맥을 제공하지만 검색 세분성은 떨어집니다",
       chunkOverlap: "인접 청크 간 중첩 크기 (문자 수, 0~1000) 정보 손실을 줄이기 위함.",
+      batchMaxDocuments:
+        "예: 3으로 설정하면 문서 10개를 업로드할 때 한 번에 3개씩, 총 4번에 나누어 처리합니다. 허용 범위: 1~5.",
+      batchMaxChunks: "학습 임베딩 단계에서 한 번의 요청에 포함할 수 있는 최대 분할(세그먼트) 수입니다. 허용 범위: 1~20.",
       matchThreshold: "이 임계값보다 낮은 유사도의 결과는 필터링됩니다 (0~1).",
       embeddingModel: "텍스트를 벡터로 변환하는 데 사용되는 임베딩 모델.",
       embeddingDimension: "임베딩 벡터 차원은 선택한 모델의 출력과 일치해야 합니다.",
@@ -1346,6 +1349,8 @@ export default {
       noRaptorLLM: "비활성화",
       chunkSize: "청크 크기",
       chunkOverlap: "중첩 크기",
+      batchMaxDocuments: "한 번에 처리할 최대 문서 수",
+      batchMaxChunks: "한 번에 처리할 최대 분할 수",
       matchThreshold: "일치 임계값",
       advancedWarning: "청크 크기 및 중첩 크기 변경은 새로 추가된 콘텐츠에만 적용됩니다",
       cancel: "취소",

@@ -1167,6 +1167,9 @@ export default {
       name: "Ein Name um verschiedene Wissensdatenbanken zu unterscheiden (max 30 Zeichen).",
       chunkSize: "Textblockgroesse (in Zeichen, 500~5000). Groessere Bloecke liefern vollstaendigeren Kontext, aber grobere Retrieval-Granularitaet.",
       chunkOverlap: "Ueberlappungsgroesse zwischen benachbarten Textbloecken (in Zeichen, 0~1000), um Informationsverlust durch Blockgrenzen zu verringern.",
+      batchMaxDocuments:
+        "For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.",
+      batchMaxChunks: "Maximum number of segments per embedding request during learning. Range: 1~20.",
       matchThreshold: "Ergebnisse mit einer Aehnlichkeit unter diesem Schwellenwert werden gefiltert (0~1).",
       embeddingModel: "Embedding-Modell zur Umwandlung von Text in Vektoren.",
       embeddingDimension: "Die Vektor dimension muss mit der Ausgabe des ausgewählten Modells übereinstimmen.",
@@ -1263,6 +1266,8 @@ export default {
       noRaptorLLM: "Deaktiviert",
       chunkSize: "Chunk-Größe",
       chunkOverlap: "Überlappungsgröße",
+      batchMaxDocuments: "Max documents per batch",
+      batchMaxChunks: "Max segments per embedding batch",
       matchThreshold: "Match-Schwellenwert",
       advancedWarning: "Aenderungen an Blockgroesse und Ueberlappung gelten nur fuer neu hinzugefuegte Inhalte",
       cancel: "Abbrechen",

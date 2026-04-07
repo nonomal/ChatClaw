@@ -239,5 +239,7 @@
   "error.whatsapp_qr_not_found": "Could not read a QR code from the OpenClaw CLI output. Update OpenClaw or try again.",
   "error.whatsapp_qr_timeout": "Timed out waiting for a WhatsApp QR code from OpenClaw.",
   "error.whatsapp_login_failed": "WhatsApp login session is missing or invalid.",
-  "error.whatsapp_login_timeout": "WhatsApp QR login timed out. Please scan the code within the time limit."
+  "error.whatsapp_login_timeout": "WhatsApp QR login timed out. Please scan the code within the time limit.",
+  "error.library_batch_max_documents_invalid": "Ungultige max. Dokumentenanzahl pro Stapel (1~5)",
+  "error.library_batch_max_chunks_invalid": "Ungultige max. Segmentanzahl pro Stapel (1~20)"
 }
