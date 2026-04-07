@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"chatclaw/internal/define"
@@ -51,6 +53,22 @@ type ProcessJobData struct {
 	RunID     string `json:"run_id"`
 }
 
+// docProcessSem prevents concurrent processDocument runs for the same document when
+// duplicate jobs exist (e.g. crash recovery + startup re-queue).
+var docProcessSem sync.Map // int64 -> *int32 (0 = free, 1 = held)
+
+func acquireDocProcessSlot(docID int64) (release func()) {
+	v, _ := docProcessSem.LoadOrStore(docID, new(int32))
+	c := v.(*int32)
+	if !atomic.CompareAndSwapInt32(c, 0, 1) {
+		return nil
+	}
+	return func() {
+		atomic.StoreInt32(c, 0)
+		docProcessSem.Delete(docID)
+	}
+}
+
 // DocumentService 文档服务（暴露给前端调用）
 type DocumentService struct {
 	app *application.App
@@ -65,6 +83,14 @@ func NewDocumentService(app *application.App) *DocumentService {
 func (s *DocumentService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
 	s.registerTaskHandlers()
 	taskmanager.Get().Start()
+	// Re-queue document jobs that were left incomplete: the goqite runner deletes
+	// queue messages when the handler returns nil, so graceful shutdown removes the
+	// job while DB rows may still show "processing".
+	go func() {
+		rctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		s.resumeInterruptedDocumentJobs(rctx)
+	}()
 	// Warm up tokenizer in background to avoid first-call latency (e.g. gse dict load).
 	go func() {
 		_ = tokenizer.TokenizeName("warmup.txt")
@@ -112,6 +138,35 @@ func (s *DocumentService) registerTaskHandlers() {
 		s.reembedDocument(jobData.DocID, jobData.LibraryID, jobData.RunID, info)
 		return nil
 	})
+}
+
+// resumeInterruptedDocumentJobs submits process jobs for documents that are not in a
+// terminal success state (both parsing and embedding completed) and not failed.
+func (s *DocumentService) resumeInterruptedDocumentJobs(ctx context.Context) {
+	db, err := s.db()
+	if err != nil {
+		return
+	}
+	var models []documentModel
+	err = db.NewSelect().
+		Model(&models).
+		Where("NOT (parsing_status = ? AND embedding_status = ?)", StatusCompleted, StatusCompleted).
+		Where("parsing_status != ?", StatusFailed).
+		Where("embedding_status != ?", StatusFailed).
+		Scan(ctx)
+	if err != nil {
+		s.app.Logger.Error("resume interrupted document jobs: query failed", "error", err)
+		return
+	}
+	n := 0
+	for i := range models {
+		d := models[i].toDTO()
+		s.startProcessingTask(&d)
+		n++
+	}
+	if n > 0 {
+		s.app.Logger.Info("resumed document processing after startup", "count", n)
+	}
 }
 
 func (s *DocumentService) db() (*bun.DB, error) {
@@ -1201,6 +1256,12 @@ func (s *DocumentService) generateThumbnail(docID, libraryID int64, localPath st
 
 // processDocument 处理文档（解析 + 分段 + 向量化 + RAPTOR）
 func (s *DocumentService) processDocument(jobCtx context.Context, docID, libraryID int64, runID string, info *taskmanager.TaskInfo) {
+	release := acquireDocProcessSlot(docID)
+	if release == nil {
+		return
+	}
+	defer release()
+
 	tm := taskmanager.Get()
 	db, err := s.db()
 	if err != nil {
@@ -1273,6 +1334,11 @@ func (s *DocumentService) processDocument(jobCtx context.Context, docID, library
 	}
 	// Skip stale jobs (e.g. after restart or "relearn" created a new run)
 	if runID != "" && doc.ProcessingRunID != "" && runID != doc.ProcessingRunID {
+		return
+	}
+
+	// Duplicate queue job after successful completion (e.g. crash recovery + startup re-queue).
+	if doc.ParsingStatus == StatusCompleted && doc.EmbeddingStatus == StatusCompleted {
 		return
 	}
 
