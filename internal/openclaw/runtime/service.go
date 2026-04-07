@@ -65,6 +65,24 @@ func (s *OpenClawRuntimeService) SetAutoStart(v bool) {
 	}
 }
 
+// SetSystemMode is called by the frontend to notify the backend of the current
+// system mode ('openclaw' or 'chatclaw'). When the mode is 'openclaw' and the
+// runtime is available and AutoStart is enabled, the gateway is started.
+func (s *OpenClawRuntimeService) SetSystemMode(isOpenClawMode bool) {
+	s.manager.SetSystemMode(isOpenClawMode)
+	// Auto-start the gateway immediately when switching to openclaw mode.
+	// Start() already handles the initial case; this handles subsequent mode switches.
+	if isOpenClawMode && s.manager.store.Get().AutoStart {
+		s.manager.mu.RLock()
+		running := s.manager.process != nil
+		phase := s.manager.status.Phase
+		s.manager.mu.RUnlock()
+		if !running || phase == PhaseError || phase == PhaseIdle {
+			go func() { _ = s.manager.reconcile(false) }()
+		}
+	}
+}
+
 func (s *OpenClawRuntimeService) UpgradeRuntime() (*RuntimeUpgradeResult, error) {
 	return s.manager.UpgradeRuntime()
 }
@@ -90,6 +108,12 @@ func (s *OpenClawRuntimeService) GetDashboardURL() string {
 // IsDevMode returns true when the application is running in development mode.
 func (s *OpenClawRuntimeService) IsDevMode() bool {
 	return define.IsDev()
+}
+
+// IsRuntimeAvailable checks whether a valid OpenClaw runtime is present.
+// This is a fast pre-check that does not verify the CLI binary or open a port.
+func (s *OpenClawRuntimeService) IsRuntimeAvailable() bool {
+	return IsOpenClawRuntimeAvailable()
 }
 
 // PortOccupiedResult contains information about port occupation status.

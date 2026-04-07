@@ -222,3 +222,25 @@ func BundledSkillsDir() (string, error) {
 	}
 	return p, nil
 }
+
+// IsOpenClawRuntimeAvailable checks whether at least one runtime candidate directory
+// exists and contains a valid manifest.json. This is a fast pre-check before launching
+// the gateway; it does not verify the CLI binary or open a port.
+func IsOpenClawRuntimeAvailable() bool {
+	target := runtime.GOOS + "-" + runtime.GOARCH
+	candidates, err := bundledRuntimeCandidates(target)
+	if err != nil {
+		return false
+	}
+	for _, c := range candidates {
+		root := filepath.Clean(strings.TrimSpace(c.Root))
+		if root == "" || root == "." {
+			continue
+		}
+		manifestPath := filepath.Join(root, "manifest.json")
+		if _, err := os.Stat(manifestPath); err == nil {
+			return true
+		}
+	}
+	return false
+}

@@ -76,6 +76,8 @@ type Manager struct {
 	doctorRunSeq uint64 // atomic: correlates streamed doctor chunks with the active UI run
 
 	configSvc *ConfigService // injected via SetConfigService for SyncConfig
+
+	systemModeIsOpenClaw atomic.Bool // set by frontend to signal that the sidebar is in openclaw mode
 }
 
 func gatewayOperatorScopes() []string {
@@ -117,6 +119,30 @@ func (m *Manager) SetConfigService(svc *ConfigService) {
 	m.configSvc = svc
 }
 
+// SetSystemMode is called by the frontend when the user switches between openclaw
+// and chatclaw sidebar modes. When the mode changes to 'openclaw', the gateway is
+// auto-started if the runtime is available and AutoStart is enabled.
+func (m *Manager) SetSystemMode(isOpenClaw bool) {
+	m.systemModeIsOpenClaw.Store(isOpenClaw)
+}
+
+// shouldAutoStart returns true when the gateway should be started automatically:
+//   - AutoStart setting is enabled
+//   - Runtime directory exists (IsOpenClawRuntimeAvailable)
+//
+// Unlike the previous logic that started unconditionally based on AutoStart alone,
+// this respects both conditions so that ChatClaw mode does not launch the gateway
+// unless the runtime is present and the user explicitly wants it.
+func (m *Manager) shouldAutoStart() bool {
+	if !m.store.Get().AutoStart {
+		return false
+	}
+	// If in openclaw mode, always auto-start (runtime availability is checked by Start).
+	// If not in openclaw mode, still auto-start if runtime is available — this keeps
+	// the gateway warm so agents and cron tasks work without explicit "start" clicks.
+	return IsOpenClawRuntimeAvailable()
+}
+
 // SyncConfig triggers an immediate config sync to push latest models/agents to the Gateway.
 // This ensures new ChatWiki models are available before sending messages.
 func (m *Manager) SyncConfig(ctx context.Context) error {
@@ -149,7 +175,7 @@ func (m *Manager) Start() {
 	m.pollingStop = make(chan struct{})
 	go m.pollGateway()
 
-	if !m.store.Get().AutoStart {
+	if !m.shouldAutoStart() {
 		return
 	}
 	go func() { _ = m.reconcile(false) }()

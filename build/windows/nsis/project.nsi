@@ -107,6 +107,16 @@ Section
     
     !insertmacro wails.files
 
+    ; Bundled toolchain bin directory (build/windows/bin) for full installer.
+    ; Contains uv.exe, bun.exe, codex.exe, npx.exe, etc. The toolchain service detects
+    ; these at <exeDir>/build/windows/bin so the user can run them without re-downloading.
+    !ifdef BUNDLE_OPENCLAW
+        CreateDirectory "$INSTDIR\build\windows\bin"
+        SetOutPath "$INSTDIR\build\windows\bin"
+        File /nonfatal /r "..\..\..\build\windows\bin\*.*"
+        DetailPrint "Bundled toolchain binaries installed to build\windows\bin"
+    !endif
+
     ; OpenClaw bundled CLI: must live under $INSTDIR\rt\<windows-amd64|windows-arm64> (embedded path in internal/openclaw/runtime/bundle.go).
     ; Packaged as a .zip in the installer: NSIS registers only one File entry for the zip (vs thousands of individual files
     ; if File /r were used). Extract with Windows tar.exe (bsdtar): much faster than PowerShell Expand-Archive on huge
@@ -156,6 +166,9 @@ Section "uninstall"
     ; Wipe rt\ in one OS call (fast; avoids NSIS RMDir walking node_modules with per-file log lines). Zip-based installs add no per-file rt Deletes.
     ; Note: brief cmd window possible; PowerShell Remove-Item line breaks NSIS ExecWait parsing (-Recurse/-Force split into extra args).
     ExecWait 'cmd /c if exist "$INSTDIR\rt" rd /s /q "$INSTDIR\rt"'
+    ; Wipe bundled toolchain bin directory (build\windows\bin).
+    ExecWait 'cmd /c if exist "$INSTDIR\build\windows\bin" rd /s /q "$INSTDIR\build\windows\bin"'
+    ExecWait 'cmd /c if exist "$INSTDIR\build\windows" rd /s /q "$INSTDIR\build\windows"'
 
     RMDir /r $INSTDIR
 
