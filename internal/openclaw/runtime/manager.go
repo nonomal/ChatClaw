@@ -919,6 +919,9 @@ func (m *Manager) closeClient() {
 // approvePendingDevices runs the OpenClaw CLI to list pending pairing requests
 // and auto-approves them. This avoids the HTTP API issue where the gateway's
 // REST endpoint (/) returns an HTML redirect instead of JSON.
+//
+// Actual JSON structure observed from openclaw CLI --json:
+//   { "pending": [{ "requestId": "...", "deviceId": "...", "displayName": "ChatClaw", ... }], "paired": [...] }
 func (m *Manager) approvePendingDevices() {
 	if !m.pendingPairApproval.CompareAndSwap(false, true) {
 		return
@@ -928,47 +931,60 @@ func (m *Manager) approvePendingDevices() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// First list pending requests to see what's waiting.
+	// Step 1: devices list --json
 	listOut, err := m.ExecCLI(ctx, "devices", "list", "--json")
 	if err != nil {
 		m.app.Logger.Warn("openclaw: approve: devices list failed", "error", err, "output", string(listOut))
 		return
 	}
 
-	// Parse the list output to find pending request IDs.
+	// Step 2: parse the confirmed structure { pending: [{ requestId, deviceId, displayName, ... }], paired: [...] }
 	var listResult struct {
-		Requests []struct {
-			ID          string `json:"id"`
+		Pending []struct {
+			RequestID   string `json:"requestId"`
+			DeviceID    string `json:"deviceId"`
 			DisplayName string `json:"displayName"`
-			Status      string `json:"status"`
-		} `json:"requests"`
+		} `json:"pending"`
 	}
 	if err := json.Unmarshal(listOut, &listResult); err != nil {
-		m.app.Logger.Warn("openclaw: approve: decode devices list failed", "error", err)
+		m.app.Logger.Warn("openclaw: approve: decode devices list failed", "error", err, "output", strings.TrimSpace(string(listOut)))
 		return
 	}
 
-	hasPending := false
-	for _, r := range listResult.Requests {
-		if strings.EqualFold(r.Status, "pending") {
-			hasPending = true
-			break
-		}
-	}
-
-	if !hasPending {
+	if len(listResult.Pending) == 0 {
 		m.app.Logger.Info("openclaw: approve: no pending devices found, skipping")
 		return
 	}
 
-	// Approve the most recent pending request.
+	for _, r := range listResult.Pending {
+		m.app.Logger.Info("openclaw: approve: found pending request",
+			"requestId", r.RequestID, "deviceId", r.DeviceID, "displayName", r.DisplayName)
+	}
+
+	// Step 3: approve --latest (gateway auto-selects the most recent pending request)
 	m.app.Logger.Info("openclaw: approve: auto-approving latest pending device via CLI")
 	approveOut, err := m.ExecCLI(ctx, "devices", "approve", "--latest", "--json")
 	if err != nil {
-		m.app.Logger.Warn("openclaw: approve: CLI approve failed", "error", err, "output", string(approveOut))
+		m.app.Logger.Warn("openclaw: approve: CLI approve failed", "error", err, "output", strings.TrimSpace(string(approveOut)))
 		return
 	}
-	m.app.Logger.Info("openclaw: approve: device approved via CLI", "output", string(approveOut))
+
+	// Verify approve succeeded by checking for approvedAtMs in response.
+	var approveResult struct {
+		RequestID string `json:"requestId"`
+		Device    struct {
+			DeviceID    string `json:"deviceId"`
+			ApprovedAtMs int64  `json:"approvedAtMs"`
+		} `json:"device"`
+	}
+	if err := json.Unmarshal(approveOut, &approveResult); err == nil && approveResult.Device.ApprovedAtMs > 0 {
+		m.app.Logger.Info("openclaw: approve: device approved successfully",
+			"requestId", approveResult.RequestID,
+			"deviceId", approveResult.Device.DeviceID,
+			"approvedAtMs", approveResult.Device.ApprovedAtMs)
+	} else {
+		m.app.Logger.Info("openclaw: approve: device approved via CLI", "output", strings.TrimSpace(string(approveOut)))
+	}
 }
 
 // reconnectClient only reconnects WebSocket, does not touch the process.
