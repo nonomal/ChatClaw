@@ -35,6 +35,21 @@ Unicode true
 ## Include the wails tools
 ####
 !include "wails_tools.nsh"
+!include "LogicLib.nsh"
+
+; Same as wails.writeUninstaller but without ${GetSize}. Wails' macro calls FileFunc GetSize on
+; $INSTDIR, which walks every file (opens each for size), DetailPrints Size/Files/Folders, and
+; is very slow when OpenClaw runtime has tens of thousands of files. EstimatedSize in registry is optional.
+!macro chatclaw.writeUninstaller
+    WriteUninstaller "$INSTDIR\uninstall.exe"
+
+    WriteRegStr HKCU "${UNINST_KEY}" "Publisher" "${INFO_COMPANYNAME}"
+    WriteRegStr HKCU "${UNINST_KEY}" "DisplayName" "${INFO_PRODUCTNAME}"
+    WriteRegStr HKCU "${UNINST_KEY}" "DisplayVersion" "${INFO_PRODUCTVERSION}"
+    WriteRegStr HKCU "${UNINST_KEY}" "DisplayIcon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    WriteRegStr HKCU "${UNINST_KEY}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
+    WriteRegStr HKCU "${UNINST_KEY}" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
+!macroend
 
 ; When -DBUNDLE_OPENCLAW=1 is passed by makensis, !ifdef BUNDLE_OPENCLAW evaluates true.
 !ifdef BUNDLE_OPENCLAW
@@ -123,41 +138,15 @@ Section
     ; trees with many small files (e.g. node_modules). Zip layout must be flat: archive root = contents of windows-<arch>/
     ; (bin/, manifest.json, node_modules/, ...), not a nested windows-<arch>/ folder (matches Compress-Archive ...\target\*).
    !ifdef ARG_OPENCLAW_RUNTIME
-        CreateDirectory "$INSTDIR\rt"
         CreateDirectory "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}"
         SetOutPath "$INSTDIR\rt"
         File "${ARG_OPENCLAW_RUNTIME}"
-        
-        DetailPrint "Extracting OpenClaw runtime..."
-        SetDetailsPrint listonly
-        
-        ; Decompress in background
+
+        DetailPrint "Extracting OpenClaw runtime (may take 10-30 seconds, please wait)..."
         nsExec::ExecToStack 'tar -xf "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}.zip" -C "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}"'
-        
-         ; show anim
-        StrCpy $1 0
-        anim_loop:
-            nsExec::ExecToStack 'tasklist | find /I "tar.exe"'
-            Pop $0
-            ${If} $0 == 0
-                IntOp $1 $1 + 1
-                ${If} $1 == 1
-                    DetailPrint "Extracting."
-                ${ElseIf} $1 == 2
-                    DetailPrint "Extracting.."
-                ${ElseIf} $1 == 3
-                    DetailPrint "Extracting..."
-                    StrCpy $1 0
-                ${EndIf}
-                Sleep 500
-                Goto anim_loop
-            ${EndIf}
-    
-        
         Delete "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}.zip"
-        DetailPrint "Extraction complete!"
-        SetDetailsPrint both
-    !endif
+        DetailPrint "OpenClaw runtime extracted."
+   !endif
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
@@ -173,7 +162,7 @@ Section
     WriteRegStr SHELL_CONTEXT "Software\Classes\chatclaw\shell\open" "" ""
     WriteRegStr SHELL_CONTEXT "Software\Classes\chatclaw\shell\open\command" "" "$\"$INSTDIR\${PRODUCT_EXECUTABLE}$\" $\"%1$\""
 
-    !insertmacro wails.writeUninstaller
+    !insertmacro chatclaw.writeUninstaller
 SectionEnd
 
 Section "uninstall" 
@@ -185,16 +174,12 @@ Section "uninstall"
     Sleep 500
 
     DetailPrint "Removing application data..."
-    nsExec::ExecToStack 'rd /s /q "$LOCALAPPDATA\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}\WebView2" 2>nul'
-    nsExec::ExecToStack 'rd /s /q "$LOCALAPPDATA\${INFO_PRODUCTNAME}" 2>nul'
+    nsExec::ExecToLog 'cmd /s /c "if exist "$LOCALAPPDATA\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}" rd /s /q "$LOCALAPPDATA\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}""'
 
     DetailPrint "Removing installation directory..."
-    
-    ; Only delete directories containing many small files
-    nsExec::ExecToStack 'rd /s /q "$INSTDIR\rt" 2>nul'
-    nsExec::ExecToStack 'rd /s /q "$INSTDIR\build" 2>nul'
-    
-    ; Delete main executable
+    ; Delete subtrees that don't contain uninstall.exe (rd /s /q is faster than PowerShell Remove-Item).
+    nsExec::ExecToLog 'cmd /s /c "if exist "$INSTDIR\rt" rd /s /q "$INSTDIR\rt""'
+    nsExec::ExecToLog 'cmd /s /c "if exist "$INSTDIR\build" rd /s /q "$INSTDIR\build""'
     Delete "$INSTDIR\${PRODUCT_EXECUTABLE}"
 
     DetailPrint "Cleaning up..."
@@ -206,4 +191,5 @@ Section "uninstall"
     DeleteRegKey SHELL_CONTEXT "Software\Classes\chatclaw"
 
     !insertmacro wails.deleteUninstaller
+    RMDir "$INSTDIR"
 SectionEnd
