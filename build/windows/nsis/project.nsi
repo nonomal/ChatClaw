@@ -100,9 +100,6 @@ FunctionEnd
 
 Section
     !insertmacro wails.setShellContext
-    
-    ; 禁用文件级别的进度显示（不统计每个文件）
-    SetDetailsPrint none
 
     !insertmacro wails.webview2runtime
 
@@ -134,23 +131,28 @@ Section
         DetailPrint "Extracting OpenClaw runtime..."
         SetDetailsPrint listonly
         
-        ; 在后台解压
+        ; Decompress in background
         nsExec::ExecToStack 'tar -xf "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}.zip" -C "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}"'
         
-        ; 显示动态点
+         ; show anim
         StrCpy $1 0
-        ${While} ${ProcessExists} "tar.exe"
-            IntOp $1 $1 + 1
-            ${If} $1 == 1
-                DetailPrint "Extracting."
-            ${ElseIf} $1 == 2
-                DetailPrint "Extracting.."
-            ${ElseIf} $1 == 3
-                DetailPrint "Extracting..."
-                StrCpy $1 0
+        anim_loop:
+            nsExec::ExecToStack 'tasklist | find /I "tar.exe"'
+            Pop $0
+            ${If} $0 == 0
+                IntOp $1 $1 + 1
+                ${If} $1 == 1
+                    DetailPrint "Extracting."
+                ${ElseIf} $1 == 2
+                    DetailPrint "Extracting.."
+                ${ElseIf} $1 == 3
+                    DetailPrint "Extracting..."
+                    StrCpy $1 0
+                ${EndIf}
+                Sleep 500
+                Goto anim_loop
             ${EndIf}
-            Sleep 500
-        ${EndWhile}
+    
         
         Delete "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}.zip"
         DetailPrint "Extraction complete!"
@@ -187,7 +189,13 @@ Section "uninstall"
     nsExec::ExecToStack 'rd /s /q "$LOCALAPPDATA\${INFO_PRODUCTNAME}" 2>nul'
 
     DetailPrint "Removing installation directory..."
-    nsExec::ExecToStack 'rd /s /q "$INSTDIR" 2>nul'
+    
+    ; Only delete directories containing many small files
+    nsExec::ExecToStack 'rd /s /q "$INSTDIR\rt" 2>nul'
+    nsExec::ExecToStack 'rd /s /q "$INSTDIR\build" 2>nul'
+    
+    ; Delete main executable
+    Delete "$INSTDIR\${PRODUCT_EXECUTABLE}"
 
     DetailPrint "Cleaning up..."
     Delete "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk"
