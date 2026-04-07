@@ -14,11 +14,11 @@ import { toast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
 import { LibraryService, MoveFolderInput } from '@bindings/chatclaw/internal/services/library'
 import type { Folder } from '@bindings/chatclaw/internal/services/library'
-import { cn } from '@/lib/utils'
 
 const props = defineProps<{
   open: boolean
-  folder: Folder | null
+  /** One or more folders to move to the same target parent. */
+  foldersToMove: Folder[]
   folders: Folder[]
 }>()
 
@@ -54,7 +54,9 @@ const folderIndex = computed(() => {
   return index
 })
 
-// 检查文件夹是否是目标文件夹或其子文件夹（避免循环引用）
+const movingIds = computed(() => new Set(props.foldersToMove.map((f) => f.id)))
+
+// Check whether folderId is targetId or a descendant of targetId (walk up from folderId).
 const isDescendantOf = (folderId: number, targetId: number): boolean => {
   if (folderId === targetId) return true
   const item = folderIndex.value.get(folderId)
@@ -116,7 +118,7 @@ const breadcrumbs = computed<Crumb[]>(() => {
 })
 
 const listFolders = computed<Folder[]>(() => {
-  if (!props.folder) return []
+  if (props.foldersToMove.length === 0) return []
 
   let folders: Folder[] = []
   if (location.value.kind === 'folder') {
@@ -125,26 +127,38 @@ const listFolders = computed<Folder[]>(() => {
     folders = props.folders
   }
 
-  // 过滤掉要移动的文件夹本身及其子文件夹
   return folders.filter((f) => {
-    if (!props.folder) return true
-    return !isDescendantOf(f.id, props.folder.id)
+    if (movingIds.value.has(f.id)) return false
+    for (const m of props.foldersToMove) {
+      if (isDescendantOf(f.id, m.id)) return false
+    }
+    return true
   })
 })
 
 const canMoveHere = computed(() => {
-  if (!props.folder || moving.value) return false
+  if (props.foldersToMove.length === 0 || moving.value) return false
   if (location.value.kind === 'root') return true
 
-  // 检查目标文件夹不是要移动的文件夹本身或其子文件夹
   if (location.value.kind === 'folder') {
-    return !isDescendantOf(location.value.id, props.folder.id)
+    const targetId = location.value.id
+    for (const m of props.foldersToMove) {
+      if (targetId === m.id) return false
+      if (isDescendantOf(targetId, m.id)) return false
+    }
+    return true
   }
 
   return false
 })
 
 const close = () => emit('update:open', false)
+
+const dialogTitle = computed(() => {
+  const n = props.foldersToMove.length
+  if (n > 1) return t('knowledge.folder.move.titleBatch', { count: n })
+  return t('knowledge.folder.move.title')
+})
 
 watch(
   () => props.open,
@@ -156,7 +170,7 @@ watch(
 )
 
 const handleMove = async () => {
-  if (!props.folder || moving.value) return
+  if (props.foldersToMove.length === 0 || moving.value) return
   if (!canMoveHere.value) return
 
   moving.value = true
@@ -168,14 +182,19 @@ const handleMove = async () => {
       parentID = null
     }
 
-    await LibraryService.MoveFolder(
-      new MoveFolderInput({
-        id: props.folder.id,
-        parent_id: parentID,
-      })
-    )
+    for (const folder of props.foldersToMove) {
+      await LibraryService.MoveFolder(
+        new MoveFolderInput({
+          id: folder.id,
+          parent_id: parentID,
+        })
+      )
+    }
     emit('moved')
-    toast.success(t('knowledge.folder.move.success'))
+    const n = props.foldersToMove.length
+    toast.success(
+      n > 1 ? t('knowledge.folder.move.successBatch', { count: n }) : t('knowledge.folder.move.success')
+    )
     close()
   } catch (error) {
     console.error('Failed to move folder:', error)
@@ -187,10 +206,10 @@ const handleMove = async () => {
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="close">
+  <Dialog :open="open" @update:open="(v) => emit('update:open', v)">
     <DialogContent size="md">
       <DialogHeader>
-        <DialogTitle>{{ t('knowledge.folder.move.title') }}</DialogTitle>
+        <DialogTitle>{{ dialogTitle }}</DialogTitle>
       </DialogHeader>
 
       <div class="flex flex-col gap-4 py-4">

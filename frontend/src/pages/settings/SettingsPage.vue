@@ -98,9 +98,7 @@ const currentComponent = computed(() => menuComponents[settingsStore.activeMenu]
         v-if="currentComponent"
         class="w-full min-w-0"
         :class="
-          settingsStore.activeMenu === 'openclawRuntime'
-            ? 'mx-auto max-w-[88%] px-6 sm:px-8'
-            : ''
+          settingsStore.activeMenu === 'openclawRuntime' ? 'mx-auto max-w-[88%] px-6 sm:px-8' : ''
         "
       >
         <component

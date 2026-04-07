@@ -22,7 +22,8 @@ import { cn } from '@/lib/utils'
 
 const props = defineProps<{
   open: boolean
-  document: Document | null
+  /** One or more documents to move to the chosen folder. */
+  documents: Document[]
   folders: Folder[]
 }>()
 
@@ -150,7 +151,7 @@ watch(
 )
 
 const handleMove = async () => {
-  if (!props.document || moving.value) return
+  if (!props.documents.length || moving.value) return
   if (location.value.kind === 'root') return
   moving.value = true
   try {
@@ -161,14 +162,21 @@ const handleMove = async () => {
       folderID = null
     }
 
-    await LibraryService.MoveDocumentToFolder(
-      new MoveDocumentToFolderInput({
-        document_id: props.document.id,
-        folder_id: folderID,
-      })
-    )
+    for (const doc of props.documents) {
+      await LibraryService.MoveDocumentToFolder(
+        new MoveDocumentToFolderInput({
+          document_id: doc.id,
+          folder_id: folderID,
+        })
+      )
+    }
     emit('moved')
-    toast.success(t('knowledge.content.moveToFolder.success'))
+    const n = props.documents.length
+    toast.success(
+      n > 1
+        ? t('knowledge.content.moveToFolder.successBatch', { count: n })
+        : t('knowledge.content.moveToFolder.success')
+    )
     close()
   } catch (error) {
     console.error('Failed to move document:', error)

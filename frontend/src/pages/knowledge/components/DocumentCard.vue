@@ -1,15 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  MoreHorizontal,
-  FileText,
-  Check,
-  XCircle,
-  AlertTriangle,
-  RefreshCw,
-  FolderPlus,
-} from 'lucide-vue-next'
+import { MoreHorizontal, FileText, AlertTriangle, RefreshCw, FolderPlus } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -21,6 +13,10 @@ import {
 import IconRename from '@/assets/icons/library-rename.svg'
 import IconDelete from '@/assets/icons/library-delete.svg'
 import IconDocumentCover from '@/assets/icons/document-cover.svg'
+import IconWait from '@/assets/icons/wait-icon.svg'
+import IconWarn from '@/assets/icons/warn-icon.svg'
+import checkboxIconUrl from '@/assets/icons/checkbox-icon.svg?url'
+import checkedIconUrl from '@/assets/icons/checked-icon.svg?url'
 import { getFileTypeIconUrl } from '@/lib/fileTypeIconUrls'
 import { DocumentService } from '@bindings/chatclaw/internal/services/document'
 import { toast } from '@/components/ui/toast'
@@ -45,10 +41,16 @@ export interface Document {
   fileMissing?: boolean // 原始文件是否丢失
 }
 
-const props = defineProps<{
-  document: Document
-  isSearching?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    document: Document
+    isSearching?: boolean
+    selected?: boolean
+    /** When > 0 and this card is selected, the overflow menu is batch-only (relearn / move / delete). */
+    selectedCount?: number
+  }>(),
+  { selected: false, selectedCount: 0 }
+)
 
 const emit = defineEmits<{
   (e: 'rename', doc: Document): void
@@ -58,7 +60,15 @@ const emit = defineEmits<{
   (e: 'detail', doc: Document): void
   (e: 'view', doc: Document): void
   (e: 'navigate-to-folder', doc: Document): void
+  (e: 'toggle-select', doc: Document): void
+  (e: 'batch-relearn'): void
+  (e: 'batch-move-to-folder'): void
+  (e: 'batch-delete'): void
 }>()
+
+const showBatchActions = computed(
+  () => props.selected && props.selectedCount > 0
+)
 
 const { t } = useI18n()
 
@@ -76,12 +86,11 @@ const statusConfig = computed(() => {
     case 'completed':
       return {
         label: '',
-        icon: Check,
-        class:
-          'size-5 rounded-full bg-black/70 text-white shadow-sm dark:bg-white/15 dark:text-white',
-        iconClass: 'text-white',
-        iconOnly: true,
-        show: true,
+        icon: null,
+        class: '',
+        iconClass: '',
+        iconOnly: false,
+        show: false,
       }
     case 'parsing':
       return {
@@ -106,20 +115,21 @@ const statusConfig = computed(() => {
     case 'failed':
       return {
         label: t('knowledge.content.status.failed'),
-        icon: XCircle,
-        // 浅背景 + 边框 + 深色文字，表示失败/警告
-        class: 'bg-background/90 text-foreground/70 ring-1 ring-foreground/20',
-        iconClass: 'text-foreground/50',
+        icon: IconWarn,
+        // 半透明黑底 + 白字，表示进行中
+        class: 'bg-black/50 text-white dark:bg-white/15 dark:text-white/90',
+        iconClass: '',
         iconOnly: false,
         show: true,
       }
     case 'pending':
       return {
         label: t('knowledge.content.status.pending'),
-        icon: null,
-        // 浅背景 + 边框，表示待处理
-        class: 'bg-background/90 text-foreground/60 ring-1 ring-foreground/10',
-        iconClass: '',
+        icon: IconWait,
+        // 半透明黑底 + 白字，表示进行中
+        class: 'bg-black/50 text-white dark:bg-white/15 dark:text-white/90',
+        // IconWait uses a 1024 viewBox with inner padding; scale up to match IconWarn (14×14 artboard)
+        iconClass: 'origin-center scale-[1.40]',
         iconOnly: false,
         show: true,
       }
@@ -242,18 +252,27 @@ const handleCardClick = () => {
 
 <template>
   <div
-    class="group relative flex h-[182px] w-[166px] cursor-pointer flex-col border border-border bg-card shadow-sm transition-[box-shadow] hover:shadow-sm dark:border-white/15 dark:shadow-none dark:ring-1 dark:ring-white/5 dark:hover:ring-white/10"
+    :class="
+      cn(
+        'group relative flex h-[182px] w-[166px] cursor-pointer flex-col rounded-[12px] border border-border bg-card shadow-sm transition-[box-shadow,background-color] hover:bg-[#F5F5F5] hover:shadow-sm dark:border-white/15 dark:shadow-none dark:ring-1 dark:ring-white/5 dark:hover:bg-white/5 dark:hover:ring-white/10',
+        selected && 'bg-[#F5F5F5] dark:bg-white/5 dark:ring-white/10'
+      )
+    "
     @click="handleCardClick"
   >
     <!-- Thumbnail area: 6px radius per design, muted bg #f2f4f7 -->
     <div
-      class="relative mx-2 mt-2 h-[86px] w-[150px] overflow-hidden border border-border bg-[#f2f4f7] dark:bg-muted"
+      class="relative mx-2 mt-2 h-[86px] w-[150px] overflow-hidden rounded-[6px] border border-border bg-[#f2f4f7] dark:bg-muted"
     >
       <img
         v-if="document.thumbIcon"
         :src="document.thumbIcon"
-        class="size-full object-contain"
-        :class="{ 'opacity-50': document.fileMissing }"
+        class="size-full object-center"
+        :class="{
+          'object-cover': document.status === 'completed',
+          'object-contain': document.status !== 'completed',
+          'opacity-50': document.fileMissing,
+        }"
         alt=""
       />
       <div v-else class="absolute inset-0 flex items-center justify-center">
@@ -304,7 +323,9 @@ const handleCardClick = () => {
         <component
           :is="statusConfig.icon"
           v-if="statusConfig.icon"
-          :class="cn(statusConfig.iconOnly ? 'size-4' : 'size-3.5', statusConfig.iconClass)"
+          :class="
+            cn(statusConfig.iconOnly ? 'size-4' : 'size-3.5', 'shrink-0', statusConfig.iconClass)
+          "
         />
         {{ statusConfig.label }}
       </div>
@@ -324,55 +345,107 @@ const handleCardClick = () => {
       </div>
     </Teleport>
 
-    <!-- Hover menu -->
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        class="absolute right-2 top-2 flex size-6 items-center justify-center bg-background/80 text-muted-foreground opacity-0 backdrop-blur-sm transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100"
-        @click.stop
+    <!-- Selection + hover menu (visible on hover or when selected) -->
+    <div
+      :class="
+        cn(
+          'absolute right-2 top-2 z-10 flex items-center gap-1 transition-opacity',
+          selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        )
+      "
+    >
+      <button
+        type="button"
+        :class="
+          cn(
+            'flex size-6 shrink-0 items-center justify-center overflow-visible rounded-[6px] text-white outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/40',
+            selected && 'bg-[#404040] hover:bg-[#404040]'
+          )
+        "
+        :aria-pressed="selected"
+        @click.stop="emit('toggle-select', document)"
       >
-        <MoreHorizontal class="size-4" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" class="w-auto min-w-fit">
-        <DropdownMenuItem class="gap-2 whitespace-nowrap" @select="emit('detail', document)">
-          <FileText class="size-4 text-muted-foreground" />
-          {{ t('knowledge.detail.title') }}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem class="gap-2 whitespace-nowrap" @select="emit('rename', document)">
-          <IconRename class="size-4 text-muted-foreground" />
-          {{ t('knowledge.content.menu.rename') }}
-        </DropdownMenuItem>
-        <DropdownMenuItem class="gap-2 whitespace-nowrap" @select="emit('relearn', document)">
-          <RefreshCw class="size-4 text-muted-foreground" />
-          {{ t('knowledge.content.menu.relearn') }}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          class="gap-2 whitespace-nowrap"
-          @select="emit('move-to-folder', document)"
-        >
-          <FolderPlus class="size-4 text-muted-foreground" />
-          {{ t('knowledge.content.moveToFolder.title') }}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          v-if="isSearching && document.folderId !== null && document.folderId !== undefined"
-          class="gap-2 whitespace-nowrap"
-          @select="emit('navigate-to-folder', document)"
-        >
-          <FolderPlus class="size-4 text-muted-foreground" />
-          {{ t('knowledge.content.navigateToFolder') }}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator
-          v-if="isSearching && document.folderId !== null && document.folderId !== undefined"
+        <img
+          v-if="!selected"
+          :src="checkboxIconUrl"
+          alt=""
+          class="size-6 shrink-0 origin-center scale-[1.18] object-contain pointer-events-none select-none"
         />
-        <DropdownMenuItem
-          class="gap-2 whitespace-nowrap text-muted-foreground focus:text-foreground"
-          @select="emit('delete', document)"
+        <img
+          v-else
+          :src="checkedIconUrl"
+          alt=""
+          class="size-6 shrink-0 object-contain pointer-events-none select-none"
+        />
+      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          class="flex size-6 items-center justify-center rounded-[6px] bg-black/25 text-white/90 outline-none transition-colors hover:bg-black/35 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40"
+          @click.stop
         >
-          <IconDelete class="size-4" />
-          {{ t('knowledge.content.menu.delete') }}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <MoreHorizontal class="size-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" class="w-auto min-w-fit">
+          <template v-if="showBatchActions">
+            <DropdownMenuItem class="gap-2 whitespace-nowrap" @select="emit('batch-relearn')">
+              <RefreshCw class="size-4 text-muted-foreground" />
+              {{ t('knowledge.content.menu.relearn') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem class="gap-2 whitespace-nowrap" @select="emit('batch-move-to-folder')">
+              <FolderPlus class="size-4 text-muted-foreground" />
+              {{ t('knowledge.content.moveToFolder.title') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              class="gap-2 whitespace-nowrap text-muted-foreground focus:text-foreground"
+              @select="emit('batch-delete')"
+            >
+              <IconDelete class="size-4" />
+              {{ t('knowledge.content.menu.delete') }}
+            </DropdownMenuItem>
+          </template>
+          <template v-else>
+            <DropdownMenuItem class="gap-2 whitespace-nowrap" @select="emit('detail', document)">
+              <FileText class="size-4 text-muted-foreground" />
+              {{ t('knowledge.detail.title') }}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem class="gap-2 whitespace-nowrap" @select="emit('rename', document)">
+              <IconRename class="size-4 text-muted-foreground" />
+              {{ t('knowledge.content.menu.rename') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem class="gap-2 whitespace-nowrap" @select="emit('relearn', document)">
+              <RefreshCw class="size-4 text-muted-foreground" />
+              {{ t('knowledge.content.menu.relearn') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              class="gap-2 whitespace-nowrap"
+              @select="emit('move-to-folder', document)"
+            >
+              <FolderPlus class="size-4 text-muted-foreground" />
+              {{ t('knowledge.content.moveToFolder.title') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              v-if="isSearching && document.folderId !== null && document.folderId !== undefined"
+              class="gap-2 whitespace-nowrap"
+              @select="emit('navigate-to-folder', document)"
+            >
+              <FolderPlus class="size-4 text-muted-foreground" />
+              {{ t('knowledge.content.navigateToFolder') }}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator
+              v-if="isSearching && document.folderId !== null && document.folderId !== undefined"
+            />
+            <DropdownMenuItem
+              class="gap-2 whitespace-nowrap text-muted-foreground focus:text-foreground"
+              @select="emit('delete', document)"
+            >
+              <IconDelete class="size-4" />
+              {{ t('knowledge.content.menu.delete') }}
+            </DropdownMenuItem>
+          </template>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
 
     <!-- Title: 14px / 22px line-height per design -->
     <p

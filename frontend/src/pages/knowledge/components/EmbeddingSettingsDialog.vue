@@ -67,9 +67,7 @@ const TEXT_EMBEDDING_V3_DIMENSION = '1024'
 
 const getDefaultEmbeddingDimension = (selectedKey: string) => {
   const [, modelId] = selectedKey.split('::')
-  return modelId === 'text-embedding-v3'
-    ? TEXT_EMBEDDING_V3_DIMENSION
-    : DEFAULT_EMBEDDING_DIMENSION
+  return modelId === 'text-embedding-v3' ? TEXT_EMBEDDING_V3_DIMENSION : DEFAULT_EMBEDDING_DIMENSION
 }
 
 const getEmbeddingModelLabel = (providerId: string, model: Model) => {
@@ -325,8 +323,7 @@ const handleSave = async () => {
                   :class="
                     [
                       'flex items-center gap-1.5',
-                      g.provider.provider_id === 'chatwiki' &&
-                      chatwikiAvailability === 'unbound'
+                      g.provider.provider_id === 'chatwiki' && chatwikiAvailability === 'unbound'
                         ? 'justify-between gap-2 pr-1'
                         : '',
                     ].filter(Boolean)
@@ -348,7 +345,9 @@ const handleSave = async () => {
                     </span>
                   </span>
                   <button
-                    v-if="g.provider.provider_id === 'chatwiki' && chatwikiAvailability === 'unbound'"
+                    v-if="
+                      g.provider.provider_id === 'chatwiki' && chatwikiAvailability === 'unbound'
+                    "
                     type="button"
                     class="shrink-0 border-0 bg-transparent p-0 text-xs font-medium text-[color:var(--color-blue-600)] underline-offset-2 hover:underline hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     @click.stop="goToChatwikiLogin"

@@ -528,7 +528,12 @@ const handleDelete = async () => {
                       @click="handlePickIcon"
                     >
                       <img v-if="icon" :src="icon" class="size-icon-lg rounded-md object-contain" />
-                      <img v-else :src="openclawDefaultAvatar" class="size-icon-lg" alt="ChatClaw logo" />
+                      <img
+                        v-else
+                        :src="openclawDefaultAvatar"
+                        class="size-icon-lg"
+                        alt="ChatClaw logo"
+                      />
                     </button>
                     <div class="text-xs text-muted-foreground">
                       {{ t('assistant.icon.hint') }}
@@ -768,7 +773,11 @@ const handleDelete = async () => {
                       class="max-h-[250px] overflow-y-auto rounded-md border border-border bg-background p-3"
                     >
                       <div class="flex flex-col gap-4">
-                        <div v-for="section in builtinToolSections" :key="section.id" class="space-y-2">
+                        <div
+                          v-for="section in builtinToolSections"
+                          :key="section.id"
+                          class="space-y-2"
+                        >
                           <div
                             class="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground"
                           >

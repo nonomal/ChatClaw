@@ -219,12 +219,7 @@ const handleAssistantChange = (value: unknown) => {
                 :src="activeAgent.icon"
                 class="size-4 rounded object-contain"
               />
-              <img
-                v-else
-                :src="openclawIconUrl"
-                class="size-4 rounded object-contain"
-                alt=""
-              />
+              <img v-else :src="openclawIconUrl" class="size-4 rounded object-contain" alt="" />
               <span class="truncate">{{ activeAgent.name }}</span>
             </div>
             <span v-else class="text-muted-foreground">{{
@@ -239,12 +234,7 @@ const handleAssistantChange = (value: unknown) => {
                 class="size-4 rounded object-contain"
                 alt=""
               />
-              <img
-                v-else
-                :src="openclawIconUrl"
-                class="size-4 rounded object-contain"
-                alt=""
-              />
+              <img v-else :src="openclawIconUrl" class="size-4 rounded object-contain" alt="" />
               <span class="truncate">{{ activeTeamRobot.name }}</span>
             </div>
             <span v-else class="text-muted-foreground">{{
@@ -259,12 +249,7 @@ const handleAssistantChange = (value: unknown) => {
               <SelectItem v-for="a in agents" :key="a.id" :value="a.id.toString()">
                 <div class="flex items-center gap-2">
                   <img v-if="a.icon" :src="a.icon" class="size-4 rounded object-contain" />
-                  <img
-                    v-else
-                    :src="openclawIconUrl"
-                    class="size-4 rounded object-contain"
-                    alt=""
-                  />
+                  <img v-else :src="openclawIconUrl" class="size-4 rounded object-contain" alt="" />
                   <span>{{ a.name }}</span>
                 </div>
               </SelectItem>
@@ -273,12 +258,7 @@ const handleAssistantChange = (value: unknown) => {
               <SelectItem v-for="r in teamRobots" :key="r.id" :value="r.id">
                 <div class="flex items-center gap-2">
                   <img v-if="r.icon" :src="r.icon" class="size-4 rounded object-contain" alt="" />
-                  <img
-                    v-else
-                    :src="openclawIconUrl"
-                    class="size-4 rounded object-contain"
-                    alt=""
-                  />
+                  <img v-else :src="openclawIconUrl" class="size-4 rounded object-contain" alt="" />
                   <span>{{ r.name }}</span>
                 </div>
               </SelectItem>

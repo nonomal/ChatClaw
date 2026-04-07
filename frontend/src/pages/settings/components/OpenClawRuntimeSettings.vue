@@ -97,9 +97,7 @@ const isGatewayStartingUi = computed(
 
 // 网关是否处于停止状态（idle 或未连接）
 const isGatewayStopped = computed(
-  () =>
-    gatewayStore.visualStatus === GatewayVisualStatus.Stop ||
-    status.value.phase === 'idle'
+  () => gatewayStore.visualStatus === GatewayVisualStatus.Stop || status.value.phase === 'idle'
 )
 
 function syncGatewayStore() {
@@ -242,8 +240,7 @@ const handleStop = async () => {
         t('settings.openclawRuntime.portStillOccupiedAfterStopHint', {
           port: portStatus.port,
           pid: portStatus.pid,
-        }) +
-          ` (${processName})`
+        }) + ` (${processName})`
       )
     }
 
@@ -340,181 +337,186 @@ onMounted(() => {
           : 'flex w-full flex-col gap-6'
       "
     >
-    <SettingsCard :title="t('settings.openclawRuntime.title')" fullWidth>
-      <template #header-right />
+      <SettingsCard :title="t('settings.openclawRuntime.title')" full-width>
+        <template #header-right />
 
-      <!-- Gateway status row: badge + restart -->
-      <div
-        class="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4 dark:border-white/10"
-      >
-        <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          <span class="shrink-0 text-sm text-foreground">
-            {{ t('settings.openclawRuntime.gatewayStatusLabel') }}
-          </span>
-          <span class="inline-flex min-w-0 items-center gap-1.5">
-            <span :class="badgeClass">
-              {{ badgeText }}
+        <!-- Gateway status row: badge + restart -->
+        <div
+          class="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4 dark:border-white/10"
+        >
+          <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <span class="shrink-0 text-sm text-foreground">
+              {{ t('settings.openclawRuntime.gatewayStatusLabel') }}
             </span>
-            <Loader2
-              v-if="isGatewayStartingUi"
-              :class="
-                cn(
-                  'size-3.5 shrink-0 animate-spin',
-                  gatewaySidebarTagLoaderClass[gatewayStore.visualStatus]
-                )
-              "
+            <span class="inline-flex min-w-0 items-center gap-1.5">
+              <span :class="badgeClass">
+                {{ badgeText }}
+              </span>
+              <Loader2
+                v-if="isGatewayStartingUi"
+                :class="
+                  cn(
+                    'size-3.5 shrink-0 animate-spin',
+                    gatewaySidebarTagLoaderClass[gatewayStore.visualStatus]
+                  )
+                "
+              />
+            </span>
+          </div>
+          <div class="flex shrink-0 flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              :disabled="stopping || restarting || upgrading"
+              @click="handleStop"
+            >
+              <Square v-if="!stopping" class="mr-1.5 size-3.5" />
+              <Loader2 v-else class="mr-1.5 size-3.5 animate-spin" />
+              {{ t('settings.openclawRuntime.stop') }}
+            </Button>
+            <Button
+              v-if="isGatewayStopped"
+              size="sm"
+              variant="outline"
+              :disabled="restarting || upgrading || isTransitioning"
+              @click="handleStart"
+            >
+              <Loader2 v-if="restarting" class="mr-1.5 size-3.5 animate-spin" />
+              {{
+                restarting
+                  ? t('settings.openclawRuntime.starting')
+                  : t('settings.openclawRuntime.start')
+              }}
+            </Button>
+            <Button
+              v-else
+              size="sm"
+              variant="outline"
+              :disabled="restarting || upgrading || isTransitioning"
+              @click="handleRestart"
+            >
+              <RefreshCw v-if="!restarting" class="mr-1.5 size-3.5" />
+              <Loader2 v-else class="mr-1.5 size-3.5 animate-spin" />
+              {{ t('settings.openclawRuntime.restart') }}
+            </Button>
+          </div>
+        </div>
+
+        <!-- Gateway connection -->
+        <div
+          class="flex items-center justify-between border-b border-border p-4 dark:border-white/10"
+        >
+          <span class="shrink-0 text-sm text-foreground">
+            {{ t('settings.openclawRuntime.gatewayConnection') }}
+          </span>
+          <span class="text-sm text-muted-foreground">{{ gatewayConnectionLabel }}</span>
+        </div>
+
+        <!-- Gateway URL -->
+        <div
+          class="flex items-center justify-between border-b border-border p-4 dark:border-white/10"
+        >
+          <span class="shrink-0 text-sm text-foreground">
+            {{ t('settings.openclawRuntime.gatewayEndpoint') }}
+          </span>
+          <span class="break-all font-mono text-sm text-muted-foreground">{{
+            displayGatewayURL
+          }}</span>
+        </div>
+
+        <!-- Version -->
+        <div
+          class="flex items-center justify-between border-b border-border p-4 dark:border-white/10"
+        >
+          <span class="shrink-0 text-sm text-foreground">
+            {{ t('settings.openclawRuntime.version') }}
+          </span>
+          <span class="text-sm text-muted-foreground">{{ displayVersion }}</span>
+        </div>
+
+        <!-- Runtime source -->
+        <div
+          class="flex items-center justify-between border-b border-border p-4 dark:border-white/10"
+        >
+          <span class="shrink-0 text-sm text-foreground">
+            {{ t('settings.openclawRuntime.runtimeSource') }}
+          </span>
+          <span class="text-sm text-muted-foreground">{{ displayRuntimeSource }}</span>
+        </div>
+
+        <!-- Runtime path -->
+        <div
+          class="flex items-start justify-between border-b border-border p-4 dark:border-white/10"
+        >
+          <span class="shrink-0 whitespace-nowrap pt-0.5 text-sm font-medium text-foreground">
+            {{ t('settings.openclawRuntime.runtimePath') }}
+          </span>
+          <div class="min-w-0 flex-1 pl-6 text-right">
+            <span class="block break-all font-mono text-sm text-muted-foreground">
+              {{ displayRuntimePath }}
+            </span>
+          </div>
+        </div>
+
+        <div
+          v-if="status.message && status.phase === 'error'"
+          class="border-t border-border px-4 py-3 dark:border-white/10"
+        >
+          <p class="text-xs text-muted-foreground">{{ status.message }}</p>
+        </div>
+
+        <div
+          v-if="showUpgradeProgress"
+          class="border-t border-border px-4 py-3 dark:border-white/10"
+        >
+          <div class="mb-2 flex items-center justify-between">
+            <span class="text-xs font-medium text-foreground">
+              {{ t('settings.openclawRuntime.upgradeProgress') }}
+            </span>
+            <span class="text-xs text-muted-foreground">{{ upgradeProgress }}%</span>
+          </div>
+          <div class="h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              class="h-full bg-primary transition-all duration-300"
+              :style="{ width: upgradeProgress + '%' }"
             />
-          </span>
+          </div>
+          <p class="mt-2 text-xs text-muted-foreground">{{ status.message }}</p>
         </div>
-        <div class="flex shrink-0 flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            :disabled="stopping || restarting || upgrading"
-            @click="handleStop"
-          >
-            <Square v-if="!stopping" class="mr-1.5 size-3.5" />
-            <Loader2 v-else class="mr-1.5 size-3.5 animate-spin" />
-            {{ t('settings.openclawRuntime.stop') }}
-          </Button>
-          <Button
-            v-if="isGatewayStopped"
-            size="sm"
-            variant="outline"
-            :disabled="restarting || upgrading || isTransitioning"
-            @click="handleStart"
-          >
-            <Loader2 v-if="restarting" class="mr-1.5 size-3.5 animate-spin" />
-            {{ restarting ? t('settings.openclawRuntime.starting') : t('settings.openclawRuntime.start') }}
-          </Button>
-          <Button
-            v-else
-            size="sm"
-            variant="outline"
-            :disabled="restarting || upgrading || isTransitioning"
-            @click="handleRestart"
-          >
-            <RefreshCw v-if="!restarting" class="mr-1.5 size-3.5" />
-            <Loader2 v-else class="mr-1.5 size-3.5 animate-spin" />
-            {{ t('settings.openclawRuntime.restart') }}
-          </Button>
-        </div>
-      </div>
 
-      <!-- Gateway connection -->
-      <div
-        class="flex items-center justify-between border-b border-border p-4 dark:border-white/10"
-      >
-        <span class="shrink-0 text-sm text-foreground">
-          {{ t('settings.openclawRuntime.gatewayConnection') }}
-        </span>
-        <span class="text-sm text-muted-foreground">{{ gatewayConnectionLabel }}</span>
-      </div>
-
-      <!-- Gateway URL -->
-      <div
-        class="flex items-center justify-between border-b border-border p-4 dark:border-white/10"
-      >
-        <span class="shrink-0 text-sm text-foreground">
-          {{ t('settings.openclawRuntime.gatewayEndpoint') }}
-        </span>
-        <span class="break-all font-mono text-sm text-muted-foreground">{{ displayGatewayURL }}</span>
-      </div>
-
-      <!-- Version -->
-      <div
-        class="flex items-center justify-between border-b border-border p-4 dark:border-white/10"
-      >
-        <span class="shrink-0 text-sm text-foreground">
-          {{ t('settings.openclawRuntime.version') }}
-        </span>
-        <span class="text-sm text-muted-foreground">{{ displayVersion }}</span>
-      </div>
-
-      <!-- Runtime source -->
-      <div
-        class="flex items-center justify-between border-b border-border p-4 dark:border-white/10"
-      >
-        <span class="shrink-0 text-sm text-foreground">
-          {{ t('settings.openclawRuntime.runtimeSource') }}
-        </span>
-        <span class="text-sm text-muted-foreground">{{ displayRuntimeSource }}</span>
-      </div>
-
-      <!-- Runtime path -->
-      <div
-        class="flex items-start justify-between border-b border-border p-4 dark:border-white/10"
-      >
-        <span class="shrink-0 whitespace-nowrap pt-0.5 text-sm font-medium text-foreground">
-          {{ t('settings.openclawRuntime.runtimePath') }}
-        </span>
-        <div class="min-w-0 flex-1 pl-6 text-right">
-          <span class="block break-all font-mono text-sm text-muted-foreground">
-            {{ displayRuntimePath }}
-          </span>
-        </div>
-      </div>
-
-      <div
-        v-if="status.message && status.phase === 'error'"
-        class="border-t border-border px-4 py-3 dark:border-white/10"
-      >
-        <p class="text-xs text-muted-foreground">{{ status.message }}</p>
-      </div>
-
-      <div
-        v-if="showUpgradeProgress"
-        class="border-t border-border px-4 py-3 dark:border-white/10"
-      >
-        <div class="mb-2 flex items-center justify-between">
-          <span class="text-xs font-medium text-foreground">
-            {{ t('settings.openclawRuntime.upgradeProgress') }}
-          </span>
-          <span class="text-xs text-muted-foreground">{{ upgradeProgress }}%</span>
-        </div>
-        <div class="h-2 overflow-hidden rounded-full bg-muted">
-          <div
-            class="h-full bg-primary transition-all duration-300"
-            :style="{ width: upgradeProgress + '%' }"
-          />
-        </div>
-        <p class="mt-2 text-xs text-muted-foreground">{{ status.message }}</p>
-      </div>
-
-      <!-- Bottom actions: upgrade + open console (Figma) -->
-      <div class="flex flex-col gap-3 border-t border-border p-4 sm:flex-row dark:border-white/10">
-        <Button
-          class="min-h-10 flex-1"
-          variant="outline"
-          :disabled="
-            upgrading ||
-              restarting ||
-              !status.installedVersion ||
-              status.phase === 'upgrading'
-          "
-          @click="handleUpgrade"
+        <!-- Bottom actions: upgrade + open console (Figma) -->
+        <div
+          class="flex flex-col gap-3 border-t border-border p-4 sm:flex-row dark:border-white/10"
         >
-          <Download v-if="!upgrading" class="mr-1.5 size-3.5" />
-          <Loader2 v-else class="mr-1.5 size-3.5 animate-spin" />
-          {{
-            upgrading
-              ? t('settings.openclawRuntime.upgrading')
-              : t('settings.openclawRuntime.upgradeButton')
-          }}
-        </Button>
-        <Button
-          class="min-h-10 flex-1"
-          variant="outline"
-          :disabled="!isActive"
-          @click="handleOpenDashboard"
-        >
-          <ExternalLink class="mr-1.5 size-3.5" />
-          {{ t('settings.openclawRuntime.openDashboard') }}
-        </Button>
-      </div>
-    </SettingsCard>
+          <Button
+            class="min-h-10 flex-1"
+            variant="outline"
+            :disabled="
+              upgrading || restarting || !status.installedVersion || status.phase === 'upgrading'
+            "
+            @click="handleUpgrade"
+          >
+            <Download v-if="!upgrading" class="mr-1.5 size-3.5" />
+            <Loader2 v-else class="mr-1.5 size-3.5 animate-spin" />
+            {{
+              upgrading
+                ? t('settings.openclawRuntime.upgrading')
+                : t('settings.openclawRuntime.upgradeButton')
+            }}
+          </Button>
+          <Button
+            class="min-h-10 flex-1"
+            variant="outline"
+            :disabled="!isActive"
+            @click="handleOpenDashboard"
+          >
+            <ExternalLink class="mr-1.5 size-3.5" />
+            {{ t('settings.openclawRuntime.openDashboard') }}
+          </Button>
+        </div>
+      </SettingsCard>
 
-    <OpenClawDoctorConsole />
+      <OpenClawDoctorConsole />
     </div>
   </div>
 </template>

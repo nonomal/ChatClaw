@@ -301,7 +301,10 @@ async function handleOpenExternalLink(url: string) {
 
       <form class="px-6 pb-4" @submit.prevent="handleSave">
         <!-- Platform tip card -->
-        <div v-if="platformTipConfig" class="mt-4 rounded-lg border border-border bg-card px-4 py-3">
+        <div
+          v-if="platformTipConfig"
+          class="mt-4 rounded-lg border border-border bg-card px-4 py-3"
+        >
           <p class="text-sm font-medium text-[#0a0a0a] dark:text-foreground">
             {{ platformTipConfig.prefix }}
             <a

@@ -681,7 +681,9 @@ function getChannelCredentialDisplay(platform: string, extraConfig: string): str
     const config = JSON.parse(extraConfig || '{}')
     if (p === 'wechat' || p === 'whatsapp') {
       const aid =
-        typeof config.account_id === 'string' ? config.account_id.trim() : String(config.account_id || '').trim()
+        typeof config.account_id === 'string'
+          ? config.account_id.trim()
+          : String(config.account_id || '').trim()
       if (aid) return aid
     }
     const v =
@@ -847,7 +849,11 @@ watch(isTabActive, (active) => {
               : 'text-[#0a0a0a] hover:bg-white/50 dark:text-foreground dark:hover:bg-background/50',
             !isChannelPlatformSelectable(platform.id) ? 'opacity-50 cursor-not-allowed' : '',
           ]"
-          @click="isChannelPlatformSelectable(platform.id) ? (selectedFilter = platform.id) : toast.default(t('channels.comingSoon'))"
+          @click="
+            isChannelPlatformSelectable(platform.id)
+              ? (selectedFilter = platform.id)
+              : toast.default(t('channels.comingSoon'))
+          "
         >
           {{ getPlatformName(platform.id) }}
         </button>
@@ -952,9 +958,7 @@ watch(isTabActive, (active) => {
           </div>
 
           <!-- App / plugin account id (WeChat: account_id from ilink) -->
-          <p
-            class="min-w-0 truncate text-xs leading-5 text-[#8c8c8c] dark:text-muted-foreground"
-          >
+          <p class="min-w-0 truncate text-xs leading-5 text-[#8c8c8c] dark:text-muted-foreground">
             {{ getChannelCredentialLabel(channel.platform) }}:
             {{ getChannelCredentialDisplay(channel.platform, channel.extra_config) }}
           </p>
@@ -1054,16 +1058,12 @@ watch(isTabActive, (active) => {
         </div>
         <h3 class="text-base font-medium text-[#262626] dark:text-foreground">
           {{
-            selectedFilter === 'wecom'
-              ? t('channels.wecom.emptyTitle')
-              : t('channels.empty.title')
+            selectedFilter === 'wecom' ? t('channels.wecom.emptyTitle') : t('channels.empty.title')
           }}
         </h3>
         <p class="mt-2 max-w-sm text-sm text-[#737373] dark:text-muted-foreground">
           {{
-            selectedFilter === 'wecom'
-              ? t('channels.wecom.emptyDesc')
-              : t('channels.empty.desc')
+            selectedFilter === 'wecom' ? t('channels.wecom.emptyDesc') : t('channels.empty.desc')
           }}
         </p>
         <Button
