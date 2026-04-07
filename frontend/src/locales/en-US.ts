@@ -1323,6 +1323,10 @@ export default {
         'For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.',
       batchMaxChunks:
         'Maximum number of segments per embedding request during learning. Range: 1~20.',
+      semanticSegmentation:
+        'When enabled, documents are segmented by semantics before learning—better for long or structurally complex content.',
+      raptorLLMModel:
+        'LLM used to build hierarchical summaries; leave unset to disable.',
     },
     tabs: {
       personal: 'Personal',

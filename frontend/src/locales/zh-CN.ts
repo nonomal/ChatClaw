@@ -1181,6 +1181,9 @@ export default {
       matchThreshold: '相似度低于该阈值的结果将被过滤（0~1）。',
       embeddingModel: '用于将文本转换为向量的嵌入模型。',
       embeddingDimension: '嵌入向量维度需与所选模型的输出一致。',
+      semanticSegmentation:
+        '开启后，文档在学习前会按语义切分，更适合长文与结构复杂的内容。',
+      raptorLLMModel: '用于生成分层级摘要的语言模型；不选择即不启用该能力。',
     },
     tabs: {
       personal: '个人',
