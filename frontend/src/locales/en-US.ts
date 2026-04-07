@@ -339,6 +339,7 @@ export default {
         title: "OpenClaw Doctor",
         run: "Run",
         runAndFix: "Run & fix",
+        autoTriggered: "OpenClaw connection failed 3 times, running auto-fix diagnosis…",
         command: "Command",
         workingDir: "Working directory",
         stdout: "Standard output",

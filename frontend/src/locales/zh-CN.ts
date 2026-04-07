@@ -339,6 +339,7 @@ export default {
         title: "OpenClaw Doctor 诊断",
         run: "运行",
         runAndFix: "运行并修复",
+        autoTriggered: "OpenClaw 连接失败超过 3 次，正在自动运行诊断修复…",
         command: "命令",
         workingDir: "工作目录",
         stdout: "标准输出",

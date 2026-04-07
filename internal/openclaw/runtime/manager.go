@@ -61,6 +61,8 @@ type Manager struct {
 	shuttingDown      bool
 	reconnecting      atomic.Bool
 	pendingPairApproval atomic.Bool // set when NOT_PAIRED detected; cleared after approve succeeds or gives up
+	consecutiveFailures int         // resets on successful connect; triggers Doctor auto-fix at threshold
+	doctorTriggered    bool        // prevents repeated Doctor triggers for the same outage window
 	pollingStop       chan struct{} // closed when Manager is shut down; context for polling goroutine
 	pollingMu         sync.Mutex   // serialises pollClient and Shutdown to prevent stale-phase flash
 
@@ -464,7 +466,7 @@ func (m *Manager) reconcileLocked(restart bool) error {
 		GatewayURL:       gatewayURL(cfg.GatewayPort),
 	})
 
-	if err := ensureOpenClawStateDir(bundle); err != nil {
+	if err := ensureOpenClawStateDir(bundle, cfg.GatewayToken); err != nil {
 		return fail("ensureOpenClawStateDir", err, version, 0)
 	}
 
@@ -556,6 +558,8 @@ func (m *Manager) reconcileLocked(restart bool) error {
 		GatewayURL:       gatewayURL(cfg.GatewayPort),
 	})
 	m.broadcastGatewayState(GatewayConnectionState{Connected: true, Authenticated: true})
+	m.consecutiveFailures = 0
+	m.doctorTriggered = false
 	m.notifyReadyHooks()
 
 	return nil
@@ -1014,6 +1018,19 @@ func (m *Manager) reconnectClient() {
 			}
 		}
 		m.app.Logger.Warn("openclaw: WS reconnect failed", "error", err)
+		m.consecutiveFailures++
+		if m.consecutiveFailures >= 3 && !m.doctorTriggered {
+			m.doctorTriggered = true
+			m.app.Logger.Warn("openclaw: consecutive WS failures exceeded threshold, triggering doctor auto-fix")
+			m.broadcastGatewayState(GatewayConnectionState{
+				Connected:     false,
+				Authenticated: false,
+				Reconnecting:  true,
+				LastError:     err.Error(),
+			})
+			go m.runDoctorAutoFix()
+			return
+		}
 		m.broadcastGatewayState(GatewayConnectionState{
 			Connected:     false,
 			Authenticated: false,
@@ -1024,6 +1041,8 @@ func (m *Manager) reconnectClient() {
 	}
 
 connected:
+	m.consecutiveFailures = 0
+	m.doctorTriggered = false
 
 	m.mu.RLock()
 	pid := m.processPID
@@ -1366,6 +1385,36 @@ func (m *Manager) RegisterReadyHook(fn func()) {
 	m.readyHooks = append(m.readyHooks, fn)
 }
 
+// runDoctorAutoFix triggers "openclaw doctor --fix" and emits the trigger event
+// to the frontend so it can show the doctor console. It runs asynchronously
+// and does not block the reconnect loop.
+func (m *Manager) runDoctorAutoFix() {
+	if m.app != nil {
+		m.app.Event.Emit(EventTriggerDoctor, map[string]any{
+			"reason": "consecutive_ws_failures",
+		})
+	}
+
+	bundle, err := resolveBundledRuntime()
+	if err != nil {
+		m.app.Logger.Warn("openclaw: doctor auto-fix: no bundled runtime", "error", err)
+		return
+	}
+
+	m.app.Logger.Info("openclaw: running doctor auto-fix",
+		"runtime", bundle.Root)
+
+	// Run doctor --fix; output streams via EventDoctorOutput as normal.
+	_, runErr := m.RunDoctorCommand("doctor --fix --yes --non-interactive", true)
+	if runErr != nil {
+		m.app.Logger.Warn("openclaw: doctor auto-fix failed", "error", runErr)
+	}
+	// Reset trigger flag after doctor completes so future failure windows can re-trigger.
+	m.mu.Lock()
+	m.doctorTriggered = false
+	m.mu.Unlock()
+}
+
 // RunDoctorCommand executes an openclaw doctor command, streams stdout/stderr via EventDoctorOutput, and returns the final result.
 func (m *Manager) RunDoctorCommand(command string, fix bool) (*DoctorCommandResult, error) {
 	bundle, err := resolveBundledRuntime()
@@ -1526,7 +1575,7 @@ func verifyInstalled(bundle *bundledRuntime) (string, error) {
 // `openclaw config set` before gateway start — that pre-writes openclaw.json and races with
 // the gateway's own persistence of --auth/--token, causing repeated reload restarts; see
 // ResponsesEndpointSection + ConfigService.Sync instead.
-func ensureOpenClawStateDir(bundle *bundledRuntime) error {
+func ensureOpenClawStateDir(bundle *bundledRuntime, gatewayToken string) error {
 	if err := os.MkdirAll(bundle.StateDir, 0o700); err != nil {
 		return fmt.Errorf("create openclaw state dir: %w", err)
 	}
@@ -1538,8 +1587,8 @@ func ensureOpenClawStateDir(bundle *bundledRuntime) error {
 		// Log but don't fail — gateway startup may still work if config is OK.
 		log.Warn("openclaw: fix config version failed", "error", err, "config", bundle.ConfigPath)
 	}
-	// Ensure gateway auth config is present before boot so autoApprove takes effect.
-	if err := ensureGatewayAuthConfig(bundle.ConfigPath, log); err != nil {
+	// Ensure gateway auth config is present before boot so token auth takes effect.
+	if err := ensureGatewayAuthConfig(bundle.ConfigPath, gatewayToken, log); err != nil {
 		log.Warn("openclaw: ensure gateway auth config failed", "error", err, "config", bundle.ConfigPath)
 	}
 	return nil
@@ -1583,14 +1632,15 @@ func fixOpenClawConfigVersionIfNeeded(configPath, runtimeVersion string, log *sl
 	return nil
 }
 
-// ensureGatewayAuthConfig reads openclaw.json and ensures the gateway.auth section
-// contains the required auto-approve settings. This must run before the gateway
-// starts so the settings are present in the config file the gateway reads on boot.
-func ensureGatewayAuthConfig(configPath string, log *slog.Logger) error {
+// ensureGatewayAuthConfig ensures openclaw.json has the gateway.auth.mode set to "token".
+// Newer OpenClaw (2026.4+) removed "pairing" mode; token auth is the correct mode.
+// We only set the mode key, leaving token/tokenFrom values to be handled by the gateway
+// startup flags (--auth token --token <token>) so the token in openclaw.json is stable
+// and not re-generated on each startup.
+func ensureGatewayAuthConfig(configPath string, gatewayToken string, log *slog.Logger) error {
 	raw, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// No config file yet — the gateway will create one; auth defaults may suffice.
 			return nil
 		}
 		return fmt.Errorf("read config for auth patch: %w", err)
@@ -1606,17 +1656,30 @@ func ensureGatewayAuthConfig(configPath string, log *slog.Logger) error {
 		gw = map[string]any{}
 		cfg["gateway"] = gw
 	}
+
+	// OpenClaw 2026.4+ requires explicit gateway.mode.
+	if _, exists := gw["mode"]; !exists {
+		gw["mode"] = "local"
+	}
+
 	auth, _ := gw["auth"].(map[string]any)
 	if auth == nil {
 		auth = map[string]any{}
 		gw["auth"] = auth
 	}
 
-	// Always set these so a stale config (e.g. from a different auth mode) gets corrected.
-	auth["mode"] = "pairing"
-	auth["autoApprove"] = true
-	auth["localAutoApprove"] = true
-	auth["pairingTimeout"] = float64(300000) // JSON numbers are float64
+	// "token" is the only reliable mode in OpenClaw 2026.4+.
+	auth["mode"] = "token"
+	// Preserve an existing token so previously paired devices stay connected.
+	// Only write the ChatClaw token if the config has no token at all.
+	if _, exists := auth["token"]; !exists && gatewayToken != "" {
+		auth["token"] = gatewayToken
+	}
+
+	// Remove stale keys from older config versions so they don't cause validation errors.
+	delete(auth, "autoApprove")
+	delete(auth, "localAutoApprove")
+	delete(auth, "pairingTimeout")
 
 	out, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
@@ -1627,9 +1690,7 @@ func ensureGatewayAuthConfig(configPath string, log *slog.Logger) error {
 	}
 	log.Info("openclaw: gateway auth config written",
 		"config", configPath,
-		"mode", auth["mode"],
-		"autoApprove", auth["autoApprove"],
-		"localAutoApprove", auth["localAutoApprove"])
+		"mode", auth["mode"])
 	return nil
 }
 
