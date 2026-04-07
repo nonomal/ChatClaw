@@ -389,9 +389,28 @@ func collectModelCatalogItems(value any, keyHint string, catalog *ModelCatalog, 
 	}
 }
 
+func isLikelyNumericConfigRowID(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 func parseModelCatalogItem(item map[string]any, keyHint string) (ModelCatalogItem, bool) {
+	// Prefer real model identifiers over the numeric DB row id ("id"). ChatWiki often
+	// sends self_owned_model_config id as "id" while the OpenAI-compatible model id
+	// lives in uni_model_name + model_supplier (same as settings UI getModelPrimaryName).
 	modelID := firstNonEmptyString(item,
-		"model_name", "modelName", "name", "model", "model_id", "modelId", "id",
+		"uni_model_name", "uniModelName", "universal_model_name", "universalModelName",
+		"normalized_model_name", "normalizedModelName",
+		"model_name", "modelName", "name", "model", "model_id", "modelId",
+		"id",
 	)
 	if modelID == "" {
 		return ModelCatalogItem{}, false
@@ -444,6 +463,26 @@ func parseModelCatalogItem(item map[string]any, keyHint string) (ModelCatalogIte
 		}
 		if modelSupportsFile(item) {
 			capabilities = appendCapability(capabilities, "file")
+		}
+	}
+
+	if isLikelyNumericConfigRowID(modelID) {
+		if modelSupplier != "" && uniModelName != "" {
+			modelID = modelSupplier + "/" + uniModelName
+		} else if uniModelName != "" {
+			modelID = uniModelName
+		}
+	} else if modelSupplier != "" && uniModelName != "" &&
+		strings.TrimSpace(modelID) == strings.TrimSpace(uniModelName) &&
+		!strings.Contains(modelID, "/") {
+		// Dashboard uses qualified ids (e.g. tongyi/qwen-plus); uni alone may be qwen-plus.
+		modelID = modelSupplier + "/" + uniModelName
+	}
+	if isLikelyNumericConfigRowID(strings.TrimSpace(name)) {
+		if uniModelName != "" {
+			name = uniModelName
+		} else if !isLikelyNumericConfigRowID(modelID) {
+			name = modelID
 		}
 	}
 
