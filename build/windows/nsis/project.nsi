@@ -100,6 +100,9 @@ FunctionEnd
 
 Section
     !insertmacro wails.setShellContext
+    
+    ; 禁用文件级别的进度显示（不统计每个文件）
+    SetDetailsPrint none
 
     !insertmacro wails.webview2runtime
 
@@ -108,10 +111,12 @@ Section
     !insertmacro wails.files
 
     ; Bundled toolchain bin directory (build/windows/bin) for full installer.
-    ; Contents (uv.exe, bun.exe, codex.exe, npx.exe, etc.) are NOT tracked by NSIS (no File /r).
-    ; The toolchain service detects these at <exeDir>/build/windows/bin so the user can run them without re-downloading.
-    ; Packaged as a .zip and extracted with tar (avoids NSIS walking thousands of node_modules files).
-    !ifdef BUNDLE_OPENCLAW
+    ; Contains uv.exe, bun.exe, codex.exe, npx.exe, etc. The toolchain service detects
+    ; these at <exeDir>/build/windows/bin so the user can run them without re-downloading.
+    !ifdef ARG_OPENCLAW_RUNTIME
+        CreateDirectory "$INSTDIR\build\windows\bin"
+        SetOutPath "$INSTDIR\build\windows\bin"
+        File /nonfatal /r "..\..\..\build\windows\bin\*.*"
         DetailPrint "Bundled toolchain binaries installed to build\windows\bin"
     !endif
 
@@ -120,20 +125,35 @@ Section
     ; if File /r were used). Extract with Windows tar.exe (bsdtar): much faster than PowerShell Expand-Archive on huge
     ; trees with many small files (e.g. node_modules). Zip layout must be flat: archive root = contents of windows-<arch>/
     ; (bin/, manifest.json, node_modules/, ...), not a nested windows-<arch>/ folder (matches Compress-Archive ...\target\*).
-    !ifdef ARG_OPENCLAW_RUNTIME
+   !ifdef ARG_OPENCLAW_RUNTIME
         CreateDirectory "$INSTDIR\rt"
         CreateDirectory "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}"
         SetOutPath "$INSTDIR\rt"
-        ; The zip file is compressed into the installer data section; NSIS registers only this single File line.
         File "${ARG_OPENCLAW_RUNTIME}"
+        
         DetailPrint "Extracting OpenClaw runtime..."
         SetDetailsPrint listonly
+        
+        ; 在后台解压
         nsExec::ExecToStack 'tar -xf "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}.zip" -C "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}"'
-        Pop $0
-        ${If} $0 != 0
-            DetailPrint "Warning: tar extraction returned error code $0"
-        ${EndIf}
+        
+        ; 显示动态点
+        StrCpy $1 0
+        ${While} ${ProcessExists} "tar.exe"
+            IntOp $1 $1 + 1
+            ${If} $1 == 1
+                DetailPrint "Extracting."
+            ${ElseIf} $1 == 2
+                DetailPrint "Extracting.."
+            ${ElseIf} $1 == 3
+                DetailPrint "Extracting..."
+                StrCpy $1 0
+            ${EndIf}
+            Sleep 500
+        ${EndWhile}
+        
         Delete "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}.zip"
+        DetailPrint "Extraction complete!"
         SetDetailsPrint both
     !endif
 
