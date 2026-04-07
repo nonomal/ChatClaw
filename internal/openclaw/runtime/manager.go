@@ -142,11 +142,16 @@ func (m *Manager) SetUpgradeProgressCallback(cb func(progress int, message strin
 }
 
 func (m *Manager) Start() {
+	// Always start polling so the UI stays in sync with the gateway's real state
+	// (even if auto-start was disabled via "stop" button, or the port is already
+	// occupied from a previous session — polling will detect the running gateway
+	// and reconnect the WebSocket client without requiring an explicit "start").
+	m.pollingStop = make(chan struct{})
+	go m.pollGateway()
+
 	if !m.store.Get().AutoStart {
 		return
 	}
-	m.pollingStop = make(chan struct{})
-	go m.pollGateway()
 	go func() { _ = m.reconcile(false) }()
 }
 
@@ -1603,6 +1608,11 @@ func ensureOpenClawStateDir(bundle *bundledRuntime, defaultPort int, gatewayToke
 		// Log but don't fail — gateway startup may still work if config is OK.
 		log.Warn("openclaw: fix config version failed", "error", err, "config", bundle.ConfigPath)
 	}
+	// Clean up corrupted numeric-id model entries from chatwiki provider in openclaw.json.
+	// These can accumulate from old catalog sync bugs and must not persist across restarts.
+	if err := cleanCorruptedChatWikiModels(bundle.ConfigPath, log); err != nil {
+		log.Warn("openclaw: clean corrupted chatwiki models failed", "error", err, "config", bundle.ConfigPath)
+	}
 	// Ensure gateway auth config is present before boot so token auth takes effect.
 	if err := ensureGatewayAuthConfig(bundle.ConfigPath, defaultPort, gatewayToken, log); err != nil {
 		log.Warn("openclaw: ensure gateway auth config failed", "error", err, "config", bundle.ConfigPath)
@@ -1645,6 +1655,73 @@ func fixOpenClawConfigVersionIfNeeded(configPath, runtimeVersion string, log *sl
 	}
 	log.Info("openclaw: config version downgraded",
 		"from", configVersion, "to", runtimeVersion, "config", configPath)
+	return nil
+}
+
+// cleanCorruptedChatWikiModels removes model entries from the chatwiki provider
+// in openclaw.json where both id and name are purely numeric (e.g. {"id":"1","name":"1"}).
+// These are remnants of corrupted catalog data that must not persist across restarts.
+func cleanCorruptedChatWikiModels(configPath string, log *slog.Logger) error {
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read config: %w", err)
+	}
+
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return fmt.Errorf("parse config: %w", err)
+	}
+
+	models, ok := cfg["models"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	provs, ok := models["providers"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	chatwiki, ok := provs["chatwiki"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	arr, ok := chatwiki["models"].([]any)
+	if !ok {
+		return nil
+	}
+
+	original := len(arr)
+	cleaned := make([]any, 0, original)
+	for _, item := range arr {
+		m, ok := item.(map[string]any)
+		if !ok {
+			cleaned = append(cleaned, item)
+			continue
+		}
+		id, _ := m["id"].(string)
+		name, _ := m["name"].(string)
+		if isAllDigits(id) && isAllDigits(name) {
+			continue // skip corrupted entry
+		}
+		cleaned = append(cleaned, item)
+	}
+
+	if len(cleaned) == original {
+		return nil
+	}
+
+	chatwiki["models"] = cleaned
+	out, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal config: %w", err)
+	}
+	if err := os.WriteFile(configPath, out, 0o644); err != nil {
+		return fmt.Errorf("write config: %w", err)
+	}
+	log.Info("openclaw: cleaned corrupted chatwiki models",
+		"removed", original-len(cleaned), "remaining", len(cleaned), "config", configPath)
 	return nil
 }
 
