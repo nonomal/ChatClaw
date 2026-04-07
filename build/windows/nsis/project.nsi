@@ -157,22 +157,22 @@ SectionEnd
 Section "uninstall" 
     !insertmacro wails.setShellContext
 
-    ; Stop app and bundled Node so $INSTDIR (especially rt\) is not locked
+    DetailPrint "Stopping processes..."
     nsExec::ExecToStack 'taskkill /F /IM ${PRODUCT_EXECUTABLE} /T 2>nul'
     nsExec::ExecToStack 'taskkill /F /IM node.exe /T 2>nul'
     Sleep 500
 
-    ; Remove WebView2 DataPath
-    RMDir /r "$AppData\${PRODUCT_EXECUTABLE}"
+    DetailPrint "Removing application data..."
+    nsExec::ExecToStack 'rd /s /q "$LOCALAPPDATA\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}\WebView2" 2>nul'
+    nsExec::ExecToStack 'rd /s /q "$LOCALAPPDATA\${INFO_PRODUCTNAME}" 2>nul'
 
-    ; Delete entire installation directory in one command - NO traversal, extremely fast
+    DetailPrint "Removing installation directory..."
     nsExec::ExecToStack 'rd /s /q "$INSTDIR" 2>nul'
 
-    ; Delete shortcuts
+    DetailPrint "Cleaning up..."
     Delete "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk"
     Delete "$DESKTOP\${INFO_PRODUCTNAME}.lnk"
 
-    ; Clean up registry
     !insertmacro wails.unassociateFiles
     !insertmacro wails.unassociateCustomProtocols
     DeleteRegKey SHELL_CONTEXT "Software\Classes\chatclaw"
