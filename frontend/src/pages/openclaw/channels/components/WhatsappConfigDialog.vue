@@ -3,12 +3,7 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { LoaderCircle, RefreshCw, QrCode } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
 import { OpenClawChannelService } from '@bindings/chatclaw/internal/services/openclaw/channels'
@@ -157,7 +152,7 @@ function openDocs() {
     <DialogContent class="max-w-[520px] gap-0 overflow-hidden p-0">
       <DialogHeader class="px-6 pt-6 pb-4">
         <DialogTitle class="text-lg font-semibold text-foreground">
-          {{ t("channels.whatsapp.configTitle") }}
+          {{ t('channels.whatsapp.configTitle') }}
         </DialogTitle>
       </DialogHeader>
 
@@ -174,19 +169,19 @@ function openDocs() {
         <div
           class="rounded-lg bg-muted/50 border border-border p-4 space-y-1.5 text-sm text-foreground"
         >
-          <p class="font-medium text-muted-foreground">{{ t("channels.whatsapp.howToConnect") }}</p>
+          <p class="font-medium text-muted-foreground">{{ t('channels.whatsapp.howToConnect') }}</p>
           <p>
-            {{ t("channels.whatsapp.step1") }}
+            {{ t('channels.whatsapp.step1') }}
             <button
               type="button"
               class="ml-1 text-primary underline-offset-2 hover:underline"
               @click="openDocs"
             >
-              {{ t("channels.whatsapp.configStepsLink") }}
+              {{ t('channels.whatsapp.configStepsLink') }}
             </button>
           </p>
-          <p>{{ t("channels.whatsapp.step2") }}</p>
-          <p>{{ t("channels.whatsapp.step3") }}</p>
+          <p>{{ t('channels.whatsapp.step2') }}</p>
+          <p>{{ t('channels.whatsapp.step3') }}</p>
         </div>
 
         <div class="flex justify-end">
@@ -207,7 +202,7 @@ function openDocs() {
       </div>
 
       <div v-else-if="step === 'qrcode'" class="px-6 pb-6 space-y-5">
-        <p class="text-sm text-muted-foreground">{{ t("channels.whatsapp.scanHint") }}</p>
+        <p class="text-sm text-muted-foreground">{{ t('channels.whatsapp.scanHint') }}</p>
 
         <div
           v-if="qrExpired"
@@ -248,7 +243,7 @@ function openDocs() {
           class="flex items-center justify-center gap-2 text-xs text-muted-foreground"
         >
           <LoaderCircle class="h-3.5 w-3.5 animate-spin shrink-0" />
-          <span>{{ t("channels.whatsapp.waitingForScan") }}</span>
+          <span>{{ t('channels.whatsapp.waitingForScan') }}</span>
         </div>
 
         <div class="flex justify-center">
@@ -260,7 +255,7 @@ function openDocs() {
           >
             <LoaderCircle v-if="refreshing" class="h-4 w-4 animate-spin" />
             <RefreshCw v-else class="h-4 w-4" />
-            {{ t("channels.whatsapp.refresh") }}
+            {{ t('channels.whatsapp.refresh') }}
           </Button>
         </div>
       </div>

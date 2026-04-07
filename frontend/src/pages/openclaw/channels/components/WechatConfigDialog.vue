@@ -3,12 +3,7 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { LoaderCircle, RefreshCw, QrCode } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
 import { OpenClawChannelService } from '@bindings/chatclaw/internal/services/openclaw/channels'
@@ -119,7 +114,6 @@ async function handleRefreshQRCode() {
 function openWechatConfigSteps() {
   void openExternalLink(getPlatformDocsUrl('wechat'))
 }
-
 </script>
 
 <template>
@@ -149,7 +143,9 @@ function openWechatConfigSteps() {
               {{ t('channels.inline.configSteps') }}
             </a>
           </p>
-          <p class="mt-2 font-medium text-muted-foreground">{{ t('channels.wechat.stepsLabel') }}</p>
+          <p class="mt-2 font-medium text-muted-foreground">
+            {{ t('channels.wechat.stepsLabel') }}
+          </p>
           <ol class="mt-2 list-decimal space-y-2 pl-5 [list-style-position:outside]">
             <li>{{ t('channels.wechat.step1') }}</li>
             <li>{{ t('channels.wechat.step2') }}</li>
@@ -212,7 +208,10 @@ function openWechatConfigSteps() {
           </div>
         </div>
 
-        <div v-if="isPolling" class="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+        <div
+          v-if="isPolling"
+          class="flex items-center justify-center gap-2 text-xs text-muted-foreground"
+        >
           <LoaderCircle class="h-3.5 w-3.5 animate-spin shrink-0" />
           <span>{{ t('channels.wechat.waitingForScan') }}</span>
         </div>

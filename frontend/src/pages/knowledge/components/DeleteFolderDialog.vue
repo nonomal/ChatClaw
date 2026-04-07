@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { LoaderCircle } from 'lucide-vue-next'
 import {
@@ -19,7 +19,7 @@ import type { Folder } from '@bindings/chatclaw/internal/services/library'
 
 const props = defineProps<{
   open: boolean
-  folder: Folder | null
+  folders: Folder[]
 }>()
 
 const emit = defineEmits<{
@@ -30,7 +30,17 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const deleting = ref(false)
 
-const close = () => emit('update:open', false)
+const close = (v: boolean) => emit('update:open', v)
+
+const isBatch = computed(() => props.folders.length > 1)
+
+const deleteDescription = computed(() => {
+  if (props.folders.length === 0) return ''
+  if (isBatch.value) {
+    return t('knowledge.folder.deleteDescBatch', { count: props.folders.length })
+  }
+  return t('knowledge.folder.deleteDesc', { name: props.folders[0]?.name ?? '' })
+})
 
 watch(
   () => props.open,
@@ -41,17 +51,22 @@ watch(
 )
 
 const handleDelete = async () => {
-  if (!props.folder || deleting.value) return
+  if (props.folders.length === 0 || deleting.value) return
   deleting.value = true
   try {
-    await LibraryService.DeleteFolder(
-      new DeleteFolderInput({
-        id: props.folder.id,
-      })
-    )
+    for (const folder of props.folders) {
+      await LibraryService.DeleteFolder(
+        new DeleteFolderInput({
+          id: folder.id,
+        })
+      )
+    }
     emit('deleted')
-    toast.success(t('knowledge.folder.deleteSuccess'))
-    close()
+    const n = props.folders.length
+    toast.success(
+      n > 1 ? t('knowledge.folder.deleteSuccessBatch', { count: n }) : t('knowledge.folder.deleteSuccess')
+    )
+    close(false)
   } catch (error) {
     console.error('Failed to delete folder:', error)
     toast.error(getErrorMessage(error) || t('knowledge.folder.deleteFailed'))
@@ -67,7 +82,7 @@ const handleDelete = async () => {
       <AlertDialogHeader>
         <AlertDialogTitle>{{ t('knowledge.folder.deleteTitle') }}</AlertDialogTitle>
         <AlertDialogDescription>
-          {{ t('knowledge.folder.deleteDesc', { name: folder?.name }) }}
+          {{ deleteDescription }}
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>

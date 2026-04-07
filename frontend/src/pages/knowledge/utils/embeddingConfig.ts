@@ -31,7 +31,9 @@ export async function isGlobalEmbeddingConfigReady(): Promise<boolean> {
   ])
   if (!providerWithModels?.provider?.enabled) return false
 
-  const embeddingGroup = providerWithModels.model_groups?.find((group) => group.type === 'embedding')
+  const embeddingGroup = providerWithModels.model_groups?.find(
+    (group) => group.type === 'embedding'
+  )
   const model = embeddingGroup?.models?.find((item) => item.model_id === modelId && item.enabled)
   if (!model) return false
 

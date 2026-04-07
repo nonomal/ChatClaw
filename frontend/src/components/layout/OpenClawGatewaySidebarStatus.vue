@@ -26,9 +26,7 @@ const goToOpenClawManager = () => {
 }
 const { visualStatus } = storeToRefs(gatewayStore)
 
-const badgeText = computed(() =>
-  t(`settings.openclawRuntime.statusBadge.${visualStatus.value}`)
-)
+const badgeText = computed(() => t(`settings.openclawRuntime.statusBadge.${visualStatus.value}`))
 const isStarting = computed(
   () =>
     visualStatus.value === GatewayVisualStatus.Starting ||
@@ -64,11 +62,7 @@ const dotClass = computed(() =>
 
 <template>
   <!-- Match ChatWikiSidebarAccountCard: w-full px-2, inner rounded-lg px-3 py-2 text-[13px] font-bold, left-aligned. -->
-  <div
-    v-if="!navigationStore.sidebarCollapsed"
-    id="sidebar-gateway-status"
-    class="w-full px-2"
-  >
+  <div v-if="!navigationStore.sidebarCollapsed" id="sidebar-gateway-status" class="w-full px-2">
     <button
       type="button"
       :class="
@@ -90,10 +84,7 @@ const dotClass = computed(() =>
       </span>
       <span class="inline-flex min-w-0 flex-1 items-center justify-start gap-1.5">
         <span :class="cn('min-w-0 truncate tabular-nums', tagStatusClass)">{{ badgeText }}</span>
-        <Loader2
-          v-if="isStarting"
-          :class="cn('size-4 shrink-0 animate-spin', tagLoaderClass)"
-        />
+        <Loader2 v-if="isStarting" :class="cn('size-4 shrink-0 animate-spin', tagLoaderClass)" />
       </span>
     </button>
   </div>
@@ -104,10 +95,7 @@ const dotClass = computed(() =>
     :title="fullLineTitle"
     @click="goToOpenClawManager"
   >
-    <Loader2
-      v-if="isStarting"
-      :class="cn('size-4 animate-spin', tagLoaderClass)"
-    />
+    <Loader2 v-if="isStarting" :class="cn('size-4 animate-spin', tagLoaderClass)" />
     <span v-else :class="dotClass" />
   </button>
 </template>

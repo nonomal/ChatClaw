@@ -1265,10 +1265,7 @@ const handleRemoveImage = (id: string) => {
           >
             {{ t('nav.knowledge') }}
           </div>
-          <div
-            v-else
-            class="inline-flex w-fit shrink-0 rounded-lg bg-muted p-[3px]"
-          >
+          <div v-else class="inline-flex w-fit shrink-0 rounded-lg bg-muted p-[3px]">
             <button
               type="button"
               :class="

@@ -21,9 +21,7 @@ onMounted(() => {
 })
 
 const show = computed(
-  () =>
-    appStore.currentSystem === 'openclaw' &&
-    visualStatus.value !== GatewayVisualStatus.Running
+  () => appStore.currentSystem === 'openclaw' && visualStatus.value !== GatewayVisualStatus.Running
 )
 
 const message = computed(() => {

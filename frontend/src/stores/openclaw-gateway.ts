@@ -49,20 +49,16 @@ export const gatewaySidebarTagShellClass: Record<GatewayVisualStatus, string> = 
 
 /** Prefix + separator text (same hue family as border). */
 export const gatewaySidebarTagLabelClass: Record<GatewayVisualStatus, string> = {
-  [GatewayVisualStatus.Running]:
-    'text-emerald-900/90 dark:text-emerald-200/90',
+  [GatewayVisualStatus.Running]: 'text-emerald-900/90 dark:text-emerald-200/90',
   [GatewayVisualStatus.Error]: 'text-rose-950/90 dark:text-rose-200/88',
   [GatewayVisualStatus.Stop]: 'text-neutral-700 dark:text-neutral-400',
-  [GatewayVisualStatus.Starting]:
-    'text-amber-950/90 dark:text-amber-200/88',
-  [GatewayVisualStatus.Upgrading]:
-    'text-amber-950/90 dark:text-amber-200/88',
+  [GatewayVisualStatus.Starting]: 'text-amber-950/90 dark:text-amber-200/88',
+  [GatewayVisualStatus.Upgrading]: 'text-amber-950/90 dark:text-amber-200/88',
 }
 
 /** Status word after colon (weight comes from parent font-bold). */
 export const gatewaySidebarTagStatusClass: Record<GatewayVisualStatus, string> = {
-  [GatewayVisualStatus.Running]:
-    'text-emerald-700 dark:text-emerald-400',
+  [GatewayVisualStatus.Running]: 'text-emerald-700 dark:text-emerald-400',
   [GatewayVisualStatus.Error]: 'text-rose-600 dark:text-rose-400',
   [GatewayVisualStatus.Stop]: 'text-neutral-600 dark:text-neutral-300',
   [GatewayVisualStatus.Starting]: 'text-amber-700 dark:text-amber-400',
@@ -71,14 +67,11 @@ export const gatewaySidebarTagStatusClass: Record<GatewayVisualStatus, string> =
 
 /** Spinner icon on starting state. */
 export const gatewaySidebarTagLoaderClass: Record<GatewayVisualStatus, string> = {
-  [GatewayVisualStatus.Running]:
-    'text-emerald-600 dark:text-emerald-400',
+  [GatewayVisualStatus.Running]: 'text-emerald-600 dark:text-emerald-400',
   [GatewayVisualStatus.Error]: 'text-rose-600 dark:text-rose-400',
   [GatewayVisualStatus.Stop]: 'text-neutral-500 dark:text-neutral-400',
-  [GatewayVisualStatus.Starting]:
-    'text-amber-600 dark:text-amber-400',
-  [GatewayVisualStatus.Upgrading]:
-    'text-amber-600 dark:text-amber-400',
+  [GatewayVisualStatus.Starting]: 'text-amber-600 dark:text-amber-400',
+  [GatewayVisualStatus.Upgrading]: 'text-amber-600 dark:text-amber-400',
 }
 
 /** True while the runtime bundle is being downloaded/installed (OSS install or upgrade). */
@@ -86,10 +79,7 @@ export function isOpenClawRuntimeMutatingPhase(phase: string | undefined): boole
   return phase === 'upgrading'
 }
 
-function mapToVisual(
-  status: RuntimeStatus,
-  _gw: GatewayConnectionState
-): GatewayVisualStatus {
+function mapToVisual(status: RuntimeStatus, _gw: GatewayConnectionState): GatewayVisualStatus {
   const phase = status.phase || 'idle'
   if (phase === 'error') return GatewayVisualStatus.Error
   if (phase === 'upgrading') return GatewayVisualStatus.Upgrading
