@@ -57,6 +57,12 @@ func ResponsesEndpointSection() SectionBuilder {
 		_ = ctx
 		return map[string]any{
 			"gateway": map[string]any{
+				"auth": map[string]any{
+					"mode":             "pairing",
+					"autoApprove":      true,
+					"localAutoApprove": true,
+					"pairingTimeout":   300000,
+				},
 				"http": map[string]any{
 					"endpoints": map[string]any{
 						"responses": map[string]any{"enabled": true},
