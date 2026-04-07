@@ -228,9 +228,7 @@ function teamLibraryIdsToString(ids: string[]): string {
 const renameConversationOpen = ref(false)
 const deleteConversationOpen = ref(false)
 const actionConversation = ref<Conversation | null>(null)
-const isTeamMode = computed(
-  () => !OPENCLAW_TEAM_LIST_DISABLED && listMode.value === 'team'
-)
+const isTeamMode = computed(() => !OPENCLAW_TEAM_LIST_DISABLED && listMode.value === 'team')
 const activeTeamRobot = computed(() => activeRobot.value)
 const activeTeamConversationId = ref<number | null>(null)
 

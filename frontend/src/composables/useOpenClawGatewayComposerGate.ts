@@ -12,7 +12,8 @@ export function useOpenClawGatewayComposerGate() {
   const { visualStatus } = storeToRefs(gatewayStore)
 
   const blocksComposer = computed(
-    () => appStore.currentSystem === 'openclaw' && visualStatus.value !== GatewayVisualStatus.Running
+    () =>
+      appStore.currentSystem === 'openclaw' && visualStatus.value !== GatewayVisualStatus.Running
   )
 
   return { blocksComposer, visualStatus, GatewayVisualStatus }

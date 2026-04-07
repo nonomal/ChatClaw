@@ -33,14 +33,14 @@ function buildAnsiConverter(dark: boolean) {
     newline: true,
     escapeXML: true,
     colors: {
-      0:  dark ? '#6b7280' : '#6b7280', // gray  — reset
-      1:  dark ? '#f87171' : '#dc2626', // red   — bold
-      2:  dark ? '#4ade80' : '#16a34a', // green
-      3:  dark ? '#facc15' : '#ca8a04', // yellow
-      4:  dark ? '#60a5fa' : '#2563eb', // blue
-      5:  dark ? '#e879f9' : '#c026d3', // magenta
-      6:  dark ? '#22d3ee' : '#0891b2', // cyan
-      7:  dark ? '#f1f5f9' : '#1e293b', // white
+      0: dark ? '#6b7280' : '#6b7280', // gray  — reset
+      1: dark ? '#f87171' : '#dc2626', // red   — bold
+      2: dark ? '#4ade80' : '#16a34a', // green
+      3: dark ? '#facc15' : '#ca8a04', // yellow
+      4: dark ? '#60a5fa' : '#2563eb', // blue
+      5: dark ? '#e879f9' : '#c026d3', // magenta
+      6: dark ? '#22d3ee' : '#0891b2', // cyan
+      7: dark ? '#f1f5f9' : '#1e293b', // white
       30: dark ? '#64748b' : '#374151', // black (dim)
       31: dark ? '#f87171' : '#dc2626', // red
       32: dark ? '#4ade80' : '#16a34a', // green
@@ -82,7 +82,7 @@ watch(
 
 function parseDoctorOutputEvent(event: unknown): Record<string, unknown> | null {
   const e = event as { data?: unknown }
-  const raw = Array.isArray(e?.data) ? e.data[0] : e?.data ?? event
+  const raw = Array.isArray(e?.data) ? e.data[0] : (e?.data ?? event)
   if (raw && typeof raw === 'object') return raw as Record<string, unknown>
   return null
 }
@@ -102,7 +102,8 @@ function appendChunk(stream: 'stdout' | 'stderr', text: string) {
   // scrollIntoView on the last <span> for reliable v-html auto-scroll
   void nextTick(() => {
     const el = stream === 'stdout' ? stdoutScrollEl.value : stderrScrollEl.value
-    if (el) el.querySelector('span:last-child')?.scrollIntoView({ block: 'end', behavior: 'instant' })
+    if (el)
+      el.querySelector('span:last-child')?.scrollIntoView({ block: 'end', behavior: 'instant' })
   })
 }
 
@@ -241,9 +242,13 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="bg-white relative size-full rounded-xl border border-border shadow-sm dark:border-white/10 dark:bg-card dark:shadow-none dark:ring-1 dark:ring-white/5">
+  <div
+    class="bg-white relative size-full rounded-xl border border-border shadow-sm dark:border-white/10 dark:bg-card dark:shadow-none dark:ring-1 dark:ring-white/5"
+  >
     <!-- 标题栏 -->
-    <div class="flex items-center justify-between border-b border-border bg-muted/30 p-4 dark:border-white/10 dark:bg-white/5">
+    <div
+      class="flex items-center justify-between border-b border-border bg-muted/30 p-4 dark:border-white/10 dark:bg-white/5"
+    >
       <div class="flex flex-col gap-1">
         <h2 class="text-base font-semibold text-foreground">
           {{ t('settings.openclawRuntime.doctor.title') }}
@@ -251,22 +256,12 @@ onUnmounted(() => {
       </div>
       <div class="flex items-center gap-2">
         <!-- 运行按钮 -->
-        <Button
-          size="sm"
-          variant="outline"
-          :disabled="isRunning"
-          @click="runDoctor(false)"
-        >
+        <Button size="sm" variant="outline" :disabled="isRunning" @click="runDoctor(false)">
           <Terminal class="mr-1.5 size-3.5" />
           {{ t('settings.openclawRuntime.doctor.run') }}
         </Button>
         <!-- 运行并修复按钮 -->
-        <Button
-          size="sm"
-          variant="outline"
-          :disabled="isRunning"
-          @click="runDoctor(true)"
-        >
+        <Button size="sm" variant="outline" :disabled="isRunning" @click="runDoctor(true)">
           <CheckCircle2 class="mr-1.5 size-3.5" />
           {{ t('settings.openclawRuntime.doctor.runAndFix') }}
         </Button>
@@ -286,10 +281,7 @@ onUnmounted(() => {
     <div v-if="outputPanelVisible" class="bg-white p-4 dark:bg-card">
       <!-- 顶部状态标签 -->
       <div class="mb-4 flex items-center gap-2">
-        <div
-          v-if="isRunning"
-          class="bg-muted flex items-center gap-1 rounded-full px-3 py-1"
-        >
+        <div v-if="isRunning" class="bg-muted flex items-center gap-1 rounded-full px-3 py-1">
           <Terminal class="size-3.5 animate-pulse text-primary" />
           <span class="text-xs text-muted-foreground">
             {{ t('settings.openclawRuntime.doctor.running') }}
@@ -300,25 +292,15 @@ onUnmounted(() => {
           v-if="exitCode !== null"
           :class="[
             'flex items-center gap-1 rounded-full px-3 py-1',
-            isSuccess
-              ? 'bg-green-50 dark:bg-green-950/20'
-              : 'bg-red-50 dark:bg-red-950/20'
+            isSuccess ? 'bg-green-50 dark:bg-green-950/20' : 'bg-red-50 dark:bg-red-950/20',
           ]"
         >
-          <CheckCircle2
-            v-if="isSuccess"
-            class="size-3.5 text-green-600 dark:text-green-400"
-          />
-          <AlertCircle
-            v-else
-            class="size-3.5 text-red-600 dark:text-red-400"
-          />
+          <CheckCircle2 v-if="isSuccess" class="size-3.5 text-green-600 dark:text-green-400" />
+          <AlertCircle v-else class="size-3.5 text-red-600 dark:text-red-400" />
           <span
             :class="[
               'text-xs',
-              isSuccess
-                ? 'text-green-700 dark:text-green-400'
-                : 'text-red-700 dark:text-red-400'
+              isSuccess ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400',
             ]"
           >
             {{
@@ -338,10 +320,7 @@ onUnmounted(() => {
           </span>
         </div>
 
-        <div
-          v-if="duration > 0"
-          class="bg-muted flex items-center gap-1 rounded-full px-3 py-1"
-        >
+        <div v-if="duration > 0" class="bg-muted flex items-center gap-1 rounded-full px-3 py-1">
           <Clock class="size-3.5 text-muted-foreground" />
           <span class="text-xs text-muted-foreground">
             {{ t('settings.openclawRuntime.doctor.duration') }}: {{ formatDuration(duration) }}
@@ -388,10 +367,7 @@ onUnmounted(() => {
               class="whitespace-pre-wrap break-words font-mono text-xs"
               v-html="stdoutHtml"
             />
-            <p
-              v-else
-              class="text-sm text-muted-foreground/60"
-            >
+            <p v-else class="text-sm text-muted-foreground/60">
               {{ t('settings.openclawRuntime.doctor.noOutput') }}
             </p>
           </div>
@@ -414,10 +390,7 @@ onUnmounted(() => {
               class="whitespace-pre-wrap break-words font-mono text-xs"
               v-html="stderrHtml"
             />
-            <p
-              v-else
-              class="text-sm text-muted-foreground/60"
-            >
+            <p v-else class="text-sm text-muted-foreground/60">
               {{ t('settings.openclawRuntime.doctor.noErrors') }}
             </p>
           </div>

@@ -229,7 +229,9 @@ function openWecomConfigSteps() {
               {{ t('channels.inline.configSteps') }}
             </a>
           </p>
-          <p class="mt-2 font-medium text-muted-foreground">{{ t('channels.wecomAdd.stepsLabel') }}</p>
+          <p class="mt-2 font-medium text-muted-foreground">
+            {{ t('channels.wecomAdd.stepsLabel') }}
+          </p>
           <ol class="mt-2 list-decimal space-y-2 pl-5 [list-style-position:outside]">
             <li>{{ t('channels.wecomAdd.step1') }}</li>
             <li>{{ t('channels.wecomAdd.step2') }}</li>
@@ -254,9 +256,7 @@ function openWecomConfigSteps() {
           >
             <LoaderCircle v-if="generating" class="h-4 w-4 animate-spin" />
             <QrCode v-else class="h-4 w-4" />
-            {{
-              generating ? t('channels.wecomAdd.generating') : t('channels.wecomAdd.generateQr')
-            }}
+            {{ generating ? t('channels.wecomAdd.generating') : t('channels.wecomAdd.generateQr') }}
           </Button>
         </div>
       </div>

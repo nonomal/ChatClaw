@@ -110,8 +110,9 @@ const filteredDeliveryPlatforms = computed(() => {
   if (!agentID) {
     return []
   }
-  return props.deliveryPlatforms.filter((platform) =>
-    Array.isArray(platform.openclaw_agent_ids) && platform.openclaw_agent_ids.includes(agentID)
+  return props.deliveryPlatforms.filter(
+    (platform) =>
+      Array.isArray(platform.openclaw_agent_ids) && platform.openclaw_agent_ids.includes(agentID)
   )
 })
 
@@ -397,7 +398,12 @@ watch(
 )
 
 watch(
-  () => [props.open, props.form.agentId, filteredDeliveryPlatforms.value.map((item) => item.platform).join('|')] as const,
+  () =>
+    [
+      props.open,
+      props.form.agentId,
+      filteredDeliveryPlatforms.value.map((item) => item.platform).join('|'),
+    ] as const,
   ([open, agentId]) => {
     if (!open) return
 

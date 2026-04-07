@@ -102,11 +102,11 @@ const appStore = useAppStore()
 const searchQuery = ref('')
 const sortBy = ref<'created_desc' | 'created_asc'>('created_desc')
 const deleteDialogOpen = ref(false)
-const documentToDelete = ref<Document | null>(null)
+const pendingDeleteDocuments = ref<Document[]>([])
 const renameDialogOpen = ref(false)
 const documentToRename = ref<Document | null>(null)
 const moveDocumentDialogOpen = ref(false)
-const documentToMove = ref<Document | null>(null)
+const documentsToMove = ref<Document[]>([])
 const documentDetailDialogOpen = ref(false)
 const documentToDetail = ref<Document | null>(null)
 const documents = ref<Document[]>([])
@@ -128,6 +128,16 @@ const moveFolderDialogOpen = ref(false)
 const folderToRename = ref<Folder | null>(null)
 const folderToDelete = ref<Folder | null>(null)
 const folderToMove = ref<Folder | null>(null)
+
+/** Multi-select document IDs (card checkbox); cleared when folder or library changes. */
+const selectedDocumentIds = ref<Set<number>>(new Set())
+
+const toggleDocumentSelection = (doc: Document) => {
+  const next = new Set(selectedDocumentIds.value)
+  if (next.has(doc.id)) next.delete(doc.id)
+  else next.add(doc.id)
+  selectedDocumentIds.value = next
+}
 
 // 文件夹查找缓存 Map（优化性能，避免重复递归查找）
 const folderMapCache = ref<Map<number, Folder>>(new Map())
@@ -338,6 +348,7 @@ watch(
   () => props.library?.id,
   () => {
     searchQuery.value = ''
+    selectedDocumentIds.value = new Set()
     activeFolderId.value = props.selectedFolderId ?? null
     void loadFolders()
     resetAndLoad()
@@ -355,6 +366,7 @@ watch(
 
 // 监听文件夹变化，重新加载文档
 watch(activeFolderId, () => {
+  selectedDocumentIds.value = new Set()
   // If a folder is selected, load documents in that folder.
   // If root (null) is selected, show root folders and uncategorized documents only.
   resetAndLoad()
@@ -823,8 +835,61 @@ const handleRename = (doc: Document) => {
 }
 
 const handleMoveToFolder = (doc: Document) => {
-  documentToMove.value = doc
+  documentsToMove.value = [doc]
   moveDocumentDialogOpen.value = true
+}
+
+const selectedDocumentsInList = (): Document[] =>
+  documents.value.filter((d) => selectedDocumentIds.value.has(d.id))
+
+const handleBatchRelearn = async () => {
+  const targets = selectedDocumentsInList()
+  if (!targets.length) return
+  try {
+    for (const doc of targets) {
+      await DocumentService.ReprocessDocument(doc.id)
+      const index = documents.value.findIndex((d) => d.id === doc.id)
+      if (index !== -1) {
+        documents.value[index] = {
+          ...documents.value[index],
+          status: 'pending',
+          progress: 0,
+          errorMessage: '',
+        }
+      }
+    }
+    toast.success(
+      targets.length > 1
+        ? t('knowledge.content.relearn.successBatch', { count: targets.length })
+        : t('knowledge.content.relearn.success')
+    )
+    selectedDocumentIds.value = new Set()
+  } catch (error) {
+    console.error('Failed to relearn documents:', error)
+    toast.error(getErrorMessage(error) || t('knowledge.content.relearn.failed'))
+  }
+}
+
+const handleBatchMoveToFolder = () => {
+  const targets = selectedDocumentsInList()
+  if (!targets.length) return
+  documentsToMove.value = targets
+  moveDocumentDialogOpen.value = true
+}
+
+const handleBatchOpenDelete = () => {
+  const targets = selectedDocumentsInList()
+  if (!targets.length) return
+  pendingDeleteDocuments.value = targets
+  deleteDialogOpen.value = true
+}
+
+const handleDocumentsMoved = () => {
+  const movedIds = new Set(documentsToMove.value.map((d) => d.id))
+  selectedDocumentIds.value = new Set(
+    [...selectedDocumentIds.value].filter((id) => !movedIds.has(id))
+  )
+  void resetAndLoad()
 }
 
 const handleDetail = (doc: Document) => {
@@ -903,20 +968,31 @@ const handleRelearn = async (doc: Document) => {
 }
 
 const handleOpenDelete = (doc: Document) => {
-  documentToDelete.value = doc
+  pendingDeleteDocuments.value = [doc]
   deleteDialogOpen.value = true
 }
 
 const confirmDelete = async () => {
-  if (!documentToDelete.value) return
+  const toDelete = pendingDeleteDocuments.value
+  if (!toDelete.length) return
 
   try {
-    await DocumentService.DeleteDocument(documentToDelete.value.id)
-    documents.value = documents.value.filter((d) => d.id !== documentToDelete.value?.id)
+    const deletedIds = new Set(toDelete.map((d) => d.id))
+    for (const doc of toDelete) {
+      await DocumentService.DeleteDocument(doc.id)
+    }
+    documents.value = documents.value.filter((d) => !deletedIds.has(d.id))
+    selectedDocumentIds.value = new Set(
+      [...selectedDocumentIds.value].filter((id) => !deletedIds.has(id))
+    )
     // 删除文档后刷新文件夹统计，保持"X项"准确
     void loadFolderStats()
 
-    toast.success(t('knowledge.content.delete.success'))
+    toast.success(
+      toDelete.length > 1
+        ? t('knowledge.content.delete.successBatch', { count: toDelete.length })
+        : t('knowledge.content.delete.success')
+    )
     // 删除成功后关闭详情弹窗
     documentDetailDialogOpen.value = false
   } catch (error) {
@@ -924,7 +1000,7 @@ const confirmDelete = async () => {
     toast.error(getErrorMessage(error) || t('knowledge.content.delete.failed'))
   } finally {
     deleteDialogOpen.value = false
-    documentToDelete.value = null
+    pendingDeleteDocuments.value = []
   }
 }
 
@@ -1351,13 +1427,19 @@ onUnmounted(() => {
                 :key="doc.id"
                 :document="doc"
                 :is-searching="isSearching"
+                :selected="selectedDocumentIds.has(doc.id)"
+                :selected-count="selectedDocumentIds.size"
                 @rename="handleRename"
                 @relearn="handleRelearn"
                 @delete="handleOpenDelete"
                 @move-to-folder="handleMoveToFolder"
+                @batch-relearn="handleBatchRelearn"
+                @batch-move-to-folder="handleBatchMoveToFolder"
+                @batch-delete="handleBatchOpenDelete"
                 @detail="handleDetail"
                 @view="handleView"
                 @navigate-to-folder="handleNavigateToFolder"
+                @toggle-select="toggleDocumentSelection"
                 @contextmenu.stop
               />
             </div>
@@ -1394,14 +1476,9 @@ onUnmounted(() => {
     <!-- 移动到文件夹对话框 -->
     <MoveDocumentDialog
       v-model:open="moveDocumentDialogOpen"
-      :document="documentToMove"
+      :documents="documentsToMove"
       :folders="folders"
-      @moved="
-        () => {
-          // 如果当前过滤条件与目标文件夹不符，从列表中移除
-          resetAndLoad()
-        }
-      "
+      @moved="handleDocumentsMoved"
     />
 
     <!-- 文档详情对话框 -->
@@ -1446,7 +1523,20 @@ onUnmounted(() => {
         <AlertDialogHeader>
           <AlertDialogTitle>{{ t('knowledge.content.delete.title') }}</AlertDialogTitle>
           <AlertDialogDescription>
-            {{ t('knowledge.content.delete.desc', { name: documentToDelete?.name }) }}
+            <template v-if="pendingDeleteDocuments.length <= 1">
+              {{
+                t('knowledge.content.delete.desc', {
+                  name: pendingDeleteDocuments[0]?.name ?? '',
+                })
+              }}
+            </template>
+            <template v-else>
+              {{
+                t('knowledge.content.delete.descBatch', {
+                  count: pendingDeleteDocuments.length,
+                })
+              }}
+            </template>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
