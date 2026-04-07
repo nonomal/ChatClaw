@@ -917,6 +917,39 @@ func (s *ToolchainService) BinDir() string {
 	return s.binDir
 }
 
+// bundledBinDir returns the bundled bin directory from the full installer layout.
+// It checks <exeDir>/build/windows/bin (Windows) or <exeDir>/build/<os>-<arch>/bin (macOS/Linux).
+// Returns empty string if the directory does not exist or is empty.
+func (s *ToolchainService) bundledBinDir() string {
+	execPath, err := os.Executable()
+	if err != nil || strings.TrimSpace(execPath) == "" {
+		return ""
+	}
+	execDir := filepath.Dir(execPath)
+
+	var bundled string
+	if runtime.GOOS == "windows" {
+		bundled = filepath.Join(execDir, "build", "windows", "bin")
+	} else if runtime.GOOS == "darwin" {
+		bundled = filepath.Join(execDir, "..", "Resources", "build", runtime.GOOS+"-"+runtime.GOARCH, "bin")
+		if _, err := os.Stat(bundled); os.IsNotExist(err) {
+			bundled = filepath.Join(execDir, "build", runtime.GOOS+"-"+runtime.GOARCH, "bin")
+		}
+	} else {
+		bundled = filepath.Join(execDir, "build", runtime.GOOS+"-"+runtime.GOARCH, "bin")
+	}
+
+	if info, err := os.Stat(bundled); err != nil || !info.IsDir() {
+		return ""
+	}
+	// Verify the directory is not empty by checking for at least one file.
+	entries, err := os.ReadDir(bundled)
+	if err != nil || len(entries) == 0 {
+		return ""
+	}
+	return bundled
+}
+
 // ---- Frontend-facing API ----
 
 // GetAllToolStatus returns the status of every managed tool.
@@ -1384,11 +1417,21 @@ func (s *ToolchainService) emitUpdatesAvailableIfAny() {
 // syncState refreshes the package-level state snapshot from actual binary checks.
 func (s *ToolchainService) syncState() {
 	binDir := s.BinDir()
+	bundled := s.bundledBinDir()
 	installed := make(map[string]bool, len(registry))
 	for name, spec := range registry {
-		binPath := filepath.Join(binDir, spec.binaryName(runtime.GOOS))
+		binName := spec.binaryName(runtime.GOOS)
+		binPath := filepath.Join(binDir, binName)
 		if s.getInstalledVersion(binPath, spec.versionArgs) != "" {
 			installed[name] = true
+			continue
+		}
+		// Also check bundled bin from full installer.
+		if bundled != "" {
+			bundledPath := filepath.Join(bundled, binName)
+			if s.getInstalledVersion(bundledPath, spec.versionArgs) != "" {
+				installed[name] = true
+			}
 		}
 	}
 	SetState(binDir, installed)
@@ -1403,9 +1446,14 @@ func (s *ToolchainService) getStatus(name string) ToolStatus {
 	}
 
 	binDir := s.BinDir()
+	bundled := s.bundledBinDir()
 	binName := spec.binaryName(runtime.GOOS)
-	binPath := filepath.Join(binDir, binName)
-	installed := s.getInstalledVersion(binPath, spec.versionArgs)
+
+	// Check app-data bin first, then bundled bin (full installer wins if present).
+	installed := s.getInstalledVersion(filepath.Join(binDir, binName), spec.versionArgs)
+	if installed == "" && bundled != "" {
+		installed = s.getInstalledVersion(filepath.Join(bundled, binName), spec.versionArgs)
+	}
 
 	s.mu.Lock()
 	isInstalling := s.installing[name]
@@ -1417,7 +1465,7 @@ func (s *ToolchainService) getStatus(name string) ToolStatus {
 		InstalledVersion: installed,
 		HasUpdate:        false,
 		Installing:       isInstalling,
-		BinPath:          binPath,
+		BinPath:          binPathForStatus(binDir, bundled, binName),
 	}
 	if pending := s.pendingToolLatestVersion(name); pending != "" && installed != "" &&
 		isManagedToolUpgradeAvailable(installed, pending) {
@@ -1425,6 +1473,18 @@ func (s *ToolchainService) getStatus(name string) ToolStatus {
 		st.HasUpdate = true
 	}
 	return st
+}
+
+// binPathForStatus returns the path to report as BinPath in the UI.
+// If bundled bin exists, report it so users know the tool came from the full installer.
+func binPathForStatus(binDir, bundled, binName string) string {
+	if bundled != "" {
+		// Only report bundled path if the binary actually exists there.
+		if _, err := os.Stat(filepath.Join(bundled, binName)); err == nil {
+			return filepath.Join(bundled, binName)
+		}
+	}
+	return filepath.Join(binDir, binName)
 }
 
 func (s *ToolchainService) emitStatus(name string) {
@@ -1497,8 +1557,14 @@ func (s *ToolchainService) resolveProxy() bool {
 func (s *ToolchainService) ensureTool(spec toolSpec, binDir string, needProxy bool) {
 	binName := spec.binaryName(runtime.GOOS)
 	binPath := filepath.Join(binDir, binName)
+	bundled := s.bundledBinDir()
 
+	// Check app-data bin first, then bundled bin from full installer.
 	installedVersion := s.getInstalledVersion(binPath, spec.versionArgs)
+	if installedVersion == "" && bundled != "" {
+		bundledPath := filepath.Join(bundled, binName)
+		installedVersion = s.getInstalledVersion(bundledPath, spec.versionArgs)
+	}
 
 	latestVersion, err := s.fetchLatestVersion(spec)
 	if err != nil {

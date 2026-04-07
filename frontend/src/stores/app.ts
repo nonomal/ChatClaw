@@ -2,6 +2,7 @@ import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { SettingsService } from '@bindings/chatclaw/internal/services/settings'
 import { AppService } from '@bindings/chatclaw/internal/services/app'
+import { OpenClawRuntimeService } from '@bindings/chatclaw/internal/openclaw/runtime'
 import { Events } from '@wailsio/runtime'
 
 export type Theme = 'light' | 'dark' | 'system'
@@ -144,6 +145,16 @@ export const useAppStore = defineStore('app', () => {
   // 监听主题变化
   watch(theme, (newTheme) => {
     applyTheme(newTheme)
+  })
+
+  // Sync system mode to backend so the OpenClaw gateway can auto-start
+  // when the sidebar is in openclaw mode and the runtime is available.
+  watch(currentSystem, (system) => {
+    try {
+      void OpenClawRuntimeService.SetSystemMode(system === 'openclaw')
+    } catch (e) {
+      console.warn('Failed to sync system mode to backend:', e)
+    }
   })
 
   return {

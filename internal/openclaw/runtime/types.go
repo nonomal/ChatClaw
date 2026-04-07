@@ -1,10 +1,12 @@
 package openclawruntime
 
 const (
-	EventStatus       = "openclaw:status"
-	EventGatewayState = "openclaw:gateway-state"
+	EventStatus        = "openclaw:status"
+	EventGatewayState  = "openclaw:gateway-state"
 	// EventDoctorOutput streams stdout/stderr chunks while RunDoctorCommand runs (runId + stream + text).
 	EventDoctorOutput = "openclaw:doctor-output"
+	// EventTriggerDoctor is emitted to the frontend when consecutive WS failures exceed the threshold.
+	EventTriggerDoctor = "openclaw:trigger-doctor"
 )
 
 const (

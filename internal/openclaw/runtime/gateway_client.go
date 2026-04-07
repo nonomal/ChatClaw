@@ -108,7 +108,13 @@ func (c *GatewayClient) Connect(ctx context.Context) (*GatewayHelloOK, error) {
 		HandshakeTimeout: 10 * time.Second,
 		Proxy:            http.ProxyFromEnvironment,
 	}
-	conn, _, err := dialer.DialContext(ctx, c.opts.URL, nil)
+
+	headers := http.Header{}
+	if c.opts.Token != "" {
+		headers.Set("Authorization", "Bearer "+c.opts.Token)
+	}
+
+	conn, _, err := dialer.DialContext(ctx, c.opts.URL, headers)
 	if err != nil {
 		return nil, fmt.Errorf("dial gateway websocket: %w", err)
 	}

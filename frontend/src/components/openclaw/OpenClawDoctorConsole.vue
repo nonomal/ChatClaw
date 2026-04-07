@@ -233,18 +233,37 @@ onMounted(() => {
     if (runId !== activeDoctorRunId.value) return
     if (stream === 'stdout' || stream === 'stderr') appendChunk(stream, text)
   })
+
+  // Auto-trigger: backend fires this after consecutive WS failures.
+  Events.On('openclaw:trigger-doctor', (event: unknown) => {
+    const e = event as { data?: unknown }
+    const payload = (Array.isArray(e?.data) ? e.data[0] : e?.data ?? {}) as Record<string, unknown>
+    toast.default(t('settings.openclawRuntime.doctor.autoTriggered') || 'OpenClaw 连接失败，正在自动运行诊断修复…')
+    // Expand panel and run fix, then scroll it into view.
+    outputPanelVisible.value = true
+    void nextTick(() => {
+      runDoctor(true)
+      const el = document.getElementById('openclaw-doctor-console')
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  })
 })
 
 onUnmounted(() => {
   unsubscribeDoctorOutput?.()
   unsubscribeDoctorOutput = null
 })
+
+defineExpose({
+  scrollIntoView: () => {
+    const el = document.getElementById('openclaw-doctor-console')
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  },
+})
 </script>
 
 <template>
-  <div
-    class="bg-white relative size-full rounded-xl border border-border shadow-sm dark:border-white/10 dark:bg-card dark:shadow-none dark:ring-1 dark:ring-white/5"
-  >
+  <div id="openclaw-doctor-console" class="bg-white relative size-full rounded-xl border border-border shadow-sm dark:border-white/10 dark:bg-card dark:shadow-none dark:ring-1 dark:ring-white/5">
     <!-- 标题栏 -->
     <div
       class="flex items-center justify-between border-b border-border bg-muted/30 p-4 dark:border-white/10 dark:bg-white/5"

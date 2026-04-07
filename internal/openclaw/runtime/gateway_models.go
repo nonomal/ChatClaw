@@ -282,6 +282,11 @@ func buildChatWikiProvider(data *chatWikiSyncData) *openclawProviderConfig {
 			if !m.Enabled {
 				continue
 			}
+			// Filter out garbage entries where both ModelID and Name are purely numeric.
+			// These indicate corrupted catalog data that must not be pushed to OpenClaw.
+			if isAllDigits(m.ModelID) && isAllDigits(m.Name) {
+				continue
+			}
 			entry := openclawModelEntry{
 				ID:   m.ModelID,
 				Name: m.Name,
@@ -297,6 +302,19 @@ func buildChatWikiProvider(data *chatWikiSyncData) *openclawProviderConfig {
 	}
 
 	return ocProvider
+}
+
+// isAllDigits returns true if s consists entirely of decimal digit characters [0-9].
+func isAllDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func buildSingleProvider(p providers.Provider) *openclawProviderConfig {

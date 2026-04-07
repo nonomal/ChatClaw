@@ -60,6 +60,11 @@ type Manager struct {
 	expectedStopPID   int
 	shuttingDown      bool
 	reconnecting      atomic.Bool
+	pendingPairApproval atomic.Bool // set when NOT_PAIRED detected; cleared after approve succeeds or gives up
+	consecutiveFailures int         // resets on successful connect; triggers Doctor auto-fix at threshold
+	doctorTriggered    bool        // prevents repeated Doctor triggers for the same outage window
+	pollingStop       chan struct{} // closed when Manager is shut down; context for polling goroutine
+	pollingMu         sync.Mutex   // serialises pollClient and Shutdown to prevent stale-phase flash
 
 	eventListenersMu sync.RWMutex
 	eventListeners   map[string]EventListener // keyed by caller-chosen ID
@@ -71,6 +76,8 @@ type Manager struct {
 	doctorRunSeq uint64 // atomic: correlates streamed doctor chunks with the active UI run
 
 	configSvc *ConfigService // injected via SetConfigService for SyncConfig
+
+	systemModeIsOpenClaw atomic.Bool // set by frontend to signal that the sidebar is in openclaw mode
 }
 
 func gatewayOperatorScopes() []string {
@@ -112,6 +119,30 @@ func (m *Manager) SetConfigService(svc *ConfigService) {
 	m.configSvc = svc
 }
 
+// SetSystemMode is called by the frontend when the user switches between openclaw
+// and chatclaw sidebar modes. When the mode changes to 'openclaw', the gateway is
+// auto-started if the runtime is available and AutoStart is enabled.
+func (m *Manager) SetSystemMode(isOpenClaw bool) {
+	m.systemModeIsOpenClaw.Store(isOpenClaw)
+}
+
+// shouldAutoStart returns true when the gateway should be started automatically:
+//   - AutoStart setting is enabled
+//   - Runtime directory exists (IsOpenClawRuntimeAvailable)
+//
+// Unlike the previous logic that started unconditionally based on AutoStart alone,
+// this respects both conditions so that ChatClaw mode does not launch the gateway
+// unless the runtime is present and the user explicitly wants it.
+func (m *Manager) shouldAutoStart() bool {
+	if !m.store.Get().AutoStart {
+		return false
+	}
+	// If in openclaw mode, always auto-start (runtime availability is checked by Start).
+	// If not in openclaw mode, still auto-start if runtime is available — this keeps
+	// the gateway warm so agents and cron tasks work without explicit "start" clicks.
+	return IsOpenClawRuntimeAvailable()
+}
+
 // SyncConfig triggers an immediate config sync to push latest models/agents to the Gateway.
 // This ensures new ChatWiki models are available before sending messages.
 func (m *Manager) SyncConfig(ctx context.Context) error {
@@ -137,15 +168,90 @@ func (m *Manager) SetUpgradeProgressCallback(cb func(progress int, message strin
 }
 
 func (m *Manager) Start() {
-	if !m.store.Get().AutoStart {
+	// Always start polling so the UI stays in sync with the gateway's real state
+	// (even if auto-start was disabled via "stop" button, or the port is already
+	// occupied from a previous session — polling will detect the running gateway
+	// and reconnect the WebSocket client without requiring an explicit "start").
+	m.pollingStop = make(chan struct{})
+	go m.pollGateway()
+
+	if !m.shouldAutoStart() {
 		return
 	}
 	go func() { _ = m.reconcile(false) }()
 }
 
+// pollGateway is an unrestricted background loop that continuously probes OpenClaw's
+// real state and updates the UI — it never blocks, never stops on its own,
+// and is only cancelled when Shutdown() closes pollingStop.
+func (m *Manager) pollGateway() {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-m.pollingStop:
+			return
+		case <-ticker.C:
+			m.pollClient()
+		}
+	}
+}
+
+// pollClient probes the gateway port and attempts WebSocket reconnection.
+// Completely passive: never restarts the process, never attempts OSS install,
+// and runs regardless of internal state (shuttingDown / reconnecting lock do not block it).
+// The only effect is updating Phase and GatewayState sent to the UI.
+func (m *Manager) pollClient() {
+	cfg := m.store.Get()
+	alive := gatewayPortOccupied(cfg.GatewayPort)
+
+	m.mu.RLock()
+	connected := m.client != nil
+	phase := m.status.Phase
+	m.mu.RUnlock()
+
+	if connected {
+		return // Already connected, nothing to do.
+	}
+
+	// Not connected — determine the right response based on gateway liveness.
+	if !alive {
+		// Gateway not responding at all.
+		if phase == PhaseConnected || phase == PhaseConnecting || phase == PhaseError {
+			m.broadcastStatus(RuntimeStatus{
+				Phase:      PhaseRestarting,
+				Message:    "OpenClaw Gateway not responding",
+				GatewayURL: gatewayURL(cfg.GatewayPort),
+			})
+		}
+		// No process, no port — nothing to reconnect to.
+		return
+	}
+
+	// Gateway is alive (port open) but WS is down — this is the recovery window.
+	// Attempt WS reconnect only if not already in progress.
+	if m.reconnecting.CompareAndSwap(false, true) {
+		go func() {
+			defer m.reconnecting.Store(false)
+			time.Sleep(500 * time.Millisecond)
+			m.reconnectClient()
+		}()
+	}
+}
+
 func (m *Manager) Shutdown() {
 	m.opMu.Lock()
 	defer m.opMu.Unlock()
+
+	// Stop the unrestricted polling loop first.
+	m.mu.Lock()
+	if m.pollingStop != nil {
+		close(m.pollingStop)
+		m.pollingStop = nil
+	}
+	m.mu.Unlock()
+
 	m.mu.Lock()
 	m.shuttingDown = true
 	m.mu.Unlock()
@@ -329,7 +435,7 @@ func (m *Manager) reconcileLocked(restart bool) error {
 	cfg := m.store.Get()
 
 	fail := func(msg string, err error, version string, pid int) error {
-		m.app.Logger.Error("openclaw: "+msg, "error", err)
+		m.app.Logger.Warn("openclaw: "+msg, "error", err)
 		m.broadcastStatus(RuntimeStatus{
 			Phase:            PhaseError,
 			Message:          err.Error(),
@@ -337,21 +443,15 @@ func (m *Manager) reconcileLocked(restart bool) error {
 			GatewayPID:       pid,
 			GatewayURL:       gatewayURL(cfg.GatewayPort),
 		})
-		// Disconnect path sets reconnecting=true; if reconcile then fails, clear it so UI does not
-		// spin forever on "reconnecting" while phase is error.
-		m.broadcastGatewayState(GatewayConnectionState{
-			Connected:     false,
-			Authenticated: false,
-			Reconnecting:  false,
-			LastError:     err.Error(),
-		})
+		// Do NOT set Reconnecting: false — heartbeat polling will retry WS connection
+		// once OpenClaw recovers. Failures are surfaced to the user as error messages.
 		return err
 	}
 
-	// Fast path: already running and connected
+	// Fast path: WebSocket already up (covers adopted gateway where m.process is nil).
 	if !restart {
 		m.mu.RLock()
-		ready := m.process != nil && m.client != nil
+		ready := m.client != nil
 		m.mu.RUnlock()
 		if ready {
 			return nil
@@ -360,35 +460,14 @@ func (m *Manager) reconcileLocked(restart bool) error {
 
 	bundle, err := resolveBundledRuntime()
 	if err != nil {
-		// No bundled runtime found.
-		// If an upgrade is in progress, do NOT attempt OSS install here — let the upgrade path
-		// handle rollback and retry. Otherwise, fall back to OSS install.
+		// OSS install is only triggered by InstallAndStartRuntime().
+		// reconcileLocked is called by Start/StartGateway/AutoStart which assume
+		// a runtime is already present; OSS fallback here causes unwanted upgrades.
 		if m.upgradeInProgress.Load() {
-			m.app.Logger.Warn("openclaw: no bundled runtime found during upgrade, skipping OSS fallback",
+			m.app.Logger.Warn("openclaw: no bundled runtime during upgrade, skipping",
 				"error", err)
-			return fail("resolveBundledRuntime", err, "", 0)
 		}
-		m.app.Logger.Info("openclaw: no bundled runtime found, attempting OSS install", "error", err)
-		m.broadcastStatus(RuntimeStatus{
-			Phase:      PhaseUpgrading,
-			Message:    "No OpenClaw runtime found, downloading from OSS...",
-			GatewayURL: gatewayURL(cfg.GatewayPort),
-		})
-		if m.toolchainSvc == nil {
-			return fail("resolveBundledRuntime", err, "", 0)
-		}
-		// Set up progress callback so the UI can show install progress
-		if m.upgradeProgressCb != nil {
-			m.toolchainSvc.SetUpgradeProgressCallback(m.upgradeProgressCb)
-		}
-		if installErr := m.toolchainSvc.InstallOpenClawRuntime(); installErr != nil {
-			return fail("OSS runtime install", installErr, "", 0)
-		}
-		// Reload bundle after OSS install
-		bundle, err = resolveBundledRuntime()
-		if err != nil {
-			return fail("resolveBundledRuntime after OSS install", err, "", 0)
-		}
+		return fail("resolveBundledRuntime", err, "", 0)
 	}
 
 	if patched, err := applyBundledRuntimeHotfixes(bundle); err != nil {
@@ -418,7 +497,7 @@ func (m *Manager) reconcileLocked(restart bool) error {
 		GatewayURL:       gatewayURL(cfg.GatewayPort),
 	})
 
-	if err := ensureOpenClawStateDir(bundle); err != nil {
+	if err := ensureOpenClawStateDir(bundle, cfg.GatewayPort, cfg.GatewayToken); err != nil {
 		return fail("ensureOpenClawStateDir", err, version, 0)
 	}
 
@@ -431,12 +510,20 @@ func (m *Manager) reconcileLocked(restart bool) error {
 	m.mu.RUnlock()
 
 	if needProcess {
-		if err := m.startProcess(cfg, bundle, version, restart); err != nil {
-			return fail("startProcess", err, version, 0)
+		// Port already in use: assume OpenClaw is already running (ours or recovered).
+		// Do NOT spawn a second gateway — that fails to bind and leaves phase=error.
+		if !restart && gatewayPortOccupied(cfg.GatewayPort) {
+			pid = getOccupyingProcessPID(cfg.GatewayPort)
+			m.app.Logger.Info("openclaw: adopting existing gateway on port (skip spawn)",
+				"port", cfg.GatewayPort, "pid", pid)
+		} else {
+			if err := m.startProcess(cfg, bundle, version, restart); err != nil {
+				return fail("startProcess", err, version, 0)
+			}
+			m.mu.RLock()
+			pid = m.processPID
+			m.mu.RUnlock()
 		}
-		m.mu.RLock()
-		pid = m.processPID
-		m.mu.RUnlock()
 	}
 
 	// Connect client if needed
@@ -454,8 +541,37 @@ func (m *Manager) reconcileLocked(restart bool) error {
 			GatewayPID:       pid,
 			GatewayURL:       gatewayURL(cfg.GatewayPort),
 		})
-		if err := m.connectClient(cfg, bundle); err != nil {
-			return fail("connectClient", err, version, pid)
+		err := m.connectClient(cfg, bundle)
+		if err != nil {
+			var gerr *GatewayRequestError
+			if errors.As(err, &gerr) && strings.EqualFold(strings.TrimSpace(gerr.Code), "NOT_PAIRED") {
+				// Same as reconnectClient: HTTP approve then retry WS once (initial reconcile used to skip this).
+				m.app.Logger.Info("openclaw: NOT_PAIRED on first connect, auto-approving then retrying WS")
+				m.approvePendingDevices()
+				err = m.connectClient(cfg, bundle)
+			}
+			if err != nil {
+				var gerr2 *GatewayRequestError
+				if errors.As(err, &gerr2) && strings.EqualFold(strings.TrimSpace(gerr2.Code), "NOT_PAIRED") {
+					m.broadcastStatus(RuntimeStatus{
+						Phase:            PhaseConnecting,
+						Message:          err.Error(),
+						InstalledVersion: version,
+						RuntimeSource:    bundle.Source,
+						RuntimePath:      bundle.Root,
+						GatewayPID:       pid,
+						GatewayURL:       gatewayURL(cfg.GatewayPort),
+					})
+					m.broadcastGatewayState(GatewayConnectionState{
+						Connected:     false,
+						Authenticated: false,
+						Reconnecting:  true,
+						LastError:     err.Error(),
+					})
+					return err
+				}
+				return fail("connectClient", err, version, pid)
+			}
 		}
 	}
 
@@ -473,6 +589,8 @@ func (m *Manager) reconcileLocked(restart bool) error {
 		GatewayURL:       gatewayURL(cfg.GatewayPort),
 	})
 	m.broadcastGatewayState(GatewayConnectionState{Connected: true, Authenticated: true})
+	m.consecutiveFailures = 0
+	m.doctorTriggered = false
 	m.notifyReadyHooks()
 
 	return nil
@@ -565,15 +683,29 @@ func (m *Manager) ensurePortClean(port int, cliPath string, aggressive bool) err
 		occupyingPID := getOccupyingProcessPID(port)
 		errMsg := fmt.Sprintf("port %d is still occupied after cleanup attempts (PID: %d)", port, occupyingPID)
 		m.app.Logger.Error("openclaw: " + errMsg)
-		return fmt.Errorf(errMsg)
+		return fmt.Errorf("port %d is still occupied after cleanup attempts (PID: %d)", port, occupyingPID)
 	}
 
 	return lastErr
 }
 
 func (m *Manager) startProcess(cfg OpenClawConfig, bundle *bundledRuntime, installedVersion string, aggressiveCleanup bool) error {
-	// Ensure port is clean before starting; if it fails, return error to prevent restart loop.
-	if err := m.ensurePortClean(cfg.GatewayPort, bundle.CLIPath, aggressiveCleanup); err != nil {
+	// If the port is already occupied, assume OpenClaw itself started it.
+	// Skip cleanup and reuse the existing process — only clean in extreme cases.
+	if !aggressiveCleanup && gatewayPortOccupied(cfg.GatewayPort) {
+		occupyingPID := getOccupyingProcessPID(cfg.GatewayPort)
+		processName := getProcessNameByPID(occupyingPID)
+		m.app.Logger.Info("openclaw: gateway port already occupied, skipping cleanup",
+			"port", cfg.GatewayPort, "pid", occupyingPID, "process", processName)
+		// Only clean if the occupying process is not a node process (likely a residual).
+		if processName != "" && !strings.Contains(strings.ToLower(processName), "node") {
+			m.app.Logger.Warn("openclaw: unknown process on gateway port, cleaning up",
+				"port", cfg.GatewayPort, "pid", occupyingPID, "process", processName)
+			if err := m.ensurePortClean(cfg.GatewayPort, bundle.CLIPath, false); err != nil {
+				return fmt.Errorf("port %d cleanup failed: %w", cfg.GatewayPort, err)
+			}
+		}
+	} else if err := m.ensurePortClean(cfg.GatewayPort, bundle.CLIPath, aggressiveCleanup); err != nil {
 		m.app.Logger.Error("openclaw: port cleanup failed, cannot start gateway", "error", err)
 		return fmt.Errorf("port %d cleanup failed: %w", cfg.GatewayPort, err)
 	}
@@ -701,17 +833,21 @@ func (m *Manager) handleProcessExit(pid int, exitErr error) {
 		return
 	}
 
-	if !m.reconnecting.CompareAndSwap(false, true) {
-		m.app.Logger.Info("openclaw: skipping process-exit reconnect, already in progress", "pid", pid)
-		return
-	}
-
-	m.broadcastStatus(m.runtimeStatusRestarting())
-	go func() {
-		defer m.reconnecting.Store(false)
-		time.Sleep(1500 * time.Millisecond)
-		_ = m.reconcile(false)
-	}()
+	// OpenClaw's built-in supervisor handles its own restart.
+	// We only update the status; WebSocket reconnect will naturally fail
+	// until OpenClaw recovers, then succeed on the next attempt.
+	m.broadcastStatus(RuntimeStatus{
+		Phase:            PhaseRestarting,
+		Message:          "OpenClaw Gateway exited, waiting for auto-recovery",
+		GatewayPID:       0,
+		GatewayURL:       gatewayURL(m.store.Get().GatewayPort),
+	})
+	m.broadcastGatewayState(GatewayConnectionState{
+		Connected:     false,
+		Authenticated: false,
+		Reconnecting:  true,
+		LastError:     errStr(exitErr),
+	})
 }
 
 // --- WebSocket client management ---
@@ -736,8 +872,10 @@ func (m *Manager) connectClient(cfg OpenClawConfig, bundle *bundledRuntime) erro
 		}
 
 		m.mu.RLock()
-		alive := m.process != nil
+		managed := m.process != nil
 		m.mu.RUnlock()
+		// Allow WS connect when we did not spawn the process but something listens on the port.
+		alive := managed || gatewayPortOccupied(cfg.GatewayPort)
 		if !alive {
 			if lastErr != nil {
 				return fmt.Errorf("gateway process exited: %w", lastErr)
@@ -809,6 +947,161 @@ func (m *Manager) closeClient() {
 	}
 }
 
+// approvePendingDevices runs the OpenClaw CLI to list pending pairing requests
+// and auto-approves them. This avoids the HTTP API issue where the gateway's
+// REST endpoint (/) returns an HTML redirect instead of JSON.
+//
+// Actual JSON structure observed from openclaw CLI --json:
+//   { "pending": [{ "requestId": "...", "deviceId": "...", "displayName": "ChatClaw", ... }], "paired": [...] }
+func (m *Manager) approvePendingDevices() {
+	if !m.pendingPairApproval.CompareAndSwap(false, true) {
+		return
+	}
+	defer m.pendingPairApproval.Store(false)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Step 1: devices list --json
+	listOut, err := m.ExecCLI(ctx, "devices", "list", "--json")
+	if err != nil {
+		m.app.Logger.Warn("openclaw: approve: devices list failed", "error", err, "output", string(listOut))
+		return
+	}
+
+	// Step 2: parse the confirmed structure { pending: [{ requestId, deviceId, displayName, ... }], paired: [...] }
+	var listResult struct {
+		Pending []struct {
+			RequestID   string `json:"requestId"`
+			DeviceID    string `json:"deviceId"`
+			DisplayName string `json:"displayName"`
+		} `json:"pending"`
+	}
+	if err := json.Unmarshal(listOut, &listResult); err != nil {
+		m.app.Logger.Warn("openclaw: approve: decode devices list failed", "error", err, "output", strings.TrimSpace(string(listOut)))
+		return
+	}
+
+	if len(listResult.Pending) == 0 {
+		m.app.Logger.Info("openclaw: approve: no pending devices found, skipping")
+		return
+	}
+
+	for _, r := range listResult.Pending {
+		m.app.Logger.Info("openclaw: approve: found pending request",
+			"requestId", r.RequestID, "deviceId", r.DeviceID, "displayName", r.DisplayName)
+	}
+
+	// Step 3: approve --latest (gateway auto-selects the most recent pending request)
+	m.app.Logger.Info("openclaw: approve: auto-approving latest pending device via CLI")
+	approveOut, err := m.ExecCLI(ctx, "devices", "approve", "--latest", "--json")
+	if err != nil {
+		m.app.Logger.Warn("openclaw: approve: CLI approve failed", "error", err, "output", strings.TrimSpace(string(approveOut)))
+		return
+	}
+
+	// Verify approve succeeded by checking for approvedAtMs in response.
+	var approveResult struct {
+		RequestID string `json:"requestId"`
+		Device    struct {
+			DeviceID    string `json:"deviceId"`
+			ApprovedAtMs int64  `json:"approvedAtMs"`
+		} `json:"device"`
+	}
+	if err := json.Unmarshal(approveOut, &approveResult); err == nil && approveResult.Device.ApprovedAtMs > 0 {
+		m.app.Logger.Info("openclaw: approve: device approved successfully",
+			"requestId", approveResult.RequestID,
+			"deviceId", approveResult.Device.DeviceID,
+			"approvedAtMs", approveResult.Device.ApprovedAtMs)
+	} else {
+		m.app.Logger.Info("openclaw: approve: device approved via CLI", "output", strings.TrimSpace(string(approveOut)))
+	}
+}
+
+// reconnectClient only reconnects WebSocket, does not touch the process.
+// WS reconnect failures are surfaced to the user as an error message;
+// heartbeat polling will retry until OpenClaw recovers.
+func (m *Manager) reconnectClient() {
+	m.mu.Lock()
+	if m.shuttingDown {
+		m.mu.Unlock()
+		return
+	}
+	m.mu.Unlock()
+
+	cfg := m.store.Get()
+	if m.process == nil && !gatewayPortOccupied(cfg.GatewayPort) {
+		m.app.Logger.Info("openclaw: skipping WS reconnect, no gateway process and port not listening")
+		m.broadcastGatewayState(GatewayConnectionState{
+			Connected:     false,
+			Authenticated: false,
+			Reconnecting:  true,
+			LastError:     "Gateway process not running",
+		})
+		return
+	}
+	bundle, err := resolveBundledRuntime()
+	if err != nil {
+		m.app.Logger.Warn("openclaw: reconnect: no bundled runtime", "error", err)
+		m.broadcastGatewayState(GatewayConnectionState{
+			Connected:     false,
+			Authenticated: false,
+			Reconnecting:  true,
+			LastError:     "No runtime available",
+		})
+		return
+	}
+
+	if err := m.connectClient(cfg, bundle); err != nil {
+		// NOT_PAIRED: auto-approve pending device, then retry WS once.
+		var gerr *GatewayRequestError
+		if errors.As(err, &gerr) && strings.EqualFold(strings.TrimSpace(gerr.Code), "NOT_PAIRED") {
+			m.app.Logger.Info("openclaw: NOT_PAIRED, auto-approving device then retrying WS")
+			m.approvePendingDevices()
+
+			// Retry WS connection after approve.
+			if retryErr := m.connectClient(cfg, bundle); retryErr == nil {
+				goto connected
+			}
+		}
+		m.app.Logger.Warn("openclaw: WS reconnect failed", "error", err)
+		m.consecutiveFailures++
+		if m.consecutiveFailures >= 3 && !m.doctorTriggered {
+			m.doctorTriggered = true
+			m.app.Logger.Warn("openclaw: consecutive WS failures exceeded threshold, triggering doctor auto-fix")
+			m.broadcastGatewayState(GatewayConnectionState{
+				Connected:     false,
+				Authenticated: false,
+				Reconnecting:  true,
+				LastError:     err.Error(),
+			})
+			go m.runDoctorAutoFix()
+			return
+		}
+		m.broadcastGatewayState(GatewayConnectionState{
+			Connected:     false,
+			Authenticated: false,
+			Reconnecting:  true,
+			LastError:     err.Error(),
+		})
+		return
+	}
+
+connected:
+	m.consecutiveFailures = 0
+	m.doctorTriggered = false
+
+	m.mu.RLock()
+	pid := m.processPID
+	m.mu.RUnlock()
+	m.broadcastGatewayState(GatewayConnectionState{
+		Connected:     true,
+		Authenticated: true,
+		Reconnecting:  false,
+	})
+	m.app.Logger.Info("openclaw: WS reconnect succeeded", "pid", pid)
+}
+
 func (m *Manager) handleGatewayDisconnect(err error) {
 	m.app.Logger.Info("openclaw: gateway disconnected", "error", err)
 	m.mu.Lock()
@@ -816,8 +1109,9 @@ func (m *Manager) handleGatewayDisconnect(err error) {
 		m.mu.Unlock()
 		return
 	}
-	// No gateway process — nothing to reconnect to (e.g. late WS close after Stop).
-	if m.process == nil {
+	// No managed process but port may still be serving an adopted gateway — try WS reconnect.
+	cfg := m.store.Get()
+	if m.process == nil && !gatewayPortOccupied(cfg.GatewayPort) {
 		m.client = nil
 		if m.queryClient != nil {
 			_ = m.queryClient.Close()
@@ -828,7 +1122,7 @@ func (m *Manager) handleGatewayDisconnect(err error) {
 		m.broadcastGatewayState(GatewayConnectionState{
 			Connected:     false,
 			Authenticated: false,
-			Reconnecting:  false,
+			Reconnecting:  true,
 			LastError:     errStr(err),
 		})
 		return
@@ -841,8 +1135,15 @@ func (m *Manager) handleGatewayDisconnect(err error) {
 	m.readyAt = time.Time{}
 	m.mu.Unlock()
 
-	m.broadcastGatewayState(GatewayConnectionState{Reconnecting: true, LastError: errStr(err)})
+	m.broadcastGatewayState(GatewayConnectionState{
+		Connected:     false,
+		Authenticated: false,
+		Reconnecting:  true,
+		LastError:     errStr(err),
+	})
 
+	// Only reconnect WebSocket; do NOT restart the OpenClaw process.
+	// The reconnect lock prevents multiple concurrent reconnect attempts.
 	if !m.reconnecting.CompareAndSwap(false, true) {
 		m.app.Logger.Info("openclaw: skipping disconnect reconnect, already in progress")
 		return
@@ -851,7 +1152,7 @@ func (m *Manager) handleGatewayDisconnect(err error) {
 	go func() {
 		defer m.reconnecting.Store(false)
 		time.Sleep(500 * time.Millisecond)
-		_ = m.reconcile(false)
+		m.reconnectClient()
 	}()
 }
 
@@ -1131,6 +1432,36 @@ func (m *Manager) RegisterReadyHook(fn func()) {
 	m.readyHooks = append(m.readyHooks, fn)
 }
 
+// runDoctorAutoFix triggers "openclaw doctor --fix" and emits the trigger event
+// to the frontend so it can show the doctor console. It runs asynchronously
+// and does not block the reconnect loop.
+func (m *Manager) runDoctorAutoFix() {
+	if m.app != nil {
+		m.app.Event.Emit(EventTriggerDoctor, map[string]any{
+			"reason": "consecutive_ws_failures",
+		})
+	}
+
+	bundle, err := resolveBundledRuntime()
+	if err != nil {
+		m.app.Logger.Warn("openclaw: doctor auto-fix: no bundled runtime", "error", err)
+		return
+	}
+
+	m.app.Logger.Info("openclaw: running doctor auto-fix",
+		"runtime", bundle.Root)
+
+	// Run doctor --fix; output streams via EventDoctorOutput as normal.
+	_, runErr := m.RunDoctorCommand("doctor --fix --yes --non-interactive", true)
+	if runErr != nil {
+		m.app.Logger.Warn("openclaw: doctor auto-fix failed", "error", runErr)
+	}
+	// Reset trigger flag after doctor completes so future failure windows can re-trigger.
+	m.mu.Lock()
+	m.doctorTriggered = false
+	m.mu.Unlock()
+}
+
 // RunDoctorCommand executes an openclaw doctor command, streams stdout/stderr via EventDoctorOutput, and returns the final result.
 func (m *Manager) RunDoctorCommand(command string, fix bool) (*DoctorCommandResult, error) {
 	bundle, err := resolveBundledRuntime()
@@ -1291,16 +1622,26 @@ func verifyInstalled(bundle *bundledRuntime) (string, error) {
 // `openclaw config set` before gateway start — that pre-writes openclaw.json and races with
 // the gateway's own persistence of --auth/--token, causing repeated reload restarts; see
 // ResponsesEndpointSection + ConfigService.Sync instead.
-func ensureOpenClawStateDir(bundle *bundledRuntime) error {
+func ensureOpenClawStateDir(bundle *bundledRuntime, defaultPort int, gatewayToken string) error {
 	if err := os.MkdirAll(bundle.StateDir, 0o700); err != nil {
 		return fmt.Errorf("create openclaw state dir: %w", err)
 	}
+	log := slog.Default()
 	// Fix config version downgrade: if openclaw.json was written by a newer version,
 	// gateway will refuse to start ("Config was last written by a newer OpenClaw").
 	// Remove _config_version field to allow the older runtime to start.
-	if err := fixOpenClawConfigVersionIfNeeded(bundle.ConfigPath, bundle.Manifest.OpenClawVersion, slog.Default()); err != nil {
+	if err := fixOpenClawConfigVersionIfNeeded(bundle.ConfigPath, bundle.Manifest.OpenClawVersion, log); err != nil {
 		// Log but don't fail — gateway startup may still work if config is OK.
-		slog.Default().Warn("openclaw: fix config version failed", "error", err, "config", bundle.ConfigPath)
+		log.Warn("openclaw: fix config version failed", "error", err, "config", bundle.ConfigPath)
+	}
+	// Clean up corrupted numeric-id model entries from chatwiki provider in openclaw.json.
+	// These can accumulate from old catalog sync bugs and must not persist across restarts.
+	if err := cleanCorruptedChatWikiModels(bundle.ConfigPath, log); err != nil {
+		log.Warn("openclaw: clean corrupted chatwiki models failed", "error", err, "config", bundle.ConfigPath)
+	}
+	// Ensure gateway auth config is present before boot so token auth takes effect.
+	if err := ensureGatewayAuthConfig(bundle.ConfigPath, defaultPort, gatewayToken, log); err != nil {
+		log.Warn("openclaw: ensure gateway auth config failed", "error", err, "config", bundle.ConfigPath)
 	}
 	return nil
 }
@@ -1340,6 +1681,161 @@ func fixOpenClawConfigVersionIfNeeded(configPath, runtimeVersion string, log *sl
 	}
 	log.Info("openclaw: config version downgraded",
 		"from", configVersion, "to", runtimeVersion, "config", configPath)
+	return nil
+}
+
+// cleanCorruptedChatWikiModels removes model entries from the chatwiki provider
+// in openclaw.json where both id and name are purely numeric (e.g. {"id":"1","name":"1"}).
+// These are remnants of corrupted catalog data that must not persist across restarts.
+func cleanCorruptedChatWikiModels(configPath string, log *slog.Logger) error {
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read config: %w", err)
+	}
+
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return fmt.Errorf("parse config: %w", err)
+	}
+
+	models, ok := cfg["models"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	provs, ok := models["providers"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	chatwiki, ok := provs["chatwiki"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	arr, ok := chatwiki["models"].([]any)
+	if !ok {
+		return nil
+	}
+
+	original := len(arr)
+	cleaned := make([]any, 0, original)
+	for _, item := range arr {
+		m, ok := item.(map[string]any)
+		if !ok {
+			cleaned = append(cleaned, item)
+			continue
+		}
+		id, _ := m["id"].(string)
+		name, _ := m["name"].(string)
+		if isAllDigits(id) && isAllDigits(name) {
+			continue // skip corrupted entry
+		}
+		cleaned = append(cleaned, item)
+	}
+
+	if len(cleaned) == original {
+		return nil
+	}
+
+	chatwiki["models"] = cleaned
+	out, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal config: %w", err)
+	}
+	if err := os.WriteFile(configPath, out, 0o644); err != nil {
+		return fmt.Errorf("write config: %w", err)
+	}
+	log.Info("openclaw: cleaned corrupted chatwiki models",
+		"removed", original-len(cleaned), "remaining", len(cleaned), "config", configPath)
+	return nil
+}
+
+// ensureGatewayAuthConfig ensures openclaw.json has all required gateway fields set
+// before boot, so the gateway starts on a consistent port and uses token auth.
+//
+// Priority for port:
+//  1. gateway.port  (top-level, newer OpenClaw 2026.4+)
+//  2. gateway.http.port  (legacy location)
+//  3. defaultPort (passed in; ChatClaw's stored settings value)
+//
+// The chosen port is always written back to openclaw.json so the CLI commands
+// (devices list/approve) and the gateway agree on the same port after restart.
+func ensureGatewayAuthConfig(configPath string, defaultPort int, gatewayToken string, log *slog.Logger) error {
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read config for auth patch: %w", err)
+	}
+
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return fmt.Errorf("parse config for auth patch: %w", err)
+	}
+
+	gw, _ := cfg["gateway"].(map[string]any)
+	if gw == nil {
+		gw = map[string]any{}
+		cfg["gateway"] = gw
+	}
+
+	// Resolve port: check existing config first, then fall back to ChatClaw default.
+	port := 0
+	if v, ok := gw["port"]; ok {
+		if f, ok := v.(float64); ok {
+			port = int(f)
+		}
+	}
+	if port == 0 {
+		if http, ok := gw["http"].(map[string]any); ok {
+			if v, ok := http["port"].(float64); ok {
+				port = int(v)
+			}
+		}
+	}
+	if port == 0 {
+		port = defaultPort
+	}
+	// Write resolved port back so CLI and gateway always agree.
+	gw["port"] = port
+
+	// OpenClaw 2026.4+ requires explicit gateway.mode.
+	if _, exists := gw["mode"]; !exists {
+		gw["mode"] = "local"
+	}
+
+	auth, _ := gw["auth"].(map[string]any)
+	if auth == nil {
+		auth = map[string]any{}
+		gw["auth"] = auth
+	}
+
+	// "token" is the only reliable mode in OpenClaw 2026.4+.
+	auth["mode"] = "token"
+	// Preserve an existing token so previously paired devices stay connected.
+	// Only write the ChatClaw token if the config has no token at all.
+	if _, exists := auth["token"]; !exists && gatewayToken != "" {
+		auth["token"] = gatewayToken
+	}
+
+	// Remove stale keys from older config versions so they don't cause validation errors.
+	delete(auth, "autoApprove")
+	delete(auth, "localAutoApprove")
+	delete(auth, "pairingTimeout")
+
+	out, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal config after auth patch: %w", err)
+	}
+	if err := os.WriteFile(configPath, out, 0o644); err != nil {
+		return fmt.Errorf("write auth to config: %w", err)
+	}
+	log.Info("openclaw: gateway config patched",
+		"config", configPath,
+		"port", port,
+		"auth_mode", auth["mode"])
 	return nil
 }
 
