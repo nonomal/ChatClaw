@@ -108,12 +108,10 @@ Section
     !insertmacro wails.files
 
     ; Bundled toolchain bin directory (build/windows/bin) for full installer.
-    ; Contains uv.exe, bun.exe, codex.exe, npx.exe, etc. The toolchain service detects
-    ; these at <exeDir>/build/windows/bin so the user can run them without re-downloading.
+    ; Contents (uv.exe, bun.exe, codex.exe, npx.exe, etc.) are NOT tracked by NSIS (no File /r).
+    ; The toolchain service detects these at <exeDir>/build/windows/bin so the user can run them without re-downloading.
+    ; Packaged as a .zip and extracted with tar (avoids NSIS walking thousands of node_modules files).
     !ifdef BUNDLE_OPENCLAW
-        CreateDirectory "$INSTDIR\build\windows\bin"
-        SetOutPath "$INSTDIR\build\windows\bin"
-        File /nonfatal /r "..\..\..\build\windows\bin\*.*"
         DetailPrint "Bundled toolchain binaries installed to build\windows\bin"
     !endif
 
@@ -159,32 +157,24 @@ SectionEnd
 Section "uninstall" 
     !insertmacro wails.setShellContext
 
-    ; Stop app and bundled Node so $INSTDIR (especially rt\) is not locked; avoids slow per-file uninstall and delete failures.
+    ; Stop app and bundled Node so $INSTDIR (especially rt\) is not locked
     nsExec::ExecToStack 'taskkill /F /IM ${PRODUCT_EXECUTABLE} /T 2>nul'
-    Pop $0
     nsExec::ExecToStack 'taskkill /F /IM node.exe /T 2>nul'
-    Pop $0
     Sleep 500
 
-    RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
+    ; Remove WebView2 DataPath
+    RMDir /r "$AppData\${PRODUCT_EXECUTABLE}"
 
-    ; Wipe rt\ in one OS call (fast; avoids NSIS RMDir walking node_modules with per-file log lines).
-    nsExec::ExecToStack 'rd /s /q "$INSTDIR\rt" 2>nul'
-    Pop $0
-    ; Wipe bundled toolchain bin directory (build\windows\bin).
-    nsExec::ExecToStack 'rd /s /q "$INSTDIR\build\windows\bin" 2>nul'
-    Pop $0
-    nsExec::ExecToStack 'rd /s /q "$INSTDIR\build\windows" 2>nul'
-    Pop $0
+    ; Delete entire installation directory in one command - NO traversal, extremely fast
+    nsExec::ExecToStack 'rd /s /q "$INSTDIR" 2>nul'
 
-    RMDir /r $INSTDIR
-
+    ; Delete shortcuts
     Delete "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk"
     Delete "$DESKTOP\${INFO_PRODUCTNAME}.lnk"
 
+    ; Clean up registry
     !insertmacro wails.unassociateFiles
     !insertmacro wails.unassociateCustomProtocols
-    ; Remove chatclaw:// URL scheme registration
     DeleteRegKey SHELL_CONTEXT "Software\Classes\chatclaw"
 
     !insertmacro wails.deleteUninstaller
