@@ -466,7 +466,7 @@ func (m *Manager) reconcileLocked(restart bool) error {
 		GatewayURL:       gatewayURL(cfg.GatewayPort),
 	})
 
-	if err := ensureOpenClawStateDir(bundle, cfg.GatewayToken); err != nil {
+	if err := ensureOpenClawStateDir(bundle, cfg.GatewayPort, cfg.GatewayToken); err != nil {
 		return fail("ensureOpenClawStateDir", err, version, 0)
 	}
 
@@ -1575,7 +1575,7 @@ func verifyInstalled(bundle *bundledRuntime) (string, error) {
 // `openclaw config set` before gateway start — that pre-writes openclaw.json and races with
 // the gateway's own persistence of --auth/--token, causing repeated reload restarts; see
 // ResponsesEndpointSection + ConfigService.Sync instead.
-func ensureOpenClawStateDir(bundle *bundledRuntime, gatewayToken string) error {
+func ensureOpenClawStateDir(bundle *bundledRuntime, defaultPort int, gatewayToken string) error {
 	if err := os.MkdirAll(bundle.StateDir, 0o700); err != nil {
 		return fmt.Errorf("create openclaw state dir: %w", err)
 	}
@@ -1588,7 +1588,7 @@ func ensureOpenClawStateDir(bundle *bundledRuntime, gatewayToken string) error {
 		log.Warn("openclaw: fix config version failed", "error", err, "config", bundle.ConfigPath)
 	}
 	// Ensure gateway auth config is present before boot so token auth takes effect.
-	if err := ensureGatewayAuthConfig(bundle.ConfigPath, gatewayToken, log); err != nil {
+	if err := ensureGatewayAuthConfig(bundle.ConfigPath, defaultPort, gatewayToken, log); err != nil {
 		log.Warn("openclaw: ensure gateway auth config failed", "error", err, "config", bundle.ConfigPath)
 	}
 	return nil
@@ -1632,12 +1632,17 @@ func fixOpenClawConfigVersionIfNeeded(configPath, runtimeVersion string, log *sl
 	return nil
 }
 
-// ensureGatewayAuthConfig ensures openclaw.json has the gateway.auth.mode set to "token".
-// Newer OpenClaw (2026.4+) removed "pairing" mode; token auth is the correct mode.
-// We only set the mode key, leaving token/tokenFrom values to be handled by the gateway
-// startup flags (--auth token --token <token>) so the token in openclaw.json is stable
-// and not re-generated on each startup.
-func ensureGatewayAuthConfig(configPath string, gatewayToken string, log *slog.Logger) error {
+// ensureGatewayAuthConfig ensures openclaw.json has all required gateway fields set
+// before boot, so the gateway starts on a consistent port and uses token auth.
+//
+// Priority for port:
+//  1. gateway.port  (top-level, newer OpenClaw 2026.4+)
+//  2. gateway.http.port  (legacy location)
+//  3. defaultPort (passed in; ChatClaw's stored settings value)
+//
+// The chosen port is always written back to openclaw.json so the CLI commands
+// (devices list/approve) and the gateway agree on the same port after restart.
+func ensureGatewayAuthConfig(configPath string, defaultPort int, gatewayToken string, log *slog.Logger) error {
 	raw, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -1656,6 +1661,26 @@ func ensureGatewayAuthConfig(configPath string, gatewayToken string, log *slog.L
 		gw = map[string]any{}
 		cfg["gateway"] = gw
 	}
+
+	// Resolve port: check existing config first, then fall back to ChatClaw default.
+	port := 0
+	if v, ok := gw["port"]; ok {
+		if f, ok := v.(float64); ok {
+			port = int(f)
+		}
+	}
+	if port == 0 {
+		if http, ok := gw["http"].(map[string]any); ok {
+			if v, ok := http["port"].(float64); ok {
+				port = int(v)
+			}
+		}
+	}
+	if port == 0 {
+		port = defaultPort
+	}
+	// Write resolved port back so CLI and gateway always agree.
+	gw["port"] = port
 
 	// OpenClaw 2026.4+ requires explicit gateway.mode.
 	if _, exists := gw["mode"]; !exists {
@@ -1688,9 +1713,10 @@ func ensureGatewayAuthConfig(configPath string, gatewayToken string, log *slog.L
 	if err := os.WriteFile(configPath, out, 0o644); err != nil {
 		return fmt.Errorf("write auth to config: %w", err)
 	}
-	log.Info("openclaw: gateway auth config written",
+	log.Info("openclaw: gateway config patched",
 		"config", configPath,
-		"mode", auth["mode"])
+		"port", port,
+		"auth_mode", auth["mode"])
 	return nil
 }
 
