@@ -1279,19 +1279,32 @@ func (s *DocumentService) processDocument(jobCtx context.Context, docID, library
 	// 开始解析
 	updateAndEmit(StatusProcessing, 0, "", StatusPending, 0, "")
 
-	// 获取知识库配置
-	libraryConfig, err := processor.GetLibraryConfig(ctx, db, libraryID)
+	// Re-read library config on each wait spin so batch_max_documents changes apply and
+	// stale max values from older goroutines cannot shrink the shared gate.
+	var heldLibraryConfig *processor.LibraryConfig
+	releaseSlot, err := acquireLibraryLearnSlot(jobCtx, libraryID, func() (int, error) {
+		lc, err := processor.GetLibraryConfig(ctx, db, libraryID)
+		if err != nil {
+			return 0, err
+		}
+		heldLibraryConfig = lc
+		return lc.BatchMaxDocuments, nil
+	})
 	if err != nil {
-		updateAndEmit(StatusFailed, 0, "获取知识库配置失败: "+err.Error(), StatusPending, 0, "")
-		return
-	}
-
-	releaseSlot, err := acquireLibraryLearnSlot(jobCtx, libraryID, libraryConfig.BatchMaxDocuments)
-	if err != nil {
-		updateAndEmit(StatusFailed, 0, "文档处理已取消或等待并发槽位失败: "+err.Error(), StatusPending, 0, "")
+		if errors.Is(err, context.Canceled) {
+			updateAndEmit(StatusFailed, 0, "文档处理已取消或等待并发槽位失败: "+err.Error(), StatusPending, 0, "")
+		} else {
+			updateAndEmit(StatusFailed, 0, "获取知识库配置失败: "+err.Error(), StatusPending, 0, "")
+		}
 		return
 	}
 	defer releaseSlot()
+
+	libraryConfig := heldLibraryConfig
+	if libraryConfig == nil {
+		updateAndEmit(StatusFailed, 0, "获取知识库配置失败", StatusPending, 0, "")
+		return
+	}
 
 	// 获取全局嵌入模型配置
 	embeddingConfig, err := processor.GetEmbeddingConfig(ctx, db)

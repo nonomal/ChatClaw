@@ -8,7 +8,7 @@ import (
 // libLearnGate limits concurrent document learning jobs per library.
 type libLearnGate struct {
 	mu       sync.Mutex
-	max      int
+	limit    int // effective concurrency cap (from latest getMax, clamped)
 	inFlight int
 	wait     []chan struct{}
 }
@@ -36,20 +36,49 @@ func gateForLibrary(libraryID int64) *libLearnGate {
 	return g
 }
 
+// takeWakeBatchLocked returns up to (limit-inFlight) waiters to notify.
+// Caller must hold g.mu. Channels are removed from g.wait and must be closed after unlock.
+func (g *libLearnGate) takeWakeBatchLocked() []chan struct{} {
+	free := g.limit - g.inFlight
+	if free <= 0 || len(g.wait) == 0 {
+		return nil
+	}
+	n := free
+	if n > len(g.wait) {
+		n = len(g.wait)
+	}
+	out := make([]chan struct{}, 0, n)
+	for i := 0; i < n; i++ {
+		out = append(out, g.wait[0])
+		g.wait = g.wait[1:]
+	}
+	return out
+}
+
 // acquireLibraryLearnSlot blocks until this library has fewer than maxParallel
 // document jobs in progress. Caller must call the returned release exactly once.
-func acquireLibraryLearnSlot(ctx context.Context, libraryID int64, maxParallel int) (release func(), err error) {
-	maxParallel = clampBatchMaxDocuments(maxParallel)
+//
+// getMax is invoked on every wait iteration so the limit tracks the latest library
+// settings from DB (avoids stale max values from an older goroutine shrinking the gate).
+func acquireLibraryLearnSlot(ctx context.Context, libraryID int64, getMax func() (int, error)) (release func(), err error) {
 	g := gateForLibrary(libraryID)
 
 	for {
-		g.mu.Lock()
-		if g.max != maxParallel {
-			g.max = maxParallel
+		mpRaw, err := getMax()
+		if err != nil {
+			return nil, err
 		}
-		if g.inFlight < g.max {
+		limit := clampBatchMaxDocuments(mpRaw)
+
+		g.mu.Lock()
+		g.limit = limit
+		toWake := g.takeWakeBatchLocked()
+		if g.inFlight < g.limit {
 			g.inFlight++
 			g.mu.Unlock()
+			for _, ch := range toWake {
+				close(ch)
+			}
 			released := false
 			return func() {
 				if released {
@@ -62,6 +91,9 @@ func acquireLibraryLearnSlot(ctx context.Context, libraryID int64, maxParallel i
 		ch := make(chan struct{})
 		g.wait = append(g.wait, ch)
 		g.mu.Unlock()
+		for _, c := range toWake {
+			close(c)
+		}
 
 		select {
 		case <-ctx.Done():
@@ -84,13 +116,9 @@ func (g *libLearnGate) releaseOne() {
 	if g.inFlight > 0 {
 		g.inFlight--
 	}
-	var w chan struct{}
-	if len(g.wait) > 0 {
-		w = g.wait[0]
-		g.wait = g.wait[1:]
-	}
+	toWake := g.takeWakeBatchLocked()
 	g.mu.Unlock()
-	if w != nil {
-		close(w)
+	for _, ch := range toWake {
+		close(ch)
 	}
 }
