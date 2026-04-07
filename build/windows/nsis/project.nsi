@@ -59,7 +59,6 @@ VIAddVersionKey "ProductName"     "${INFO_PRODUCTNAME}"
 ManifestDPIAware true
 
 !include "MUI.nsh"
-!include "nsExec.nsh"
 
 !define MUI_ICON "..\icon.ico"
 !define MUI_UNICON "..\icon.ico"
@@ -131,7 +130,7 @@ Section
         File "${ARG_OPENCLAW_RUNTIME}"
         DetailPrint "Extracting OpenClaw runtime..."
         SetDetailsPrint listonly
-        nsExec::ExecToStack 'cmd /c "tar -xf $INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}.zip -C $INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}"'
+        nsExec::ExecToStack 'tar -xf "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}.zip" -C "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}"'
         Pop $0
         ${If} $0 != 0
             DetailPrint "Warning: tar extraction returned error code $0"
@@ -161,20 +160,22 @@ Section "uninstall"
     !insertmacro wails.setShellContext
 
     ; Stop app and bundled Node so $INSTDIR (especially rt\) is not locked; avoids slow per-file uninstall and delete failures.
-    nsExec::ExecToStack 'cmd /c taskkill /F /IM ${PRODUCT_EXECUTABLE} /T'
+    nsExec::ExecToStack 'taskkill /F /IM ${PRODUCT_EXECUTABLE} /T 2>nul'
     Pop $0
-    nsExec::ExecToStack 'cmd /c taskkill /F /IM node.exe /T'
+    nsExec::ExecToStack 'taskkill /F /IM node.exe /T 2>nul'
     Pop $0
-    Sleep 400
+    Sleep 500
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
 
-    ; Wipe rt\ in one OS call (fast; avoids NSIS RMDir walking node_modules with per-file log lines). Zip-based installs add no per-file rt Deletes.
-    ; Note: brief cmd window possible; PowerShell Remove-Item line breaks NSIS ExecWait parsing (-Recurse/-Force split into extra args).
-    ExecWait 'cmd /c if exist "$INSTDIR\rt" rd /s /q "$INSTDIR\rt"'
+    ; Wipe rt\ in one OS call (fast; avoids NSIS RMDir walking node_modules with per-file log lines).
+    nsExec::ExecToStack 'rd /s /q "$INSTDIR\rt" 2>nul'
+    Pop $0
     ; Wipe bundled toolchain bin directory (build\windows\bin).
-    ExecWait 'cmd /c if exist "$INSTDIR\build\windows\bin" rd /s /q "$INSTDIR\build\windows\bin"'
-    ExecWait 'cmd /c if exist "$INSTDIR\build\windows" rd /s /q "$INSTDIR\build\windows"'
+    nsExec::ExecToStack 'rd /s /q "$INSTDIR\build\windows\bin" 2>nul'
+    Pop $0
+    nsExec::ExecToStack 'rd /s /q "$INSTDIR\build\windows" 2>nul'
+    Pop $0
 
     RMDir /r $INSTDIR
 
