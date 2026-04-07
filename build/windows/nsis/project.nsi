@@ -59,6 +59,7 @@ VIAddVersionKey "ProductName"     "${INFO_PRODUCTNAME}"
 ManifestDPIAware true
 
 !include "MUI.nsh"
+!include "nsExec.nsh"
 
 !define MUI_ICON "..\icon.ico"
 !define MUI_UNICON "..\icon.ico"
@@ -130,7 +131,11 @@ Section
         File "${ARG_OPENCLAW_RUNTIME}"
         DetailPrint "Extracting OpenClaw runtime..."
         SetDetailsPrint listonly
-        ExecWait 'powershell -ExecutionPolicy Bypass -WindowStyle Hidden -Command "tar -xf $INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}.zip -C $INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}"'
+        nsExec::ExecToStack 'cmd /c "tar -xf $INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}.zip -C $INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}"'
+        Pop $0
+        ${If} $0 != 0
+            DetailPrint "Warning: tar extraction returned error code $0"
+        ${EndIf}
         Delete "$INSTDIR\rt\${ARG_OPENCLAW_RUNTIME_TARGET}.zip"
         SetDetailsPrint both
     !endif
@@ -156,9 +161,10 @@ Section "uninstall"
     !insertmacro wails.setShellContext
 
     ; Stop app and bundled Node so $INSTDIR (especially rt\) is not locked; avoids slow per-file uninstall and delete failures.
-    ExecWait 'powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -Command "taskkill /F /IM ${PRODUCT_EXECUTABLE} /T"'
-    ; Stops all node.exe; may affect other Node apps during uninstall only. Narrower kill would need a bundled script.
-    ExecWait 'powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -Command "taskkill /F /IM node.exe /T"'
+    nsExec::ExecToStack 'cmd /c taskkill /F /IM ${PRODUCT_EXECUTABLE} /T'
+    Pop $0
+    nsExec::ExecToStack 'cmd /c taskkill /F /IM node.exe /T'
+    Pop $0
     Sleep 400
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
