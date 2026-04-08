@@ -1268,9 +1268,11 @@ func extractOpenClawChannelID(extraConfig string) string {
 
 func (s *OpenClawChannelService) ensureOpenClawReady() error {
 	if s.openclawManager == nil || !s.openclawManager.IsReady() {
+		clientNil, readyAtZero := s.openclawManager.DebugIsReadyState()
 		s.app.Logger.Warn("[channel] openclaw manager not ready",
 			"managerNil", s.openclawManager == nil,
-			"isReady", func() bool { return s.openclawManager != nil && s.openclawManager.IsReady() })
+			"clientNil", clientNil,
+			"readyAtZero", readyAtZero)
 		return errs.New("error.openclaw_gateway_not_ready_channel")
 	}
 	return nil

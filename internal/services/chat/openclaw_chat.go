@@ -18,6 +18,7 @@ import (
 
 	"chatclaw/internal/define"
 	"chatclaw/internal/errs"
+	openclawruntime "chatclaw/internal/openclaw/runtime"
 	"chatclaw/internal/services/channels"
 
 	"github.com/google/uuid"
@@ -1528,10 +1529,15 @@ func (s *ChatService) SendOpenClawMessage(input SendMessageInput) (*SendMessageR
 	}
 
 	if s.openclawGateway == nil || !s.openclawGateway.IsReady() {
-		s.app.Logger.Warn("[openclaw-chat] gateway not ready, check failed",
+		var clientNil, readyAtZero bool
+		if manager, ok := s.openclawGateway.(*openclawruntime.Manager); ok {
+			clientNil, readyAtZero = manager.DebugIsReadyState()
+		}
+		s.app.Logger.Warn("[openclaw-chat] gateway not ready",
 			"conv", input.ConversationID,
 			"gatewayNil", s.openclawGateway == nil,
-			"isReady", func() bool { return s.openclawGateway != nil && s.openclawGateway.IsReady() })
+			"clientNil", clientNil,
+			"readyAtZero", readyAtZero)
 		return nil, errs.New("error.openclaw_gateway_not_ready")
 	}
 
