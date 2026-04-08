@@ -1444,15 +1444,7 @@ func (m *Manager) isShuttingDown() bool {
 func (m *Manager) IsReady() bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.client != nil && !m.readyAt.IsZero()
-}
-
-// DebugIsReadyState returns detailed internal state for diagnosing ready-check failures.
-// Intended for temporary debugging only; do not keep in production code.
-func (m *Manager) DebugIsReadyState() (clientNil, readyAtZero bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.client == nil, m.readyAt.IsZero()
+	return m.status.Phase == PhaseConnected
 }
 
 // GatewayURL returns the HTTP base URL of the running OpenClaw Gateway.

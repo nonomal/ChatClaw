@@ -18,7 +18,6 @@ import (
 
 	"chatclaw/internal/define"
 	"chatclaw/internal/errs"
-	openclawruntime "chatclaw/internal/openclaw/runtime"
 	"chatclaw/internal/services/channels"
 
 	"github.com/google/uuid"
@@ -884,10 +883,6 @@ func openClawSessionKeyMatches(got, want string) bool {
 // GetOpenClawLastAssistantReply fetches the last assistant message text from
 // the OpenClaw Gateway session. Returns empty string if unavailable.
 func (s *ChatService) GetOpenClawLastAssistantReply(conversationID int64) string {
-	if s.openclawGateway == nil || !s.openclawGateway.IsReady() {
-		return ""
-	}
-
 	cfg, err := s.getOpenClawAgentConfig(conversationID)
 	if err != nil {
 		return ""
@@ -1528,19 +1523,6 @@ func (s *ChatService) SendOpenClawMessage(input SendMessageInput) (*SendMessageR
 		return nil, errs.New("error.chat_content_required")
 	}
 
-	if s.openclawGateway == nil || !s.openclawGateway.IsReady() {
-		var clientNil, readyAtZero bool
-		if manager, ok := s.openclawGateway.(*openclawruntime.Manager); ok {
-			clientNil, readyAtZero = manager.DebugIsReadyState()
-		}
-		s.app.Logger.Warn("[openclaw-chat] gateway not ready",
-			"conv", input.ConversationID,
-			"gatewayNil", s.openclawGateway == nil,
-			"clientNil", clientNil,
-			"readyAtZero", readyAtZero)
-		return nil, errs.New("error.openclaw_gateway_not_ready")
-	}
-
 	// Sync config before sending to ensure latest ChatWiki models are available.
 	syncCtx, syncCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	if syncErr := s.openclawGateway.SyncConfig(syncCtx); syncErr != nil {
@@ -1638,10 +1620,6 @@ func (s *ChatService) EditAndResendOpenClaw(input EditAndResendInput) (*SendMess
 	content := strings.TrimSpace(input.NewContent)
 	if content == "" && len(input.Images) == 0 {
 		return nil, errs.New("error.chat_content_required")
-	}
-
-	if s.openclawGateway == nil || !s.openclawGateway.IsReady() {
-		return nil, errs.New("error.openclaw_gateway_not_ready")
 	}
 
 	// Sync config before sending to ensure latest ChatWiki models are available.

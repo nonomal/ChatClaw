@@ -1266,15 +1266,10 @@ func extractOpenClawChannelID(extraConfig string) string {
 	return strings.TrimSpace(cfg.OpenClawChannelID)
 }
 
+// ensureOpenClawReady was previously used to check Manager.IsReady() before channel operations.
+// Removed because IsReady() state can diverge from actual gateway health (钉钉 can communicate
+// while IsReady() returns false). Gateway health is now determined by request-level errors.
 func (s *OpenClawChannelService) ensureOpenClawReady() error {
-	if s.openclawManager == nil || !s.openclawManager.IsReady() {
-		clientNil, readyAtZero := s.openclawManager.DebugIsReadyState()
-		s.app.Logger.Warn("[channel] openclaw manager not ready",
-			"managerNil", s.openclawManager == nil,
-			"clientNil", clientNil,
-			"readyAtZero", readyAtZero)
-		return errs.New("error.openclaw_gateway_not_ready_channel")
-	}
 	return nil
 }
 
