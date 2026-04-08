@@ -9,15 +9,29 @@
 </p>
 
 <p align="center">
-  <a href="./docs/readmes/README.md" target="_blank">English</a> |
-  <a href="./docs/readmes/README_zh-CN.md" target="_blank">简体中文</a>
+  <a href="./docs/readmes/README.md">English</a> |
+  <a href="./docs/readmes/README_zh-CN.md">简体中文</a> |
+  <a href="./docs/readmes/README_zh-TW.md">繁體中文</a> |
+  <a href="./docs/readmes/README_ja-JP.md">日本語</a> |
+  <a href="./docs/readmes/README_ko-KR.md">한국어</a> |
+  <a href="./docs/readmes/README_ar-SA.md">العربية</a> |
+  <a href="./docs/readmes/README_bn-BD.md">বাংলা</a> |
+  <a href="./docs/readmes/README_de-DE.md">Deutsch</a> |
+  <a href="./docs/readmes/README_es-ES.md">Español</a> |
+  <a href="./docs/readmes/README_fr-FR.md">Français</a> |
+  <a href="./docs/readmes/README_hi-IN.md">हिन्दी</a> |
+  <a href="./docs/readmes/README_it-IT.md">Italiano</a> |
+  <a href="./docs/readmes/README_pt-BR.md">Português</a> |
+  <a href="./docs/readmes/README_sl-SI.md">Slovenščina</a> |
+  <a href="./docs/readmes/README_tr-TR.md">Türkçe</a> |
+  <a href="./docs/readmes/README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-Get OpenClaw-like personal AI agent in 5 mins. Sandbox-secured, with an ultra-small 30MB installer for macOS & Windows (install in 1 min). Connects to WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu & other messaging apps. Built-in Skill Market, Knowledge Base, Memory, MCP, Scheduled Tasks. Developed in Go: fast & low resource usage.
+Get OpenClaw-like knowledge base personal AI agent in 5 mins. Sandbox-secured, with an ultra-small 30MB installer for macOS & Windows (install in 1 min). Connects to WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu & other messaging apps. Built-in Skill Market, Knowledge Base, Memory, MCP, Scheduled Tasks. Developed in Go: fast & low resource usage.
 
- 5分钟拥有类 OpenClaw 的小龙虾个人AI智能体,沙箱安全防护,支持macOS/Windows 30M 极小安装包,1 分钟安装。连接WhatsApp、Telegram、Slack、Discord、Gmail、钉钉、企业微信、QQ、飞书等主流通讯应用，内置技能市场、IMA开源版本地知识库平替、记忆、MCP、计划任务等核心功能。Go语言开发，运行快、占资源少。
+ 5分钟拥有类 OpenClaw 本地知识库个人AI智能体,沙箱安全防护,支持macOS/Windows 30M 极小安装包,1 分钟安装。连接WhatsApp、Telegram、Slack、Discord、Gmail、钉钉、企业微信、QQ、飞书等主流通讯应用，内置技能市场、IMA开源版本地知识库平替、记忆、MCP、计划任务等核心功能。Go语言开发，运行快、占资源少。
  
- 
+
 <p align="center">
 <a href="https://github.com/zhimaAi/ChatClaw/releases" target="_blank" >Windows/Mac/Linux (Releases)</a>  
 </p>
@@ -269,29 +283,43 @@ ChatClaw_D2/
 │   ├── winsnap/                # Window snapping engine (macOS/Windows/Linux)
 │   └── winutil/                # Window activation utilities
 ├── docs/                       # Development documentation
-└── images/                     # README screenshots
+│   └── readmes/                # Multi-language README files
+│       ├── README.md           # English README
+│       ├── README_zh-CN.md    # Simplified Chinese README
+│       └── images/             # README screenshots
+└── images/                     # README screenshots (legacy)
 ```
 
 ### Changelog
-To view the complete update log, please click👉️👉️[UpdateLog.md](./UpdateLog.md)
+To view the complete update log, please click👉️👉️[UpdateLog.md](../../UpdateLog.md)
 
-### 2026/03/10
-1. **ChatWiki Account Binding**: Added ChatWiki account binding flow in settings (cloud/open-source selection, browser auth, deep-link callback, countdown + re-auth/unbind).<br/>
-2. **ChatWiki Backend Service**: Introduced `ChatWikiService` with binding persistence, robot/library management APIs, and auth-expired handling.<br/>
-3. **Team Chat Streaming**: Implemented team-mode SSE streaming with `dialogue_id` continuation support and conversation/message persistence for team sessions.<br/>
-4. **DB Migrations**: Added SQLite migrations for ChatWiki binding storage and team conversation fields (`team_type`, `dialogue_id`).<br/>
-5. **UI & i18n Updates**: Updated assistant/settings/knowledge pages and added new locales to support ChatWiki integration and related UI states.<br/>
 
-### 2026/03/09
-1. **Branding Assets Refresh**: Updated app icons and frontend logo assets across Windows/macOS builds and UI images.<br/>
+### 2026/04/03
+1. **OpenClaw Doctor Console Enhancement**: Integrated `ansi-to-html` for enhanced console output rendering with ANSI color support in both light and dark themes. Added streaming support for doctor command output with improved stdout/stderr handling and event emission for UI updates.
+2. **OpenClaw Runtime Upgrade System**: Implemented comprehensive upgrade status management with "Upgrading" state across components and localization files. Enhanced npm package installation with progress updates and improved error handling, including rollback mechanisms.
+3. **Gateway Port Management**: Added port occupation checks with user feedback for gateway operations. Implemented `ensurePortClean` method to detect and gracefully stop stale processes using the gateway port. Added stop port functionality.
+4. **ChatWiki Sync Enhancement**: Enhanced ChatWiki sync data fetching to support forced refresh for up-to-date model catalog. Implemented model catalog refresh mechanism for OpenClaw sync to ensure models stay current.
+5. **OpenClaw Auto-Start**: Implemented auto-start functionality for OpenClaw gateway with UI toggle and localization support. Configuration persists auto-start preference with toast notifications for state changes.
+6. **Chat Session Sync**: Implemented OpenClaw chat session synchronization functionality.
+7. **WhatsApp Integration**: Enhanced WhatsApp binding functionality.
+8. **QQ/Enterprise WeChat Optimization**: Resolved download plugin rate limiting issues. Fixed Chinese/English prompts and login redirect issues.
+9. **Style Updates**: Removed team features from OpenClaw mode. Updated settings component layout and styling for improved responsiveness.
+10. **Version Bump**: Application version updated to 0.9.1. OpenClaw version updated to 2026.4.2.
 
-### 2026/03/06
-1. **Multimodal Support**: Added image input capability to assistant and knowledge pages, with model capability checks to detect multimodal support.<br/>
-2. **Model Configuration Updates**: Updated OpenAI, Anthropic, Zhipu (GLM), and Qwen model configurations with refined capabilities and new model additions.<br/>
-3. **Thinking Mode Control**: Added `DisableThinking` option to `ProviderConfig` and streamlined enable-thinking logic; added toast notifications for thinking mode changes.<br/>
-4. **Sandbox Security**: Implemented sensitive path protection in sandbox mode to prevent unauthorized file access.<br/>
-5. **Build System Improvements**: Replaced shell commands with Go tools for directory creation, file existence checks, and platform detection in Taskfile.<br/>
-6. **License Update**: Switched from GNU Affero GPL to GNU General Public License.<br/>
+### 2026/04/02
+1. **OpenClaw Doctor Integration**: Added gateway status handling in SideNav with localized messages. Updated ChatInputArea to reflect gateway state with relevant UI components.
+2. **i18n Enhancement**: Added translation files for new gateway and doctor messages across multiple languages. Added toast notifications for toolchain updates.
+3. **OpenClaw Version Update**: Updated OpenClaw version to 2026.4.1 with enhanced gateway integration in frontend.
+
+
+### 2026/04/01
+1. **Version 0.9.0 Release**: Updated application version to 0.9.0 in build configuration.
+2. **OpenClaw Installer Bundling**: Enhanced Taskfile.yml and NSIS installer with conditional OpenClaw runtime bundling support, including zip file existence checks before bundling.
+3. **OpenClaw Version Update**: Upgraded OpenClaw runtime to version 2026.3.31.
+4. **Multi-Language Translations**: Updated translations across Arabic, Bengali, German, English, Spanish, and French locales with new keys and improved consistency.
+5. **Scheduled Task Bug Fixes**: Fixed cron display anomalies and edited scheduled task issues.
+6. **WeChat Text Updates**: Updated WeChat-related text copy and default naming conventions.
+
 
 
 
