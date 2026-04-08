@@ -141,39 +141,9 @@ const loadStatus = async () => {
 const handleRestart = async () => {
   restarting.value = true
   try {
-    const portStatus = await OpenClawRuntimeService.CheckPortOccupied()
-    if (portStatus.occupied) {
-      const processName = portStatus.processName || 'Unknown'
-      toast.error(
-        t('settings.openclawRuntime.portOccupiedHint', {
-          port: portStatus.port,
-          process: processName,
-          pid: portStatus.pid,
-        })
-      )
-      await loadStatus()
-      restarting.value = false
-      return
-    }
-
     status.value = await OpenClawRuntimeService.RestartGateway()
+    gatewayState.value = await OpenClawRuntimeService.GetGatewayState()
     syncGatewayStore()
-
-    if (status.value.phase === 'error' && status.value.message?.includes('port')) {
-      const portStatusAfter = await OpenClawRuntimeService.CheckPortOccupied()
-      if (portStatusAfter.occupied) {
-        const processName = portStatusAfter.processName || 'Unknown'
-        toast.error(
-          t('settings.openclawRuntime.portOccupiedHint', {
-            port: portStatusAfter.port,
-            process: processName,
-            pid: portStatusAfter.pid,
-          })
-        )
-        restarting.value = false
-        return
-      }
-    }
 
     if (status.value.phase === 'error') {
       toast.error(status.value.message || t('settings.openclawRuntime.restartFailed'))
