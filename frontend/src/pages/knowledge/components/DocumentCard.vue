@@ -46,7 +46,7 @@ const props = withDefaults(
     document: Document
     isSearching?: boolean
     selected?: boolean
-    /** When > 0 and this card is selected, the overflow menu is batch-only (relearn / move / delete). */
+    /** When > 1 and this card is selected, the overflow menu shows batch actions (relearn / move / delete). */
     selectedCount?: number
   }>(),
   { selected: false, selectedCount: 0 }
@@ -67,7 +67,7 @@ const emit = defineEmits<{
 }>()
 
 const showBatchActions = computed(
-  () => props.selected && props.selectedCount > 0
+  () => props.selected && props.selectedCount > 1
 )
 
 const { t } = useI18n()
@@ -449,7 +449,7 @@ const handleCardClick = () => {
 
     <!-- Title: 14px / 22px line-height per design -->
     <p
-      class="mx-2 mt-2 line-clamp-2 h-[44px] text-left text-sm font-medium leading-[22px] text-foreground"
+      class="mx-2 mt-2 line-clamp-2 h-[44px] break-all text-left text-sm font-medium leading-[22px] text-foreground"
       :title="document.name"
     >
       {{ document.name }}

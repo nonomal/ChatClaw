@@ -2,7 +2,7 @@
 import { computed, defineAsyncComponent, KeepAlive, onMounted, onUnmounted, ref, watch } from 'vue'
 import { MainLayout } from '@/components/layout'
 import { Toaster } from '@/components/ui/toast'
-import { useNavigationStore, useAppStore, type NavModule } from '@/stores'
+import { useNavigationStore, useAppStore, useSettingsStore, type NavModule } from '@/stores'
 import AssistantPage from '@/pages/assistant/AssistantPage.vue'
 import { Events } from '@wailsio/runtime'
 import { UpdaterService } from '@bindings/chatclaw/internal/services/updater'
@@ -49,6 +49,7 @@ const { t } = useI18n()
 const { toast: pushToast } = useToast()
 const navigationStore = useNavigationStore()
 const appStore = useAppStore()
+const settingsStore = useSettingsStore()
 const activeTab = computed(() => navigationStore.activeTab)
 const activeTabComponent = computed(() => {
   const tab = activeTab.value
@@ -211,6 +212,7 @@ let unsubscribeToolchainUpdates: (() => void) | null = null
 let toolchainUpdatesToastShown = false
 
 let unsubscribeTextSelection: (() => void) | null = null
+let unsubscribeOpenChatwikiLogin: (() => void) | null = null
 let unsubscribeRequestDisableSetting: (() => void) | null = null
 let onMouseDown: ((e: MouseEvent) => void) | null = null
 let onMouseUp: ((e: MouseEvent) => void) | null = null
@@ -302,6 +304,13 @@ onMounted(async () => {
   // Floating ball: open settings page
   unsubscribeFloatingBallSettings = Events.On('floatingball:open-settings', () => {
     navigationStore.navigateToModule('settings')
+  })
+
+  // Winsnap WebView has a separate Pinia instance; route ChatWiki login to the main window.
+  unsubscribeOpenChatwikiLogin = Events.On('settings:open-chatwiki-login', () => {
+    settingsStore.requestChatwikiCloudLogin()
+    settingsStore.setActiveMenu('chatwiki')
+    navigationStore.navigateToModule('settings', appStore.currentSystem)
   })
 
   // Text selection event handling
@@ -507,6 +516,8 @@ onUnmounted(() => {
   unsubscribeSelectionSettingChanged = null
   unsubscribeRequestDisableSetting?.()
   unsubscribeRequestDisableSetting = null
+  unsubscribeOpenChatwikiLogin?.()
+  unsubscribeOpenChatwikiLogin = null
   themeObserver?.disconnect()
 })
 </script>

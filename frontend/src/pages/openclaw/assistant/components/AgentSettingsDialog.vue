@@ -6,7 +6,7 @@ import { Trash2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmojiPicker } from '@/components/ui/emoji-picker'
-import { defaultAvatars } from '@/assets/avatars'
+import { openclawDefaultAvatars as defaultAvatars } from '@/assets/avatars'
 import { ProviderIcon } from '@/components/ui/provider-icon'
 import openclawDefaultAvatar from '@/assets/icons/openclaw.svg?url'
 import {
@@ -584,25 +584,7 @@ const handleDelete = async () => {
                     maxlength="100"
                   />
                 </div>
-
-                <div class="flex flex-col gap-1.5">
-                  <label class="text-sm font-medium text-foreground">
-                    {{ t('assistant.fields.identityEmoji') }}
-                  </label>
-                  <EmojiPicker v-model="identityEmoji" />
-                </div>
-
-                <div class="flex flex-col gap-1.5">
-                  <label class="text-sm font-medium text-foreground">
-                    {{ t('assistant.fields.identityTheme') }}
-                  </label>
-                  <Input
-                    v-model="identityTheme"
-                    :placeholder="t('assistant.fields.identityThemePlaceholder')"
-                    maxlength="200"
-                  />
-                </div>
-
+                
                 <div class="flex flex-col gap-1.5">
                   <label class="text-sm font-medium text-foreground">
                     {{ t('assistant.settings.model.defaultModel') }}
@@ -679,6 +661,24 @@ const handleDelete = async () => {
                   <p class="text-xs text-muted-foreground">
                     {{ t('assistant.settings.model.defaultModelHint') }}
                   </p>
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-sm font-medium text-foreground">
+                    {{ t('assistant.fields.identityEmoji') }}
+                  </label>
+                  <EmojiPicker v-model="identityEmoji" />
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-sm font-medium text-foreground">
+                    {{ t('assistant.fields.identityTheme') }}
+                  </label>
+                  <Input
+                    v-model="identityTheme"
+                    :placeholder="t('assistant.fields.identityThemePlaceholder')"
+                    maxlength="200"
+                  />
                 </div>
               </div>
 
