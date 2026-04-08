@@ -47,11 +47,10 @@ const wecomPluginPackage = "@wecom/wecom-openclaw-plugin"
 const wecomPluginID = "wecom-openclaw-plugin"
 const wecomPluginFallbackTimeout = 2 * time.Minute
 
-// Timeouts for OpenClaw CLI (config set), plugin install/list, and gateway restart.
+// Timeouts for OpenClaw CLI (config set), plugin install/list.
 const (
-	openClawChannelSyncTimeout    = 120 * time.Second
-	openClawCLIRetryTimeout       = 90 * time.Second
-	openClawGatewayRestartTimeout = 20 * time.Second
+	openClawChannelSyncTimeout = 120 * time.Second
+	openClawCLIRetryTimeout    = 90 * time.Second
 )
 
 func NewOpenClawChannelService(
@@ -1636,12 +1635,11 @@ func (s *OpenClawChannelService) restartOpenClawGateway() error {
 	if s.openclawManager == nil {
 		return fmt.Errorf("openclaw manager is not initialized")
 	}
-	// Notify frontend immediately so it shows "重启中" before the CLI call.
+	// Notify frontend immediately so it shows "重启中" before reconcile runs.
 	s.openclawManager.NotifyGatewayRestarting()
-	// ctx, cancel := context.WithTimeout(context.Background(), openClawGatewayRestartTimeout)
-	// defer cancel()
-	// _, err := s.openclawManager.ExecCLI(ctx, "gateway", "start", "--force")
-	// if err != nil {
+	// Must run Manager restart (not only CLI): reconciles process + WS and broadcasts
+	// starting/connecting/connected. CLI-only restart left phase stuck at "restarting".
+	// if _, err := s.openclawManager.RestartGateway(); err != nil {
 	// 	return fmt.Errorf("openclaw gateway restart: %w", err)
 	// }
 	return nil
