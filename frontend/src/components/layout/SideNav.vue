@@ -30,8 +30,8 @@ import IconMemory from '@/assets/icons/memory.svg'
 import IconMultiask from '@/assets/icons/multiask.svg'
 import IconChannels from '@/assets/icons/channels.svg'
 import IconSettings from '@/assets/icons/settings.svg'
-import chatclawIconPng from '@/assets/icons/chatclaw-icon.png'
-import openclawIconPng from '@/assets/icons/openclaw-icon.png'
+import IconChatClaw from '@/assets/icons/chatclaw.svg'
+import IconOpenClaw from '@/assets/icons/openclaw-logo.svg'
 import IconDown from '@/assets/icons/down-icon.svg'
 import { Check } from 'lucide-vue-next'
 import ChatWikiSidebarAccountCard from './ChatWikiSidebarAccountCard.vue'
@@ -91,13 +91,12 @@ onUnmounted(() => document.removeEventListener('mousedown', handleOutsideMouseDo
 interface SystemOption {
   value: SystemOwner
   labelKey: string
-  /** Raster icon URL from Vite `import` */
-  iconUrl: string
+  icon: SvgComponent
 }
 
 const systemOptions: SystemOption[] = [
-  { value: 'chatclaw', labelKey: 'nav.systemChatClaw', iconUrl: chatclawIconPng },
-  { value: 'openclaw', labelKey: 'nav.systemOpenClaw', iconUrl: openclawIconPng },
+  { value: 'chatclaw', labelKey: 'nav.systemChatClaw', icon: IconChatClaw },
+  { value: 'openclaw', labelKey: 'nav.systemOpenClaw', icon: IconOpenClaw },
 ]
 
 const currentOption = computed(
@@ -306,11 +305,16 @@ const navIconClass = (item: NavItem) =>
               )
             "
           >
-            <img
-              :src="currentOption.iconUrl"
-              alt=""
-              class="size-5 shrink-0 rounded-[3.75px] object-cover"
-            />
+            <span
+              class="inline-flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[3.75px]"
+            >
+              <component
+                :is="currentOption.icon"
+                class="block size-full min-h-0 min-w-0 max-h-full max-w-full shrink-0"
+                preserveAspectRatio="xMidYMid meet"
+                aria-hidden="true"
+              />
+            </span>
             <span
               v-if="!navigationStore.sidebarCollapsed"
               class="truncate text-left text-[15px] font-bold leading-5 tracking-normal text-foreground"
@@ -352,11 +356,16 @@ const navIconClass = (item: NavItem) =>
               class="flex w-full min-w-0 items-center gap-2 rounded-md px-4 py-[8px] text-left text-[15px] font-bold leading-[22px] text-[#262626] transition-colors hover:bg-accent dark:text-popover-foreground"
               @click="selectSystem(opt.value)"
             >
-              <img
-                :src="opt.iconUrl"
-                alt=""
-                class="size-5 shrink-0 rounded-[3.75px] object-cover"
-              />
+              <span
+                class="inline-flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[3.75px]"
+              >
+                <component
+                  :is="opt.icon"
+                  class="block size-full min-h-0 min-w-0 max-h-full max-w-full shrink-0"
+                  preserveAspectRatio="xMidYMid meet"
+                  aria-hidden="true"
+                />
+              </span>
               <span class="min-w-0 flex-1 truncate">{{ t(opt.labelKey) }}</span>
               <Check
                 v-if="appStore.currentSystem === opt.value"
