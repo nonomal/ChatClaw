@@ -1638,12 +1638,12 @@ func (s *OpenClawChannelService) restartOpenClawGateway() error {
 	}
 	// Notify frontend immediately so it shows "重启中" before the CLI call.
 	s.openclawManager.NotifyGatewayRestarting()
-	ctx, cancel := context.WithTimeout(context.Background(), openClawGatewayRestartTimeout)
-	defer cancel()
-	_, err := s.openclawManager.ExecCLI(ctx, "gateway", "start", "--force")
-	if err != nil {
-		return fmt.Errorf("openclaw gateway restart: %w", err)
-	}
+	// ctx, cancel := context.WithTimeout(context.Background(), openClawGatewayRestartTimeout)
+	// defer cancel()
+	// _, err := s.openclawManager.ExecCLI(ctx, "gateway", "start", "--force")
+	// if err != nil {
+	// 	return fmt.Errorf("openclaw gateway restart: %w", err)
+	// }
 	return nil
 }
 
