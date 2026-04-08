@@ -286,30 +286,26 @@ ChatClaw_D2/
 To view the complete update log, please click👉️👉️[UpdateLog.md](./UpdateLog.md)
 
 
-### 2026/04/03
-1. **OpenClaw Doctor Console Enhancement**: Integrated `ansi-to-html` for enhanced console output rendering with ANSI color support in both light and dark themes. Added streaming support for doctor command output with improved stdout/stderr handling and event emission for UI updates.
-2. **OpenClaw Runtime Upgrade System**: Implemented comprehensive upgrade status management with "Upgrading" state across components and localization files. Enhanced npm package installation with progress updates and improved error handling, including rollback mechanisms.
-3. **Gateway Port Management**: Added port occupation checks with user feedback for gateway operations. Implemented `ensurePortClean` method to detect and gracefully stop stale processes using the gateway port. Added stop port functionality.
-4. **ChatWiki Sync Enhancement**: Enhanced ChatWiki sync data fetching to support forced refresh for up-to-date model catalog. Implemented model catalog refresh mechanism for OpenClaw sync to ensure models stay current.
-5. **OpenClaw Auto-Start**: Implemented auto-start functionality for OpenClaw gateway with UI toggle and localization support. Configuration persists auto-start preference with toast notifications for state changes.
-6. **Chat Session Sync**: Implemented OpenClaw chat session synchronization functionality.
-7. **WhatsApp Integration**: Enhanced WhatsApp binding functionality.
-8. **QQ/Enterprise WeChat Optimization**: Resolved download plugin rate limiting issues. Fixed Chinese/English prompts and login redirect issues.
-9. **Style Updates**: Removed team features from OpenClaw mode. Updated settings component layout and styling for improved responsiveness.
-10. **Version Bump**: Application version updated to 0.9.1. OpenClaw version updated to 2026.4.2.
+### 2026/04/08
+1. **OpenClaw In-Memory Models Cache**: Implemented in-memory models cache for improved efficiency in model registration and synchronization. The cache is populated from openclaw.json at startup and refreshed during config sync.
+2. **OpenClaw Real-Time Status Updates**: Enhanced real-time status updates by subscribing to backend events for gateway state and runtime status, replacing the previous polling mechanism for immediate frontend updates.
+3. **OpenClaw Gateway Polling & Restart Logic**: Implemented polling mechanism for gateway status after restart to ensure accurate state detection; simplified gateway restart logic by removing redundant port status checks and enhancing error handling.
+4. **OpenClaw Readiness Diagnostics**: Added DebugIsReadyState method for enhanced diagnostics of gateway readiness; refactored to simplify readiness checks relying on the gateway's connection status.
+5. **OpenClaw Upgrade Enhancement**: Added upgrade cancellation and continuation features; updated runtime upgrade logic to use a candidate staging directory for improved reliability.
+6. **OpenClaw Staged Installation**: Integrated OpenClaw runtime management with system mode synchronization, auto-start based on sidebar mode, and bundled binaries support from the full installer.
+7. **Gateway Doctor Auto-Trigger**: Implemented auto-trigger for doctor diagnostics on consecutive WebSocket failures with UI updates and enhanced authentication support.
+8. **ChatWiki Model Enhancements**: Implemented cleanup for corrupted chatwiki model entries; enhanced model catalog item parsing with numeric ID detection and improved model ID resolution.
+9. **UI/UX Improvements**: Gateway style updates; fixed floating window login issue; ChatWiki model switch now disabled when not logged in; assistant session switch shows latest messages; batch operation button display optimization; knowledge base card English word wrap support; icon replacement with SVG.
+10. **Localization Updates**: Updated 'updatesAvailableToast' message across multiple languages; multi-language README support enhancements.
 
-### 2026/04/02
-1. **OpenClaw Doctor Integration**: Added gateway status handling in SideNav with localized messages. Updated ChatInputArea to reflect gateway state with relevant UI components.
-2. **i18n Enhancement**: Added translation files for new gateway and doctor messages across multiple languages. Added toast notifications for toolchain updates.
-3. **OpenClaw Version Update**: Updated OpenClaw version to 2026.4.1 with enhanced gateway integration in frontend.
-
-
-### 2026/04/01
-1. **Version 0.9.0 Release**: Updated application version to 0.9.0 in build configuration.
-2. **OpenClaw Installer Bundling**: Enhanced Taskfile.yml and NSIS installer with conditional OpenClaw runtime bundling support, including zip file existence checks before bundling.
-3. **OpenClaw Version Update**: Upgraded OpenClaw runtime to version 2026.3.31.
-4. **Multi-Language Translations**: Updated translations across Arabic, Bengali, German, English, Spanish, and French locales with new keys and improved consistency.
-5. **Scheduled Task Bug Fixes**: Fixed cron display anomalies and edited scheduled task issues.
-6. **WeChat Text Updates**: Updated WeChat-related text copy and default naming conventions.
+### 2026/04/07
+1. **OpenClaw NSIS Installer Refactoring**: Complete overhaul of NSIS project file including custom uninstaller macro, removal of file-level progress display, enhanced extraction feedback with dynamic progress updates, and improved uninstallation process with detail prints for process termination and cleanup.
+2. **OpenClaw Gateway Authentication**: Added authentication configuration with fields for pairing and auto-approval; implemented background polling loop to monitor gateway status and handle WebSocket reconnections.
+3. **Gateway Startup Optimization**: Simplified gateway startup logic by removing port occupation checks, relying on reconcileLocked to handle existing instances.
+4. **Gateway Device Management**: Enhanced approvePendingDevices function with improved JSON handling, logging, and verification for successful approvals.
+5. **Configuration Management**: Updated ensureOpenClawStateDir and ensureGatewayAuthConfig to accept gateway port as parameter for consistent port usage.
+6. **Knowledge Base Learning Tasks**: Application restart now continues learning tasks; added learning document limits; fixed issue where failed learning tasks still occupied document count.
+7. **Knowledge Base UI/UX**: Added knowledge base settings translations; folder selection and batch operations support; document selection and batch operations.
+8. **Style Updates**: Input number optimization; knowledge base settings styling improvements.
 
 
