@@ -2010,6 +2010,7 @@ onUnmounted(() => {
             v-else-if="activeDisplayConversationId"
             data-snap-wake="true"
             :conversation-id="activeDisplayConversationId"
+            :pane-active="isTabActive"
             :tab-id="tabId"
             :mode="props.mode"
             :agent-name="isTeamMode ? activeTeamRobot?.name : activeAgent?.name"

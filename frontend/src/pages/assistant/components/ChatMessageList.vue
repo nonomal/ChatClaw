@@ -5,17 +5,22 @@ import { useChatStore } from '@/stores'
 import type { ImagePayload, Message } from '@bindings/chatclaw/internal/services/chat'
 import ChatMessageItem from './ChatMessageItem.vue'
 
-const props = defineProps<{
-  conversationId: number
-  tabId: string
-  mode?: 'main' | 'snap' | 'embedded' | 'history-iframe'
-  agentName?: string
-  agentIcon?: string
-  sandboxMode?: string
-  hasAttachedTarget?: boolean
-  showAiSendButton?: boolean
-  showAiEditButton?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    conversationId: number
+    tabId: string
+    mode?: 'main' | 'snap' | 'embedded' | 'history-iframe'
+    agentName?: string
+    agentIcon?: string
+    sandboxMode?: string
+    hasAttachedTarget?: boolean
+    showAiSendButton?: boolean
+    showAiEditButton?: boolean
+    /** When false (e.g. another main tab is active), scroll position may reset on restore — scroll to bottom when becoming true again. */
+    paneActive?: boolean
+  }>(),
+  { paneActive: true }
+)
 
 const emit = defineEmits<{
   editMessage: [messageId: number, newContent: string, images: ImagePayload[]]
@@ -174,6 +179,18 @@ watch(
     }
   },
   { immediate: true }
+)
+
+// KeepAlive tab switch: same conversationId — no conversation watch; overflow scroll often resets when pane was hidden.
+watch(
+  () => props.paneActive,
+  (active, wasActive) => {
+    if (active && wasActive === false) {
+      shouldAutoScroll.value = true
+      scrollToBottom()
+    }
+  },
+  { flush: 'post' }
 )
 
 // Note: Chat event subscription is handled at AssistantPage level
