@@ -364,7 +364,7 @@ onBeforeUnmount(() => {
         </div>
         <Switch
           :model-value="localEnabled"
-          :disabled="savingToggle"
+          :disabled="savingToggle || !isBound"
           @update:model-value="handleToggle"
         />
       </div>
