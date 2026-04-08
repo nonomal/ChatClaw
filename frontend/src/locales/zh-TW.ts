@@ -270,6 +270,7 @@ export default {
       runtimeSource: '執行來源',
       runtimePath: '執行目錄',
       upgradeButton: '升級 OpenClaw',
+      upgradeButtonDisabledWhenActive: '請先停止網關再升級',
       restartButton: '重啟服務',
       upgrading: '升級中...',
       restarting: '重啟中...',
@@ -401,7 +402,7 @@ export default {
         },
         newVersionHint: '新版本 {version}',
         update: '更新',
-        updatesAvailableToast: '检测到扩展组件有新版本，请到「设置 → 常规设置」中手动更新。',
+        updatesAvailableToast: '检测到扩展组件有新版本，可以到「设置 → 常规设置」中手动更新。',
       },
     },
     memory: {

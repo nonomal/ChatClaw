@@ -286,6 +286,7 @@ export default {
       runtimeSource: 'Runtime Source',
       runtimePath: 'Runtime Path',
       upgradeButton: 'Upgrade OpenClaw',
+      upgradeButtonDisabledWhenActive: 'Stop the gateway first before upgrading',
       restartButton: 'Restart Service',
       upgrading: 'Upgrading...',
       restarting: 'Restarting...',
@@ -320,6 +321,16 @@ export default {
       upgradeProgress: 'Upgrade Progress',
       upgradeSuccess: 'OpenClaw upgraded to {version}',
       upgradeFailed: 'Failed to upgrade OpenClaw',
+      upgradeCancelled: 'Upgrade cancelled',
+      upgradeCancelFailed: 'Failed to cancel upgrade',
+      upgradeDetails: 'Details',
+      upgradeOutputWaiting: 'Waiting for output...',
+      cancelUpgrade: 'Cancel Upgrade',
+      continueUpgrade: 'Continue Upgrade',
+      restartUpgrade: 'Restart Upgrade',
+      continueOrRestartTitle: 'Existing upgrade cache detected',
+      continueOrRestartDesc:
+        'Found download cache for version {version}. Choose Continue to proceed from npm install, or Restart to re-download.',
       restartSuccess: 'Gateway restarted',
       restartFailed: 'Failed to restart gateway',
       stop: 'Stop',
@@ -417,7 +428,7 @@ export default {
           description:
             "OpenClaw Agent's Node.js runtime environment, including openclaw CLI and Gateway. Downloaded from OSS and installed to ~/.chatclaw/openclaw/runtime/",
         },
-        updatesAvailableToast: '检测到扩展组件有新版本，请到「设置 → 常规设置」中手动更新。',
+        updatesAvailableToast: '检测到扩展组件有新版本，可以到「设置 → 常规设置」中手动更新。',
       },
     },
     memory: {

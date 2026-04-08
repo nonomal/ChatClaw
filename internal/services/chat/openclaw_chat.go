@@ -1528,6 +1528,10 @@ func (s *ChatService) SendOpenClawMessage(input SendMessageInput) (*SendMessageR
 	}
 
 	if s.openclawGateway == nil || !s.openclawGateway.IsReady() {
+		s.app.Logger.Warn("[openclaw-chat] gateway not ready, check failed",
+			"conv", input.ConversationID,
+			"gatewayNil", s.openclawGateway == nil,
+			"isReady", func() bool { return s.openclawGateway != nil && s.openclawGateway.IsReady() })
 		return nil, errs.New("error.openclaw_gateway_not_ready")
 	}
 

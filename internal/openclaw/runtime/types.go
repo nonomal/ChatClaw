@@ -23,6 +23,8 @@ type RuntimeStatus struct {
 	Phase            string `json:"phase"`
 	Message          string `json:"message,omitempty"`
 	Progress         int    `json:"progress,omitempty"` // 0-100, only meaningful during upgrade
+	ElapsedSeconds   int    `json:"elapsedSeconds,omitempty"` // seconds since upgrade started, -1 when not upgrading
+	UpgradeOutput    string `json:"upgradeOutput,omitempty"`   // accumulated command output lines
 	InstalledVersion string `json:"installedVersion,omitempty"`
 	RuntimeSource    string `json:"runtimeSource,omitempty"`
 	RuntimePath      string `json:"runtimePath,omitempty"`
@@ -38,13 +40,23 @@ type GatewayConnectionState struct {
 }
 
 type RuntimeUpgradeResult struct {
-	PreviousVersion string `json:"previousVersion,omitempty"`
-	CurrentVersion  string `json:"currentVersion,omitempty"`
-	LatestVersion   string `json:"latestVersion,omitempty"`
-	Upgraded        bool   `json:"upgraded"`
-	RuntimeSource   string `json:"runtimeSource,omitempty"`
-	RuntimePath     string `json:"runtimePath,omitempty"`
+	PreviousVersion    string `json:"previousVersion,omitempty"`
+	CurrentVersion     string `json:"currentVersion,omitempty"`
+	LatestVersion      string `json:"latestVersion,omitempty"`
+	Upgraded           bool   `json:"upgraded"`
+	RuntimeSource      string `json:"runtimeSource,omitempty"`
+	RuntimePath        string `json:"runtimePath,omitempty"`
+	HasExistingVersion bool   `json:"hasExistingVersion,omitempty"` // true if a staging dir for latestVersion already exists
+	ExistingVersion    string `json:"existingVersion,omitempty"`     // version in existing staging dir (same as latestVersion)
 }
+
+// UpgradeAction signals the frontend which upgrade path to take.
+type UpgradeAction string
+
+const (
+	UpgradeActionContinue UpgradeAction = "continue" // staging dir exists with all files, resume from npm install
+	UpgradeActionRestart   UpgradeAction = "restart"  // delete staging dir and rebuild from scratch
+)
 
 type DoctorCommandResult struct {
 	Command    string `json:"command"`
