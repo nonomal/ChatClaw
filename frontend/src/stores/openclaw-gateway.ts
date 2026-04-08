@@ -94,6 +94,10 @@ export const useOpenClawGatewayStore = defineStore('openclawGateway', () => {
   const visualStatus = ref<GatewayVisualStatus>(GatewayVisualStatus.Stop)
   /** Mirrors backend RuntimeStatus.phase (e.g. idle, connected, upgrading). */
   const runtimePhase = ref<string>('idle')
+  /** Accumulated upgrade command output lines (streaming). */
+  const upgradeOutput = ref<string>('')
+  /** Seconds elapsed since upgrade started, -1 when not upgrading. */
+  const upgradeElapsed = ref<number>(-1)
   const lastGatewayState = ref<GatewayConnectionState>(new GatewayConnectionState())
   let heartbeatId: ReturnType<typeof setInterval> | null = null
   /** Tracks whether global Wails event listeners have been registered. */
@@ -112,6 +116,8 @@ export const useOpenClawGatewayStore = defineStore('openclawGateway', () => {
    */
   function ingestRuntimeStatus(status: RuntimeStatus) {
     runtimePhase.value = status.phase || 'idle'
+    upgradeOutput.value = status.upgradeOutput ?? ''
+    upgradeElapsed.value = status.elapsedSeconds ?? -1
     visualStatus.value = mapToVisual(status, lastGatewayState.value)
   }
 
@@ -176,6 +182,8 @@ export const useOpenClawGatewayStore = defineStore('openclawGateway', () => {
   return {
     visualStatus,
     runtimePhase,
+    upgradeOutput,
+    upgradeElapsed,
     lastGatewayState,
     applySnapshot,
     ingestRuntimeStatus,
