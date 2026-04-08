@@ -145,6 +145,25 @@ const handleRestart = async () => {
     gatewayState.value = await OpenClawRuntimeService.GetGatewayState()
     syncGatewayStore()
 
+    // 轮询等待 phase 稳定（直到 connected/error 或 30s 超时）
+    // 原因：RestartGateway() 是同步返回的，但 WS 连接是异步的；
+    // 返回值里的 gatewayState 是旧的，状态最终在后端 broadcast 后才会更新。
+    // 前端 settings 页面未订阅事件，所以需要主动轮询来感知真实状态。
+    if (status.value.phase !== 'connected' && status.value.phase !== 'error') {
+      const deadline = Date.now() + 30000
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 1000))
+        const s = await OpenClawRuntimeService.GetStatus()
+        const g = await OpenClawRuntimeService.GetGatewayState()
+        if (s.phase === 'connected' || s.phase === 'error' || s.phase === 'idle') {
+          status.value = s
+          gatewayState.value = g
+          syncGatewayStore()
+          break
+        }
+      }
+    }
+
     if (status.value.phase === 'error') {
       toast.error(status.value.message || t('settings.openclawRuntime.restartFailed'))
     } else {
