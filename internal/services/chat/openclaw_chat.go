@@ -35,6 +35,7 @@ type OpenClawGatewayInfo interface {
 	RemoveEventListener(key string)
 	SyncConfig(ctx context.Context) error
 	EnsureModelRegistered(ctx context.Context, providerID, modelID string) error
+	EnsureModelOnGateway(ctx context.Context, providerID, modelID string)
 }
 
 // SetOpenClawGateway injects the OpenClaw gateway info.
@@ -883,10 +884,6 @@ func openClawSessionKeyMatches(got, want string) bool {
 // GetOpenClawLastAssistantReply fetches the last assistant message text from
 // the OpenClaw Gateway session. Returns empty string if unavailable.
 func (s *ChatService) GetOpenClawLastAssistantReply(conversationID int64) string {
-	if s.openclawGateway == nil || !s.openclawGateway.IsReady() {
-		return ""
-	}
-
 	cfg, err := s.getOpenClawAgentConfig(conversationID)
 	if err != nil {
 		return ""
@@ -1527,22 +1524,7 @@ func (s *ChatService) SendOpenClawMessage(input SendMessageInput) (*SendMessageR
 		return nil, errs.New("error.chat_content_required")
 	}
 
-	if s.openclawGateway == nil || !s.openclawGateway.IsReady() {
-		s.app.Logger.Warn("[openclaw-chat] gateway not ready, check failed",
-			"conv", input.ConversationID,
-			"gatewayNil", s.openclawGateway == nil,
-			"isReady", func() bool { return s.openclawGateway != nil && s.openclawGateway.IsReady() })
-		return nil, errs.New("error.openclaw_gateway_not_ready")
-	}
-
-	// Sync config before sending to ensure latest ChatWiki models are available.
-	syncCtx, syncCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	if syncErr := s.openclawGateway.SyncConfig(syncCtx); syncErr != nil {
-		s.app.Logger.Warn("[openclaw-chat] config sync before send failed",
-			"conv", input.ConversationID, "error", syncErr)
-	}
-	syncCancel()
-
+	// Check for concurrent generation first (must be before cache check below).
 	if existing, ok := s.activeGenerations.Load(input.ConversationID); ok {
 		gen := existing.(*activeGeneration)
 		if gen.tabID != input.TabID {
@@ -1556,21 +1538,14 @@ func (s *ChatService) SendOpenClawMessage(input SendMessageInput) (*SendMessageR
 		return nil, err
 	}
 
-	// Ensure the conversation's provider/model is registered on the Gateway (same as edit-resend).
-	// Normal sends use this path; without it the gateway can report Unknown model.
+	// Ensure the conversation's provider/model is registered on the Gateway.
+	// EnsureModelOnGateway first checks the in-memory cache (loaded from openclaw.json);
+	// if found it returns immediately without any Gateway call.
+	// If not found, it runs a full SyncConfig, then checks the cache again;
+	// if still missing (e.g. a newly added ChatWiki model), it falls back to
+	// EnsureModelRegistered for a targeted single-model push.
 	if agentConfig.ProviderID != "" && agentConfig.ModelID != "" {
-		ensureCtx, ensureCancel := context.WithTimeout(context.Background(), 15*time.Second)
-		if ensureErr := s.openclawGateway.EnsureModelRegistered(ensureCtx, agentConfig.ProviderID, agentConfig.ModelID); ensureErr != nil {
-			s.app.Logger.Warn("[openclaw-chat] ensure model registered failed, proceeding anyway",
-				"conv", input.ConversationID,
-				"provider", agentConfig.ProviderID, "model", agentConfig.ModelID,
-				"error", ensureErr)
-		} else {
-			s.app.Logger.Info("[openclaw-chat] model registered or already present",
-				"conv", input.ConversationID,
-				"provider", agentConfig.ProviderID, "model", agentConfig.ModelID)
-		}
-		ensureCancel()
+		s.openclawGateway.EnsureModelOnGateway(context.Background(), agentConfig.ProviderID, agentConfig.ModelID)
 	}
 
 	attachments := input.Images
@@ -1634,18 +1609,7 @@ func (s *ChatService) EditAndResendOpenClaw(input EditAndResendInput) (*SendMess
 		return nil, errs.New("error.chat_content_required")
 	}
 
-	if s.openclawGateway == nil || !s.openclawGateway.IsReady() {
-		return nil, errs.New("error.openclaw_gateway_not_ready")
-	}
-
-	// Sync config before sending to ensure latest ChatWiki models are available.
-	syncCtx, syncCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	if syncErr := s.openclawGateway.SyncConfig(syncCtx); syncErr != nil {
-		s.app.Logger.Warn("[openclaw-chat] config sync before edit-resend failed",
-			"conv", input.ConversationID, "error", syncErr)
-	}
-	syncCancel()
-
+	// Check for concurrent generation and cancel the previous one.
 	if existing, ok := s.activeGenerations.Load(input.ConversationID); ok {
 		oldGen := existing.(*activeGeneration)
 		oldGen.cancel()
@@ -1662,22 +1626,10 @@ func (s *ChatService) EditAndResendOpenClaw(input EditAndResendInput) (*SendMess
 		return nil, err
 	}
 
-	// Ensure the specific model for this conversation is registered in the Gateway.
-	// This bridges the gap when SyncConfig() was skipped (cache hit) or the model
-	// was not in the catalog at sync time.
+	// Ensure the conversation's provider/model is registered on the Gateway.
+	// Uses the same cached check as SendOpenClawMessage.
 	if agentConfig.ProviderID != "" && agentConfig.ModelID != "" {
-		ensureCtx, ensureCancel := context.WithTimeout(context.Background(), 15*time.Second)
-		if ensureErr := s.openclawGateway.EnsureModelRegistered(ensureCtx, agentConfig.ProviderID, agentConfig.ModelID); ensureErr != nil {
-			s.app.Logger.Warn("[openclaw-chat] ensure model registered failed, proceeding anyway",
-				"conv", input.ConversationID,
-				"provider", agentConfig.ProviderID, "model", agentConfig.ModelID,
-				"error", ensureErr)
-		} else {
-			s.app.Logger.Info("[openclaw-chat] model registered or already present",
-				"conv", input.ConversationID,
-				"provider", agentConfig.ProviderID, "model", agentConfig.ModelID)
-		}
-		ensureCancel()
+		s.openclawGateway.EnsureModelOnGateway(context.Background(), agentConfig.ProviderID, agentConfig.ModelID)
 	}
 
 	attachments := input.Images

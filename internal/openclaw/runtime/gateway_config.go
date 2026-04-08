@@ -4,12 +4,196 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"chatclaw/internal/services/providers"
 )
+
+// gatewayModelsCache maintains an in-memory cache of all models registered
+// in the OpenClaw Gateway config, keyed by providerID -> modelIDSet.
+// The cache is populated from openclaw.json on startup and refreshed after
+// each successful config.sync or EnsureModelRegistered call.
+// When dirty (e.g. after openclaw.json is modified externally), it triggers
+// a full SyncConfig on the next SendOpenClawMessage.
+type gatewayModelsCache struct {
+	mu     sync.RWMutex
+	models map[string]map[string]bool // providerID → modelIDSet
+	dirty  bool                       // true when cache may be stale due to external changes
+}
+
+func newGatewayModelsCache() *gatewayModelsCache {
+	return &gatewayModelsCache{
+		models: make(map[string]map[string]bool),
+		dirty:  true,
+	}
+}
+
+// HasModel checks whether the given provider/model pair is in the cache.
+// Returns false if the cache has not been loaded yet (dirty=true with no data).
+func (c *gatewayModelsCache) HasModel(providerID, modelID string) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.dirty && len(c.models) == 0 {
+		return false
+	}
+	modelSet, ok := c.models[providerID]
+	if !ok {
+		return false
+	}
+	return modelSet[modelID]
+}
+
+// MarkDirty marks the cache as potentially stale, so the next send will
+// trigger a full SyncConfig before checking again.
+func (c *gatewayModelsCache) MarkDirty() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.dirty = true
+}
+
+// IsDirty reports whether the cache has been loaded and is considered clean.
+func (c *gatewayModelsCache) IsDirty() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.dirty
+}
+
+// LoadFromOpenClawJSON reads openclaw.json and populates the cache with all
+// models listed under config.models.providers. Returns an error if the file
+// cannot be read or parsed; the cache remains unchanged on error.
+func (c *gatewayModelsCache) LoadFromOpenClawJSON(configPath string) error {
+	models, err := parseOpenClawJSONModels(configPath)
+	if err != nil {
+		return err
+	}
+	c.mu.Lock()
+	c.models = models
+	c.dirty = false
+	c.mu.Unlock()
+	return nil
+}
+
+// RefreshFromGateway fetches config.get from the Gateway and updates the cache
+// with the models returned. Returns an error if the Gateway is not ready or
+// the request fails.
+func (c *gatewayModelsCache) RefreshFromGateway(ctx context.Context, manager *Manager) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	var live map[string]any
+	if err := manager.Request(ctx, "config.get", map[string]any{}, &live); err != nil {
+		return fmt.Errorf("config.get: %w", err)
+	}
+
+	providers := extractModelsProvidersFromGatewayGet(live)
+	models := make(map[string]map[string]bool)
+	for provID, pv := range providers {
+		pm, ok := pv.(map[string]any)
+		if !ok {
+			continue
+		}
+		arr, ok := pm["models"].([]any)
+		if !ok {
+			models[provID] = make(map[string]bool)
+			continue
+		}
+		modelSet := make(map[string]bool)
+		for _, it := range arr {
+			if m, ok := it.(map[string]any); ok {
+				if id, ok := m["id"].(string); ok && id != "" {
+					modelSet[id] = true
+				}
+			}
+		}
+		models[provID] = modelSet
+	}
+
+	c.mu.Lock()
+	c.models = models
+	c.dirty = false
+	c.mu.Unlock()
+	return nil
+}
+
+// AddModel adds a single provider/model pair to the cache.
+// Called after EnsureModelRegistered succeeds to keep the cache up-to-date.
+func (c *gatewayModelsCache) AddModel(providerID, modelID string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.models[providerID] == nil {
+		c.models[providerID] = make(map[string]bool)
+	}
+	c.models[providerID][modelID] = true
+}
+
+// parseOpenClawJSONModels reads the given openclaw.json file and returns
+// a map of providerID → modelIDSet extracted from the models section.
+func parseOpenClawJSONModels(configPath string) (map[string]map[string]bool, error) {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("read openclaw.json: %w", err)
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, fmt.Errorf("parse openclaw.json: %w", err)
+	}
+
+	// Try config.models.providers first (bundled runtime format).
+	models, ok := extractModelsProvidersRaw(raw, "config", "models", "providers")
+	if !ok {
+		// Fallback: top-level models.providers (user runtime format).
+		models, ok = extractModelsProvidersRaw(raw, "models", "providers")
+		if !ok {
+			return make(map[string]map[string]bool), nil
+		}
+	}
+
+	result := make(map[string]map[string]bool)
+	for provID, pv := range models {
+		pm, ok := pv.(map[string]any)
+		if !ok {
+			continue
+		}
+		arr, ok := pm["models"].([]any)
+		if !ok {
+			result[provID] = make(map[string]bool)
+			continue
+		}
+		modelSet := make(map[string]bool)
+		for _, it := range arr {
+			if m, ok := it.(map[string]any); ok {
+				if id, ok := m["id"].(string); ok && id != "" {
+					modelSet[id] = true
+				}
+			}
+		}
+		result[provID] = modelSet
+	}
+	return result, nil
+}
+
+// extractModelsProvidersRaw navigates nested maps along keys and returns
+// the map found at that path, or (nil, false) if the path does not exist.
+func extractModelsProvidersRaw(root map[string]any, keys ...string) (map[string]any, bool) {
+	current := any(root)
+	for _, k := range keys {
+		m, ok := current.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		next, exists := m[k]
+		if !exists {
+			return nil, false
+		}
+		current = next
+	}
+	result, ok := current.(map[string]any)
+	return result, ok
+}
 
 // SectionBuilder produces a partial config map for one top-level section.
 // Example return: {"models": {"mode": "replace", "providers": {...}}}
@@ -29,6 +213,13 @@ type ConfigService struct {
 	mu           sync.Mutex
 	sections     []sectionEntry
 	lastPatchRaw string
+	cache        *gatewayModelsCache // local cache of models in openclaw.json / gateway config
+}
+
+// SetModelsCache injects the gateway models cache so that Sync and
+// EnsureModelRegistered can update it after successfully pushing config.
+func (s *ConfigService) SetModelsCache(cache *gatewayModelsCache) {
+	s.cache = cache
 }
 
 // ProvidersSvcProvider abstracts the subset of *providers.ProvidersService needed
@@ -134,6 +325,12 @@ func (s *ConfigService) Sync(ctx context.Context) error {
 
 	s.lastPatchRaw = rawStr
 	s.log("openclaw: config sync completed")
+
+	// Refresh the in-memory cache to match what the Gateway now has,
+	// so subsequent SendOpenClawMessage calls can skip full SyncConfig.
+	if s.cache != nil {
+		_ = s.cache.RefreshFromGateway(ctx, s.manager)
+	}
 	return nil
 }
 
@@ -233,6 +430,11 @@ func (s *ConfigService) EnsureModelRegistered(ctx context.Context, providerID, m
 	}
 
 	s.log("openclaw: models section patched for gateway, provider=%s model=%s", providerID, modelID)
+
+	// Keep the cache in sync so the next SendOpenClawMessage sees this model.
+	if s.cache != nil {
+		s.cache.AddModel(providerID, modelID)
+	}
 	return nil
 }
 

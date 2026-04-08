@@ -79,7 +79,8 @@ type Manager struct {
 
 	doctorRunSeq uint64 // atomic: correlates streamed doctor chunks with the active UI run
 
-	configSvc *ConfigService // injected via SetConfigService for SyncConfig
+	configSvc *ConfigService            // injected via SetConfigService for SyncConfig
+	modelsCache *gatewayModelsCache // in-memory cache of gateway models, loaded from openclaw.json
 
 	systemModeIsOpenClaw atomic.Bool // set by frontend to signal that the sidebar is in openclaw mode
 }
@@ -121,6 +122,73 @@ func (m *Manager) SetToolchainService(svc ToolchainServiceIF) {
 // SetConfigService injects the ConfigService for model/agent config sync.
 func (m *Manager) SetConfigService(svc *ConfigService) {
 	m.configSvc = svc
+	m.modelsCache = newGatewayModelsCache()
+	svc.SetModelsCache(m.modelsCache)
+}
+
+// LoadModelsCacheFromFile loads the in-memory models cache from openclaw.json.
+// Call this during startup after the gateway state dir is ready.
+// If the file is missing or invalid, the cache remains dirty and the next
+// send will fall back to a full SyncConfig.
+func (m *Manager) LoadModelsCacheFromFile(configPath string) {
+	if m.modelsCache == nil {
+		return
+	}
+	if err := m.modelsCache.LoadFromOpenClawJSON(configPath); err != nil {
+		if m.app != nil && m.app.Logger != nil {
+			m.app.Logger.Warn("openclaw: failed to load models cache from openclaw.json, will sync on first send",
+				"path", configPath, "error", err)
+		}
+		return
+	}
+	if m.app != nil && m.app.Logger != nil {
+		m.app.Logger.Info("openclaw: models cache loaded from openclaw.json",
+			"path", configPath)
+	}
+}
+
+// IsModelCached returns true if the given provider/model is already in the
+// local models cache and the cache is considered clean (loaded from openclaw.json).
+// Returns false if the cache is dirty or the model is not present.
+func (m *Manager) IsModelCached(providerID, modelID string) bool {
+	if m.modelsCache == nil {
+		return false
+	}
+	return m.modelsCache.HasModel(providerID, modelID)
+}
+
+// EnsureModelOnGateway ensures the given provider/model is available on the Gateway.
+// It first checks the local cache; if found, returns immediately (no Gateway call).
+// If not found, it runs a full SyncConfig, then checks the cache again.
+// If still missing (e.g. new ChatWiki model), it falls back to EnsureModelRegistered
+// for a targeted single-model push.
+func (m *Manager) EnsureModelOnGateway(ctx context.Context, providerID, modelID string) {
+	if m.modelsCache != nil && m.modelsCache.HasModel(providerID, modelID) {
+		return
+	}
+
+	syncCtx, syncCancel := context.WithTimeout(ctx, 15*time.Second)
+	syncErr := m.SyncConfig(syncCtx)
+	syncCancel()
+
+	if syncErr != nil {
+		if m.app != nil && m.app.Logger != nil {
+			m.app.Logger.Warn("openclaw: config sync failed, falling back to ensure model",
+				"provider", providerID, "model", modelID, "error", syncErr)
+		}
+		ensureCtx, ensureCancel := context.WithTimeout(ctx, 15*time.Second)
+		_ = m.EnsureModelRegistered(ensureCtx, providerID, modelID)
+		ensureCancel()
+		return
+	}
+
+	if m.modelsCache != nil && m.modelsCache.HasModel(providerID, modelID) {
+		return
+	}
+
+	ensureCtx, ensureCancel := context.WithTimeout(ctx, 15*time.Second)
+	_ = m.EnsureModelRegistered(ensureCtx, providerID, modelID)
+	ensureCancel()
 }
 
 // SetSystemMode is called by the frontend when the user switches between openclaw
@@ -1444,7 +1512,7 @@ func (m *Manager) isShuttingDown() bool {
 func (m *Manager) IsReady() bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.client != nil && !m.readyAt.IsZero()
+	return m.status.Phase == PhaseConnected
 }
 
 // GatewayURL returns the HTTP base URL of the running OpenClaw Gateway.
