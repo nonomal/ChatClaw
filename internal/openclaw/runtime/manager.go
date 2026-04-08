@@ -44,8 +44,8 @@ type Manager struct {
 	store        *configStore
 	toolchainSvc ToolchainServiceIF
 
-	opMu                sync.Mutex
-	mu                  sync.RWMutex
+	opMu sync.Mutex
+	mu   sync.RWMutex
 	// reconciling blocks pollClient from broadcasting PhaseRestarting during
 	// intentional restarts (reconcile), so the UI stays stable.
 	reconciling atomic.Bool
@@ -61,28 +61,28 @@ type Manager struct {
 	processDone  chan error
 	processLog   *os.File
 
-	expectedStopPID   int
-	shuttingDown      bool
-	reconnecting      atomic.Bool
-	pendingPairApproval atomic.Bool // set when NOT_PAIRED detected; cleared after approve succeeds or gives up
-	consecutiveFailures int         // resets on successful connect; triggers Doctor auto-fix at threshold
-	doctorTriggered    bool        // prevents repeated Doctor triggers for the same outage window
-	pollingStop       chan struct{} // closed when Manager is shut down; context for polling goroutine
-	pollingMu         sync.Mutex   // serialises pollClient and Shutdown to prevent stale-phase flash
+	expectedStopPID     int
+	shuttingDown        bool
+	reconnecting        atomic.Bool
+	pendingPairApproval atomic.Bool   // set when NOT_PAIRED detected; cleared after approve succeeds or gives up
+	consecutiveFailures int           // resets on successful connect; triggers Doctor auto-fix at threshold
+	doctorTriggered     bool          // prevents repeated Doctor triggers for the same outage window
+	pollingStop         chan struct{} // closed when Manager is shut down; context for polling goroutine
+	pollingMu           sync.Mutex    // serialises pollClient and Shutdown to prevent stale-phase flash
 
 	eventListenersMu sync.RWMutex
 	eventListeners   map[string]EventListener // keyed by caller-chosen ID
 
-	upgradeProgressCb    func(progress int, message string)
-	upgradeMu            sync.Mutex  // serialises upgradeRuntimeLocked vs reconcileLocked to prevent OSS cascade
-	upgradeInProgress    atomic.Bool // set during upgrade so reconcileLocked skips OSS fallback
-	upgradeCancelCh      chan struct{}
-	upgradeStartTime     time.Time
-	upgradeOutputBuf     strings.Builder
+	upgradeProgressCb func(progress int, message string)
+	upgradeMu         sync.Mutex  // serialises upgradeRuntimeLocked vs reconcileLocked to prevent OSS cascade
+	upgradeInProgress atomic.Bool // set during upgrade so reconcileLocked skips OSS fallback
+	upgradeCancelCh   chan struct{}
+	upgradeStartTime  time.Time
+	upgradeOutputBuf  strings.Builder
 
 	doctorRunSeq uint64 // atomic: correlates streamed doctor chunks with the active UI run
 
-	configSvc *ConfigService            // injected via SetConfigService for SyncConfig
+	configSvc   *ConfigService      // injected via SetConfigService for SyncConfig
 	modelsCache *gatewayModelsCache // in-memory cache of gateway models, loaded from openclaw.json
 
 	systemModeIsOpenClaw atomic.Bool // set by frontend to signal that the sidebar is in openclaw mode
@@ -899,7 +899,7 @@ func gatewayPortOccupied(port int) bool {
 func (m *Manager) runGatewayStopCLI(cliPath string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, cliPath, "gateway", "stop", "--force")
+	cmd := exec.CommandContext(ctx, cliPath, "gateway", "stop")
 	setCmdHideWindow(cmd)
 	if err := cmd.Run(); err != nil {
 		m.app.Logger.Warn("openclaw: gateway stop CLI finished with error", "error", err)
@@ -1124,10 +1124,10 @@ func (m *Manager) handleProcessExit(pid int, exitErr error) {
 	// We only update the status; WebSocket reconnect will naturally fail
 	// until OpenClaw recovers, then succeed on the next attempt.
 	m.broadcastStatus(RuntimeStatus{
-		Phase:            PhaseRestarting,
-		Message:          "OpenClaw Gateway exited, waiting for auto-recovery",
-		GatewayPID:       0,
-		GatewayURL:       gatewayURL(m.store.Get().GatewayPort),
+		Phase:      PhaseRestarting,
+		Message:    "OpenClaw Gateway exited, waiting for auto-recovery",
+		GatewayPID: 0,
+		GatewayURL: gatewayURL(m.store.Get().GatewayPort),
 	})
 	m.broadcastGatewayState(GatewayConnectionState{
 		Connected:     false,
@@ -1239,7 +1239,8 @@ func (m *Manager) closeClient() {
 // REST endpoint (/) returns an HTML redirect instead of JSON.
 //
 // Actual JSON structure observed from openclaw CLI --json:
-//   { "pending": [{ "requestId": "...", "deviceId": "...", "displayName": "ChatClaw", ... }], "paired": [...] }
+//
+//	{ "pending": [{ "requestId": "...", "deviceId": "...", "displayName": "ChatClaw", ... }], "paired": [...] }
 func (m *Manager) approvePendingDevices() {
 	if !m.pendingPairApproval.CompareAndSwap(false, true) {
 		return
@@ -1291,7 +1292,7 @@ func (m *Manager) approvePendingDevices() {
 	var approveResult struct {
 		RequestID string `json:"requestId"`
 		Device    struct {
-			DeviceID    string `json:"deviceId"`
+			DeviceID     string `json:"deviceId"`
 			ApprovedAtMs int64  `json:"approvedAtMs"`
 		} `json:"device"`
 	}
