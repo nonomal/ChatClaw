@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { RefreshCw, Loader2, ExternalLink, Download, Square, ChevronDown, ChevronUp } from 'lucide-vue-next'
@@ -21,6 +21,7 @@ import { toast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
 import SettingsCard from './SettingsCard.vue'
 import OpenClawDoctorConsole from '@/components/openclaw/OpenClawDoctorConsole.vue'
+import { Events } from '@wailsio/runtime'
 
 /** When true, match Figma ChatClaw openclaw管家: page column 874px, cards 700px centered */
 const props = withDefaults(
@@ -39,6 +40,10 @@ const gatewayState = ref<GatewayConnectionState>(new GatewayConnectionState())
 const restarting = ref(false)
 const stopping = ref(false)
 const upgrading = ref(false)
+
+// 后端事件取消订阅函数
+let unsubscribeStatus: (() => void) | undefined
+let unsubscribeGatewayState: (() => void) | undefined
 
 // 升级详情相关
 const showUpgradeDetails = ref(false)
@@ -144,25 +149,7 @@ const handleRestart = async () => {
     status.value = await OpenClawRuntimeService.RestartGateway()
     gatewayState.value = await OpenClawRuntimeService.GetGatewayState()
     syncGatewayStore()
-
-    // 轮询等待 phase 稳定（直到 connected/error 或 30s 超时）
-    // 原因：RestartGateway() 是同步返回的，但 WS 连接是异步的；
-    // 返回值里的 gatewayState 是旧的，状态最终在后端 broadcast 后才会更新。
-    // 前端 settings 页面未订阅事件，所以需要主动轮询来感知真实状态。
-    if (status.value.phase !== 'connected' && status.value.phase !== 'error') {
-      const deadline = Date.now() + 30000
-      while (Date.now() < deadline) {
-        await new Promise((r) => setTimeout(r, 1000))
-        const s = await OpenClawRuntimeService.GetStatus()
-        const g = await OpenClawRuntimeService.GetGatewayState()
-        if (s.phase === 'connected' || s.phase === 'error' || s.phase === 'idle') {
-          status.value = s
-          gatewayState.value = g
-          syncGatewayStore()
-          break
-        }
-      }
-    }
+    // 状态变化会通过后端 broadcast 推送，前端通过事件订阅实时感知
 
     if (status.value.phase === 'error') {
       toast.error(status.value.message || t('settings.openclawRuntime.restartFailed'))
@@ -366,6 +353,30 @@ watch(
 onMounted(() => {
   void loadStatus()
   void gatewayStore.poll()
+  // 直接订阅后端事件，确保 badge 实时跟随后端推送的状态变化
+  // （gatewayStore 的订阅在 currentSystem === 'openclaw' 时才激活，
+  //  而 settings 可能被 ChatClaw 系统下打开，此时 store 订阅未激活）
+  unsubscribeStatus = Events.On('openclaw:status', (event: unknown) => {
+    const data = (event as any)?.data?.[0] ?? (event as any)?.data ?? event
+    if (data) {
+      const s = RuntimeStatus.createFrom(data)
+      status.value = s
+      gatewayStore.ingestRuntimeStatus(s)
+    }
+  })
+  unsubscribeGatewayState = Events.On('openclaw:gateway-state', (event: unknown) => {
+    const data = (event as any)?.data?.[0] ?? (event as any)?.data ?? event
+    if (data) {
+      const g = GatewayConnectionState.createFrom(data)
+      gatewayState.value = g
+      gatewayStore.ingestGatewayState(g)
+    }
+  })
+})
+
+onUnmounted(() => {
+  unsubscribeStatus?.()
+  unsubscribeGatewayState?.()
 })
 </script>
 
