@@ -16,10 +16,14 @@
 
 type SvgComponent = any
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { useOpenClawGatewayStore } from '@/stores'
-import OpenClawGatewaySidebarStatus from './OpenClawGatewaySidebarStatus.vue'
 import { useI18n } from 'vue-i18n'
-import { useNavigationStore, useAppStore, type NavModule, type SystemOwner } from '@/stores'
+import {
+  useNavigationStore,
+  useAppStore,
+  useOpenClawGatewayStore,
+  type NavModule,
+  type SystemOwner,
+} from '@/stores'
 import { cn } from '@/lib/utils'
 import IconAssistant from '@/assets/icons/assistant.svg'
 import IconKnowledge from '@/assets/icons/knowledge.svg'
@@ -32,9 +36,11 @@ import IconChannels from '@/assets/icons/channels.svg'
 import IconSettings from '@/assets/icons/settings.svg'
 import IconChatClaw from '@/assets/icons/chatclaw.svg'
 import IconOpenClaw from '@/assets/icons/openclaw-logo.svg'
-import IconDown from '@/assets/icons/down-icon.svg'
 import { Check } from 'lucide-vue-next'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import ChatWikiSidebarAccountCard from './ChatWikiSidebarAccountCard.vue'
+import SideNavSystemSwitcherButton from './SideNavSystemSwitcherButton.vue'
+import OpenClawGatewayStatusPillContent from './OpenClawGatewayStatusPillContent.vue'
 
 const { t } = useI18n()
 const navigationStore = useNavigationStore()
@@ -55,14 +61,18 @@ watch(
 )
 
 const switcherOpen = ref(false)
-const triggerRef = ref<HTMLButtonElement | null>(null)
+const switcherButtonCmp = ref<InstanceType<typeof SideNavSystemSwitcherButton> | null>(null)
+const triggerRef = computed(
+  () => switcherButtonCmp.value?.buttonRef ?? null
+)
 const dropdownRef = ref<HTMLDivElement | null>(null)
 const dropdownStyle = ref({ top: '0px', left: '0px', minWidth: '0px' })
 
 const updateDropdownPosition = async () => {
-  if (!triggerRef.value) return
+  const el = triggerRef.value
+  if (!el) return
   await nextTick()
-  const rect = triggerRef.value.getBoundingClientRect()
+  const rect = el.getBoundingClientRect()
   dropdownStyle.value = {
     top: `${rect.bottom + 4}px`,
     left: `${rect.left}px`,
@@ -102,6 +112,9 @@ const systemOptions: SystemOption[] = [
 const currentOption = computed(
   () => systemOptions.find((o) => o.value === appStore.currentSystem) ?? systemOptions[0]
 )
+
+/** Native title on switcher when ChatClaw (OpenClaw uses gateway tooltip on hover). */
+const switcherNativeTitle = computed(() => t(currentOption.value.labelKey))
 
 const toggleSwitcher = () => {
   switcherOpen.value = !switcherOpen.value
@@ -277,7 +290,7 @@ const navIconClass = (item: NavItem) =>
     :class="
       cn(
         'flex shrink-0 flex-col items-center justify-between overflow-hidden border-r border-solid border-border bg-background py-3 transition-all duration-200',
-        navigationStore.sidebarCollapsed ? 'w-13' : 'w-44'
+        navigationStore.sidebarCollapsed ? 'w-13' : 'w-48'
       )
     "
   >
@@ -285,50 +298,36 @@ const navIconClass = (item: NavItem) =>
     <div class="flex w-full flex-col gap-1">
       <!-- System Switcher (Figma: pill 100px, #F5F5F5 border; hover #F0F0F0 + #D4D4D4 border) -->
       <div class="relative mx-2 mb-1">
-        <button
-          ref="triggerRef"
-          type="button"
-          :class="
-            cn(
-              'flex w-full items-center justify-between rounded-[100px] border border-solid border-[#F5F5F5] bg-background px-2 py-[9px] text-[15px] font-bold transition-colors hover:border-[#d4d4d4] hover:bg-[#f0f0f0] dark:border-border dark:bg-muted/30 dark:hover:border-neutral-500 dark:hover:bg-muted/80',
-              navigationStore.sidebarCollapsed && 'justify-center px-1.5'
-            )
-          "
-          :title="navigationStore.sidebarCollapsed ? t(currentOption.labelKey) : undefined"
-          @click="toggleSwitcher"
-        >
-          <div
-            :class="
-              cn(
-                'flex min-w-0 items-center gap-1.5',
-                navigationStore.sidebarCollapsed && 'justify-center'
-              )
-            "
-          >
-            <span
-              class="inline-flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[3.75px]"
-            >
-              <component
-                :is="currentOption.icon"
-                class="block size-full min-h-0 min-w-0 max-h-full max-w-full shrink-0"
-                preserveAspectRatio="xMidYMid meet"
-                aria-hidden="true"
+        <TooltipProvider v-if="appStore.currentSystem === 'openclaw'" :delay-duration="300">
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <SideNavSystemSwitcherButton
+                ref="switcherButtonCmp"
+                :native-title="undefined"
+                @click="toggleSwitcher"
               />
-            </span>
-            <span
-              v-if="!navigationStore.sidebarCollapsed"
-              class="truncate text-left text-[15px] font-bold leading-5 tracking-normal text-foreground"
+            </TooltipTrigger>
+            <TooltipContent
+              :show-arrow="false"
+              side="right"
+              align="center"
+              :side-offset="8"
+              :class="
+                cn(
+                  'z-[250] max-w-[min(280px,calc(100vw-32px))] border-0 bg-transparent p-0 text-foreground shadow-none'
+                )
+              "
             >
-              {{ t(currentOption.labelKey) }}
-            </span>
-          </div>
-          <span
-            v-if="!navigationStore.sidebarCollapsed"
-            class="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground"
-          >
-            <IconDown class="size-3.5" />
-          </span>
-        </button>
+              <OpenClawGatewayStatusPillContent/>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <SideNavSystemSwitcherButton
+          v-else
+          ref="switcherButtonCmp"
+          :native-title="switcherNativeTitle"
+          @click="toggleSwitcher"
+        />
       </div>
 
       <!-- Dropdown teleported to body to escape SideNav's overflow-hidden / stacking-context constraints.
@@ -391,7 +390,6 @@ const navIconClass = (item: NavItem) =>
 
     <!-- Bottom navigation area -->
     <div class="flex w-full flex-col gap-1">
-      <OpenClawGatewaySidebarStatus v-if="appStore.currentSystem === 'openclaw'" />
       <ChatWikiSidebarAccountCard v-if="!navigationStore.sidebarCollapsed" />
       <button
         v-for="item in bottomNavItems"

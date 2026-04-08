@@ -13,28 +13,28 @@ const { t } = useI18n()
 const tagText = computed(() => {
   switch (props.visualStatus) {
     case GatewayVisualStatus.Error:
-      return t('settings.openclawRuntime.composer.gatewayTagError')
+      return 'Gateway Error'
     case GatewayVisualStatus.Stop:
-      return t('settings.openclawRuntime.composer.gatewayTagStop')
+      return 'Gateway Stop'
     case GatewayVisualStatus.Starting:
-      return t('settings.openclawRuntime.composer.gatewayTagStarting')
+      return 'Gateway Starting'
     case GatewayVisualStatus.Upgrading:
-      return t('settings.openclawRuntime.composer.gatewayTagUpgrading')
+      return 'Gateway Upgrading'
     default:
-      return t('settings.openclawRuntime.composer.gatewayTagStop')
+      return 'Gateway Stop'
   }
 })
 
 const tagClass = computed(() =>
   cn(
-    'inline-flex w-fit max-w-full shrink-0 rounded-md border px-2 py-0.5 text-xs font-semibold',
+    'inline-flex w-fit max-w-full shrink-0 items-center justify-center overflow-hidden rounded-md border border-solid px-[5px] text-sm font-normal leading-5',
     props.visualStatus === GatewayVisualStatus.Error &&
-      'border-rose-300 text-rose-600 dark:border-rose-600/50 dark:text-rose-400',
+      'border-rose-300 text-rose-600 dark:border-rose-500/45 dark:text-rose-400',
     props.visualStatus === GatewayVisualStatus.Stop &&
-      'border-neutral-300 text-neutral-600 dark:border-white/25 dark:text-muted-foreground',
+      'border-neutral-300 text-neutral-600 dark:border-white/25 dark:text-neutral-400',
     (props.visualStatus === GatewayVisualStatus.Starting ||
       props.visualStatus === GatewayVisualStatus.Upgrading) &&
-      'border-amber-300 text-amber-700 dark:border-amber-600/50 dark:text-amber-400'
+      'border-orange-300 text-amber-600 dark:border-amber-500/45 dark:text-amber-400'
   )
 )
 </script>
