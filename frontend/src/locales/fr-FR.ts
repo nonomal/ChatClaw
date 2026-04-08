@@ -268,6 +268,7 @@ export default {
       runtimeSource: 'Source du runtime',
       runtimePath: 'Chemin du runtime',
       upgradeButton: 'Mettre a jour OpenClaw',
+      upgradeButtonDisabledWhenActive: 'Arrêtez la passerelle avant de mettre à jour',
       restartButton: 'Redemarrer le service',
       upgrading: 'Mise a jour...',
       restarting: 'Redemarrage...',
@@ -400,7 +401,7 @@ export default {
         openPathFailed: '无法打开该路径',
         openPathHint: '在文件管理器中打开所在目录',
         update: '更新',
-        updatesAvailableToast: '检测到扩展组件有新版本，请到「设置 → 常规设置」中手动更新。',
+        updatesAvailableToast: '检测到扩展组件有新版本，可以到「设置 → 常规设置」中手动更新。',
       },
     },
     memory: {

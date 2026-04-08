@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, Loader2, ExternalLink, Download, Square } from 'lucide-vue-next'
+import { RefreshCw, Loader2, ExternalLink, Download, Square, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import * as OpenClawRuntimeService from '@bindings/chatclaw/internal/openclaw/runtime/openclawruntimeservice'
 import {
   useNavigationStore,
@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import {
   RuntimeStatus,
   GatewayConnectionState,
+  RuntimeUpgradeResult,
 } from '@bindings/chatclaw/internal/openclaw/runtime/models'
 import { toast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
@@ -38,6 +39,14 @@ const gatewayState = ref<GatewayConnectionState>(new GatewayConnectionState())
 const restarting = ref(false)
 const stopping = ref(false)
 const upgrading = ref(false)
+
+// 升级详情相关
+const showUpgradeDetails = ref(false)
+const upgradeOutputEl = ref<HTMLDivElement | null>(null)
+
+// 继续/重新升级弹窗
+const showContinueRestartDialog = ref(false)
+const existingUpgradeResult = ref<RuntimeUpgradeResult | null>(null)
 
 const isActive = computed(() => status.value.phase === 'connected')
 const isTransitioning = computed(() => {
@@ -77,9 +86,20 @@ const upgradeProgress = computed(() => {
   return status.value.progress || 0
 })
 
-// 显示升级进度条：当处于 upgrading 阶段时显示
-const showUpgradeProgress = computed(() => {
-  return status.value.phase === 'upgrading'
+// 格式化为 mm:ss 或 s
+const upgradeElapsedDisplay = computed(() => {
+  const s = gatewayStore.upgradeElapsed
+  if (s < 0) return ''
+  if (s < 60) return `${s}s`
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  return `${m}m ${sec}s`
+})
+
+// 升级输出行列表
+const upgradeOutputLines = computed(() => {
+  const out = gatewayStore.upgradeOutput || ''
+  return out.split('\n').filter((l) => l.trim() !== '')
 })
 
 const badgeText = computed(() => {
@@ -121,7 +141,6 @@ const loadStatus = async () => {
 const handleRestart = async () => {
   restarting.value = true
   try {
-    // First check if port is occupied
     const portStatus = await OpenClawRuntimeService.CheckPortOccupied()
     if (portStatus.occupied) {
       const processName = portStatus.processName || 'Unknown'
@@ -140,7 +159,6 @@ const handleRestart = async () => {
     status.value = await OpenClawRuntimeService.RestartGateway()
     syncGatewayStore()
 
-    // Check if restart failed due to port occupation
     if (status.value.phase === 'error' && status.value.message?.includes('port')) {
       const portStatusAfter = await OpenClawRuntimeService.CheckPortOccupied()
       if (portStatusAfter.occupied) {
@@ -173,9 +191,6 @@ const handleRestart = async () => {
 const handleStart = async () => {
   restarting.value = true
   try {
-    // Do NOT check port first — StartGateway (via reconcileLocked) will detect an
-    // already-occupied port and adopt the existing gateway gracefully. Showing a
-    // blocking error here prevents that fast path from ever being reached.
     status.value = await OpenClawRuntimeService.StartGateway()
     syncGatewayStore()
 
@@ -199,10 +214,8 @@ const handleStop = async () => {
     await OpenClawRuntimeService.SetAutoStart(false)
     toast.success(t('settings.openclawRuntime.stopSuccess'))
 
-    // Wait a moment for cleanup
     await new Promise((resolve) => setTimeout(resolve, 1500))
 
-    // Check if port is still occupied after stop
     const portStatus = await OpenClawRuntimeService.CheckPortOccupied()
     if (portStatus.occupied) {
       const processName = portStatus.processName || 'Unknown'
@@ -223,12 +236,75 @@ const handleStop = async () => {
   }
 }
 
-const handleUpgrade = async () => {
-  if (upgrading.value) return
+// 取消升级
+const handleCancelUpgrade = async () => {
+  if (!upgrading.value) return
+  try {
+    await OpenClawRuntimeService.CancelUpgrade()
+    toast.default(t('settings.openclawRuntime.upgradeCancelled'))
+    upgrading.value = false
+    showUpgradeDetails.value = false
+    await loadStatus()
+  } catch (e) {
+    console.error('Failed to cancel upgrade:', e)
+    toast.error(getErrorMessage(e) || t('settings.openclawRuntime.upgradeCancelFailed'))
+  }
+}
+
+// 继续升级
+const handleContinueUpgrade = async () => {
+  if (!existingUpgradeResult.value?.existingVersion) return
   upgrading.value = true
+  showContinueRestartDialog.value = false
+  showUpgradeDetails.value = true
+  try {
+    const result = await OpenClawRuntimeService.ContinueUpgrade(existingUpgradeResult.value.existingVersion)
+    if (result?.upgraded) {
+      toast.success(
+        t('settings.openclawRuntime.upgradeSuccess', {
+          version: result.currentVersion || '',
+        })
+      )
+    }
+    await loadStatus()
+  } catch (e) {
+    console.error('Failed to continue upgrade:', e)
+    toast.error(getErrorMessage(e) || t('settings.openclawRuntime.upgradeFailed'))
+  } finally {
+    upgrading.value = false
+    showUpgradeDetails.value = false
+  }
+}
+
+// 重新升级（删除缓存文件夹重走流程）
+const handleRestartUpgrade = async () => {
+  showContinueRestartDialog.value = false
+  // 直接重新走升级流程，后端会删除旧的 staging dir
+  void handleUpgradeInternal(false)
+}
+
+// 升级核心逻辑，allowCached 控制是否允许使用已有 staging dir
+const handleUpgradeInternal = async (allowCached = true) => {
+  upgrading.value = true
+  showUpgradeDetails.value = true
   try {
     const result = await OpenClawRuntimeService.UpgradeRuntime()
-    if (result?.upgraded) {
+    if (!result) {
+      await loadStatus()
+      upgrading.value = false
+      showUpgradeDetails.value = false
+      return
+    }
+
+    // 有已有的 staging dir，弹窗让用户选择
+    if (result.hasExistingVersion && allowCached) {
+      existingUpgradeResult.value = result
+      showContinueRestartDialog.value = true
+      upgrading.value = false
+      return
+    }
+
+    if (result.upgraded) {
       toast.success(
         t('settings.openclawRuntime.upgradeSuccess', {
           version: result.currentVersion || result.latestVersion || '',
@@ -243,20 +319,37 @@ const handleUpgrade = async () => {
     toast.error(getErrorMessage(e) || t('settings.openclawRuntime.upgradeFailed'))
   } finally {
     upgrading.value = false
+    showUpgradeDetails.value = false
   }
 }
+
+const handleUpgrade = () => handleUpgradeInternal(true)
 
 const handleOpenDashboard = () => {
   navigationStore.navigateToModule('openclaw-dashboard')
 }
 
-// Sync local refs when store's runtimePhase changes (from global event subscriptions)
-// This keeps the detailed status display in sync with the store
+// 升级输出自动滚动
+watch(
+  () => gatewayStore.upgradeOutput,
+  async () => {
+    await nextTick()
+    if (upgradeOutputEl.value) {
+      upgradeOutputEl.value.scrollTop = upgradeOutputEl.value.scrollHeight
+    }
+  }
+)
+
+// Sync local refs when store's runtimePhase changes
 watch(
   () => gatewayStore.runtimePhase,
   (phase) => {
     if (status.value.phase !== phase) {
       status.value.phase = phase
+    }
+    // 升级开始时自动展开详情
+    if (phase === 'upgrading') {
+      showUpgradeDetails.value = true
     }
   }
 )
@@ -273,18 +366,16 @@ watch(
   { deep: true }
 )
 
-// Sync full status from store when detailed fields change (e.g., installedVersion, message)
+// Sync full status from store when detailed fields change
 watch(
   () => gatewayStore.visualStatus,
   () => {
-    // When visual status changes, refresh local status to get latest details
     void loadStatus()
   }
 )
 
 onMounted(() => {
   void loadStatus()
-  // Store's heartbeat will subscribe to events and poll, keeping this component in sync
   void gatewayStore.poll()
 })
 </script>
@@ -435,23 +526,86 @@ onMounted(() => {
           <p class="text-xs text-muted-foreground">{{ status.message }}</p>
         </div>
 
+        <!-- 升级详情区：进度条 + 耗时 + 输出 + 取消按钮 -->
         <div
-          v-if="showUpgradeProgress"
-          class="border-t border-border px-4 py-3 dark:border-white/10"
+          v-if="isUpgrading"
+          class="border-t border-border dark:border-white/10"
         >
-          <div class="mb-2 flex items-center justify-between">
-            <span class="text-xs font-medium text-foreground">
-              {{ t('settings.openclawRuntime.upgradeProgress') }}
-            </span>
-            <span class="text-xs text-muted-foreground">{{ upgradeProgress }}%</span>
+          <!-- 进度条头部 -->
+          <div class="flex items-center justify-between px-4 pt-3">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-medium text-foreground">
+                {{ t('settings.openclawRuntime.upgradeProgress') }}
+              </span>
+              <span class="text-xs text-muted-foreground">{{ upgradeProgress }}%</span>
+              <span
+                v-if="upgradeElapsedDisplay"
+                class="text-xs text-muted-foreground"
+              >
+                ({{ upgradeElapsedDisplay }})
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              class="h-6 text-xs"
+              @click="showUpgradeDetails = !showUpgradeDetails"
+            >
+              <ChevronDown v-if="!showUpgradeDetails" class="size-3" />
+              <ChevronUp v-else class="size-3" />
+              {{ t('settings.openclawRuntime.upgradeDetails') }}
+            </Button>
           </div>
-          <div class="h-2 overflow-hidden rounded-full bg-muted">
+
+          <!-- 进度条本体 -->
+          <div class="px-4 pb-1">
+            <div class="h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                class="h-full bg-primary transition-all duration-300"
+                :style="{ width: upgradeProgress + '%' }"
+              />
+            </div>
+          </div>
+
+          <p class="px-4 pb-2 text-xs text-muted-foreground">{{ status.message }}</p>
+
+          <!-- 展开：命令输出详情 -->
+          <div
+            v-if="showUpgradeDetails"
+            class="px-4 pb-3"
+          >
             <div
-              class="h-full bg-primary transition-all duration-300"
-              :style="{ width: upgradeProgress + '%' }"
-            />
+              ref="upgradeOutputEl"
+              class="max-h-48 overflow-y-auto rounded border border-border bg-muted/50 px-3 py-2 font-mono text-xs text-muted-foreground dark:border-white/10"
+            >
+              <div
+                v-for="(line, idx) in upgradeOutputLines"
+                :key="idx"
+                class="leading-5"
+              >
+                {{ line }}
+              </div>
+              <div
+                v-if="!upgradeOutputLines.length"
+                class="italic text-muted-foreground/50"
+              >
+                {{ t('settings.openclawRuntime.upgradeOutputWaiting') }}
+              </div>
+            </div>
           </div>
-          <p class="mt-2 text-xs text-muted-foreground">{{ status.message }}</p>
+
+          <!-- 取消升级按钮 -->
+          <div class="flex justify-end border-t border-border px-4 py-2 dark:border-white/10">
+            <Button
+              size="sm"
+              variant="outline"
+              class="text-xs"
+              @click="handleCancelUpgrade"
+            >
+              <Square class="mr-1.5 size-3" />
+              {{ t('settings.openclawRuntime.cancelUpgrade') }}
+            </Button>
+          </div>
         </div>
 
         <!-- Bottom actions: upgrade + open console (Figma) -->
@@ -462,8 +616,9 @@ onMounted(() => {
             class="min-h-10 flex-1"
             variant="outline"
             :disabled="
-              upgrading || restarting || !status.installedVersion || status.phase === 'upgrading'
+              isActive || upgrading || restarting || !status.installedVersion || isTransitioning
             "
+            :title="isActive ? t('settings.openclawRuntime.upgradeButtonDisabledWhenActive') : undefined"
             @click="handleUpgrade"
           >
             <Download v-if="!upgrading" class="mr-1.5 size-3.5" />
@@ -485,6 +640,48 @@ onMounted(() => {
           </Button>
         </div>
       </SettingsCard>
+
+      <!-- 继续/重新升级弹窗 -->
+      <div
+        v-if="showContinueRestartDialog"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+        @click.self="showContinueRestartDialog = false"
+      >
+        <div class="mx-4 w-full max-w-sm rounded-lg border border-border bg-popover p-5 shadow-lg dark:border-white/10 dark:ring-1 dark:ring-white/10">
+          <h3 class="mb-1 text-base font-semibold text-foreground">
+            {{ t('settings.openclawRuntime.continueOrRestartTitle') }}
+          </h3>
+          <p class="mb-5 text-sm text-muted-foreground">
+            {{
+              t('settings.openclawRuntime.continueOrRestartDesc', {
+                version: existingUpgradeResult?.existingVersion || '',
+              })
+            }}
+          </p>
+          <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              @click="showContinueRestartDialog = false"
+            >
+              {{ t('common.cancel') }}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              @click="handleRestartUpgrade"
+            >
+              {{ t('settings.openclawRuntime.restartUpgrade') }}
+            </Button>
+            <Button
+              size="sm"
+              @click="handleContinueUpgrade"
+            >
+              {{ t('settings.openclawRuntime.continueUpgrade') }}
+            </Button>
+          </div>
+        </div>
+      </div>
 
       <OpenClawDoctorConsole />
     </div>

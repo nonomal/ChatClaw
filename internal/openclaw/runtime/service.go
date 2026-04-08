@@ -87,6 +87,17 @@ func (s *OpenClawRuntimeService) UpgradeRuntime() (*RuntimeUpgradeResult, error)
 	return s.manager.UpgradeRuntime()
 }
 
+// CancelUpgrade cancels the currently running upgrade.
+// If rollback is possible, restores the previous version.
+func (s *OpenClawRuntimeService) CancelUpgrade() error {
+	return s.manager.CancelUpgrade()
+}
+
+// ContinueUpgrade resumes a previously interrupted upgrade for the given version.
+func (s *OpenClawRuntimeService) ContinueUpgrade(version string) (*RuntimeUpgradeResult, error) {
+	return s.manager.ContinueUpgrade(version)
+}
+
 // InstallAndStartRuntime downloads and installs the OpenClaw runtime from OSS, then
 // starts the gateway. This mirrors the install-then-activate flow of UpgradeRuntime,
 // but downloads the full OSS bundle instead of running npm install.

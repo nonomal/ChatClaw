@@ -5,7 +5,7 @@
 <h1 align="center">ChatClaw</h1>
 
 <p align="center">
-  <strong>Get OpenClaw-like personal AI agent in 5 mins. with Sandbox security,small and fast</strong>
+  5分钟拥有类 OpenClaw 的小龙虾个人AI智能体，沙箱安全，占资源少，运行快.
 </p>
 
 <p align="center">
@@ -27,105 +27,100 @@
   <a href="./docs/readmes/README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-Get OpenClaw-like knowledge base personal AI agent in 5 mins. Sandbox-secured, with an ultra-small 30MB installer for macOS & Windows (install in 1 min). Connects to WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu & other messaging apps. Built-in Skill Market, Knowledge Base, Memory, MCP, Scheduled Tasks. Developed in Go: fast & low resource usage.
+5分钟拥有类 OpenClaw 的小龙虾个人AI智能体，沙箱安全防护， macOS/Windows 30M 极小安装包，1 分钟安装。连接 WhatsApp、Telegram、Slack、Discord、Gmail、钉钉、企业微信、QQ、飞书等主流通讯应用，内置技能市场、知识库、记忆、MCP、计划任务等核心功能。Go语言开发，运行快、占资源少。
 
- 5分钟拥有类 OpenClaw 本地知识库个人AI智能体,沙箱安全防护,支持macOS/Windows 30M 极小安装包,1 分钟安装。连接WhatsApp、Telegram、Slack、Discord、Gmail、钉钉、企业微信、QQ、飞书等主流通讯应用，内置技能市场、IMA开源版本地知识库平替、记忆、MCP、计划任务等核心功能。Go语言开发，运行快、占资源少。
- 
+Get OpenClaw-like personal AI agent in 5 mins. Sandbox-secured, with an ultra-small 30MB installer for macOS & Windows (install in 1 min). Connects to WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu & other messaging apps. Built-in Skill Market, Knowledge Base, Memory, MCP, Scheduled Tasks. Developed in Go: fast & low resource usage.
 
-<p align="center">
-<a href="https://github.com/zhimaAi/ChatClaw/releases" target="_blank" >Windows/Mac/Linux (Releases)</a>  
-</p>
+## 功能预览
 
-## Previews
+### AI 聊天助手
 
-### AI Chatbot Assistant
+向 AI 助手提出任何问题，它会智能搜索您的知识库并生成相关回答。
 
-Ask your AI assistant any question, and it will intelligently search your knowledge base to generate a relevant answer.
+![](./images/previews/zh-CN/image1.png)
 
-![](./images/previews/en/image1.png)
+### 双模式切换，高效搞定各类需求
 
-### Dual-Mode Switching for Efficient Task Handling
+聊天模式适配多场景多轮问答与推理；任务模式搭配内置技能市场，让 AI Agent 自主拆解并推进多步骤任务，提升效率。
 
-Chat mode adapts to multi-scenario Q&A and reasoning; Task mode pairs with a built-in skill market, enabling AI agents to autonomously decompose and advance multi-step tasks for improved efficiency.
+![](./images/previews/zh-CN/image2.png)
 
-![](./images/previews/en/image2.png)
+### PPT 快速生成
 
-### PPT Quick Generate
+向智能助手发送一句话指令，即可自动创建和生成 PowerPoint 演示文稿。
 
-Send a one-sentence command to the smart assistant to automatically create and generate a PowerPoint presentation.
+![](./images/previews/zh-CN/image3.png)
 
-![](./images/previews/en/image3.png)
+### 技能管理器
 
-### Skill Manager
+使用指令让机器人帮您查找电脑上已安装的功能或安装新的扩展插件。技能市场，自主选择和安装技能。
 
-Use a command to have the assistant help you find installed features on your computer or install new extension plugins. Skill Market — browse and install skills freely.
+![](./images/previews/zh-CN/image4.png)
 
-![](./images/previews/en/image4.png)
+### 记忆功能 — 交互更自然，更智能
 
-### Memory: More Natural, Smarter Interactions
+实现上下文对话，提供个性化服务，完成复杂任务，持续学习和进化，让机器人像不断成长的伙伴，能提供越来越贴心、越来越智能的服务。
 
-Enable contextual conversations and personalized assistance. Continuous learning and evolution — the assistant feels like a growing partner that delivers increasingly thoughtful and intelligent service.
+![](./images/previews/zh-CN/image5.png)
 
-![](./images/previews/en/image5.png)
+### 免费模型试用 — 共享团队知识库
 
-### Free Model Trial — Shared Team Knowledge Base
+一键授权接入 ChatWiki，同步 ChatWiki 账号积分，同时支持自定义模型，内置优质国内外大模型，Ollama、Google Gemini、OpenAI 等。无论是日常办公还是专业场景，使用您喜欢的 AI 模型。
 
-One-click authorization to connect to ChatWiki, sync ChatWiki account credits, and support custom models. Built-in high-quality domestic and international LLMs including Ollama, Google Gemini, and OpenAI — use your favorite AI model for daily office work or professional scenarios.
+![](./images/previews/zh-CN/image6.png)
 
-![](./images/previews/en/image6.png)
+### 知识库 | 文档向量化存储
 
-### Knowledge Base | Document Vectorization Storage
+上传您的文档（如 TXT、PDF、Word、Excel、CSV、HTML、Markdown），系统会自动解析、分割并转换为向量嵌入，存储到您的私有知识库中，供 AI 模型进行精准检索和利用。
 
-Upload your documents (TXT, PDF, Word, Excel, CSV, HTML, Markdown). The system automatically parses, splits, and converts them into vector embeddings, stored in your private knowledge base for precise retrieval and utilization by AI models.
+![](./images/previews/zh-CN/image7.png)
 
-![](./images/previews/en/image7.png)
+### 丰富的 IM 频道接入
 
-### Rich IM Channel Integrations
+通过集成即时通讯服务商（如飞书、企微、QQ、钉钉、IM、LINE、Discord、WhatsApp、Telegram 等）提供的 SDK，在应用中快速实现包括频道创建、用户管理、消息收发在内的完整 IM 通讯能力。
 
-Through integrating SDKs provided by instant messaging service providers (Feishu, WeCom, QQ, DingTalk, WeChat, WhatsApp, and more), quickly implement complete IM communication capabilities within the app, including channel creation, user management, and message sending/receiving.
+![](./images/previews/zh-CN/image8.png)
 
-![](./images/previews/en/image8.png)
+### 定时任务 — 自动化完成指令
 
-### Scheduled Tasks — Automated Command Execution
+让机器人在预设的时间点或时间间隔，自动执行特定的操作，例如提供准时的提醒服务，执行周期性的工作，执行系统级的维护任务等。
 
-Let the assistant automatically execute specific operations at preset times or intervals, such as providing timely reminders, executing recurring work, or performing system-level maintenance tasks.
+![](./images/previews/zh-CN/image9.png)
 
-![](./images/previews/en/image9.png)
+### 划词即时问答
 
-### Text Selection for Instant Q&A
+选中屏幕上的任意文字，它会被自动复制并填入悬浮快问框。一键发送给 AI 助手，即刻获得回答。
 
-Select any text on screen and it will be automatically copied into a floating quick-ask box. One click to send to the AI assistant for an instant answer.
+![](./images/previews/zh-CN/image10.png)
 
-![](./images/previews/en/image10.png)
+### 智能侧边栏
 
-### Smart Sidebar
+可以贴靠在其他应用窗口旁的智能助手。在其中快速切换不同配置的 AI 助手进行提问。机器人根据您关联的知识库生成回答，并支持一键将回复发送到您的对话中。
 
-A smart assistant that can be snapped alongside other application windows. Quickly switch between differently configured AI assistants to ask questions. The robot generates answers based on your associated knowledge base, and supports one-click sending of replies into your conversations.
+![](./images/previews/zh-CN/image11.png)
 
-![](./images/previews/en/image11.png)
+### 一问多答：轻松比较
 
-### One Question, Multiple Answers: Compare with Ease
+无需重复提问。同时咨询多个"AI 专家"，在同一界面中并排查看它们的回复。方便比较，帮助您得出最佳结论。
 
-No need to repeat questions. Consult multiple "AI experts" simultaneously and view their replies side-by-side in the same interface. Easy to compare and help you reach the best conclusion.
+![](./images/previews/zh-CN/image13.png)
 
-![](./images/previews/en/image12.png)
+### 一键启动球
 
-### One-Click Launcher Ball
+点击桌面上的悬浮球，即可唤醒或打开 ChatClaw 主应用窗口。
 
-Click the floating ball on your desktop to instantly wake up or open the ChatClaw main application window.
+![](./images/previews/zh-CN/image14.png)
 
-![](./images/previews/en/image13.png)
+## 服务器模式部署
 
-## Server Mode Deployment
+ChatClaw 支持以服务器模式运行（无需桌面 GUI），通过浏览器访问。
 
-ChatClaw can run as a server (no desktop GUI required), accessible via a browser.
+### 二进制直接运行
 
-### Binary
+从 [GitHub Releases](https://github.com/chatwiki/chatclaw/releases) 下载对应平台的二进制文件：
 
-Download the binary for your platform from [GitHub Releases](https://github.com/chatwiki/chatclaw/releases):
-
-| Platform | File |
-|----------|------|
+| 平台 | 文件 |
+|------|------|
 | Linux x86_64 | `ChatClaw-server-linux-amd64` |
 | Linux ARM64 | `ChatClaw-server-linux-arm64` |
 
@@ -134,9 +129,9 @@ chmod +x ChatClaw-server-linux-amd64
 ./ChatClaw-server-linux-amd64
 ```
 
-Open http://localhost:8080 in your browser.
+浏览器打开 http://localhost:8080 即可使用。
 
-The server listens on `0.0.0.0:8080` by default. You can customize host and port via environment variables:
+服务默认监听 `0.0.0.0:8080`。可通过环境变量自定义监听地址和端口：
 
 ```bash
 WAILS_SERVER_HOST=127.0.0.1 WAILS_SERVER_PORT=3000 ./ChatClaw-server-linux-amd64
@@ -152,11 +147,11 @@ docker run -d \
   registry.cn-hangzhou.aliyuncs.com/chatwiki/chatclaw:latest
 ```
 
-Open http://localhost:8080 in your browser.
+浏览器打开 http://localhost:8080 即可使用。
 
 ### Docker Compose
 
-Create a `docker-compose.yml` file:
+创建 `docker-compose.yml` 文件：
 
 ```yaml
 services:
@@ -173,122 +168,119 @@ volumes:
   chatclaw-data:
 ```
 
-Then run:
+然后运行：
 
 ```bash
 docker compose up -d
 ```
 
-Open http://localhost:8080 in your browser. To stop: `docker compose down`. Data is persisted in the `chatclaw-data` volume.
+浏览器打开 http://localhost:8080 即可使用。停止服务：`docker compose down`。数据持久化在 `chatclaw-data` 卷中。
 
-## Tech Stack
+## 技术栈
 
-| Layer | Technology |
-|-------|-----------|
-| Desktop Framework | [Wails v3](https://wails.io/) (Go + WebView) |
-| Backend Language | [Go 1.26](https://go.dev/) |
-| Frontend Framework | [Vue 3](https://vuejs.org/) + [TypeScript](https://www.typescriptlang.org/) |
-| UI Components | [shadcn-vue](https://www.shadcn-vue.com/) (New York style) + [Reka UI](https://reka-ui.com/) |
-| Styling | [Tailwind CSS v4](https://tailwindcss.com/) |
-| State Management | [Pinia](https://pinia.vuejs.org/) |
-| Build Tool | [Vite](https://vite.dev/) |
-| AI Framework | [Eino](https://github.com/cloudwego/eino) (ByteDance CloudWeGo) |
-| AI Model Providers | OpenAI / Claude / Gemini / Ollama / DeepSeek / Doubao / Qwen / Zhipu / Grok |
-| Database | [SQLite](https://www.sqlite.org/) + [sqlite-vec](https://github.com/asg017/sqlite-vec) (vector search) |
-| Internationalization | [go-i18n](https://github.com/nicksnyder/go-i18n) + [vue-i18n](https://vue-i18n.intlify.dev/) |
-| Task Runner | [Task](https://taskfile.dev/) |
-| Icons | [Lucide](https://lucide.dev/) |
+| 层级 | 技术 |
+|------|------|
+| 桌面框架 | [Wails v3](https://wails.io/) (Go + WebView) |
+| 后端语言 | [Go 1.26](https://go.dev/) |
+| 前端框架 | [Vue 3](https://vuejs.org/) + [TypeScript](https://www.typescriptlang.org/) |
+| UI 组件 | [shadcn-vue](https://www.shadcn-vue.com/) (New York 风格) + [Reka UI](https://reka-ui.com/) |
+| 样式方案 | [Tailwind CSS v4](https://tailwindcss.com/) |
+| 状态管理 | [Pinia](https://pinia.vuejs.org/) |
+| 构建工具 | [Vite](https://vite.dev/) |
+| AI 框架 | [Eino](https://github.com/cloudwego/eino) (字节跳动 CloudWeGo) |
+| AI 模型供应商 | OpenAI / Claude / Gemini / Ollama / DeepSeek / 豆包 / 通义千问 / 智谱 / Grok |
+| 数据库 | [SQLite](https://www.sqlite.org/) + [sqlite-vec](https://github.com/asg017/sqlite-vec) (向量检索) |
+| 国际化 | [go-i18n](https://github.com/nicksnyder/go-i18n) + [vue-i18n](https://vue-i18n.intlify.dev/) |
+| 任务运行 | [Task](https://taskfile.dev/) |
+| 图标 | [Lucide](https://lucide.dev/) |
 
-## Project Structure
+## 项目结构
 
 ```
 ChatClaw_D2/
-├── main.go                     # Application entry point
-├── go.mod / go.sum             # Go module dependencies
-├── Taskfile.yml                # Task runner configuration
-├── build/                      # Build configurations & platform assets
-│   ├── config.yml              # Wails build config
-│   ├── darwin/                 # macOS build settings & entitlements
-│   ├── windows/                # Windows installer (NSIS/MSIX) & manifests
-│   ├── linux/                  # Linux packaging (AppImage, nfpm)
-│   ├── ios/                    # iOS build settings
-│   └── android/                # Android build settings
-├── frontend/                   # Vue 3 frontend application
-│   ├── package.json            # Node.js dependencies
-│   ├── vite.config.ts          # Vite bundler config
-│   ├── components.json         # shadcn-vue config
-│   ├── index.html              # Main window entry
-│   ├── floatingball.html       # Floating ball window entry
-│   ├── selection.html          # Text selection popup entry
-│   ├── winsnap.html            # Snap window entry
+├── main.go                     # 应用入口
+├── go.mod / go.sum             # Go 模块依赖
+├── Taskfile.yml                # 任务运行器配置
+├── build/                      # 构建配置与平台资源
+│   ├── config.yml              # Wails 构建配置
+│   ├── darwin/                 # macOS 构建设置与授权
+│   ├── windows/                # Windows 安装器 (NSIS/MSIX) 与清单
+│   ├── linux/                  # Linux 打包 (AppImage, nfpm)
+│   ├── ios/                    # iOS 构建设置
+│   └── android/                # Android 构建设置
+├── frontend/                   # Vue 3 前端应用
+│   ├── package.json            # Node.js 依赖
+│   ├── vite.config.ts          # Vite 打包配置
+│   ├── components.json         # shadcn-vue 配置
+│   ├── index.html              # 主窗口入口
+│   ├── floatingball.html       # 悬浮球窗口入口
+│   ├── selection.html          # 划词弹窗入口
+│   ├── winsnap.html            # 贴靠窗口入口
 │   └── src/
-│       ├── assets/             # Icons (SVG), images & global CSS
-│       ├── components/         # Shared components
-│       │   ├── layout/         # App layout, sidebar, title bar
-│       │   └── ui/             # shadcn-vue primitives (button, dialog, toast…)
-│       ├── composables/        # Vue composables (reusable logic)
-│       ├── i18n/               # Frontend i18n setup
-│       ├── locales/            # Translation files (zh-CN, en-US…)
-│       ├── lib/                # Utility functions
-│       ├── pages/              # Page-level views
-│       │   ├── assistant/      # AI chat assistant page & components
-│       │   ├── knowledge/      # Knowledge base management page
-│       │   ├── multiask/       # Multi-model comparison page
-│       │   └── settings/       # Settings page (providers, models, tools…)
-│       ├── stores/             # Pinia state stores
-│       ├── floatingball/       # Floating ball mini-app
-│       ├── selection/          # Text selection mini-app
-│       └── winsnap/            # Snap window mini-app
-├── internal/                   # Private Go packages
-│   ├── bootstrap/              # Application initialization & wiring
-│   ├── define/                 # Constants, built-in providers, env flags
-│   ├── device/                 # Device identification
-│   ├── eino/                   # AI/LLM integration layer
-│   │   ├── agent/              # Agent orchestration
-│   │   ├── chatmodel/          # Chat model factory (multi-provider)
-│   │   ├── embedding/          # Embedding model factory
-│   │   ├── filesystem/         # File-system tools for AI agents
-│   │   ├── parser/             # Document parsers (PDF, DOCX, XLSX, CSV)
-│   │   ├── processor/          # Document processing pipeline
-│   │   ├── raptor/             # RAPTOR recursive summarization
-│   │   ├── splitter/           # Text splitter factory
-│   │   └── tools/              # AI tool integrations (browser, search, calculator…)
-│   ├── errs/                   # i18n-aware error handling
-│   ├── fts/                    # Full-text search tokenizer
-│   ├── logger/                 # Structured logging
-│   ├── services/               # Business logic services
-│   │   ├── agents/             # Agent CRUD
-│   │   ├── app/                # Application lifecycle
-│   │   ├── browser/            # Browser automation (via chromedp)
-│   │   ├── chat/               # Chat & streaming
-│   │   ├── conversations/      # Conversation management
-│   │   ├── document/           # Document upload & vectorization
-│   │   ├── floatingball/       # Floating ball window (cross-platform)
-│   │   ├── i18n/               # Backend internationalization
-│   │   ├── library/            # Knowledge library CRUD
-│   │   ├── multiask/           # Multi-model Q&A
-│   │   ├── providers/          # AI provider configuration
-│   │   ├── retrieval/          # RAG retrieval service
-│   │   ├── settings/           # User settings with cache
-│   │   ├── textselection/      # Screen text selection (cross-platform)
-│   │   ├── thumbnail/          # Window thumbnail capture
-│   │   ├── tray/               # System tray
-│   │   ├── updater/            # Auto-update (GitHub/Gitee)
-│   │   ├── windows/            # Window management & snap service
-│   │   └── winsnapchat/        # Snap chat session service
-│   ├── sqlite/                 # Database layer (Bun ORM + migrations)
-│   └── taskmanager/            # Background task scheduler
-├── pkg/                        # Public/reusable Go packages
-│   ├── webviewpanel/           # Cross-platform webview panel manager
-│   ├── winsnap/                # Window snapping engine (macOS/Windows/Linux)
-│   └── winutil/                # Window activation utilities
-├── docs/                       # Development documentation
-│   └── readmes/                # Multi-language README files
-│       ├── README.md           # English README
-│       ├── README_zh-CN.md    # Simplified Chinese README
-│       └── images/             # README screenshots
-└── images/                     # README screenshots (legacy)
+│       ├── assets/             # 图标 (SVG)、图片与全局 CSS
+│       ├── components/         # 共享组件
+│       │   ├── layout/         # 应用布局、侧边栏、标题栏
+│       │   └── ui/             # shadcn-vue 基础组件 (button, dialog, toast…)
+│       ├── composables/        # Vue 组合式函数（可复用逻辑）
+│       ├── i18n/               # 前端国际化配置
+│       ├── locales/            # 翻译文件 (zh-CN, en-US…)
+│       ├── lib/                # 工具函数
+│       ├── pages/              # 页面级视图
+│       │   ├── assistant/      # AI 聊天助手页面及组件
+│       │   ├── knowledge/      # 知识库管理页面
+│       │   ├── multiask/       # 多模型对比页面
+│       │   └── settings/       # 设置页面（供应商、模型、工具…）
+│       ├── stores/             # Pinia 状态仓库
+│       ├── floatingball/       # 悬浮球迷你应用
+│       ├── selection/          # 划词迷你应用
+│       └── winsnap/            # 贴靠窗口迷你应用
+├── internal/                   # 私有 Go 包
+│   ├── bootstrap/              # 应用初始化与依赖注入
+│   ├── define/                 # 常量、内置供应商、环境标志
+│   ├── device/                 # 设备标识
+│   ├── eino/                   # AI/LLM 集成层
+│   │   ├── agent/              # Agent 编排
+│   │   ├── chatmodel/          # 聊天模型工厂（多供应商）
+│   │   ├── embedding/          # 嵌入模型工厂
+│   │   ├── filesystem/         # AI Agent 文件系统工具
+│   │   ├── parser/             # 文档解析器 (PDF, DOCX, XLSX, CSV)
+│   │   ├── processor/          # 文档处理流水线
+│   │   ├── raptor/             # RAPTOR 递归摘要
+│   │   ├── splitter/           # 文本分割器工厂
+│   │   └── tools/              # AI 工具集成（浏览器、搜索、计算器…）
+│   ├── errs/                   # 国际化错误处理
+│   ├── fts/                    # 全文搜索分词器
+│   ├── logger/                 # 结构化日志
+│   ├── services/               # 业务逻辑服务
+│   │   ├── agents/             # Agent 增删改查
+│   │   ├── app/                # 应用生命周期
+│   │   ├── browser/            # 浏览器自动化 (chromedp)
+│   │   ├── chat/               # 聊天与流式传输
+│   │   ├── conversations/      # 会话管理
+│   │   ├── document/           # 文档上传与向量化
+│   │   ├── floatingball/       # 悬浮球窗口（跨平台）
+│   │   ├── i18n/               # 后端国际化
+│   │   ├── library/            # 知识库增删改查
+│   │   ├── multiask/           # 多模型问答
+│   │   ├── providers/          # AI 供应商配置
+│   │   ├── retrieval/          # RAG 检索服务
+│   │   ├── settings/           # 用户设置与缓存
+│   │   ├── textselection/      # 屏幕划词（跨平台）
+│   │   ├── thumbnail/          # 窗口缩略图捕获
+│   │   ├── tray/               # 系统托盘
+│   │   ├── updater/            # 自动更新 (GitHub/Gitee)
+│   │   ├── windows/            # 窗口管理与贴靠服务
+│   │   └── winsnapchat/        # 贴靠聊天会话服务
+│   ├── sqlite/                 # 数据库层 (Bun ORM + 迁移)
+│   └── taskmanager/            # 后台任务调度器
+├── pkg/                        # 公共/可复用 Go 包
+│   ├── webviewpanel/           # 跨平台 WebView 面板管理器
+│   ├── winsnap/                # 窗口贴靠引擎 (macOS/Windows/Linux)
+│   └── winutil/                # 窗口激活工具
+├── docs/                       # 开发文档
+└── images/                     # README 截图
 ```
+
 
 ### Changelog
 To view the complete update log, please click👉️👉️[UpdateLog.md](./UpdateLog.md)
@@ -319,7 +311,5 @@ To view the complete update log, please click👉️👉️[UpdateLog.md](./Upda
 4. **Multi-Language Translations**: Updated translations across Arabic, Bengali, German, English, Spanish, and French locales with new keys and improved consistency.
 5. **Scheduled Task Bug Fixes**: Fixed cron display anomalies and edited scheduled task issues.
 6. **WeChat Text Updates**: Updated WeChat-related text copy and default naming conventions.
-
-
 
 

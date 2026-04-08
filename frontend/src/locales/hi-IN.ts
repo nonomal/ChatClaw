@@ -266,6 +266,7 @@ export default {
       runtimeSource: 'रनटाइम स्रोत',
       runtimePath: 'रनटाइम पथ',
       upgradeButton: 'OpenClaw अपग्रेड करें',
+      upgradeButtonDisabledWhenActive: 'अपग्रेड करने से पहले गेटवे को रोकें',
       restartButton: 'सेवा पुनः आरंभ करें',
       upgrading: 'अपग्रेड हो रहा है...',
       restarting: 'पुनः आरंभ हो रहा है...',
@@ -400,7 +401,7 @@ export default {
         openPathFailed: '无法打开该路径',
         openPathHint: '在文件管理器中打开所在目录',
         update: '更新',
-        updatesAvailableToast: '检测到扩展组件有新版本，请到「设置 → 常规设置」中手动更新。',
+        updatesAvailableToast: '检测到扩展组件有新版本，可以到「设置 → 常规设置」中手动更新。',
       },
     },
     memory: {

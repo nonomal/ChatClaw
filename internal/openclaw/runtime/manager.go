@@ -20,6 +20,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"chatclaw/internal/openclaw"
 	"chatclaw/internal/services/settings"
 
 	"github.com/Masterminds/semver/v3"
@@ -69,9 +70,12 @@ type Manager struct {
 	eventListenersMu sync.RWMutex
 	eventListeners   map[string]EventListener // keyed by caller-chosen ID
 
-	upgradeProgressCb  func(progress int, message string)
-	upgradeMu         sync.Mutex  // serialises upgradeRuntimeLocked vs reconcileLocked to prevent OSS cascade
-	upgradeInProgress atomic.Bool // set during upgrade so reconcileLocked skips OSS fallback
+	upgradeProgressCb    func(progress int, message string)
+	upgradeMu            sync.Mutex  // serialises upgradeRuntimeLocked vs reconcileLocked to prevent OSS cascade
+	upgradeInProgress    atomic.Bool // set during upgrade so reconcileLocked skips OSS fallback
+	upgradeCancelCh      chan struct{}
+	upgradeStartTime     time.Time
+	upgradeOutputBuf     strings.Builder
 
 	doctorRunSeq uint64 // atomic: correlates streamed doctor chunks with the active UI run
 
@@ -167,6 +171,185 @@ func (m *Manager) SetUpgradeProgressCallback(cb func(progress int, message strin
 	m.upgradeProgressCb = cb
 }
 
+// CancelUpgrade cancels the currently running upgrade.
+// If a rollback is possible (hadCurrent was true when upgrade started), it restores the .backup
+// and reconnects to the previous version. The staging directory is deleted.
+// Returns an error if no upgrade was in progress.
+func (m *Manager) CancelUpgrade() error {
+	if !m.upgradeInProgress.Load() {
+		return fmt.Errorf("no upgrade in progress")
+	}
+	m.app.Logger.Info("openclaw: cancel requested by user")
+
+	// Signal all upgrade goroutines to stop.
+	if m.upgradeCancelCh != nil {
+		close(m.upgradeCancelCh)
+	}
+
+	// The installUserRuntimeOverrideWithCancel will handle rollback via its cancel channel check.
+	// After the upgrade goroutine exits, GetStatus will return the post-cancel state.
+	return nil
+}
+
+// ContinueUpgrade resumes a previously interrupted upgrade for the given version.
+// It validates that a staging directory exists with all required files, then
+// re-runs npm install and proceeds to activation + gateway start.
+// If the staging dir is incomplete or missing, returns an error.
+func (m *Manager) ContinueUpgrade(version string) (*RuntimeUpgradeResult, error) {
+	if m.isShuttingDown() {
+		return nil, fmt.Errorf("runtime is shutting down")
+	}
+	if m.upgradeInProgress.Load() {
+		return nil, fmt.Errorf("upgrade already in progress")
+	}
+
+	m.upgradeInProgress.Store(true)
+	defer m.upgradeInProgress.Store(false)
+
+	m.upgradeMu.Lock()
+	defer m.upgradeMu.Unlock()
+
+	m.upgradeOutputBuf.Reset()
+	m.upgradeCancelCh = make(chan struct{})
+	m.upgradeStartTime = time.Now()
+
+	// Periodic tick to broadcast elapsed time.
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				m.broadcastUpgradeProgress(-1, "resuming upgrade...")
+			case <-m.upgradeCancelCh:
+				return
+			}
+		}
+	}()
+
+	target := runtime.GOOS + "-" + runtime.GOARCH
+	userTargetDir, err := openclaw.UserRuntimeTargetDir(target)
+	if err != nil {
+		return nil, err
+	}
+	stagingDir := filepath.Join(userTargetDir, ".staging-"+sanitizeRuntimeVersion(version))
+
+	// Verify staging dir exists and is complete.
+	dirInfo, statErr := os.Stat(stagingDir)
+	if statErr != nil || dirInfo == nil {
+		return nil, fmt.Errorf("staging directory for %s not found at %s", version, stagingDir)
+	}
+	if isComplete, verifyErr := verifyStagingComplete(stagingDir); verifyErr != nil || !isComplete {
+		return nil, fmt.Errorf("staging directory incomplete: %v", verifyErr)
+	}
+
+	m.broadcastUpgradeProgress(5, fmt.Sprintf("Resuming upgrade for openclaw@%s", version))
+
+	activeBundle, err := resolveBundledRuntime()
+	if err != nil {
+		return nil, err
+	}
+
+	currentVersion, err := verifyInstalled(activeBundle)
+	if err != nil {
+		// Ignore — may not have a working runtime yet
+		currentVersion = ""
+	}
+
+	result := &RuntimeUpgradeResult{
+		PreviousVersion: currentVersion,
+		CurrentVersion:  currentVersion,
+		LatestVersion:   version,
+	}
+
+	m.closeClient()
+	m.stopProcess()
+	_ = killAllNodeProcesses()
+
+	installResult, err := m.installUserRuntimeOverrideWithCancel(activeBundle, version, "", stagingDir)
+	if err != nil {
+		m.app.Logger.Error("openclaw: continue upgrade install failed", "error", err)
+		m.broadcastUpgradeProgress(0, "Continue failed, attempting recovery...")
+		if reconcileErr := m.reconcileLocked(false); reconcileErr != nil {
+			m.app.Logger.Error("openclaw: continue recovery failed", "error", reconcileErr)
+		}
+		return nil, err
+	}
+
+	// Gateway start (same logic as upgradeRuntimeLocked).
+	const maxStartAttempts = 5
+	var startupErr error
+	for attempt := 1; attempt <= maxStartAttempts; attempt++ {
+		select {
+		case <-m.upgradeCancelCh:
+			m.app.Logger.Info("openclaw: upgrade cancelled during gateway start")
+			m.broadcastUpgradeProgress(0, "Upgrade cancelled, rolling back...")
+			if installResult.Restore != nil {
+				_ = installResult.Restore()
+			}
+			_ = m.reconcileLocked(false)
+			return nil, fmt.Errorf("upgrade cancelled")
+		default:
+		}
+
+		m.broadcastUpgradeProgress(90, fmt.Sprintf("Starting gateway (attempt %d/%d)...", attempt, maxStartAttempts))
+
+		port := m.store.Get().GatewayPort
+		if isPortAvailable(port) {
+			if reconcileErr := m.reconcileLocked(false); reconcileErr == nil {
+				goto continueUpgradeSucceeded
+			} else {
+				startupErr = reconcileErr
+				m.app.Logger.Warn("openclaw: gateway start attempt failed",
+					"attempt", attempt, "maxAttempts", maxStartAttempts, "error", startupErr)
+				if attempt == maxStartAttempts {
+					break
+				}
+				if !installResult.HadCurrent {
+					m.broadcastUpgradeProgress(0, fmt.Sprintf("Gateway failed (attempt %d/%d), running diagnostic...", attempt, maxStartAttempts))
+					if _, fixErr := m.RunDoctorCommand("check", true); fixErr != nil {
+						m.app.Logger.Warn("openclaw: doctor fix failed", "error", fixErr)
+					}
+				}
+				time.Sleep(2 * time.Second)
+			}
+		} else {
+			m.app.Logger.Info("openclaw: gateway already running, skipping start",
+				"port", port, "attempt", attempt)
+			m.broadcastUpgradeProgress(100, "Gateway already running")
+			goto continueUpgradeSucceeded
+		}
+	}
+
+	if installResult.HadCurrent {
+		m.app.Logger.Error("openclaw: continue upgrade gateway failed after 5 attempts, rolling back",
+			"error", startupErr)
+		m.broadcastUpgradeProgress(0, "Gateway failed after 5 attempts, rolling back to previous version...")
+		if rollbackErr := installResult.Restore(); rollbackErr != nil {
+			m.app.Logger.Error("openclaw: rollback failed", "error", rollbackErr)
+		}
+		time.Sleep(500 * time.Millisecond)
+		_ = m.reconcileLocked(false)
+	} else {
+		m.app.Logger.Error("openclaw: first-install gateway failed after 5 attempts",
+			"error", startupErr)
+		m.broadcastUpgradeProgress(0, "OpenClaw failed to start after 5 attempts, please run openclaw doctor manually.")
+		_ = m.reconcileLocked(false)
+	}
+	return nil, fmt.Errorf("gateway failed after %d attempts: %w", maxStartAttempts, startupErr)
+
+continueUpgradeSucceeded:
+	installResult.DeleteBackup()
+	installResult.Cleanup()
+
+	status := m.GetStatus()
+	result.Upgraded = true
+	result.CurrentVersion = version
+	result.RuntimeSource = status.RuntimeSource
+	result.RuntimePath = status.RuntimePath
+	return result, nil
+}
+
 func (m *Manager) Start() {
 	// Always start polling so the UI stays in sync with the gateway's real state
 	// (even if auto-start was disabled via "stop" button, or the port is already
@@ -208,7 +391,6 @@ func (m *Manager) pollClient() {
 
 	m.mu.RLock()
 	connected := m.client != nil
-	phase := m.status.Phase
 	m.mu.RUnlock()
 
 	if connected {
@@ -218,7 +400,10 @@ func (m *Manager) pollClient() {
 	// Not connected — determine the right response based on gateway liveness.
 	if !alive {
 		// Gateway not responding at all.
-		if phase == PhaseConnected || phase == PhaseConnecting || phase == PhaseError {
+		m.mu.RLock()
+		prevPhase := m.status.Phase
+		m.mu.RUnlock()
+		if prevPhase == PhaseConnected || prevPhase == PhaseConnecting || prevPhase == PhaseError {
 			m.broadcastStatus(RuntimeStatus{
 				Phase:      PhaseRestarting,
 				Message:    "OpenClaw Gateway not responding",
@@ -1078,6 +1263,29 @@ func (m *Manager) reconnectClient() {
 			go m.runDoctorAutoFix()
 			return
 		}
+		// Port is alive but WS keeps failing — a full reconcile (with process restart) can
+		// recover when the gateway process is stuck but the port appears occupied. This is
+		// the fix for the "error phase stuck" scenario: gateway is running (port open) but the
+		// WS handshake is consistently rejected. Only trigger when we already own the process.
+		m.mu.RLock()
+		ownsProcess := m.process != nil
+		m.mu.RUnlock()
+		if ownsProcess && gatewayPortOccupied(cfg.GatewayPort) {
+			m.app.Logger.Info("openclaw: WS reconnect failed after multiple attempts, triggering full reconcile")
+			m.broadcastGatewayState(GatewayConnectionState{
+				Connected:     false,
+				Authenticated: false,
+				Reconnecting:  true,
+				LastError:     err.Error(),
+			})
+			go func() {
+				// Run full reconcile with restart=true to cleanly stop/restart the gateway process.
+				if reconcileErr := m.reconcile(true); reconcileErr != nil {
+					m.app.Logger.Warn("openclaw: full reconcile after WS failure failed", "error", reconcileErr)
+				}
+			}()
+			return
+		}
 		m.broadcastGatewayState(GatewayConnectionState{
 			Connected:     false,
 			Authenticated: false,
@@ -1093,7 +1301,19 @@ connected:
 
 	m.mu.RLock()
 	pid := m.processPID
+	version := m.status.InstalledVersion
+	runtimeSource := m.status.RuntimeSource
+	runtimePath := m.status.RuntimePath
 	m.mu.RUnlock()
+	m.broadcastStatus(RuntimeStatus{
+		Phase:            PhaseConnected,
+		Message:          "OpenClaw Gateway connected",
+		InstalledVersion: version,
+		RuntimeSource:    runtimeSource,
+		RuntimePath:      runtimePath,
+		GatewayPID:       pid,
+		GatewayURL:       gatewayURL(cfg.GatewayPort),
+	})
 	m.broadcastGatewayState(GatewayConnectionState{
 		Connected:     true,
 		Authenticated: true,
@@ -2014,13 +2234,49 @@ func shouldRetryConnect(err error) bool {
 	return false
 }
 
-// broadcastUpgradeProgress sends a PhaseUpgrading status with a progress percentage (0-100)
-// and a descriptive message, preserving last known runtime metadata.
+// broadcastUpgradeProgress sends a PhaseUpgrading status with a progress percentage (0-100),
+// elapsed time in seconds, and a descriptive message, preserving last known runtime metadata.
 func (m *Manager) broadcastUpgradeProgress(progress int, message string) {
+	elapsed := -1
+	if !m.upgradeStartTime.IsZero() {
+		elapsed = int(time.Since(m.upgradeStartTime).Seconds())
+	}
 	s := RuntimeStatus{
-		Phase:    PhaseUpgrading,
-		Progress: progress,
-		Message:  message,
+		Phase:          PhaseUpgrading,
+		Progress:       progress,
+		Message:        message,
+		ElapsedSeconds: elapsed,
+		UpgradeOutput:  m.upgradeOutputBuf.String(),
+	}
+	// Preserve last known runtime metadata when phase is upgrading.
+	if s.InstalledVersion == "" && m.status.InstalledVersion != "" {
+		s.InstalledVersion = m.status.InstalledVersion
+	}
+	if s.RuntimeSource == "" && m.status.RuntimeSource != "" {
+		s.RuntimeSource = m.status.RuntimeSource
+	}
+	if s.RuntimePath == "" && m.status.RuntimePath != "" {
+		s.RuntimePath = m.status.RuntimePath
+	}
+	if s.GatewayURL == "" && m.status.GatewayURL != "" {
+		s.GatewayURL = m.status.GatewayURL
 	}
 	m.broadcastStatus(s)
+}
+
+// appendUpgradeOutput appends a line to the upgrade output buffer and broadcasts it.
+// Lines beyond the last 200 are dropped to prevent unbounded growth.
+func (m *Manager) appendUpgradeOutput(line string) {
+	if line == "" {
+		return
+	}
+	m.upgradeOutputBuf.WriteString(line)
+	m.upgradeOutputBuf.WriteString("\n")
+	// Keep only the last 200 lines (roughly 20KB at 100 chars/line).
+	const maxLines = 200
+	lines := strings.Split(m.upgradeOutputBuf.String(), "\n")
+	if len(lines) > maxLines+1 {
+		m.upgradeOutputBuf.Reset()
+		m.upgradeOutputBuf.WriteString(strings.Join(lines[len(lines)-(maxLines+1):], "\n"))
+	}
 }
