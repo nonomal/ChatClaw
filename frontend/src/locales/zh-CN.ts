@@ -375,7 +375,7 @@ export default {
         installed: '已安装',
         notInstalled: '未安装',
         update: '更新',
-        updatesAvailableToast: '检测到扩展组件有新版本，请到「设置 → 常规设置」中手动更新。',
+        updatesAvailableToast: '检测到扩展组件有新版本，可以到「设置 → 常规设置」中手动更新。',
         newVersionHint: '新版本 {version}',
         openPathHint: '在文件管理器中打开所在目录',
         openPathFailed: '无法打开该路径',
