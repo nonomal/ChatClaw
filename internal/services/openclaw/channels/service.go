@@ -1638,10 +1638,16 @@ func (s *OpenClawChannelService) restartOpenClawGateway() error {
 	// Notify frontend immediately so it shows "重启中" before reconcile runs.
 	s.openclawManager.NotifyGatewayRestarting()
 	// Must run Manager restart (not only CLI): reconciles process + WS and broadcasts
-	// starting/connecting/connected. CLI-only restart left phase stuck at "restarting".
-	// if _, err := s.openclawManager.RestartGateway(); err != nil {
-	// 	return fmt.Errorf("openclaw gateway restart: %w", err)
-	// }
+	ctx, cancel := context.WithTimeout(context.Background(), openClawCLIRetryTimeout)
+	defer cancel()
+	_, err := s.openclawManager.ExecCLI(ctx, "gateway", "stop")
+	if err != nil {
+		return fmt.Errorf("openclaw gateway stop: %w", err)
+	}
+	_, err = s.openclawManager.ExecCLI(ctx, "gateway", "start")
+	if err != nil {
+		return fmt.Errorf("openclaw gateway start: %w", err)
+	}
 	return nil
 }
 
