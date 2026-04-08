@@ -26,7 +26,7 @@ const props = withDefaults(
     // Formatted latest updated time (e.g. 2026/03/02)
     latestUpdatedAt?: string
     selected?: boolean
-    /** When > 0 and this card is selected, overflow menu is batch-only (move / delete folder). */
+    /** When > 1 and this card is selected, overflow menu shows batch actions (move / delete folder). */
     selectedCount?: number
   }>(),
   { selected: false, selectedCount: 0 }
@@ -43,7 +43,7 @@ const emit = defineEmits<{
 }>()
 
 const showBatchActions = computed(
-  () => props.selected && props.selectedCount > 0
+  () => props.selected && props.selectedCount > 1
 )
 
 const handleCardClick = () => {
