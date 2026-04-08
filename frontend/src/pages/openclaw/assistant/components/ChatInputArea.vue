@@ -68,6 +68,7 @@ import {
   isModelSelectionDisabled,
 } from '@/lib/chatwikiModelAvailability'
 import { useNavigationStore, useSettingsStore } from '@/stores'
+import { Events } from '@wailsio/runtime'
 interface PendingImage {
   id: string
   file: File
@@ -182,6 +183,10 @@ const modelSelectOpen = ref(false)
 async function goToChatwikiLogin() {
   modelSelectOpen.value = false
   await nextTick()
+  if (props.isSnapMode) {
+    Events.Emit('settings:open-chatwiki-login')
+    return
+  }
   settingsStore.requestChatwikiCloudLogin()
   settingsStore.setActiveMenu('chatwiki')
   navigationStore.navigateToModule('settings')

@@ -74,6 +74,15 @@ export const gatewaySidebarTagLoaderClass: Record<GatewayVisualStatus, string> =
   [GatewayVisualStatus.Upgrading]: 'text-amber-600 dark:text-amber-400',
 }
 
+/** System switcher pill status dot (Figma 1888-47873, 8px). */
+export const gatewaySwitcherDotClass: Record<GatewayVisualStatus, string> = {
+  [GatewayVisualStatus.Running]: 'bg-[#10B981]',
+  [GatewayVisualStatus.Error]: 'bg-[#EF4444]',
+  [GatewayVisualStatus.Stop]: 'bg-[#737373]',
+  [GatewayVisualStatus.Starting]: 'bg-[#F97316]',
+  [GatewayVisualStatus.Upgrading]: 'bg-[#F97316]',
+}
+
 /** True while the runtime bundle is being downloaded/installed (OSS install or upgrade). */
 export function isOpenClawRuntimeMutatingPhase(phase: string | undefined): boolean {
   return phase === 'upgrading'

@@ -39,7 +39,7 @@ const handleCardClick = () => {
 
     <!-- Title: 14px / 22px line-height per design -->
     <p
-      class="mx-2 mt-2 line-clamp-2 h-[44px] text-center text-sm font-medium leading-[22px] text-foreground"
+      class="mx-2 mt-2 line-clamp-2 h-[44px] break-all text-center text-sm font-medium leading-[22px] text-foreground"
       :title="group.name"
     >
       {{ group.name }}

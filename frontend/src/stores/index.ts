@@ -18,6 +18,7 @@ export {
   gatewaySidebarTagLabelClass,
   gatewaySidebarTagStatusClass,
   gatewaySidebarTagLoaderClass,
+  gatewaySwitcherDotClass,
   isOpenClawRuntimeMutatingPhase,
 } from './openclaw-gateway'
 export { useSettingsStore, type SettingsMenuItem } from './settings'

@@ -546,6 +546,20 @@ watch(showApplicationsAndKnowledgeCards, (show) => {
   })
 })
 
+// Winsnap / cross-window: pending may be set while this view is already mounted (no remount).
+watch(
+  () => settingsStore.pendingChatwikiAction,
+  async (action) => {
+    if (action !== 'cloudLogin') return
+    if (!cloudAuthUrl.value) {
+      const url = await ChatWikiService.GetCloudURL().catch(() => '')
+      cloudAuthUrl.value = url ?? ''
+    }
+    if (settingsStore.consumePendingChatwikiAction() !== 'cloudLogin') return
+    void handleLoginCloud()
+  }
+)
+
 onMounted(() => {
   clearChatwikiCache()
   void loadBinding()
