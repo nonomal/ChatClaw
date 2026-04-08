@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -395,6 +396,11 @@ func NewApp(opts Options) (app *application.App, cleanup func(), err error) {
 	})
 	agentGWSvc := openclawruntime.NewAgentService(app, openclawManager, openClawAgentsService, configSvc)
 	openclawManager.SetConfigService(configSvc)
+	// Load the models cache from openclaw.json so SendOpenClawMessage can skip
+	// full SyncConfig when the target model is already registered.
+	if ocRoot, err := define.OpenClawDataRootDir(); err == nil {
+		openclawManager.LoadModelsCacheFromFile(filepath.Join(ocRoot, "openclaw.json"))
+	}
 	openclawManager.RegisterReadyHook(agentGWSvc.OnGatewayReady)
 	openclawManager.RegisterReadyHook(openClawChannelService.OnGatewayReadyOpenClawPluginSessionSync)
 	// 统一注册 OpenClaw 渠道 reply target 同步钩子。
