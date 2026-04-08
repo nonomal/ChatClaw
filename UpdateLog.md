@@ -1,5 +1,27 @@
 ## Changelog
 
+### 2026/04/08
+1. **OpenClaw In-Memory Models Cache**: Implemented in-memory models cache for improved efficiency in model registration and synchronization. The cache is populated from openclaw.json at startup and refreshed during config sync.
+2. **OpenClaw Real-Time Status Updates**: Enhanced real-time status updates by subscribing to backend events for gateway state and runtime status, replacing the previous polling mechanism for immediate frontend updates.
+3. **OpenClaw Gateway Polling & Restart Logic**: Implemented polling mechanism for gateway status after restart to ensure accurate state detection; simplified gateway restart logic by removing redundant port status checks and enhancing error handling.
+4. **OpenClaw Readiness Diagnostics**: Added DebugIsReadyState method for enhanced diagnostics of gateway readiness; refactored to simplify readiness checks relying on the gateway's connection status.
+5. **OpenClaw Upgrade Enhancement**: Added upgrade cancellation and continuation features; updated runtime upgrade logic to use a candidate staging directory for improved reliability.
+6. **OpenClaw Staged Installation**: Integrated OpenClaw runtime management with system mode synchronization, auto-start based on sidebar mode, and bundled binaries support from the full installer.
+7. **Gateway Doctor Auto-Trigger**: Implemented auto-trigger for doctor diagnostics on consecutive WebSocket failures with UI updates and enhanced authentication support.
+8. **ChatWiki Model Enhancements**: Implemented cleanup for corrupted chatwiki model entries; enhanced model catalog item parsing with numeric ID detection and improved model ID resolution.
+9. **UI/UX Improvements**: Gateway style updates; fixed floating window login issue; ChatWiki model switch now disabled when not logged in; assistant session switch shows latest messages; batch operation button display optimization; knowledge base card English word wrap support; icon replacement with SVG.
+10. **Localization Updates**: Updated 'updatesAvailableToast' message across multiple languages; multi-language README support enhancements.
+
+### 2026/04/07
+1. **OpenClaw NSIS Installer Refactoring**: Complete overhaul of NSIS project file including custom uninstaller macro, removal of file-level progress display, enhanced extraction feedback with dynamic progress updates, and improved uninstallation process with detail prints for process termination and cleanup.
+2. **OpenClaw Gateway Authentication**: Added authentication configuration with fields for pairing and auto-approval; implemented background polling loop to monitor gateway status and handle WebSocket reconnections.
+3. **Gateway Startup Optimization**: Simplified gateway startup logic by removing port occupation checks, relying on reconcileLocked to handle existing instances.
+4. **Gateway Device Management**: Enhanced approvePendingDevices function with improved JSON handling, logging, and verification for successful approvals.
+5. **Configuration Management**: Updated ensureOpenClawStateDir and ensureGatewayAuthConfig to accept gateway port as parameter for consistent port usage.
+6. **Knowledge Base Learning Tasks**: Application restart now continues learning tasks; added learning document limits; fixed issue where failed learning tasks still occupied document count.
+7. **Knowledge Base UI/UX**: Added knowledge base settings translations; folder selection and batch operations support; document selection and batch operations.
+8. **Style Updates**: Input number optimization; knowledge base settings styling improvements.
+
 ### 2026/04/03
 1. **OpenClaw Doctor Console Enhancement**: Integrated `ansi-to-html` for enhanced console output rendering with ANSI color support in both light and dark themes. Added streaming support for doctor command output with improved stdout/stderr handling and event emission for UI updates.
 2. **OpenClaw Runtime Upgrade System**: Implemented comprehensive upgrade status management with "Upgrading" state across components and localization files. Enhanced npm package installation with progress updates and improved error handling, including rollback mechanisms.
