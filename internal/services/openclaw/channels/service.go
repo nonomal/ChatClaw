@@ -1632,9 +1632,6 @@ func (s *OpenClawChannelService) syncOpenClawWeComDefaultConfig(ctx context.Cont
 }
 
 func (s *OpenClawChannelService) restartOpenClawGateway() error {
-	if s.openclawManager == nil {
-		return fmt.Errorf("openclaw manager is not initialized")
-	}
 	// Notify frontend immediately so it shows "重启中" before reconcile runs.
 	s.openclawManager.NotifyGatewayRestarting()
 	// Must run Manager restart (not only CLI): reconciles process + WS and broadcasts
