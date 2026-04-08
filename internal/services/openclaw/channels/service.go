@@ -1636,15 +1636,13 @@ func (s *OpenClawChannelService) restartOpenClawGateway() error {
 	if s.openclawManager == nil {
 		return fmt.Errorf("openclaw manager is not initialized")
 	}
+	// Notify frontend immediately so it shows "重启中" before the CLI call.
+	s.openclawManager.NotifyGatewayRestarting()
 	ctx, cancel := context.WithTimeout(context.Background(), openClawGatewayRestartTimeout)
 	defer cancel()
-	// Tell the gateway to reload its config by sending a restart command.
-	// The gateway auto-restarts on openclaw.json file changes, so no explicit start is needed.
-	// This avoids the heavy reconcile path that broadcasts PhaseStarting and causes
-	// the UI to show "启动中" during routine config updates.
 	_, err := s.openclawManager.ExecCLI(ctx, "gateway", "restart")
 	if err != nil {
-		return fmt.Errorf("openclaw gateway stop: %w", err)
+		return fmt.Errorf("openclaw gateway restart: %w", err)
 	}
 	return nil
 }

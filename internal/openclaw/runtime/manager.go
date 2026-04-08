@@ -436,7 +436,7 @@ func (m *Manager) Start() {
 // real state and updates the UI — it never blocks, never stops on its own,
 // and is only cancelled when Shutdown() closes pollingStop.
 func (m *Manager) pollGateway() {
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -865,7 +865,7 @@ func gatewayPortOccupied(port int) bool {
 func (m *Manager) runGatewayStopCLI(cliPath string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, cliPath, "gateway", "stop")
+	cmd := exec.CommandContext(ctx, cliPath, "gateway", "stop", "--force")
 	setCmdHideWindow(cmd)
 	if err := cmd.Run(); err != nil {
 		m.app.Logger.Warn("openclaw: gateway stop CLI finished with error", "error", err)
@@ -1492,6 +1492,24 @@ func (m *Manager) runtimeStatusRestarting() RuntimeStatus {
 		RuntimePath:      prev.RuntimePath,
 		GatewayURL:       gatewayURL(cfg.GatewayPort),
 	}
+}
+
+// NotifyGatewayRestarting broadcasts PhaseRestarting to the frontend before a gateway
+// restart is initiated via CLI. This allows the UI to show "重启中" immediately,
+// rather than waiting for the passive polling loop to detect the port/WS change.
+func (m *Manager) NotifyGatewayRestarting() {
+	m.mu.RLock()
+	prev := m.status
+	m.mu.RUnlock()
+	cfg := m.store.Get()
+	m.broadcastStatus(RuntimeStatus{
+		Phase:            PhaseRestarting,
+		Message:          "OpenClaw Gateway restarting",
+		InstalledVersion: prev.InstalledVersion,
+		RuntimeSource:    prev.RuntimeSource,
+		RuntimePath:      prev.RuntimePath,
+		GatewayURL:       gatewayURL(cfg.GatewayPort),
+	})
 }
 
 func (m *Manager) broadcastGatewayState(gs GatewayConnectionState) {
