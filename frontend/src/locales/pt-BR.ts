@@ -267,6 +267,7 @@ export default {
       runtimeSource: 'Origem do runtime',
       runtimePath: 'Caminho do runtime',
       upgradeButton: 'Atualizar OpenClaw',
+      upgradeButtonDisabledWhenActive: 'Pare o gateway antes de atualizar',
       restartButton: 'Reiniciar servico',
       upgrading: 'Atualizando...',
       restarting: 'Reiniciando...',

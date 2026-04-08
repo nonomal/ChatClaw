@@ -268,6 +268,7 @@ export default {
       runtimeSource: 'Source du runtime',
       runtimePath: 'Chemin du runtime',
       upgradeButton: 'Mettre a jour OpenClaw',
+      upgradeButtonDisabledWhenActive: 'Arrêtez la passerelle avant de mettre à jour',
       restartButton: 'Redemarrer le service',
       upgrading: 'Mise a jour...',
       restarting: 'Redemarrage...',

@@ -267,6 +267,7 @@ export default {
       runtimeSource: 'مصدر بيئة التشغيل',
       runtimePath: 'مسار بيئة التشغيل',
       upgradeButton: 'ترقية OpenClaw',
+      upgradeButtonDisabledWhenActive: 'أوقف البوابة أولاً قبل الترقية',
       restartButton: 'إعادة تشغيل الخدمة',
       upgrading: 'جارٍ الترقية...',
       restarting: 'جارٍ إعادة التشغيل...',

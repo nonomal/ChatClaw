@@ -391,7 +391,6 @@ func (m *Manager) pollClient() {
 
 	m.mu.RLock()
 	connected := m.client != nil
-	phase := m.status.Phase
 	m.mu.RUnlock()
 
 	if connected {
@@ -401,7 +400,10 @@ func (m *Manager) pollClient() {
 	// Not connected — determine the right response based on gateway liveness.
 	if !alive {
 		// Gateway not responding at all.
-		if phase == PhaseConnected || phase == PhaseConnecting || phase == PhaseError {
+		m.mu.RLock()
+		prevPhase := m.status.Phase
+		m.mu.RUnlock()
+		if prevPhase == PhaseConnected || prevPhase == PhaseConnecting || prevPhase == PhaseError {
 			m.broadcastStatus(RuntimeStatus{
 				Phase:      PhaseRestarting,
 				Message:    "OpenClaw Gateway not responding",
@@ -1261,6 +1263,29 @@ func (m *Manager) reconnectClient() {
 			go m.runDoctorAutoFix()
 			return
 		}
+		// Port is alive but WS keeps failing — a full reconcile (with process restart) can
+		// recover when the gateway process is stuck but the port appears occupied. This is
+		// the fix for the "error phase stuck" scenario: gateway is running (port open) but the
+		// WS handshake is consistently rejected. Only trigger when we already own the process.
+		m.mu.RLock()
+		ownsProcess := m.process != nil
+		m.mu.RUnlock()
+		if ownsProcess && gatewayPortOccupied(cfg.GatewayPort) {
+			m.app.Logger.Info("openclaw: WS reconnect failed after multiple attempts, triggering full reconcile")
+			m.broadcastGatewayState(GatewayConnectionState{
+				Connected:     false,
+				Authenticated: false,
+				Reconnecting:  true,
+				LastError:     err.Error(),
+			})
+			go func() {
+				// Run full reconcile with restart=true to cleanly stop/restart the gateway process.
+				if reconcileErr := m.reconcile(true); reconcileErr != nil {
+					m.app.Logger.Warn("openclaw: full reconcile after WS failure failed", "error", reconcileErr)
+				}
+			}()
+			return
+		}
 		m.broadcastGatewayState(GatewayConnectionState{
 			Connected:     false,
 			Authenticated: false,
@@ -1276,7 +1301,19 @@ connected:
 
 	m.mu.RLock()
 	pid := m.processPID
+	version := m.status.InstalledVersion
+	runtimeSource := m.status.RuntimeSource
+	runtimePath := m.status.RuntimePath
 	m.mu.RUnlock()
+	m.broadcastStatus(RuntimeStatus{
+		Phase:            PhaseConnected,
+		Message:          "OpenClaw Gateway connected",
+		InstalledVersion: version,
+		RuntimeSource:    runtimeSource,
+		RuntimePath:      runtimePath,
+		GatewayPID:       pid,
+		GatewayURL:       gatewayURL(cfg.GatewayPort),
+	})
 	m.broadcastGatewayState(GatewayConnectionState{
 		Connected:     true,
 		Authenticated: true,

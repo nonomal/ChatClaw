@@ -266,6 +266,7 @@ export default {
       runtimeSource: 'ランタイムソース',
       runtimePath: 'ランタイムパス',
       upgradeButton: 'OpenClaw をアップグレード',
+      upgradeButtonDisabledWhenActive: 'アップグレード前にゲートウェイを停止してください',
       restartButton: 'サービスを再起動',
       upgrading: 'アップグレード中...',
       restarting: '再起動中...',

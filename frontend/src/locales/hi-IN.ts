@@ -266,6 +266,7 @@ export default {
       runtimeSource: 'रनटाइम स्रोत',
       runtimePath: 'रनटाइम पथ',
       upgradeButton: 'OpenClaw अपग्रेड करें',
+      upgradeButtonDisabledWhenActive: 'अपग्रेड करने से पहले गेटवे को रोकें',
       restartButton: 'सेवा पुनः आरंभ करें',
       upgrading: 'अपग्रेड हो रहा है...',
       restarting: 'पुनः आरंभ हो रहा है...',

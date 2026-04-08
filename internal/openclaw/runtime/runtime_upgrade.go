@@ -95,9 +95,10 @@ func (m *Manager) upgradeRuntimeLocked() (*RuntimeUpgradeResult, error) {
 	// Check if a staging dir for this version already exists and is complete.
 	target := runtime.GOOS + "-" + runtime.GOARCH
 	userTargetDir, _ := openclaw.UserRuntimeTargetDir(target)
-	stagingDir := filepath.Join(userTargetDir, ".staging-"+sanitizeRuntimeVersion(latestVersion))
-	if dirExists, _ := os.Stat(stagingDir); dirExists != nil {
-		if isComplete, verifyErr := verifyStagingComplete(stagingDir); verifyErr == nil && isComplete {
+	candidateStagingDir := filepath.Join(userTargetDir, ".staging-"+sanitizeRuntimeVersion(latestVersion))
+	stagingDir := "" // passed to installUserRuntimeOverrideWithCancel; empty = create fresh
+	if dirExists, _ := os.Stat(candidateStagingDir); dirExists != nil {
+		if isComplete, verifyErr := verifyStagingComplete(candidateStagingDir); verifyErr == nil && isComplete {
 			result.HasExistingVersion = true
 			result.ExistingVersion = latestVersion
 			// Return early so frontend can offer Continue / Restart options.
@@ -401,18 +402,20 @@ func (m *Manager) installUserRuntimeOverrideWithCancel(
 	if needsNpmInstall {
 		onProgress(10, fmt.Sprintf("Downloading openclaw@%s from registry", version))
 		if stagingDirHint != "" {
-			// Re-download from registry (this is a fresh build for continue).
+			// Re-download from registry (continue path).
 			// If registryURL is empty (shouldn't happen), use default.
 			if registryURL == "" {
 				registryURL = "https://registry.npmjs.org"
 			}
 			if err := installOpenClawPackageWithCancel(m, activeBundle.Root, version, registryURL, npmPrefix, onProgress); err != nil {
-				_ = os.RemoveAll(targetStagingDir)
+				// Keep staging intact: it contains the bundled node runtime and
+				// partial openclaw package. The next ContinueUpgrade attempt will
+				// re-run npm install which overwrites the partial node_modules.
 				return nil, err
 			}
 		} else {
 			if err := installOpenClawPackageWithCancel(m, activeBundle.Root, version, registryURL, npmPrefix, onProgress); err != nil {
-				_ = os.RemoveAll(targetStagingDir)
+				// Same as above: keep staging so the next attempt can re-run npm install.
 				return nil, err
 			}
 		}
@@ -514,13 +517,23 @@ func (m *Manager) installUserRuntimeOverrideWithCancel(
 	result.Restore = func() error {
 		_ = killNodeProcessesHoldingRuntimeDir(currentDir)
 		time.Sleep(500 * time.Millisecond)
-		_ = os.RemoveAll(currentDir)
+		_ = killNodeProcessesHoldingRuntimeDir(backupDir)
+		time.Sleep(200 * time.Millisecond)
+		// Undo the two renames in reverse order.
+		// 1. current (new version, e.g. .staging-2026.4.8) → staging name, so it can be re-used.
+		if err := os.Rename(currentDir, stagingDir); err != nil {
+			// Fallback: if rename fails (e.g. cross-volume), remove and re-create.
+			_ = os.RemoveAll(currentDir)
+			return fmt.Errorf("rename current to staging during restore: %w", err)
+		}
 		if !hadCurrent {
 			return nil
 		}
-		_ = killNodeProcessesHoldingRuntimeDir(backupDir)
-		time.Sleep(200 * time.Millisecond)
-		return os.Rename(backupDir, currentDir)
+		// 2. backup (old version) → current, completing the rollback.
+		if err := os.Rename(backupDir, currentDir); err != nil {
+			return fmt.Errorf("rename backup to current during restore: %w", err)
+		}
+		return nil
 	}
 	// cleanup only removes old staging dirs — never .backup.
 	result.Cleanup = func() { cleanOldStagingDirs(userTargetDir, version) }

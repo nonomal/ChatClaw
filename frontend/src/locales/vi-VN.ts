@@ -266,6 +266,7 @@ export default {
       runtimeSource: 'Nguồn runtime',
       runtimePath: 'Đường dẫn runtime',
       upgradeButton: 'Nâng cấp OpenClaw',
+      upgradeButtonDisabledWhenActive: 'Dừng cổng trước khi nâng cấp',
       restartButton: 'Khởi động lại dịch vụ',
       upgrading: 'Đang nâng cấp...',
       restarting: 'Đang khởi động lại...',

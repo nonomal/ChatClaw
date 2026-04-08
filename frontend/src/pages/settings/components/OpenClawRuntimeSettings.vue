@@ -616,8 +616,9 @@ onMounted(() => {
             class="min-h-10 flex-1"
             variant="outline"
             :disabled="
-              upgrading || restarting || !status.installedVersion || isTransitioning
+              isActive || upgrading || restarting || !status.installedVersion || isTransitioning
             "
+            :title="isActive ? t('settings.openclawRuntime.upgradeButtonDisabledWhenActive') : undefined"
             @click="handleUpgrade"
           >
             <Download v-if="!upgrading" class="mr-1.5 size-3.5" />

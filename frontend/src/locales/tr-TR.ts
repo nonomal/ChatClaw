@@ -267,6 +267,7 @@ export default {
       runtimeSource: 'Runtime kaynagi',
       runtimePath: 'Runtime yolu',
       upgradeButton: "OpenClaw'i guncelle",
+      upgradeButtonDisabledWhenActive: "Ağ geçidini yükseltmeden önce durdurun",
       restartButton: 'Hizmeti yeniden baslat',
       upgrading: 'Guncelleniyor...',
       restarting: 'Yeniden baslatiliyor...',

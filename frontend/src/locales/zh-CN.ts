@@ -285,6 +285,7 @@ export default {
       runtimeSource: '运行来源',
       runtimePath: '运行目录',
       upgradeButton: '升级 OpenClaw',
+      upgradeButtonDisabledWhenActive: '请先停止网关再升级',
       restartButton: '重启服务',
       upgrading: '升级中...',
       restarting: '重启中...',

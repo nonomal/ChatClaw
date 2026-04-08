@@ -267,6 +267,7 @@ export default {
       runtimeSource: 'Vir izvajalnega okolja',
       runtimePath: 'Pot izvajalnega okolja',
       upgradeButton: 'Posodobi OpenClaw',
+      upgradeButtonDisabledWhenActive: 'Pred posodobitvijo najprej ustavite prehod',
       restartButton: 'Znova zaženi storitev',
       upgrading: 'Posodabljanje...',
       restarting: 'Ponovni zagon...',

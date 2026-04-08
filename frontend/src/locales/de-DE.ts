@@ -266,6 +266,7 @@ export default {
       runtimeSource: 'Laufzeitquelle',
       runtimePath: 'Laufzeitpfad',
       upgradeButton: 'OpenClaw aktualisieren',
+      upgradeButtonDisabledWhenActive: 'Gateway vor dem Upgrade zuerst stoppen',
       restartButton: 'Dienst neu starten',
       upgrading: 'Wird aktualisiert...',
       restarting: 'Wird neu gestartet...',

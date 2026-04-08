@@ -277,6 +277,7 @@ export default {
       runtimeSource: '런타임 소스',
       runtimePath: '런타임 경로',
       upgradeButton: 'OpenClaw 업그레이드',
+      upgradeButtonDisabledWhenActive: '업그레이드 전에 게이트웨이를 먼저 중지하세요',
       restartButton: '서비스 다시 시작',
       upgrading: '업그레이드 중...',
       restarting: '재시작 중...',

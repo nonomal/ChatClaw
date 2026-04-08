@@ -270,6 +270,7 @@ export default {
       runtimeSource: '執行來源',
       runtimePath: '執行目錄',
       upgradeButton: '升級 OpenClaw',
+      upgradeButtonDisabledWhenActive: '請先停止網關再升級',
       restartButton: '重啟服務',
       upgrading: '升級中...',
       restarting: '重啟中...',

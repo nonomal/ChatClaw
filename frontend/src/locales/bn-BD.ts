@@ -266,6 +266,7 @@ export default {
       runtimeSource: 'রানটাইম উৎস',
       runtimePath: 'রানটাইম পাথ',
       upgradeButton: 'OpenClaw আপগ্রেড করুন',
+      upgradeButtonDisabledWhenActive: 'আপগ্রেড করার আগে গেটওয়ে থামান',
       restartButton: 'সার্ভিস পুনরায় চালু করুন',
       upgrading: 'আপগ্রেড হচ্ছে...',
       restarting: 'পুনরায় চালু হচ্ছে...',
