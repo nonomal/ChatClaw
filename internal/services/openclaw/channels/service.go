@@ -49,9 +49,9 @@ const wecomPluginFallbackTimeout = 2 * time.Minute
 
 // Timeouts for OpenClaw CLI (config set), plugin install/list, and gateway restart.
 const (
-	openClawChannelSyncTimeout       = 120 * time.Second
-	openClawCLIRetryTimeout         = 90 * time.Second
-	openClawGatewayRestartTimeout   = 20 * time.Second
+	openClawChannelSyncTimeout    = 120 * time.Second
+	openClawCLIRetryTimeout       = 90 * time.Second
+	openClawGatewayRestartTimeout = 20 * time.Second
 )
 
 func NewOpenClawChannelService(
@@ -1640,7 +1640,7 @@ func (s *OpenClawChannelService) restartOpenClawGateway() error {
 	s.openclawManager.NotifyGatewayRestarting()
 	ctx, cancel := context.WithTimeout(context.Background(), openClawGatewayRestartTimeout)
 	defer cancel()
-	_, err := s.openclawManager.ExecCLI(ctx, "gateway", "restart")
+	_, err := s.openclawManager.ExecCLI(ctx, "gateway", "restart", "--force")
 	if err != nil {
 		return fmt.Errorf("openclaw gateway restart: %w", err)
 	}
