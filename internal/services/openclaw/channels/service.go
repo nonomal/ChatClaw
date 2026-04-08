@@ -1640,7 +1640,7 @@ func (s *OpenClawChannelService) restartOpenClawGateway() error {
 	s.openclawManager.NotifyGatewayRestarting()
 	ctx, cancel := context.WithTimeout(context.Background(), openClawGatewayRestartTimeout)
 	defer cancel()
-	_, err := s.openclawManager.ExecCLI(ctx, "gateway", "restart", "--force")
+	_, err := s.openclawManager.ExecCLI(ctx, "gateway", "restart")
 	if err != nil {
 		return fmt.Errorf("openclaw gateway restart: %w", err)
 	}
