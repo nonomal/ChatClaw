@@ -32,90 +32,56 @@
 ## Önizlemeler
 
 ### AI Sohbet Asistanı
-
-AI asistanınıza istediğiniz soruyu sorun; bilgi tabanınızı akıllıca tarayıp ilgili bir yanıt üretecektir.
-
+AI asistanınıza herhangi bir soru sorun; o, bilgi tabanınızda akıllıca arama yaparak ilgili bir yanıt oluşturacaktır.
 ![](../../images/previews/en/image1.png)
 
+### Verimli görev yönetimi için çift mod geçişi
+Sohbet modu çoklu senaryo soru-cevap ve muhakemeye uyum sağlar; Görev modu yerleşik bir beceri pazarıyla eşleşerek AI ajanlarının verimliliği artırmak için çok adımlı görevleri özerk bir şekilde ayrıştırmasını ve ilerletmesini sağlar.
+![](../../images/previews/en/image2.png)
+
 ### Hızlı PPT Oluşturma
-
-Akıllı asistanına tek cümlelik bir komut göndererek PowerPoint sunumunu otomatik oluşturup üretin.
-
+Akıllı asistană bir cümlelik komut göndererek PowerPoint sunumunu otomatik olarak oluşturup üretin.
 ![](../../images/previews/en/image3.png)
 
 ### Beceri Yöneticisi
-
-Asistanın bilgisayarınızda yüklü özellikleri bulmasına veya yeni uzantı eklentileri kurmasına yardımcı olması için bir komut kullanın.
-
-![](../../images/previews/en/image5.png)
-
-### MCP: Sınırsız Yetenek Genişletmeleri
-
-Çeşitli veri kaynakları ve araçlara güvenli ve verimli bağlanmak için harici MCP sunucuları ekleyin; asistanınız günlük görevlerin ötesinde profesyonel iş akışlarına geçebilir.
-
-![](../../images/previews/en/image6.png)
-
-### Sandbox Modu: Çift Koruma
-
-Sandbox izole yürütme (OS düzeyinde izolasyon, kısıtlı komut kapsamı) ile yerel yürütme (daha esnek) arasında seçim yapın. Güvenlik ve rahatlık dengesi için serbestçe geçiş yapın.
-
-![](../../images/previews/en/image8.png)
+Asistanın bilgisayarınızda yüklü özellikleri bulmasına veya yeni uzantı eklentileri yüklemesine yardımcı olması için bir komut kullanın. Beceri Pazarı — becerileri özgürce göz atın ve yükleyin.
+![](../../images/previews/en/image4.png)
 
 ### Bellek: Daha Doğal, Daha Akıllı Etkileşim
+Bağlamsal konuşmaları ve kişiselleştirilmiş yardımı etkinleştirin. Sürekli öğrenme ve evrim — asistan, giderek daha düşünceli ve akıllı hizmet sunan büyüyen bir ortak gibi hissedilir.
+![](../../images/previews/en/image5.png)
 
-Bağlamsal sohbetleri ve kişiselleştirilmiş yardımı etkinleştirin. Asistan sürekli öğrenip gelişebilir, büyüyen bir ortak gibi.
+### Ücretsiz Model Deneme — Paylaşılan Ekip Bilgi Tabanı
+ChatWiki'ye bağlanmak için tek tıklamayla yetkilendirme, ChatWiki hesap kredilerini senkronize etme ve özel modelleri destekleme. Ollama, Google Gemini ve OpenAI dahil yüksek kaliteli yerli ve uluslararası LLM'ler yerleşik — günlük ofis işi veya profesyonel senaryolar için favori AI modelinizi kullanın.
+![](../../images/previews/en/image6.png)
 
-![](../../images/previews/en/image9.png)
-
-### Paylaşılan Ekip Bilgi Tabanı
-
-Robotları ve bilgi tabanlarını senkronize etmek, yapılandırmaları paylaşmak ve üye izinlerini yönetmek için ChatWiki'ye tek tıklamayla erişim yetkisi verin.
-
-![](../../images/previews/en/image10.png)
-
-### Bilgi Tabanı | Belge Vektörleştirme Depolama
-
-Belgeleri yükleyin (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Sistem bunları otomatik ayrıştırır, böler ve kesin geri getirme için vektör gömülerine dönüştürür.
-
-![](../../images/previews/en/image11.png)
+### Bilgi Tabanı | Belge Vektörleştirme Deposu
+Belgelerinizi yükleyin (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Sistem bunları otomatik olarak ayrıştırır, böler ve vektör gömüntülerine dönüştürür, AI modelleri tarafından hassas alma ve kullanım için özel bilgi tabanınızda saklar.
+![](../../images/previews/en/image7.png)
 
 ### Zengin IM Kanal Entegrasyonları
+Anlık mesajlaşma hizmet sağlayıcıları (Feishu, WeCom, QQ, DingTalk, WeChat, WhatsApp ve daha fazlası) tarafından sağlanan SDK'ları entegre ederek, kanal oluşturma, kullanıcı yönetimi ve mesaj gönderme/alma dahil olmak üzere uygulama içinde eksiksiz IM iletişim yeteneklerini hızla uygulayın.
+![](../../images/previews/en/image8.png)
 
-Kanal oluşturma, kullanıcı yönetimi ve mesajlaşmayı hızla etkinleştirmek için SDK üzerinden IM sağlayıcılarını (Feishu, WeCom, QQ, DingTalk, LINE, Discord, WhatsApp, X/Twitter, Telegram vb.) entegre edin.
-
-![](../../images/previews/en/image12.png)
-
-### Zamanlanmış Görevler
-
-Asistanınızın önceden belirlenmiş zamanlarda veya aralıklarla hatırlatmalar, tekrarlayan iş ve sistem düzeyinde bakım için otomatik eylemler gerçekleştirmesine izin verin.
-
-![](../../images/previews/en/image13.png)
+### Zamanlanmış Görevler — Otomatik Komut Çalıştırma
+Asistanın önceden belirlenmiş zamanlarda veya aralıklarla belirli işlemleri otomatik olarak gerçekleştirmesine izin verin; örneğin zamanında hatırlatıcılar sağlama, tekrarlayan işleri yürütme ve sistem düzeyinde bakım görevlerini gerçekleştirme.
+![](../../images/previews/en/image9.png)
 
 ### Anında S&C için Metin Seçimi
-
-Ekranınızda herhangi bir metni seçin; otomatik olarak yüzen hızlı soru kutusuna kopyalanır. Tek tıklamayla sorun, anında yanıtlar.
-
-![](../../images/previews/en/image14.png)
-
-![](../../images/previews/en/image15.png)
+Ekranda herhangi bir metin seçin ve otomatik olarak kayan bir hızlı soru kutusuna kopyalanır. Bir tıklamayla AI asistanına gönderin ve anında yanıt alın.
+![](../../images/previews/en/image10.png)
 
 ### Akıllı Kenar Çubuğu
-
-Asistanı diğer pencerelerin yanına sabitleyin, farklı yapılandırılmış asistanlar arasında hızla geçiş yapın ve oluşturulan yanıtları tek tıklamayla sohbetlerinize gönderin.
-
-![](../../images/previews/en/image16.png)
+Diğer uygulama pencerelerinin yanına yaslanabilen akıllı bir asistan. Soru sormak için farklı yapılandırılmış AI asistanları arasında hızla geçiş yapın. Robot, ilişkili bilgi tabanınıza dayalı yanıtlar oluşturur ve sohbetlerinize yanıt göndermeyi tek tıklamayla destekler.
+![](../../images/previews/en/image11.png)
 
 ### Bir Soru, Birden Fazla Yanıt: Kolayca Karşılaştırın
-
-Aynı anda birden fazla "AI uzmanına" danışın ve yanıtlarını kolay karşılaştırma için yan yana görüntüleyin.
-
-![](../../images/previews/en/image17.png)
+Soruları tekrarlamaya gerek yok. Aynı anda birden fazla "AI uzmanına" danışın ve yanıtlarını aynı arayüzde yan yana görüntüleyin. Karşılaştırması kolay ve en iyi sonuca ulaşmanıza yardımcı olur.
+![](../../images/previews/en/image12.png)
 
 ### Tek Tıklamayla Başlatma Topu
-
-ChatClaw ana penceresini anında açmak veya uyandırmak için masaüstündeki yüzen topa tıklayın.
-
-![](../../images/previews/en/image18.png)
+ChatClaw ana uygulama penceresini anında uyandırmak veya açmak için masaüstündeki kayan topa tıklayın.
+![](../../images/previews/en/image13.png)
 
 ## Sunucu Modu Dağıtımı
 

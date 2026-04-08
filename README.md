@@ -44,6 +44,12 @@ Ask your AI assistant any question, and it will intelligently search your knowle
 
 ![](./images/previews/en/image1.png)
 
+### Dual-Mode Switching for Efficient Task Handling
+
+Chat mode adapts to multi-scenario Q&A and reasoning; Task mode pairs with a built-in skill market, enabling AI agents to autonomously decompose and advance multi-step tasks for improved efficiency.
+
+![](./images/previews/en/image2.png)
+
 ### PPT Quick Generate
 
 Send a one-sentence command to the smart assistant to automatically create and generate a PowerPoint presentation.
@@ -52,77 +58,63 @@ Send a one-sentence command to the smart assistant to automatically create and g
 
 ### Skill Manager
 
-Use a command to have the assistant help you find installed features on your computer or install new extension plugins.
+Use a command to have the assistant help you find installed features on your computer or install new extension plugins. Skill Market — browse and install skills freely.
 
-![](./images/previews/en/image5.png)
-
-### MCP: Unlimited Capability Extensions
-
-Add external MCP servers to securely and efficiently connect to diverse data sources and tools, enabling your assistant to go beyond daily tasks into professional workflows.
-
-![](./images/previews/en/image6.png)
-
-### Sandbox Mode: Double Protection
-
-Choose between sandbox-isolated execution (OS-level isolation, restricted command scope) and native execution (more flexible). Switch freely to balance safety and convenience.
-
-![](./images/previews/en/image8.png)
+![](./images/previews/en/image4.png)
 
 ### Memory: More Natural, Smarter Interactions
 
-Enable contextual conversations and personalized assistance. The assistant can continuously learn and evolve so it feels like a growing partner.
+Enable contextual conversations and personalized assistance. Continuous learning and evolution — the assistant feels like a growing partner that delivers increasingly thoughtful and intelligent service.
 
-![](./images/previews/en/image9.png)
+![](./images/previews/en/image5.png)
 
-### Shared Team Knowledge Base
+### Free Model Trial — Shared Team Knowledge Base
 
-Authorize one-click access to ChatWiki to sync robots and knowledge bases, share configurations, and control member permissions.
+One-click authorization to connect to ChatWiki, sync ChatWiki account credits, and support custom models. Built-in high-quality domestic and international LLMs including Ollama, Google Gemini, and OpenAI — use your favorite AI model for daily office work or professional scenarios.
 
-![](./images/previews/en/image10.png)
+![](./images/previews/en/image6.png)
 
 ### Knowledge Base | Document Vectorization Storage
 
-Upload documents (TXT, PDF, Word, Excel, CSV, HTML, Markdown). The system automatically parses, splits, and converts them into vector embeddings for precise retrieval.
+Upload your documents (TXT, PDF, Word, Excel, CSV, HTML, Markdown). The system automatically parses, splits, and converts them into vector embeddings, stored in your private knowledge base for precise retrieval and utilization by AI models.
 
-![](./images/previews/en/image11.png)
+![](./images/previews/en/image7.png)
 
 ### Rich IM Channel Integrations
 
-Integrate IM providers (Feishu, WeCom, QQ, DingTalk, LINE, Discord, WhatsApp, X/Twitter, Telegram, etc.) via SDKs to quickly enable channel creation, user management, and messaging.
+Through integrating SDKs provided by instant messaging service providers (Feishu, WeCom, QQ, DingTalk, WeChat, WhatsApp, and more), quickly implement complete IM communication capabilities within the app, including channel creation, user management, and message sending/receiving.
 
-![](./images/previews/en/image12.png)
+![](./images/previews/en/image8.png)
 
-### Scheduled Tasks
+### Scheduled Tasks — Automated Command Execution
 
-Let your assistant automatically execute actions at preset times or intervals: reminders, recurring work, and system-level maintenance.
+Let the assistant automatically execute specific operations at preset times or intervals, such as providing timely reminders, executing recurring work, or performing system-level maintenance tasks.
 
-![](./images/previews/en/image13.png)
+![](./images/previews/en/image9.png)
 
 ### Text Selection for Instant Q&A
 
-Select any text on your screen. It is automatically copied into a floating quick-ask box. One click to ask, instant answers.
+Select any text on screen and it will be automatically copied into a floating quick-ask box. One click to send to the AI assistant for an instant answer.
 
-![](./images/previews/en/image14.png)
-
-![](./images/previews/en/image15.png)
+![](./images/previews/en/image10.png)
 
 ### Smart Sidebar
 
-Snap the assistant alongside other windows, quickly switch between differently configured assistants, and one-click send generated replies into your conversations.
+A smart assistant that can be snapped alongside other application windows. Quickly switch between differently configured AI assistants to ask questions. The robot generates answers based on your associated knowledge base, and supports one-click sending of replies into your conversations.
 
-![](./images/previews/en/image16.png)
+![](./images/previews/en/image11.png)
 
 ### One Question, Multiple Answers: Compare with Ease
 
-Consult multiple "AI experts" simultaneously and view their responses side-by-side for easy comparison.
+No need to repeat questions. Consult multiple "AI experts" simultaneously and view their replies side-by-side in the same interface. Easy to compare and help you reach the best conclusion.
 
-![](./images/previews/en/image17.png)
+![](./images/previews/en/image12.png)
 
 ### One-Click Launcher Ball
 
-Click the floating ball on your desktop to instantly wake up or open the main ChatClaw window.
+Click the floating ball on your desktop to instantly wake up or open the ChatClaw main application window.
 
-![](./images/previews/en/image18.png)
+![](./images/previews/en/image13.png)
 
 ## Server Mode Deployment
 

@@ -32,90 +32,56 @@ Obtenha um agente AI pessoal como o OpenClaw em 5 minutos. Seguro com Sandbox, c
 ## Visualizações
 
 ### Assistente de Chat AI
-
-Faça qualquer pergunta ao seu assistente AI; ele pesquisará de forma inteligente em sua base de conhecimento para gerar uma resposta relevante.
-
+Faça qualquer pergunta ao seu assistente de IA; ele pesquisará intelligentemente na sua base de conhecimentos para gerar uma resposta relevante.
 ![](../../images/previews/en/image1.png)
 
+### Troca de modo duplo para manipulação eficiente de tarefas
+O modo Chat se adapta a perguntas e respostas e raciocínio em múltiplos cenários; o modo Tarefa é combinado com um mercado de habilidades integrado, permitindo que agentes de IA decompõem e avançam tarefas de múltiplas etapas de forma autônoma para melhorar a eficiência.
+![](../../images/previews/en/image2.png)
+
 ### Geração Rápida de PPT
-
 Envie um comando de uma frase ao assistente inteligente para criar e gerar automaticamente uma apresentação PowerPoint.
-
 ![](../../images/previews/en/image3.png)
 
 ### Gerenciador de Habilidades
+Use um comando para que o assistente o ajude a encontrar funcionalidades instaladas no seu computador ou instalar novos plugins de extensão. Mercado de Habilidades — navegue e instale habilidades livremente.
+![](../../images/previews/en/image4.png)
 
-Use um comando para o assistente ajudá-lo a encontrar recursos instalados no seu computador ou instalar novos plugins de extensão.
-
+### Memória: Interação Mais Natural e Mais Inteligente
+Habilite conversas contextuais e assistência personalizada. Aprendizado contínuo e evolução — o assistente parece um parceiro em crescimento que oferece um serviço cada vez mais atencioso e inteligente.
 ![](../../images/previews/en/image5.png)
 
-### MCP: Extensões de Capacidade Ilimitadas
-
-Adicione servidores MCP externos para conectar de forma segura e eficiente a diversas fontes de dados e ferramentas, permitindo que seu assistente vá além das tarefas diárias para fluxos de trabalho profissionais.
-
+### Teste Gratuito de Modelo — Base de Conhecimento Compartilhada da Equipe
+Autorização com um clique para conectar ao ChatWiki, sincronizar créditos da conta ChatWiki e suportar modelos personalizados. LLMs nacionais e internacionais de alta qualidade integrados, incluindo Ollama, Google Gemini e OpenAI — use seu modelo de IA favorito para trabalho de escritório diário ou cenários profissionais.
 ![](../../images/previews/en/image6.png)
 
-### Modo Sandbox: Dupla Proteção
-
-Escolha entre execução isolada em sandbox (isolamento em nível de OS, escopo de comando restrito) e execução nativa (mais flexível). Alterne livremente para equilibrar segurança e conveniência.
-
-![](../../images/previews/en/image8.png)
-
-### Memória: Interação Mais Natural e Inteligente
-
-Ative conversas contextuais e assistência personalizada. O assistente pode aprender e evoluir continuamente como um parceiro em crescimento.
-
-![](../../images/previews/en/image9.png)
-
-### Base de Conhecimento Compartilhada da Equipe
-
-Autorize acesso com um clique ao ChatWiki para sincronizar robôs e bases de conhecimento, compartilhar configurações e controlar permissões de membros.
-
-![](../../images/previews/en/image10.png)
-
 ### Base de Conhecimento | Armazenamento de Vetorização de Documentos
-
-Envie documentos (TXT, PDF, Word, Excel, CSV, HTML, Markdown). O sistema analisa, divide e converte automaticamente em embeddings vetoriais para recuperação precisa.
-
-![](../../images/previews/en/image11.png)
+Carregue seus documentos (TXT, PDF, Word, Excel, CSV, HTML, Markdown). O sistema os analisa, divide e converte automaticamente em vetores de incorporação, armazenados na sua base de conhecimentos privada para recuperação e utilização precisas por modelos de IA.
+![](../../images/previews/en/image7.png)
 
 ### Integrações de Canais IM
+Por meio da integração de SDKs fornecidos por fornecedores de mensagens instantâneas (Feishu, WeCom, QQ, DingTalk, WeChat, WhatsApp e mais), implemente rapidamente capacidades completas de comunicação IM no aplicativo, incluindo criação de canais, gerenciamento de usuários e envio/recebimento de mensagens.
+![](../../images/previews/en/image8.png)
 
-Integre provedores IM (Feishu, WeCom, QQ, DingTalk, LINE, Discord, WhatsApp, X/Twitter, Telegram, etc.) via SDKs para habilitar rapidamente criação de canais, gerenciamento de usuários e mensagens.
-
-![](../../images/previews/en/image12.png)
-
-### Tarefas Agendadas
-
-Deixe seu assistente executar automaticamente ações em horários ou intervalos predefinidos: lembretes, trabalho recorrente e manutenção em nível de sistema.
-
-![](../../images/previews/en/image13.png)
+### Tarefas Agendadas — Execução Automática de Comandos
+Deixe o assistente executar automaticamente operações específicas em horários ou intervalos predefinidos, como fornecer lembretes oportunos, executar trabalhos recorrentes e realizar tarefas de manutenção em nível de sistema.
+![](../../images/previews/en/image9.png)
 
 ### Seleção de Texto para Q&A Instantâneo
-
-Selecione qualquer texto na tela; ele é copiado automaticamente para uma caixa de pergunta rápida flutuante. Um clique para perguntar, respostas instantâneas.
-
-![](../../images/previews/en/image14.png)
-
-![](../../images/previews/en/image15.png)
+Selecione qualquer texto na tela e ele será automaticamente copiado para uma caixa de pergunta rápida flutuante. Um clique para enviar ao assistente de IA e obter uma resposta instantânea.
+![](../../images/previews/en/image10.png)
 
 ### Barra Lateral Inteligente
-
-Encaixe o assistente junto a outras janelas, alterne rapidamente entre assistentes configurados de forma diferente e envie com um clique as respostas geradas para suas conversas.
-
-![](../../images/previews/en/image16.png)
+Um assistente inteligente que pode ser encaixado ao lado de outras janelas de aplicativos. Alterne rapidamente entre assistentes de IA configurados de forma diferente para fazer perguntas. O robô gera respostas baseadas na sua base de conhecimentos associada, e suporta o envio de respostas com um clique nas suas conversas.
+![](../../images/previews/en/image11.png)
 
 ### Uma Pergunta, Múltiplas Respostas: Compare com Facilidade
-
-Consulte vários "especialistas AI" ao mesmo tempo e veja as respostas lado a lado para uma comparação fácil.
-
-![](../../images/previews/en/image17.png)
+Não precisa repetir perguntas. Consulte vários "especialistas em IA" simultaneamente e veja suas respostas lado a lado na mesma interface. Fácil de comparar e ajuda você a chegar à melhor conclusão.
+![](../../images/previews/en/image12.png)
 
 ### Bola de Inicialização com Um Clique
-
-Clique na bola flutuante na área de trabalho para acordar ou abrir instantaneamente a janela principal do ChatClaw.
-
-![](../../images/previews/en/image18.png)
+Clique na esfera flutuante na sua área de trabalho para despertar ou abrir instantaneamente a janela principal do aplicativo ChatClaw.
+![](../../images/previews/en/image13.png)
 
 ## Implantação em Modo Servidor
 
