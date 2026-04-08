@@ -68,6 +68,7 @@ import {
 import { useOpenClawGatewayComposerGate } from '@/composables/useOpenClawGatewayComposerGate'
 import OpenClawGatewayComposerBanner from '@/components/openclaw/OpenClawGatewayComposerBanner.vue'
 import { useNavigationStore, useSettingsStore } from '@/stores'
+import { Events } from '@wailsio/runtime'
 
 interface PendingImage {
   id: string
@@ -184,6 +185,10 @@ const modelSelectOpen = ref(false)
 async function goToChatwikiLogin() {
   modelSelectOpen.value = false
   await nextTick()
+  if (props.isSnapMode) {
+    Events.Emit('settings:open-chatwiki-login')
+    return
+  }
   settingsStore.requestChatwikiCloudLogin()
   settingsStore.setActiveMenu('chatwiki')
   navigationStore.navigateToModule('settings')
