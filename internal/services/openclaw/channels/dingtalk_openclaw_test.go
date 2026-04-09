@@ -65,3 +65,35 @@ func TestIsDingTalkPluginSecurityScanBlocked(t *testing.T) {
 		})
 	}
 }
+
+func TestIsDingTalkPluginInstallRateLimited(t *testing.T) {
+	tests := []struct {
+		name string
+		msg  string
+		want bool
+	}{
+		{
+			name: "matches plain rate limit error",
+			msg:  "rate limit exceeded, retry later",
+			want: true,
+		},
+		{
+			name: "matches 429 response",
+			msg:  "request failed with status 429",
+			want: true,
+		},
+		{
+			name: "rejects unrelated install failure",
+			msg:  "npm err! 404 not found",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isDingTalkPluginInstallRateLimited(tt.msg); got != tt.want {
+				t.Fatalf("isDingTalkPluginInstallRateLimited(%q) = %v, want %v", tt.msg, got, tt.want)
+			}
+		})
+	}
+}
