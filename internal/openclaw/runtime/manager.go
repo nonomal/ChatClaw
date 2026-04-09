@@ -1141,6 +1141,11 @@ func (m *Manager) handleProcessExit(pid int, exitErr error) {
 
 	cfg := m.store.Get()
 
+	// Wait 4 seconds before checking the port to avoid a race with the restarting
+	// gateway: the old process may still be releasing the socket while OpenClaw's
+	// supervisor is already spawning the new one.
+	time.Sleep(4 * time.Second)
+
 	// Port still occupied after process exit → OpenClaw detected a config change
 	// and is self-restarting. No need to trigger a rebuild — just wait.
 	if gatewayPortOccupied(cfg.GatewayPort) {
