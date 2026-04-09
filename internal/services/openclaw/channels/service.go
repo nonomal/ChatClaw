@@ -242,9 +242,10 @@ func (s *OpenClawChannelService) CreateChannel(input CreateChannelInput) (*chann
 		// WhatsApp uses the OpenClaw gateway QR-login flow; provisioning happens via
 		// GenerateWhatsappQRCode()/WaitForWhatsappLogin(), not through config sync on draft create.
 	} else if deferProvisionUntilConnect {
-		// WeCom / QQ are provisioned only after the local draft is saved and the
-		// user has chosen an assistant. OpenClaw plugin install + remote channel
-		// creation happen asynchronously in ConnectChannel().
+		// WeCom / QQ / Feishu are provisioned only after the local draft is saved and the
+		// user has chosen an assistant. OpenClaw config + routing sync run when
+		// ConnectChannel() triggers connectChannelInBackground (Feishu) or the
+		// platform-specific connect path (WeCom/QQ).
 	} else if err := s.syncOpenClawChannelConfig(ctx, platform, accountKey, name, input.ExtraConfig, false); err != nil {
 		_ = s.channelSvc.DeleteChannel(ch.ID)
 		return nil, wrapOpenClawSyncErr(err, "error.channel_create_failed", nil)
@@ -340,6 +341,31 @@ func (s *OpenClawChannelService) UpdateChannel(id int64, input channels.UpdateCh
 				return nil, errs.Wrap("error.channel_update_failed", err)
 			}
 		}
+	} else if platform == channels.PlatformFeishu {
+		// Draft Feishu rows stay local-only until the user binds an assistant and
+		// ConnectChannel runs (same idea as QQ: no OpenClaw writes while disabled).
+		if enabled {
+			if m.AgentID == 0 {
+				return nil, errs.New("error.channel_connect_requires_agent")
+			}
+			if err := s.syncOpenClawChannelConfig(ctx, platform, accountKey, name, extraConfig, true); err != nil {
+				return nil, wrapOpenClawSyncErr(err, "error.channel_update_failed", nil)
+			}
+			if err := s.syncChannelRoutingBinding(id, m.AgentID); err != nil {
+				return nil, wrapOpenClawSyncErr(err, "error.channel_update_failed", nil)
+			}
+		} else if input.Enabled != nil && !enabled {
+			if err := s.removeOpenClawChannelConfig(ctx, platform, accountKey); err != nil {
+				return nil, wrapOpenClawSyncErr(err, "error.channel_update_failed", nil)
+			}
+			accountID := openClawManagedAccountID(platform, id, extraConfig)
+			if err := s.removeManagedRouteBinding(platform, accountID); err != nil {
+				return nil, errs.Wrap("error.channel_update_failed", err)
+			}
+			if err := s.syncOpenClawFeishuDefaultAccount(ctx); err != nil {
+				s.app.Logger.Warn("openclaw feishu default account sync failed after disable via update", "channel_id", id, "error", err)
+			}
+		}
 	} else if err := s.syncOpenClawChannelConfig(ctx, platform, accountKey, name, extraConfig, enabled); err != nil {
 		return nil, wrapOpenClawSyncErr(err, "error.channel_update_failed", nil)
 	}
@@ -408,7 +434,7 @@ func (s *OpenClawChannelService) BindAgent(id int64, agentID int64) error {
 			}
 			return nil
 		}
-		// WeCom / QQ draft channels keep assistant binding local-only until enable.
+		// WeCom / QQ / Feishu draft channels keep assistant binding local-only until enable.
 		if shouldDeferOpenClawProvisioningUntilConnect(m.Platform) && !m.Enabled {
 			return nil
 		}
@@ -667,7 +693,7 @@ func isPluginManagedOpenClawPlatform(platform string) bool {
 
 func shouldDeferOpenClawProvisioningUntilConnect(platform string) bool {
 	switch strings.TrimSpace(platform) {
-	case channels.PlatformWeCom, channels.PlatformQQ:
+	case channels.PlatformWeCom, channels.PlatformQQ, channels.PlatformFeishu:
 		return true
 	default:
 		return false
