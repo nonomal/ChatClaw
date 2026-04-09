@@ -23,6 +23,7 @@ tasks:
         vars:
           ARCH: '{{.ARCH}}'
           DEV: '{{.DEV}}'
+          SHOW_CMD: '{{.SHOW_CMD}}'
     vars:
       # Enable CGO by default for sqlite-vec CGO bindings
       CGO_ENABLED: '{{.CGO_ENABLED | default "1"}}'
@@ -51,10 +52,10 @@ tasks:
         # Cross-platform (Windows/macOS/Linux): avoid grep/sed dependencies
         sh: go run ./internal/tools/appversion -config build/config.yml
         cmd: go run ./internal/tools/appversion -config build/config.yml
-      # DEV=true: remove -H windowsgui so the console window stays visible for debugging.
+      # SHOW_CMD=true: 保留控制台窗口（-H windowsgui 仅在生产+SHOW_CMD=false 时添加）
       # Prod: keep -H windowsgui to suppress the black console flash when chatclaw:// deep link
       # returns from browser (second instance would show console otherwise).
-      BUILD_FLAGS: '{{if eq .DEV "true"}}-tags fts5 -buildvcs=false -gcflags=all="-l" -ldflags=""{{else}}-tags "production fts5" -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui -X chatclaw/internal/define.Version={{.APP_VERSION}}"{{end}}'
+      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if eq .SHOW_CMD "true"}}-tags fts5 -buildvcs=false -gcflags=all="-l" -ldflags=""{{else}}-tags fts5 -buildvcs=false -gcflags=all="-l" -ldflags="-H windowsgui"{{end}}{{else}}-tags "production fts5" -trimpath -buildvcs=false {{if ne .SHOW_CMD "true"}}-ldflags="-w -s -H windowsgui -X chatclaw/internal/define.Version={{.APP_VERSION}}"{{else}}-ldflags="-w -s -X chatclaw/internal/define.Version={{.APP_VERSION}}"{{end}}{{end}}'
     env:
       GOOS: windows
       CGO_ENABLED: '{{.CGO_ENABLED | default "1"}}'
