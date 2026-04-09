@@ -31,57 +31,95 @@ Obtenha um agente AI pessoal como o OpenClaw em 5 minutos. Seguro com Sandbox, c
 
 ## Visualizações
 
-### Assistente de Chat AI
-Faça qualquer pergunta ao seu assistente de IA; ele pesquisará intelligentemente na sua base de conhecimentos para gerar uma resposta relevante.
+### AI Chatbot Assistant
+
+Faça qualquer pergunta ao seu assistente IA; ele pesquisará inteligentemente em sua base de conhecimento e gerará respostas relevantes. Com o mercado de habilidades integrado, os Agentes IA trabalham de forma autônoma — sem necessidade de supervisão manual. Desde planejamento complexo de projetos e organização de documentos até geração de PowerPoint e execução de tarefas multi-etapa, os Agentes IA podem analisar autonomamente, avançar eficientemente e entregar resultados completos.
+
 ![](../../images/previews/en/image1.png)
 
-### Troca de modo duplo para manipulação eficiente de tarefas
-O modo Chat se adapta a perguntas e respostas e raciocínio em múltiplos cenários; o modo Tarefa é combinado com um mercado de habilidades integrado, permitindo que agentes de IA decompõem e avançam tarefas de múltiplas etapas de forma autônoma para melhorar a eficiência.
 ![](../../images/previews/en/image2.png)
 
-### Geração Rápida de PPT
-Envie um comando de uma frase ao assistente inteligente para criar e gerar automaticamente uma apresentação PowerPoint.
+### Multi-Agent Mode, Tailored for Different Scenarios
+
+Crie vários Agentes IA independentes, cada um com sua própria personalidade, memória e habilidades. Alterne entre eles conforme necessário sem interferências. Cada Agente pode receber diferentes funções (ex. "Atendimento ao Cliente", "Analista de Dados", "Assistente de Redação") e ser configurado com diferentes habilidades, bases de conhecimento e estilos de resposta.
+
 ![](../../images/previews/en/image3.png)
 
-### Gerenciador de Habilidades
-Use um comando para que o assistente o ajude a encontrar funcionalidades instaladas no seu computador ou instalar novos plugins de extensão. Mercado de Habilidades — navegue e instale habilidades livremente.
+### Local Knowledge Base Management
+
+Carregue seus documentos (TXT, PDF, Word, Excel, CSV, HTML, Markdown). O sistema analisa automaticamente, divide e converte em inserções vetoriais armazenadas na sua base de conhecimento privada para recuperação e utilização precisas pela IA. Suporta organização de documentos por pasta e base de conhecimento.
+
 ![](../../images/previews/en/image4.png)
 
-### Memória: Interação Mais Natural e Mais Inteligente
-Habilite conversas contextuais e assistência personalizada. Aprendizado contínuo e evolução — o assistente parece um parceiro em crescimento que oferece um serviço cada vez mais atencioso e inteligente.
+### Skill Manager — AI Responds at Command
+
+5000+ habilidades de IA prontas para uso cobrem produtividade, ferramentas de desenvolvimento, multimedia, casa inteligente e muito mais. Deixe a IA trabalhar para você sem programação. Use comandos para que o robô encontre recursos instalados ou instale novos plugins de extensão. Mercado de Habilidades — navegue e instale habilidades livremente.
+
 ![](../../images/previews/en/image5.png)
 
-### Teste Gratuito de Modelo — Base de Conhecimento Compartilhada da Equipe
-Autorização com um clique para conectar ao ChatWiki, sincronizar créditos da conta ChatWiki e suportar modelos personalizados. LLMs nacionais e internacionais de alta qualidade integrados, incluindo Ollama, Google Gemini e OpenAI — use seu modelo de IA favorito para trabalho de escritório diário ou cenários profissionais.
+### Memory — Natural & Smarter Interactions
+
+Habilite conversas contextuais, forneça serviços personalizados, conclua tarefas complexas e permita aprendizado contínuo e evolução. O robô se torna um companheiro crescente que fornece um serviço cada vez mais atencioso e inteligente.
+
 ![](../../images/previews/en/image6.png)
 
-### Base de Conhecimento | Armazenamento de Vetorização de Documentos
-Carregue seus documentos (TXT, PDF, Word, Excel, CSV, HTML, Markdown). O sistema os analisa, divide e converte automaticamente em vetores de incorporação, armazenados na sua base de conhecimentos privada para recuperação e utilização precisas por modelos de IA.
+### Free Model Trial
+
+Autorização com um clique para conectar ao ChatWiki, sincronizar créditos, suportar modelos personalizados. LLMs integrados de alta qualidade: Ollama, Google Gemini, OpenAI e mais. Use seu modelo de IA favorito para trabalho de escritório ou cenários profissionais.
+
 ![](../../images/previews/en/image7.png)
 
-### Integrações de Canais IM
-Por meio da integração de SDKs fornecidos por fornecedores de mensagens instantâneas (Feishu, WeCom, QQ, DingTalk, WeChat, WhatsApp e mais), implemente rapidamente capacidades completas de comunicação IM no aplicativo, incluindo criação de canais, gerenciamento de usuários e envio/recebimento de mensagens.
+### Multi-Channel Remote Control via WeChat/QQ/WhatsApp
+
+O ChatClaw suporta vários canais de mensagens, enviando resultados de análise, alertas de monitoramento e resumos de pesquisa diretamente para o seu telefone. Após o processamento de IA, os resultados são enviados automaticamente para o canal designado. Envie comandos na janela de chat para controlar remotamente a execução de tarefas de IA.
+
 ![](../../images/previews/en/image8.png)
 
-### Tarefas Agendadas — Execução Automática de Comandos
-Deixe o assistente executar automaticamente operações específicas em horários ou intervalos predefinidos, como fornecer lembretes oportunos, executar trabalhos recorrentes e realizar tarefas de manutenção em nível de sistema.
+### Scheduled Tasks — Automated Execution
+
+Defina a frequência de monitoramento: a cada 5 minutos, por hora, ou diariamente em horários fixos. Agendador gráfico com expressões cron. Busque periodicamente páginas ou fontes de dados, compare alterações, monitore indicadores-chave e envie alertas via canais de mensagens quando anomalias forem detectadas.
+
 ![](../../images/previews/en/image9.png)
 
-### Seleção de Texto para Q&A Instantâneo
-Selecione qualquer texto na tela e ele será automaticamente copiado para uma caixa de pergunta rápida flutuante. Um clique para enviar ao assistente de IA e obter uma resposta instantânea.
+### Text Selection for Instant Q&A
+
+Selecione qualquer texto na tela; ele é automaticamente copiado para uma caixa de pergunta rápida flutuante. Um clique o envia ao assistente de IA para uma resposta instantânea.
+
 ![](../../images/previews/en/image10.png)
 
-### Barra Lateral Inteligente
-Um assistente inteligente que pode ser encaixado ao lado de outras janelas de aplicativos. Alterne rapidamente entre assistentes de IA configurados de forma diferente para fazer perguntas. O robô gera respostas baseadas na sua base de conhecimentos associada, e suporta o envio de respostas com um clique nas suas conversas.
+### Smart Sidebar
+
+Um assistente inteligente que pode se encaixar ao lado de outras janelas de aplicativos. Alterne rapidamente entre diferentes assistentes de IA configurados para fazer perguntas. O robô gera respostas com base na sua base de conhecimento associada e suporta o envio de respostas com um clique. Acompanhamento flutuante inteligente — entrada de ferramentas sempre à mão.
+
 ![](../../images/previews/en/image11.png)
 
-### Uma Pergunta, Múltiplas Respostas: Compare com Facilidade
-Não precisa repetir perguntas. Consulte vários "especialistas em IA" simultaneamente e veja suas respostas lado a lado na mesma interface. Fácil de comparar e ajuda você a chegar à melhor conclusão.
 ![](../../images/previews/en/image12.png)
 
-### Bola de Inicialização com Um Clique
-Clique na esfera flutuante na sua área de trabalho para despertar ou abrir instantaneamente a janela principal do aplicativo ChatClaw.
+### One Question, Multiple Answers: Compare with Ease
+
+Não precisa repetir perguntas. Consulte vários "especialistas em IA" simultaneamente, compare suas respostas lado a lado na mesma interface e chegue à melhor conclusão.
+
 ![](../../images/previews/en/image13.png)
+
+### One-Click Launcher Ball
+
+Clique na esfera flutuante na área de trabalho para despertar ou abrir instantaneamente a janela do aplicativo principal do ChatClaw.
+
+![](../../images/previews/en/image14.png)
+
+### Community & Contact Us
+
+Bem-vindo para nos contatar para obter ajuda ou fornecer sugestões. WeChat: escaneie o código QR para entrar no grupo de troca técnica do ChatClaw. Por favor, mencione "chatclaw" ao adicionar.
+
+
+## Implantação em Modo Servidor
+
+
+## Implantação em Modo Servidor
+
+
+## Implantação em Modo Servidor
+
 
 ## Implantação em Modo Servidor
 

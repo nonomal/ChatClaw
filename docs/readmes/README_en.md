@@ -1,4 +1,4 @@
-﻿<p align="center">
+<p align="center">
 <img src="../../frontend/src/assets/images/logo-floatingball.png" width="150" height="150">
 </p>
 
@@ -9,22 +9,22 @@
 </p>
 
 <p align="center">
-  <a href="./docs/readmes/README.md">English</a> |
-  <a href="./docs/readmes/README_zh-CN.md">简体中文</a> |
-  <a href="./docs/readmes/README_zh-TW.md">繁體中文</a> |
-  <a href="./docs/readmes/README_ja-JP.md">日本語</a> |
-  <a href="./docs/readmes/README_ko-KR.md">한국어</a> |
-  <a href="./docs/readmes/README_ar-SA.md">العربية</a> |
-  <a href="./docs/readmes/README_bn-BD.md">বাংলা</a> |
-  <a href="./docs/readmes/README_de-DE.md">Deutsch</a> |
-  <a href="./docs/readmes/README_es-ES.md">Español</a> |
-  <a href="./docs/readmes/README_fr-FR.md">Français</a> |
-  <a href="./docs/readmes/README_hi-IN.md">हिन्दी</a> |
-  <a href="./docs/readmes/README_it-IT.md">Italiano</a> |
-  <a href="./docs/readmes/README_pt-BR.md">Português</a> |
-  <a href="./docs/readmes/README_sl-SI.md">Slovenščina</a> |
-  <a href="./docs/readmes/README_tr-TR.md">Türkçe</a> |
-  <a href="./docs/readmes/README_vi-VN.md">Tiếng Việt</a>
+  <a href="./README_en.md">English</a> |
+  <a href="./README_zh-CN.md">简体中文</a> |
+  <a href="./README_zh-TW.md">繁體中文</a> |
+  <a href="./README_ja-JP.md">日本語</a> |
+  <a href="./README_ko-KR.md">한국어</a> |
+  <a href="./README_ar-SA.md">العربية</a> |
+  <a href="./README_bn-BD.md">বাংলা</a> |
+  <a href="./README_de-DE.md">Deutsch</a> |
+  <a href="./README_es-ES.md">Español</a> |
+  <a href="./README_fr-FR.md">Français</a> |
+  <a href="./README_hi-IN.md">हिन्दी</a> |
+  <a href="./README_it-IT.md">Italiano</a> |
+  <a href="./README_pt-BR.md">Português</a> |
+  <a href="./README_sl-SI.md">Slovenščina</a> |
+  <a href="./README_tr-TR.md">Türkçe</a> |
+  <a href="./README_vi-VN.md">Tiếng Việt</a>
 </p>
 
 Get OpenClaw-like knowledge base personal AI agent in 5 mins. Sandbox-secured, with an ultra-small 30MB installer for macOS & Windows (install in 1 min). Connects to WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu & other messaging apps. Built-in Skill Market, Knowledge Base, Memory, MCP, Scheduled Tasks. Developed in Go: fast & low resource usage.
@@ -40,81 +40,82 @@ Get OpenClaw-like knowledge base personal AI agent in 5 mins. Sandbox-secured, w
 
 ### AI Chatbot Assistant
 
-Ask your AI assistant any question, and it will intelligently search your knowledge base to generate a relevant answer.
+Ask your AI assistant any question; it will intelligently search your knowledge base and generate relevant answers. With the built-in Skill Market, AI Agents work autonomously — no need for manual oversight throughout. From complex project planning and document organization to PPT generation and multi-step task execution, AI Agents can autonomously break down, efficiently advance, and ultimately deliver complete results, saving significant time.
 
 ![](../../images/previews/en/image1.png)
 
-### Dual-Mode Switching for Efficient Task Handling
-
-Chat mode adapts to multi-scenario Q&A and reasoning; Task mode pairs with a built-in skill market, enabling AI agents to autonomously decompose and advance multi-step tasks for improved efficiency.
-
 ![](../../images/previews/en/image2.png)
 
-### PPT Quick Generate
+### Multi-Agent Mode, Tailored for Different Scenarios
 
-Send a one-sentence command to the smart assistant to automatically create and generate a PowerPoint presentation.
+Create multiple independent AI Agents, each with its own persona, memory and skills. Switch between them on demand without interference. Each Agent can be assigned different roles (e.g. "Customer Service", "Data Analyst", "Copy Assistant") and configured with different skills, knowledge bases and response styles.
 
 ![](../../images/previews/en/image3.png)
 
-### Skill Manager
+### Local Knowledge Base Management
 
-Use a command to have the assistant help you find installed features on your computer or install new extension plugins. Skill Market — browse and install skills freely.
+Upload documents (TXT, PDF, Word, Excel, CSV, HTML, Markdown). The system automatically parses, splits and converts them into vector embeddings stored in your private knowledge base for precise AI retrieval and utilization. Supports organizing documents by folder and knowledge base.
 
 ![](../../images/previews/en/image4.png)
 
-### Memory: More Natural, Smarter Interactions
+### Skill Manager — AI Responds at Command
 
-Enable contextual conversations and personalized assistance. Continuous learning and evolution — the assistant feels like a growing partner that delivers increasingly thoughtful and intelligent service.
+5000+ ready-to-use AI skills cover productivity, development tools, multimedia, smart home and more — letting AI work for you without programming. Use commands to find installed features or install new extension plugins. Skill Market — freely browse and install skills.
 
 ![](../../images/previews/en/image5.png)
 
-### Free Model Trial — Shared Team Knowledge Base
+### Memory — Natural & Smarter Interactions
 
-One-click authorization to connect to ChatWiki, sync ChatWiki account credits, and support custom models. Built-in high-quality domestic and international LLMs including Ollama, Google Gemini, and OpenAI — use your favorite AI model for daily office work or professional scenarios.
+Enable contextual conversations, personalized service, complex task completion and continuous learning & evolution. The robot becomes a growing companion that provides increasingly thoughtful and intelligent service.
 
 ![](../../images/previews/en/image6.png)
 
-### Knowledge Base | Document Vectorization Storage
+### Free Model Trial
 
-Upload your documents (TXT, PDF, Word, Excel, CSV, HTML, Markdown). The system automatically parses, splits, and converts them into vector embeddings, stored in your private knowledge base for precise retrieval and utilization by AI models.
+One-click authorization to connect to ChatWiki, sync credits, support custom models. Built-in high quality LLMs: Ollama, Google Gemini, OpenAI and more — use your favorite AI model for office work or professional scenarios.
 
 ![](../../images/previews/en/image7.png)
 
-### Rich IM Channel Integrations
+### Multi-Channel Remote Control via WeChat/QQ/WhatsApp
 
-Through integrating SDKs provided by instant messaging service providers (Feishu, WeCom, QQ, DingTalk, WeChat, WhatsApp, and more), quickly implement complete IM communication capabilities within the app, including channel creation, user management, and message sending/receiving.
+ChatClaw supports multiple message channels, pushing analysis results, monitoring alerts and research summaries directly to your phone. After AI processing, results are automatically sent to the designated channel. Send commands in the chat window to remotely control AI task execution.
 
 ![](../../images/previews/en/image8.png)
 
-### Scheduled Tasks — Automated Command Execution
+### Scheduled Tasks — Automated Execution
 
-Let the assistant automatically execute specific operations at preset times or intervals, such as providing timely reminders, executing recurring work, or performing system-level maintenance tasks.
+Set monitoring frequency: every 5 minutes, hourly, or daily at fixed times. Graphical scheduler with cron expressions. Periodically fetch pages or data sources, compare changes, monitor key indicators and push alerts via message channels when anomalies are detected.
 
 ![](../../images/previews/en/image9.png)
 
 ### Text Selection for Instant Q&A
 
-Select any text on screen and it will be automatically copied into a floating quick-ask box. One click to send to the AI assistant for an instant answer.
+Select any text on screen; it is automatically copied into a floating quick-ask box. One click sends it to the AI assistant for an instant answer.
 
 ![](../../images/previews/en/image10.png)
 
 ### Smart Sidebar
 
-A smart assistant that can be snapped alongside other application windows. Quickly switch between differently configured AI assistants to ask questions. The robot generates answers based on your associated knowledge base, and supports one-click sending of replies into your conversations.
+A smart assistant that snaps alongside other app windows. Quickly switch between differently configured AI assistants to ask questions. The robot generates answers based on your associated knowledge base and supports one-click reply sending. Smart floating follow — tool entry always at hand.
 
 ![](../../images/previews/en/image11.png)
 
+![](../../images/previews/en/image12.png)
+
 ### One Question, Multiple Answers: Compare with Ease
 
-No need to repeat questions. Consult multiple "AI experts" simultaneously and view their replies side-by-side in the same interface. Easy to compare and help you reach the best conclusion.
+No need to repeat questions. Consult multiple "AI experts" simultaneously, compare their replies side-by-side in the same interface and reach the best conclusion.
 
-![](../../images/previews/en/image12.png)
+![](../../images/previews/en/image13.png)
 
 ### One-Click Launcher Ball
 
 Click the floating ball on your desktop to instantly wake up or open the ChatClaw main application window.
 
-![](../../images/previews/en/image13.png)
+![](../../images/previews/en/image14.png)
+
+## Server Mode Deployment
+
 
 ## Server Mode Deployment
 

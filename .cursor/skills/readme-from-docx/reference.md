@@ -2,9 +2,9 @@
 
 ## Locale README Files (docs/readmes/)
 
-Update Previews in all of these except `README.md` and `README_zh-CN.md` (those two are updated in Steps 2 and 3).
+Update Previews in all of these except `README_en.md` and `README_zh-CN.md` (those two are updated in Steps 2 and 3).
 
-- README.md          — base English (Step 2)
+- README_en.md        — base English (Step 2)
 - README_zh-CN.md    — Chinese, zh-CN images (Step 3)
 - README_ar-SA.md    — Arabic
 - README_bn-BD.md    — Bengali
@@ -28,7 +28,7 @@ When new locale files are added (e.g. README_xx-YY.md), include them in the “T
 | File / scope              | Image path                        |
 |---------------------------|-----------------------------------|
 | README.md (repo root)     | ./images/previews/en/imageN.png   |
-| docs/readmes/README.md    | ../../images/previews/en/imageN.png |
+| docs/readmes/README_en.md   | ../../images/previews/en/imageN.png |
 | docs/readmes/README_zh-CN.md | ../../images/previews/zh-CN/imageN.png |
 | All other docs/readmes/README_*.md | ../../images/previews/en/imageN.png |
 

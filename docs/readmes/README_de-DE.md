@@ -31,57 +31,95 @@ Erhalten Sie in 5 Minuten einen persönlichen KI-Agenten wie OpenClaw. Sandbox-g
 
 ## Vorschau
 
-### KI-Chat-Assistent
-Stellen Sie Ihrem KI-Assistenten eine beliebige Frage, und er durchsucht intelligent Ihre Wissensbasis, um eine relevante Antwort zu generieren.
+### AI Chatbot Assistant
+
+Stellen Sie Ihrem KI-Assistenten jede Frage; er durchsucht Ihre Wissensdatenbank intelligent und generiert relevante Antworten. Mit dem integrierten Skill-Markt arbeiten KI-Agenten autonom — ohne durchgehende manuelle Überwachung. Von komplexer Projektplanung und Dokumentenorganisation über PPT-Generierung bis hin zur Ausführung mehrstufiger Aufgaben können KI-Agenten autonom analysieren, effizient voranschreiten und letztlich vollständige Ergebnisse liefern.
+
 ![](../../images/previews/en/image1.png)
 
-### Dual-Mode-Umschaltung für effiziente Aufgabenbearbeitung
-Der Chat-Modus passt sich an mehrstufiges Q&A und Reasoning an; Der Aufgaben-Modus ist mit einem integrierten Skill-Markt gekoppelt, wodurch KI-Agenten mehrstufige Aufgaben autonom zerlegen und vorantreiben können, um die Effizienz zu verbessern.
 ![](../../images/previews/en/image2.png)
 
-### PPT-Schnellgenerierung
-Senden Sie einen Ein-Satz-Befehl an den intelligenten Assistenten, um automatisch eine PowerPoint-Präsentation zu erstellen und zu generieren.
+### Multi-Agent Mode, Tailored for Different Scenarios
+
+Erstellen Sie mehrere unabhängige KI-Agenten, jeder mit eigener Persönlichkeit, Gedächtnis und Fähigkeiten. Wechseln Sie bei Bedarf ohne Interferenzen zwischen ihnen. Jedem Agenten können verschiedene Rollen zugewiesen werden (z.B. "Kundendienst", " Datenanalyst", "Texter"), und er kann mit unterschiedlichen Fähigkeiten, Wissensdatenbanken und Antwortstilen konfiguriert werden.
+
 ![](../../images/previews/en/image3.png)
 
-### Skill-Manager
-Verwenden Sie einen Befehl, damit der Assistent Sie beim Finden installierter Funktionen auf Ihrem Computer oder beim Installieren neuer Erweiterungs-Plugins unterstützt. Skill-Markt — suchen und installieren Sie Skills frei.
+### Local Knowledge Base Management
+
+Laden Sie Ihre Dokumente hoch (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Das System analysiert, teilt und konvertiert sie automatisch in Vektoreinbettungen, die in Ihrer privaten Wissensdatenbank für präzisen KI-Abruf und -Nutzen gespeichert werden. Unterstützt die Organisation von Dokumenten nach Ordner und Wissensdatenbank.
+
 ![](../../images/previews/en/image4.png)
 
-### Gedächtnis: Natürlichere, intelligentere Interaktion
-Aktivieren Sie kontextuelle Gespräche und personalisierte Unterstützung. Kontinuierliches Lernen und Evolution — der Assistent fühlt sich wie ein wachsender Partner an, der zunehmend durchdachte und intelligentere Dienste liefert.
+### Skill Manager — AI Responds at Command
+
+5000+ sofort einsatzbereite KI-Skills decken Produktivität, Entwicklungstools, Multimedia, Smart Home und mehr ab. Lassen Sie KI für sich arbeiten ohne zu programmieren. Nutzen Sie Befehle, damit der Roboter installierte Funktionen findet oder neue Erweiterungen installiert. Skill-Markt — Skills frei durchsuchen und installieren.
+
 ![](../../images/previews/en/image5.png)
 
-### Kostenlose Modellversion — Geteilte Team-Wissensbasis
-Ein-Klick-Autorisierung zur Verbindung mit ChatWiki, Synchronisierung der ChatWiki-Kontoguthaben und Unterstützung für benutzerdefinierte Modelle. Integrierte hochwertige in- und ausländische LLMs, einschließlich Ollama, Google Gemini und OpenAI — verwenden Sie Ihr bevorzugtes KI-Modell für die tägliche Büroarbeit oder professionelle Szenarien.
+### Memory — Natural & Smarter Interactions
+
+Ermöglichen Sie kontextbezogene Gespräche, personalisierte Dienste, komplexe Aufgaben und kontinuierliches Lernen & Evolution. Der Roboter wird zu einem wachsenden Begleiter, der zunehmend durchdachtere und intelligentere Dienste bietet.
+
 ![](../../images/previews/en/image6.png)
 
-### Wissensbasis | Dokument-Vektorisierungsspeicher
-Laden Sie Ihre Dokumente hoch (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Das System parst, teilt und konvertiert sie automatisch in Vektor-Embeddings, die in Ihrer privaten Wissensbasis für präzise Abfrage und Nutzung durch KI-Modelle gespeichert werden.
+### Free Model Trial
+
+Ein-Klick-Autorisierung zur Verbindung mit ChatWiki, Synchronisierung von Credits, Unterstützung für benutzerdefinierte Modelle. Integrierte hochqualitative LLMs: Ollama, Google Gemini, OpenAI und mehr — nutzen Sie Ihr Lieblings-KI-Modell für Büroarbeit oder professionelle Szenarien.
+
 ![](../../images/previews/en/image7.png)
 
-### Reichhaltige IM-Kanal-Integrationen
-Durch die Integration von SDKs, die von Instant-Messaging-Dienstanbietern bereitgestellt werden (Feishu, WeCom, QQ, DingTalk, WeChat, WhatsApp und mehr), können Sie schnell vollständige IM-Kommunikationsfunktionen in der App implementieren, einschließlich Kanalerstellung, Benutzerverwaltung und Nachrichtenversand/-empfang.
+### Multi-Channel Remote Control via WeChat/QQ/WhatsApp
+
+ChatClaw unterstützt mehrere Nachrichtenkanäle und sendet Analyseergebnisse, Überwachungsalarme und Forschungszusammenfassungen direkt auf Ihr Telefon. Nach der KI-Verarbeitung werden Ergebnisse automatisch an den angegebenen Kanal gesendet. Senden Sie Befehle im Chatfenster, um die KI-Aufgabenausführung fernzusteuern.
+
 ![](../../images/previews/en/image8.png)
 
-### Geplante Aufgaben — Automatisierte Befehlsausführung
-Lassen Sie den Assistenten automatisch bestimmte Operationen zu voreingestellten Zeiten oder Intervallen ausführen, wie z.B. die Bereitstellung rechtzeitiger Erinnerungen, die Ausführung wiederkehrender Arbeit und die Durchführung von Systemwartungsaufgaben.
+### Scheduled Tasks — Automated Execution
+
+Legen Sie die Überwachungshäufigkeit fest: alle 5 Minuten, stündlich oder täglich zu festen Zeiten. Grafischer Scheduler mit Cron-Ausdrücken. Periodisch Seiten oder Datenquellen abrufen, Änderungen vergleichen, Schlüsselindikatoren überwachen und bei Anomalien Alarme über Nachrichtenkanäle senden.
+
 ![](../../images/previews/en/image9.png)
 
-### Textauswahl für sofortige Q&A
-Wählen Sie einen beliebigen Text auf dem Bildschirm aus, und er wird automatisch in ein schwebendes Schnellfragefeld kopiert. Ein Klick, um ihn an den KI-Assistenten zu senden, und Sie erhalten sofort eine Antwort.
+### Text Selection for Instant Q&A
+
+Markieren Sie einen beliebigen Text auf dem Bildschirm; er wird automatisch in ein schwebendes Schnellfragefeld kopiert. Ein Klick sendet ihn an den KI-Assistenten für eine sofortige Antwort.
+
 ![](../../images/previews/en/image10.png)
 
-### Intelligente Seitenleiste
-Ein intelligenter Assistent, der neben anderen Anwendungsfenstern angedockt werden kann. Wechseln Sie schnell zwischen unterschiedlich konfigurierten KI-Assistenten, um Fragen zu stellen. Der Roboter generiert Antworten basierend auf Ihrer zugeordneten Wissensbasis und unterstützt das Senden von Antworten per Klick in Ihre Gespräche.
+### Smart Sidebar
+
+Ein intelligenter Assistent, der sich neben anderen App-Fenstern andocken lässt. Wechseln Sie schnell zwischen unterschiedlich konfigurierten KI-Assistenten, um Fragen zu stellen. Der Roboter generiert Antworten basierend auf Ihrer verknüpften Wissensdatenbank und unterstützt das Senden von Antworten per Klick. Intelligentes schwebendes Folgen — Werkzeugeingabe immer griffbereit.
+
 ![](../../images/previews/en/image11.png)
 
-### Eine Frage, mehrere Antworten: Einfach vergleichen
-Keine Wiederholung von Fragen nötig. Konsultieren Sie gleichzeitig mehrere "KI-Experten" und sehen Sie sich ihre Antworten nebeneinander in derselben Oberfläche an. Einfacher Vergleich und Hilfe, um zur besten Schlussfolgerung zu gelangen.
 ![](../../images/previews/en/image12.png)
 
-### Ein-Klick-Starterball
-Klicken Sie auf den schwebenden Ball auf Ihrem Desktop, um das ChatClaw-Hauptanwendungsfenster sofort aufzuwecken oder zu öffnen.
+### One Question, Multiple Answers: Compare with Ease
+
+Keine Wiederholung von Fragen nötig. Konsultieren Sie gleichzeitig mehrere "KI-Experten", vergleichen Sie ihre Antworten in derselben Oberfläche nebeneinander und gelangen Sie zur besten Schlussfolgerung.
+
 ![](../../images/previews/en/image13.png)
+
+### One-Click Launcher Ball
+
+Klicken Sie auf den schwebenden Ball auf Ihrem Desktop, um das ChatClaw-Hauptanwendungsfenster sofort aufzuwecken oder zu öffnen.
+
+![](../../images/previews/en/image14.png)
+
+### Community & Contact Us
+
+Willkommen, uns für Hilfe zu kontaktieren oder Vorschläge zu geben. WeChat: Scannen Sie den QR-Code, um der ChatClaw-Technik-Austauschgruppe beizutreten. Bitte erwähnen Sie "chatclaw" beim Hinzufügen.
+
+
+## Server-Modus-Bereitstellung
+
+
+## Server-Modus-Bereitstellung
+
+
+## Server-Modus-Bereitstellung
+
 
 ## Server-Modus-Bereitstellung
 
