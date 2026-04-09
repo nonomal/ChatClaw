@@ -356,12 +356,6 @@ type WhatsappLoginResult struct {
 	ChannelID int64  `json:"channel_id"`
 }
 
-type whatsappConfigEnsureResult struct {
-	Changed        bool
-	ChannelChanged bool
-	AccountChanged bool
-}
-
 func (s *OpenClawChannelService) hasOpenClawWhatsappChannels() (bool, error) {
 	db, err := s.db()
 	if err != nil {
@@ -441,7 +435,7 @@ func (s *OpenClawChannelService) PrepareWhatsappChannelOnAppStartup() {
 	}
 
 	accountID = normalizeWhatsappAccountID(accountID)
-	ensureResult, err := s.ensureWhatsappChannelEnabled(accountID)
+	changed, err := s.ensureWhatsappChannelEnabled(accountID)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			s.app.Logger.Info("openclaw: whatsapp startup warmup skipped because openclaw config is not ready",
@@ -459,9 +453,7 @@ func (s *OpenClawChannelService) PrepareWhatsappChannelOnAppStartup() {
 	s.rememberPreparedWhatsappAccountID(accountID)
 	s.app.Logger.Info("openclaw: whatsapp startup warmup completed",
 		"accountId", accountID,
-		"configChanged", ensureResult.Changed,
-		"channelChanged", ensureResult.ChannelChanged,
-		"accountChanged", ensureResult.AccountChanged,
+		"configChanged", changed,
 		"duration", time.Since(startedAt).String())
 }
 
@@ -613,7 +605,7 @@ func (s *OpenClawChannelService) ensureOpenClawWhatsappPluginInstalled(ctx conte
 	startedAt := time.Now()
 	s.app.Logger.Info("openclaw: ensuring whatsapp channel is enabled",
 		"accountId", accountID)
-	ensureResult, err := s.ensureWhatsappChannelEnabled(accountID)
+	changed, err := s.ensureWhatsappChannelEnabled(accountID)
 	if err != nil {
 		s.app.Logger.Warn("openclaw: failed to ensure whatsapp channel is enabled",
 			"accountId", accountID,
@@ -621,14 +613,8 @@ func (s *OpenClawChannelService) ensureOpenClawWhatsappPluginInstalled(ctx conte
 			"error", err)
 		return err
 	}
-	if !ensureResult.Changed {
+	if !changed {
 		s.app.Logger.Info("openclaw: whatsapp channel already enabled",
-			"accountId", accountID,
-			"duration", time.Since(startedAt).String())
-		return nil
-	}
-	if !ensureResult.ChannelChanged {
-		s.app.Logger.Info("openclaw: whatsapp account config updated without gateway restart",
 			"accountId", accountID,
 			"duration", time.Since(startedAt).String())
 		return nil
@@ -763,12 +749,11 @@ func (s *OpenClawChannelService) resolveWhatsappLoginAccountID() (string, error)
 	return accountID, nil
 }
 
-func (s *OpenClawChannelService) ensureWhatsappChannelEnabled(accountID string) (whatsappConfigEnsureResult, error) {
+func (s *OpenClawChannelService) ensureWhatsappChannelEnabled(accountID string) (bool, error) {
 	accountID = normalizeWhatsappAccountID(accountID)
-	result := whatsappConfigEnsureResult{}
 	cfg, configPath, err := loadOpenClawJSONConfig()
 	if err != nil {
-		return result, err
+		return false, err
 	}
 
 	channelsCfg, _ := cfg["channels"].(map[string]any)
@@ -790,14 +775,12 @@ func (s *OpenClawChannelService) ensureWhatsappChannelEnabled(accountID string) 
 	}
 
 	entry, accountChanged := ensureWhatsappAccountConfigEntry(entry)
-	result.ChannelChanged = channelChanged
-	result.AccountChanged = accountChanged
-	result.Changed = result.ChannelChanged || result.AccountChanged
-	if !result.Changed {
+	changed := channelChanged || accountChanged
+	if !changed {
 		s.app.Logger.Debug("openclaw: whatsapp account already enabled in config",
 			"accountId", accountID,
 			"config", configPath)
-		return result, nil
+		return false, nil
 	}
 
 	accounts[accountID] = entry
@@ -805,14 +788,14 @@ func (s *OpenClawChannelService) ensureWhatsappChannelEnabled(accountID string) 
 	channelsCfg[openClawWhatsappChannelID] = whatsappCfg
 	cfg["channels"] = channelsCfg
 	if err := saveOpenClawJSONConfig(configPath, cfg); err != nil {
-		return result, err
+		return false, err
 	}
 	s.app.Logger.Info("openclaw: ensured whatsapp channel config in openclaw.json",
 		"accountId", accountID,
 		"enabled", true,
 		"selfChatMode", true,
 		"config", configPath)
-	return result, nil
+	return true, nil
 }
 
 // PrepareWhatsappChannel ensures the bundled WhatsApp channel is enabled before QR login starts.
