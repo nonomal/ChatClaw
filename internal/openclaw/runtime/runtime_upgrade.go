@@ -470,6 +470,11 @@ func (m *Manager) installUserRuntimeOverrideWithCancel(
 	if skipInstall, err := checkUserRuntimeAlreadyHasVersion(currentDir, version); err == nil && skipInstall {
 		stagedBundle.Root = currentDir
 		stagedBundle.CLIPath = filepath.Join(currentDir, "bin", cliName())
+		if runtime.GOOS == "windows" {
+			stagedBundle.NodeExePath = filepath.Join(currentDir, "tools", "node", "node.exe")
+		} else {
+			stagedBundle.NodeExePath = filepath.Join(currentDir, "tools", "node", "bin", "node")
+		}
 		stagedBundle.Source = runtimeSourceUser
 		result.Staged = stagedBundle
 		result.HadCurrent = false // not a real upgrade, just switching active version
@@ -542,6 +547,11 @@ func (m *Manager) installUserRuntimeOverrideWithCancel(
 
 	stagedBundle.Root = currentDir
 	stagedBundle.CLIPath = filepath.Join(currentDir, "bin", cliName())
+	if runtime.GOOS == "windows" {
+		stagedBundle.NodeExePath = filepath.Join(currentDir, "tools", "node", "node.exe")
+	} else {
+		stagedBundle.NodeExePath = filepath.Join(currentDir, "tools", "node", "bin", "node")
+	}
 	stagedBundle.Source = runtimeSourceUser
 	result.Staged = stagedBundle
 	return result, nil
@@ -811,10 +821,14 @@ func verifyOpenClawLibLayout(outputDir string) error {
 func writeCLIWrappers(outputDir, goos string) error {
 	if goos == "windows" {
 		content := strings.Join([]string{
-			"@echo off",
-			"setlocal",
+			`@echo off`,
+			`setlocal EnableExtensions`,
 			`set "SCRIPT_DIR=%~dp0"`,
 			`set "OPENCLAW_EMBEDDED_IN=ChatClaw"`,
+			// Directly invoke node.exe — no intermediate cmd.exe layer.
+			// The wrapper is provided for manual CLI usage (developer terminal).
+			// startProcess in manager.go bypasses this and calls node.exe directly
+			// so that CREATE_NO_WINDOW takes effect on node.exe itself.
 			`"%SCRIPT_DIR%..\tools\node\node.exe" "%SCRIPT_DIR%..\lib\node_modules\openclaw\dist\entry.js" %*`,
 			"",
 		}, "\r\n")
