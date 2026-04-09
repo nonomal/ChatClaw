@@ -15,7 +15,7 @@ Use this skill when the user provides one or two docx files (e.g. English + Chin
 ## Workflow Overview
 
 1. **Extract images** from each docx into the correct preview folders.
-2. **Update English copy and structure** in root README and `docs/readmes/README.md`.
+2. **Update English copy and structure** in root README and `docs/readmes/README_en.md`.
 3. **Update Chinese (zh-CN)** in `docs/readmes/README_zh-CN.md` with Chinese copy and zh-CN images.
 4. **Translate Previews only** in all other locale READMEs; keep using **English** images.
 
@@ -31,7 +31,7 @@ After extraction, ensure no duplicate filenames and that image order matches the
 
 ## Step 2: Update English README (Root + docs/readmes)
 
-- **Files**: `README.md` (root), `docs/readmes/README.md`.
+- **Files**: `README.md` (root), `docs/readmes/README_en.md`.
 - **Image paths**:
   - Root: `./images/previews/en/imageN.png`
   - Under docs/readmes: `../../images/previews/en/imageN.png`
@@ -56,7 +56,7 @@ After extraction, ensure no duplicate filenames and that image order matches the
   - **Images**: Always keep `../../images/previews/en/imageN.png` (same as English).
   - **Text**: Translate **only** the Previews block: section title (e.g. "Previews" → localized "Predogledi", "Önizlemeler", etc.), each `###` title, and each paragraph. Preserve the same order and the same image path per section.
 - **Pitfall**: If the file has a “sticky” line like `![](../../images/previews/en/image18.png)## 伺服器模式部署`, replace it so the image is followed by a blank line and then `## 伺服器模式部署` on the next line.
-- **Reference**: Use the current `docs/readmes/README.md` as the canonical list of sections and image numbers when translating.
+- **Reference**: Use the current `docs/readmes/README_en.md` as the canonical list of sections and image numbers when translating.
 
 ## Section ↔ Image Mapping (Canonical)
 
@@ -84,7 +84,7 @@ When adding new features from a new docx, append new sections and new image numb
 ## Checklist Before Finishing
 
 - [ ] All images extracted from both docx into `images/previews/en/` and `images/previews/zh-CN/` (full set).
-- [ ] Root `README.md` and `docs/readmes/README.md` have identical Previews structure and EN copy; root uses `./images/previews/en/`, docs use `../../images/previews/en/`.
+- [ ] Root `README.md` and `docs/readmes/README_en.md` have identical Previews structure and EN copy; root uses `./images/previews/en/`, docs use `../../images/previews/en/`.
 - [ ] `README_zh-CN.md` uses Chinese copy and `../../images/previews/zh-CN/`.
 - [ ] Every other locale README has Previews translated and still uses `../../images/previews/en/`; no “sticky” `image18.png)##` line.
 - [ ] No extra subsection only in one locale (e.g. zh-TW had an extra “雙模式切換” with image3, which broke mapping; remove or align so each image number maps to one section globally).
