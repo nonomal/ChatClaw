@@ -398,7 +398,7 @@ function channelConnDisplay(ch: Channel): 'provisioning' | 'online' | 'error' | 
   return 'offline'
 }
 
-/** Connection status "creating" — only delete is allowed on the card. */
+/** Connection is provisioning/connecting (backend status or gateway pending) — only delete is allowed on the card. */
 function isChannelConnectionProvisioning(ch: Channel): boolean {
   return channelConnDisplay(ch) === 'provisioning'
 }

@@ -1761,7 +1761,7 @@ export default {
       online: 'कनेक्टेड',
       error: 'त्रुटि',
       offline: 'डिस्कनेक्टेड',
-      provisioning: 'बनाया जा रहा है',
+      provisioning: "कनेक्ट हो रहा है…",
     },
     bindAgent: {
       title: 'असिस्टेंट चुनें',

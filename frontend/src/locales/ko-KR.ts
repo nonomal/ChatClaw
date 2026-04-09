@@ -1870,7 +1870,7 @@ export default {
       online: '연결됨',
       error: '오류',
       offline: '연결 끊김',
-      provisioning: '생성 중',
+      provisioning: "연결 중",
     },
     bindAgent: {
       title: '어시스턴트 선택',

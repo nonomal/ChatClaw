@@ -1752,7 +1752,7 @@ export default {
       online: 'Povezan',
       error: 'Napaka',
       offline: 'Povezava prekinjena',
-      provisioning: 'Ustvarjanje',
+      provisioning: "Povezovanje …",
     },
     bindAgent: {
       title: 'Izberi pomočnika',

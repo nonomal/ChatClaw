@@ -1770,7 +1770,7 @@ export default {
     status: {
       online: 'Verbunden',
       error: 'Fehler',
-      provisioning: 'Wird erstellt',
+      provisioning: "Wird verbunden…",
       offline: 'Getrennt',
     },
     bindAgent: {

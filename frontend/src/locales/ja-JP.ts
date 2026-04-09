@@ -1761,7 +1761,7 @@ export default {
       online: '接続済み',
       error: 'エラー',
       offline: '切断済み',
-      provisioning: '作成中',
+      provisioning: "接続中",
     },
     bindAgent: {
       title: 'アシスタントを選択',

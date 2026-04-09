@@ -1880,7 +1880,7 @@ export default {
       online: 'Connected',
       error: 'Error',
       offline: 'Disconnected',
-      provisioning: 'Creating…',
+      provisioning: "Connecting…",
     },
     bindAgent: {
       title: 'Select assistant',

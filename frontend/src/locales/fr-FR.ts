@@ -1753,7 +1753,7 @@ export default {
       online: 'Connecté',
       error: 'Erreur',
       offline: 'Déconnecté',
-      provisioning: 'Création en cours',
+      provisioning: "Connexion en cours…",
     },
     bindAgent: {
       title: 'Sélectionner un assistant',

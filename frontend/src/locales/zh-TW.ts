@@ -1698,7 +1698,7 @@ export default {
       online: '已連線',
       error: '錯誤',
       offline: '未連線',
-      provisioning: '建立中',
+      provisioning: "連線中",
     },
     bindAgent: {
       title: '選擇助手',

@@ -1721,7 +1721,7 @@ export default {
       online: '已连接',
       error: '错误',
       offline: '未连接',
-      provisioning: '创建中',
+      provisioning: "连接中",
     },
     bindAgent: {
       title: '选择助手',

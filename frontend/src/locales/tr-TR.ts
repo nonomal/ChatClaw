@@ -1746,7 +1746,7 @@ export default {
       online: 'Bağlı',
       error: 'Hata',
       offline: 'Bağlantısız',
-      provisioning: 'Oluşturuluyor',
+      provisioning: "Bağlanıyor…",
     },
     bindAgent: {
       title: 'Asistan seç',

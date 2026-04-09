@@ -1731,7 +1731,7 @@ export default {
       online: 'متصل',
       error: 'خطأ',
       offline: 'غير متصل',
-      provisioning: 'جارٍ الإنشاء',
+      provisioning: "جارٍ الاتصال…",
     },
     bindAgent: {
       title: 'اختر مساعدًا',

@@ -1745,7 +1745,7 @@ export default {
       online: 'Đã kết nối',
       error: 'Lỗi',
       offline: 'Đã ngắt kết nối',
-      provisioning: 'Đang tạo',
+      provisioning: "Đang kết nối…",
     },
     bindAgent: {
       title: 'Chọn trợ lý',

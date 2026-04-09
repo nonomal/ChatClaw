@@ -1740,7 +1740,7 @@ export default {
       online: 'কানেক্টেড',
       error: 'ত্রুটি',
       offline: 'ডিসকানেক্টেড',
-      provisioning: 'তৈরি হচ্ছে',
+      provisioning: "সংযোগ হচ্ছে…",
     },
     bindAgent: {
       title: 'অ্যাসিস্ট্যান্ট সিলেক্ট',

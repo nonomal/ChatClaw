@@ -1767,7 +1767,7 @@ export default {
       online: 'Collegato',
       error: 'Errore',
       offline: 'Non collegato',
-      provisioning: 'Creazione in corso',
+      provisioning: "Connessione in corso…",
     },
     bindAgent: {
       title: 'Seleziona assistente',
