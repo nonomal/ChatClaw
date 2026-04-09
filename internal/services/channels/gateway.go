@@ -41,11 +41,12 @@ func (g *Gateway) ConnectChannel(ctx context.Context, ch Channel) error {
 
 	adapter := NewAdapter(ch.Platform)
 	if adapter == nil {
+		g.disableChannelAfterFailedConnect(ch.ID)
 		return fmt.Errorf("no adapter registered for platform %q", ch.Platform)
 	}
 
 	if err := adapter.Connect(ctx, ch.ID, ch.ExtraConfig, g.handler); err != nil {
-		g.updateChannelStatus(ch.ID, StatusError)
+		g.disableChannelAfterFailedConnect(ch.ID)
 		return fmt.Errorf("connect channel %d (%s): %w", ch.ID, ch.Platform, err)
 	}
 
@@ -178,5 +179,25 @@ func (g *Gateway) updateChannelStatus(channelID int64, status string) {
 
 	if _, err := q.Exec(ctx); err != nil {
 		g.logger.Warn("update channel status failed", "channel_id", channelID, "error", err)
+	}
+}
+
+// disableChannelAfterFailedConnect turns the channel off in the DB when ConnectChannel fails
+// so the UI toggle matches reality (startup auto-connect and manual connect).
+func (g *Gateway) disableChannelAfterFailedConnect(channelID int64) {
+	db := sqlite.DB()
+	if db == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if _, err := db.NewUpdate().
+		Model((*channelModel)(nil)).
+		Where("id = ?", channelID).
+		Set("enabled = ?", false).
+		Set("status = ?", StatusOffline).
+		Set("updated_at = ?", sqlite.NowUTC()).
+		Exec(ctx); err != nil {
+		g.logger.Warn("disable channel after connect failure failed", "channel_id", channelID, "error", err)
 	}
 }

@@ -36,6 +36,7 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { toast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
+import { isGatewayProvisioning } from '@/composables/useOpenClawChannelProvisioning'
 import { platformIconMap } from '@/assets/icons/snap/platformIcons'
 import { getPlatformDocsUrl, openExternalLink } from '@/pages/channels/platformDocs'
 
@@ -179,9 +180,10 @@ function getBindActionText(channel: Channel): string {
 }
 
 function getChannelStatusText(channel: Channel): string {
-  if (channel.status === 'online') return t('assistant.channels.statusOnline')
-  if (channel.status === 'error') return t('assistant.channels.statusError')
-  return t('assistant.channels.statusOffline')
+  if (isGatewayProvisioning(channel)) return t('channels.status.provisioning')
+  if (channel.status === 'online') return t('assistant.channels.statusOnline', '已连接')
+  if (channel.status === 'error') return t('assistant.channels.statusError', '错误')
+  return t('assistant.channels.statusOffline', '未连接')
 }
 
 function syncCreateFormVisibility(platformId: string) {
@@ -369,6 +371,15 @@ function isSelectableChannelPlatform(platformId: string) {
   )
 }
 
+/** Green sidebar dot: current agent has at least one online channel on this platform. */
+function platformHasConnectedBotForCurrentAgent(platformId: string): boolean {
+  const aid = currentAgentId.value
+  if (!aid) return false
+  return channels.value.some(
+    (ch) => ch.platform === platformId && ch.agent_id === aid && ch.status === 'online'
+  )
+}
+
 function openPlatformDocs() {
   const url = getPlatformDocsUrl(selectedPlatformMeta.value?.id)
   void openExternalLink(url)
@@ -471,7 +482,7 @@ async function handleConfigChannelSaved(channel: Channel, isEdit: boolean) {
                 type="button"
                 :class="
                   cn(
-                    'flex h-8 items-center rounded-md px-3 text-left text-sm text-[#404040] transition-colors dark:text-muted-foreground',
+                    'flex h-8 min-w-0 items-center gap-2 rounded-md px-3 text-left text-sm text-[#404040] transition-colors dark:text-muted-foreground',
                     selectedPlatformId === platform.id &&
                       'bg-[#f5f5f5] text-[#171717] dark:bg-muted dark:text-foreground',
                     selectedPlatformId !== platform.id &&
@@ -486,9 +497,14 @@ async function handleConfigChannelSaved(channel: Channel, isEdit: boolean) {
                     : toast.default(t('channels.comingSoon'))
                 "
               >
-                <span class="truncate">{{
+                <span class="min-w-0 flex-1 truncate">{{
                   getPlatformDisplayName(platform.id, platform.name)
                 }}</span>
+                <span
+                  v-if="platformHasConnectedBotForCurrentAgent(platform.id)"
+                  class="size-2 shrink-0 rounded-full bg-green-500"
+                  aria-hidden="true"
+                />
               </button>
             </div>
           </aside>

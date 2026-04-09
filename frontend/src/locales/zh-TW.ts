@@ -1000,6 +1000,9 @@ export default {
       addBotHint: '一個機器人只能被一個AI助手綁定，僅顯示未綁定的機器人',
       noUnboundBot: '暫無未綁定的機器人',
       selectBot: '請選擇要綁定的機器人',
+      statusOnline: "已連接",
+      statusError: "錯誤",
+      statusOffline: "未連接",
     },
     conversation: {
       empty: '暫無聊天記錄',
@@ -1695,7 +1698,7 @@ export default {
       online: '已連線',
       error: '錯誤',
       offline: '未連線',
-      provisioning: '建立中',
+      provisioning: "連線中",
     },
     bindAgent: {
       title: '選擇助手',
