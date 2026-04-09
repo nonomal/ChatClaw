@@ -1147,20 +1147,11 @@ func (m *Manager) handleProcessExit(pid int, exitErr error) {
 	time.Sleep(4 * time.Second)
 
 	// Port still occupied after process exit → OpenClaw detected a config change
-	// and is self-restarting. No need to trigger a rebuild — just wait.
+	// and is self-restarting; gateway is already back up. No action needed —
+	// reconnectClient will naturally succeed on its next polling attempt.
 	if gatewayPortOccupied(cfg.GatewayPort) {
-		m.app.Logger.Info("openclaw: config change detected, gateway self-restarting",
+		m.app.Logger.Info("openclaw: config change detected, gateway already recovered",
 			"port", cfg.GatewayPort)
-		m.broadcastStatus(RuntimeStatus{
-			Phase:    PhaseRestarting,
-			Message:  "检测到配置变更，OpenClaw 程序自检后正在重启，请稍候... 如等待时间过长，请使用 OpenClaw Doctor 诊断进行修复",
-			GatewayURL: gatewayURL(cfg.GatewayPort),
-		})
-		m.broadcastGatewayState(GatewayConnectionState{
-			Connected:     false,
-			Authenticated: false,
-			Reconnecting:  true,
-		})
 		return
 	}
 
