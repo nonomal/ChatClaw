@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { RefreshCw, Loader2, ExternalLink, Download, Square, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import * as OpenClawRuntimeService from '@bindings/chatclaw/internal/openclaw/runtime/openclawruntimeservice'
 import {
@@ -48,6 +49,9 @@ let unsubscribeGatewayState: (() => void) | undefined
 // 升级详情相关
 const showUpgradeDetails = ref(false)
 const upgradeOutputEl = ref<HTMLDivElement | null>(null)
+
+// 自动启动开关
+const autoStart = ref(true)
 
 // 继续/重新升级弹窗
 const showContinueRestartDialog = ref(false)
@@ -140,7 +144,26 @@ const loadStatus = async () => {
   } catch (e) {
     console.error('Failed to load OpenClaw gateway state:', e)
   }
+  try {
+    autoStart.value = await OpenClawRuntimeService.GetAutoStart()
+  } catch (e) {
+    console.error('Failed to load auto start setting:', e)
+  }
   syncGatewayStore()
+}
+
+const handleAutoStartChange = async (checked: boolean | 'indeterminate') => {
+  const enabled = checked === true
+  try {
+    await OpenClawRuntimeService.SetAutoStart(enabled)
+    autoStart.value = enabled
+    toast.success(
+      enabled ? t('settings.openclawRuntime.autoStartEnabled') : t('settings.openclawRuntime.autoStartDisabled')
+    )
+  } catch (e) {
+    console.error('Failed to set auto start:', e)
+    toast.error(t('settings.openclawRuntime.autoStartFailed'))
+  }
 }
 
 const handleRestart = async () => {
@@ -187,7 +210,7 @@ const handleStop = async () => {
   if (stopping.value) return
   stopping.value = true
   try {
-    await OpenClawRuntimeService.SetAutoStart(false)
+    await OpenClawRuntimeService.StopGateway()
     toast.success(t('settings.openclawRuntime.stopSuccess'))
 
     await new Promise((resolve) => setTimeout(resolve, 1500))
@@ -471,6 +494,21 @@ onUnmounted(() => {
             {{ t('settings.openclawRuntime.gatewayConnection') }}
           </span>
           <span class="text-sm text-muted-foreground">{{ gatewayConnectionLabel }}</span>
+        </div>
+
+        <!-- Auto-start setting -->
+        <div
+          class="flex items-center justify-between border-b border-border p-4 dark:border-white/10"
+        >
+          <div class="flex min-w-0 flex-1 flex-col gap-0.5 pr-4">
+            <span class="shrink-0 text-sm text-foreground">
+              {{ t('settings.openclawRuntime.autoStartLabel') }}
+            </span>
+            <span class="shrink-0 text-xs text-muted-foreground">
+              {{ t('settings.openclawRuntime.autoStartTooltip') }}
+            </span>
+          </div>
+          <Switch :model-value="autoStart" @update:model-value="handleAutoStartChange" />
         </div>
 
         <!-- Gateway URL -->

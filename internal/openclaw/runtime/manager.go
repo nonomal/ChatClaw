@@ -784,10 +784,13 @@ func (m *Manager) reconcileLocked(restart bool) error {
 		GatewayURL:       gatewayURL(cfg.GatewayPort),
 	})
 
+	// Ensure state dir and sandbox config are set up BEFORE the adopt/spawn branch.
+	// The adopt path skips process start entirely, so these must run here — not inside
+	// startProcess — to guarantee a consistent gateway state even when ChatClaw connects
+	// to an already-running OpenClaw process (e.g. after a system restart).
 	if err := ensureOpenClawStateDir(bundle, cfg.GatewayPort, cfg.GatewayToken); err != nil {
 		return fail("ensureOpenClawStateDir", err, version, 0)
 	}
-
 	ensureSandboxConfigured(bundle)
 
 	// Start process if needed
@@ -1004,18 +1007,34 @@ func (m *Manager) startProcess(cfg OpenClawConfig, bundle *bundledRuntime, insta
 	rawStreamPath := gatewayRawStreamLogPath(bundle.LogsDir)
 	_ = os.Remove(rawStreamPath)
 
-	cmd := exec.Command(bundle.CLIPath,
-		"gateway", "run",
-		"--allow-unconfigured",
-		"--port", strconv.Itoa(cfg.GatewayPort),
-		"--bind", "loopback",
-		"--auth", "token",
-		"--token", cfg.GatewayToken,
+	// On Windows, call node.exe directly so CREATE_NO_WINDOW takes effect.
+	// openclaw.cmd goes through cmd.exe which always creates a visible window
+	// even when the parent has CREATE_NO_WINDOW — node.exe itself can be hidden.
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		entryPath := filepath.Join(bundle.Root, "lib", "node_modules", "openclaw", "dist", "entry.js")
+		cmd = exec.Command(bundle.NodeExePath, entryPath,
+			"gateway", "run",
+			"--allow-unconfigured",
+			"--port", strconv.Itoa(cfg.GatewayPort),
+			"--bind", "loopback",
+			"--auth", "token",
+			"--token", cfg.GatewayToken,
+		)
+	} else {
+		cmd = exec.Command(bundle.CLIPath,
+			"gateway", "run",
+			"--allow-unconfigured",
+			"--port", strconv.Itoa(cfg.GatewayPort),
+			"--bind", "loopback",
+			"--auth", "token",
+			"--token", cfg.GatewayToken,
+		)
 		// Note: Do NOT pass --force here. The Manager already calls stopProcess()
 		// (via reconcileLocked) before startProcess, so the port is guaranteed
 		// clean. On Windows, --force runs "fuser" which is unavailable and causes
 		// the gateway to exit with status 1, triggering an unwanted restart loop.
-	)
+	}
 	cmd.Env = buildGatewayEnv(cfg, bundle)
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
@@ -1120,14 +1139,29 @@ func (m *Manager) handleProcessExit(pid int, exitErr error) {
 		return
 	}
 
-	// OpenClaw's built-in supervisor handles its own restart.
-	// We only update the status; WebSocket reconnect will naturally fail
-	// until OpenClaw recovers, then succeed on the next attempt.
+	cfg := m.store.Get()
+
+	// Wait 4 seconds before checking the port to avoid a race with the restarting
+	// gateway: the old process may still be releasing the socket while OpenClaw's
+	// supervisor is already spawning the new one.
+	time.Sleep(4 * time.Second)
+
+	// Port still occupied after process exit → OpenClaw detected a config change
+	// and is self-restarting; gateway is already back up. No action needed —
+	// reconnectClient will naturally succeed on its next polling attempt.
+	if gatewayPortOccupied(cfg.GatewayPort) {
+		m.app.Logger.Info("openclaw: config change detected, gateway already recovered",
+			"port", cfg.GatewayPort)
+		return
+	}
+
+	// Port is free → gateway is truly gone. OpenClaw's supervisor will handle
+	// the actual restart; we just wait for the port to come back.
 	m.broadcastStatus(RuntimeStatus{
 		Phase:      PhaseRestarting,
 		Message:    "OpenClaw Gateway exited, waiting for auto-recovery",
 		GatewayPID: 0,
-		GatewayURL: gatewayURL(m.store.Get().GatewayPort),
+		GatewayURL: gatewayURL(cfg.GatewayPort),
 	})
 	m.broadcastGatewayState(GatewayConnectionState{
 		Connected:     false,
@@ -1650,12 +1684,25 @@ func (m *Manager) SkillsStatus(ctx context.Context, agentID string) (json.RawMes
 // environment as the gateway process so config paths, node path, etc. are correct.
 // The gateway does NOT need to restart — channel config changes hot-apply via
 // file watcher (see docs/gateway/configuration: "Channels → No restart needed").
+// openClawCommand builds an exec.Cmd that runs the OpenClaw CLI.
+// On Windows it bypasses openclaw.cmd and calls node.exe directly so that
+// CREATE_NO_WINDOW takes effect on the node.exe process itself; on other
+// platforms it uses the regular openclaw shell script.
+func (m *Manager) openClawCommand(ctx context.Context, bundle *bundledRuntime, args ...string) *exec.Cmd {
+	if runtime.GOOS == "windows" {
+		entryPath := filepath.Join(bundle.Root, "lib", "node_modules", "openclaw", "dist", "entry.js")
+		allArgs := append([]string{entryPath}, args...)
+		return exec.CommandContext(ctx, bundle.NodeExePath, allArgs...)
+	}
+	return exec.CommandContext(ctx, bundle.CLIPath, args...)
+}
+
 func (m *Manager) ExecCLI(ctx context.Context, args ...string) ([]byte, error) {
 	bundle, err := resolveBundledRuntime()
 	if err != nil {
 		return nil, fmt.Errorf("resolve openclaw runtime for CLI exec: %w", err)
 	}
-	cmd := exec.CommandContext(ctx, bundle.CLIPath, args...)
+	cmd := m.openClawCommand(ctx, bundle, args...)
 	cmd.Env = buildGatewayEnv(m.store.Get(), bundle)
 	cmd.Dir = bundle.Root
 	setCmdHideWindow(cmd)
@@ -1679,7 +1726,7 @@ func (m *Manager) PrepareCLICommand(ctx context.Context, args ...string) (*exec.
 	if err != nil {
 		return nil, fmt.Errorf("resolve openclaw runtime for CLI exec: %w", err)
 	}
-	cmd := exec.CommandContext(ctx, bundle.CLIPath, args...)
+	cmd := m.openClawCommand(ctx, bundle, args...)
 	cmd.Env = buildGatewayEnv(m.store.Get(), bundle)
 	cmd.Dir = bundle.Root
 	setCmdHideWindow(cmd)
@@ -1688,18 +1735,21 @@ func (m *Manager) PrepareCLICommand(ctx context.Context, args ...string) (*exec.
 
 // ExecNpx runs an npx command using the bundled Node.js runtime with the same
 // isolated environment as the OpenClaw gateway process.
+// On Windows it calls node.exe directly to bypass npx.cmd so CREATE_NO_WINDOW works.
 func (m *Manager) ExecNpx(ctx context.Context, args ...string) ([]byte, error) {
 	bundle, err := resolveBundledRuntime()
 	if err != nil {
 		return nil, fmt.Errorf("resolve openclaw runtime for npx exec: %w", err)
 	}
-	var npxPath string
+	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		npxPath = filepath.Join(bundle.Root, "tools", "node", "npx.cmd")
+		npxJSPath := filepath.Join(bundle.Root, "tools", "node", "npx.js")
+		allArgs := append([]string{npxJSPath}, args...)
+		cmd = exec.CommandContext(ctx, bundle.NodeExePath, allArgs...)
 	} else {
-		npxPath = filepath.Join(bundle.Root, "tools", "node", "bin", "npx")
+		npxPath := filepath.Join(bundle.Root, "tools", "node", "bin", "npx")
+		cmd = exec.CommandContext(ctx, npxPath, args...)
 	}
-	cmd := exec.CommandContext(ctx, npxPath, args...)
 	cmd.Env = buildGatewayEnv(m.store.Get(), bundle)
 	cmd.Dir = bundle.Root
 	setCmdHideWindow(cmd)
