@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -355,6 +356,125 @@ type WhatsappLoginResult struct {
 	ChannelID int64  `json:"channel_id"`
 }
 
+func (s *OpenClawChannelService) hasOpenClawWhatsappChannels() (bool, error) {
+	db, err := s.db()
+	if err != nil {
+		return false, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var count int
+	if err := db.NewSelect().
+		Model((*channelModel)(nil)).
+		ColumnExpr("COUNT(1)").
+		Where(openClawChannelVisibilitySQL).
+		Where("ch.platform = ?", channels.PlatformWhatsapp).
+		Scan(ctx, &count); err != nil {
+		return false, errs.Wrap("error.channel_list_failed", err)
+	}
+	return count > 0, nil
+}
+
+func reusableWhatsappDraftAccountID(extraConfig string) string {
+	accountID := strings.TrimSpace(extractWhatsappAccountID(extraConfig))
+	if accountID == "" || strings.EqualFold(accountID, whatsappDefaultAccountID) {
+		return ""
+	}
+	return normalizeWhatsappAccountID(accountID)
+}
+
+func (s *OpenClawChannelService) resolvePendingWhatsappDraftAccountID(pending *channelModel) (string, error) {
+	if pending == nil {
+		return "", nil
+	}
+	if accountID := reusableWhatsappDraftAccountID(pending.ExtraConfig); accountID != "" {
+		return accountID, nil
+	}
+
+	accountID, err := s.nextWhatsappLoginAccountID()
+	if err != nil {
+		return "", err
+	}
+
+	nextExtraConfig, err := withWhatsappAccountID(pending.ExtraConfig, accountID)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(nextExtraConfig) != strings.TrimSpace(pending.ExtraConfig) {
+		if _, err := s.channelSvc.UpdateChannel(pending.ID, channels.UpdateChannelInput{ExtraConfig: &nextExtraConfig}); err != nil {
+			return "", err
+		}
+	}
+	return accountID, nil
+}
+
+func (s *OpenClawChannelService) resolveWhatsappStartupWarmupAccountID() (string, bool, error) {
+	if pending, err := s.findLatestPendingWhatsappDraftChannel(); err != nil {
+		return "", false, err
+	} else if pending != nil {
+		accountID, err := s.resolvePendingWhatsappDraftAccountID(pending)
+		if err != nil {
+			return "", false, err
+		}
+		return accountID, true, nil
+	}
+
+	hasChannels, err := s.hasOpenClawWhatsappChannels()
+	if err != nil {
+		return "", false, err
+	}
+	if hasChannels {
+		return "", false, nil
+	}
+
+	accountID, err := s.nextWhatsappLoginAccountID()
+	if err != nil {
+		return "", false, err
+	}
+	return accountID, true, nil
+}
+
+// PrepareWhatsappChannelOnAppStartup pre-warms the first WhatsApp account config
+// before the gateway starts, so opening the "add now" dialog avoids an extra restart.
+func (s *OpenClawChannelService) PrepareWhatsappChannelOnAppStartup() {
+	startedAt := time.Now()
+	accountID, shouldWarmup, err := s.resolveWhatsappStartupWarmupAccountID()
+	if err != nil {
+		s.app.Logger.Warn("openclaw: whatsapp startup warmup skipped because account resolution failed",
+			"duration", time.Since(startedAt).String(),
+			"error", err)
+		return
+	}
+	if !shouldWarmup {
+		s.app.Logger.Debug("openclaw: whatsapp startup warmup skipped because channels already exist")
+		return
+	}
+
+	accountID = normalizeWhatsappAccountID(accountID)
+	changed, err := s.ensureWhatsappChannelEnabled(accountID)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			s.app.Logger.Info("openclaw: whatsapp startup warmup skipped because openclaw config is not ready",
+				"accountId", accountID,
+				"duration", time.Since(startedAt).String())
+			return
+		}
+		s.app.Logger.Warn("openclaw: whatsapp startup warmup failed",
+			"accountId", accountID,
+			"duration", time.Since(startedAt).String(),
+			"error", err)
+		return
+	}
+
+	s.rememberPreparedWhatsappAccountID(accountID)
+	s.app.Logger.Info("openclaw: whatsapp startup warmup completed",
+		"accountId", accountID,
+		"configChanged", changed,
+		"duration", time.Since(startedAt).String())
+}
+
 func (s *OpenClawChannelService) ensureWhatsappLoginMap() {
 	if s.whatsappLogins == nil {
 		s.whatsappLogins = make(map[string]*whatsappLoginSession)
@@ -612,24 +732,9 @@ func (s *OpenClawChannelService) resolveWhatsappLoginAccountID() (string, error)
 	if pending, err := s.findLatestPendingWhatsappDraftChannel(); err != nil {
 		return "", err
 	} else if pending != nil {
-		accountID := strings.TrimSpace(extractWhatsappAccountID(pending.ExtraConfig))
-		if accountID != "" && !strings.EqualFold(accountID, whatsappDefaultAccountID) {
-			s.rememberPreparedWhatsappAccountID(accountID)
-			return accountID, nil
-		}
-
-		accountID, err = s.nextWhatsappLoginAccountID()
+		accountID, err := s.resolvePendingWhatsappDraftAccountID(pending)
 		if err != nil {
 			return "", err
-		}
-		nextExtraConfig, err := withWhatsappAccountID(pending.ExtraConfig, accountID)
-		if err != nil {
-			return "", err
-		}
-		if strings.TrimSpace(nextExtraConfig) != strings.TrimSpace(pending.ExtraConfig) {
-			if _, err := s.channelSvc.UpdateChannel(pending.ID, channels.UpdateChannelInput{ExtraConfig: &nextExtraConfig}); err != nil {
-				return "", err
-			}
 		}
 		s.rememberPreparedWhatsappAccountID(accountID)
 		return accountID, nil

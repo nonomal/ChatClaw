@@ -19,14 +19,17 @@ import (
 )
 
 const (
-	wechatCLIPackage            = "@tencent-weixin/openclaw-weixin-cli"
-	wechatCLIPackageWithTag     = "@tencent-weixin/openclaw-weixin-cli@latest"
-	wechatPluginID              = "openclaw-weixin"
-	wechatPluginInstallTimeout  = 5 * time.Minute
-	wechatLoginWaitTimeout      = 5 * time.Minute
-	wechatExtensionSubdir       = "extensions/openclaw-weixin"
-	wechatNPXInstallMaxAttempts = 4
-	wechatDefaultAppID          = "bot"
+	wechatCLIPackage                = "@tencent-weixin/openclaw-weixin-cli"
+	wechatCLIPackageWithTag         = "@tencent-weixin/openclaw-weixin-cli@latest"
+	wechatPluginPackageName         = "@tencent-weixin/openclaw-weixin"
+	wechatPluginID                  = "openclaw-weixin"
+	wechatPluginInstallTimeout      = 5 * time.Minute
+	wechatLoginWaitTimeout          = 5 * time.Minute
+	wechatExtensionSubdir           = "extensions/openclaw-weixin"
+	wechatInstallStagePrefix        = ".openclaw-install-stage-"
+	wechatNPXInstallMaxAttempts     = 4
+	wechatDefaultAppID              = "bot"
+	wechatPluginPackageManifestName = "package.json"
 )
 
 // WechatChannelPreparation is returned by PrepareWechatChannel for the Wails UI before opening the WeChat flow.
@@ -37,7 +40,58 @@ type WechatChannelPreparation struct {
 }
 
 type wechatPluginPackageJSON struct {
+	Name       string `json:"name"`
 	ILinkAppID string `json:"ilink_appid"`
+}
+
+func readPluginPackageName(pluginDir string) string {
+	raw, err := os.ReadFile(filepath.Join(pluginDir, wechatPluginPackageManifestName))
+	if err != nil {
+		return ""
+	}
+	var pkg wechatPluginPackageJSON
+	if err := json.Unmarshal(raw, &pkg); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(pkg.Name)
+}
+
+func removeStalePluginInstallStageDirs(extensionsDir string, installedDir string, packageName string) (int, error) {
+	if strings.TrimSpace(extensionsDir) == "" || strings.TrimSpace(installedDir) == "" || strings.TrimSpace(packageName) == "" {
+		return 0, nil
+	}
+	if readPluginPackageName(installedDir) != strings.TrimSpace(packageName) {
+		return 0, nil
+	}
+
+	entries, err := os.ReadDir(extensionsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+
+	removed := 0
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := strings.TrimSpace(entry.Name())
+		if !strings.HasPrefix(name, wechatInstallStagePrefix) {
+			continue
+		}
+
+		stageDir := filepath.Join(extensionsDir, name)
+		if readPluginPackageName(stageDir) != strings.TrimSpace(packageName) {
+			continue
+		}
+		if err := os.RemoveAll(stageDir); err != nil {
+			return removed, err
+		}
+		removed++
+	}
+	return removed, nil
 }
 
 func (s *OpenClawChannelService) readWechatPluginAppID() (string, error) {
@@ -78,6 +132,28 @@ func (s *OpenClawChannelService) isWechatPluginInstalledLocally() bool {
 	pluginDir := filepath.Join(stateDir, wechatExtensionSubdir)
 	info, err := os.Stat(pluginDir)
 	return err == nil && info.IsDir()
+}
+
+func (s *OpenClawChannelService) cleanupStaleWechatPluginInstallStages() {
+	if s == nil || s.openclawManager == nil {
+		return
+	}
+	stateDir, err := s.openclawManager.BundleStateDir()
+	if err != nil {
+		s.app.Logger.Warn("openclaw: failed to resolve state dir while cleaning stale wechat plugin install stage", "error", err)
+		return
+	}
+
+	extensionsDir := filepath.Join(stateDir, "extensions")
+	installedDir := filepath.Join(stateDir, wechatExtensionSubdir)
+	removed, err := removeStalePluginInstallStageDirs(extensionsDir, installedDir, wechatPluginPackageName)
+	if err != nil {
+		s.app.Logger.Warn("openclaw: failed to clean stale wechat plugin install stage", "extensions", extensionsDir, "error", err)
+		return
+	}
+	if removed > 0 {
+		s.app.Logger.Info("openclaw: cleaned stale wechat plugin install stage directories", "removed", removed, "extensions", extensionsDir)
+	}
 }
 
 // IsWechatPluginInstalled reports whether the WeChat OpenClaw plugin is installed (Wails UI).
@@ -498,6 +574,7 @@ func (s *OpenClawChannelService) ensureWechatPluginInstalled(ctx context.Context
 	} else {
 		s.app.Logger.Info("openclaw: wechat plugin already installed, skipping install")
 	}
+	s.cleanupStaleWechatPluginInstallStages()
 
 	// Step 2: enable if the plugin is not yet enabled in openclaw.json.
 	if !s.isWechatPluginEnabled() {
@@ -533,6 +610,7 @@ func (s *OpenClawChannelService) ensureWechatPluginInstalled(ctx context.Context
 
 	// Step 4: restart gateway only if the install or enable state changed.
 	if needsRestart {
+		s.cleanupStaleWechatPluginInstallStages()
 		if err := s.restartOpenClawGateway(); err != nil {
 			s.app.Logger.Warn("openclaw: gateway restart after wechat plugin setup failed", "error", err)
 		} else {
@@ -778,6 +856,7 @@ func (s *OpenClawChannelService) WaitForWechatLogin(sessionKey string, channelNa
 	}
 
 	// Step 5: Restart gateway once — loads credentials AND the new binding together.
+	s.cleanupStaleWechatPluginInstallStages()
 	if err := s.restartOpenClawGateway(); err != nil {
 		s.app.Logger.Warn("openclaw: gateway restart after wechat login failed", "error", err)
 	} else {
@@ -974,6 +1053,7 @@ func (s *OpenClawChannelService) applyWechatOpenClawRouting(
 	}
 
 	if restartGateway {
+		s.cleanupStaleWechatPluginInstallStages()
 		if err := s.restartOpenClawGateway(); err != nil {
 			return err
 		}

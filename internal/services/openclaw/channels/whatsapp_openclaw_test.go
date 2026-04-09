@@ -53,6 +53,38 @@ func TestWithWhatsappAccountID(t *testing.T) {
 	})
 }
 
+func TestReusableWhatsappDraftAccountID(t *testing.T) {
+	tests := []struct {
+		name        string
+		extraConfig string
+		want        string
+	}{
+		{
+			name:        "rejects empty config",
+			extraConfig: "",
+			want:        "",
+		},
+		{
+			name:        "rejects implicit default placeholder",
+			extraConfig: `{"platform":"whatsapp","account_id":"default"}`,
+			want:        "",
+		},
+		{
+			name:        "accepts non default account id",
+			extraConfig: `{"platform":"whatsapp","account_id":"whatsapp_demo123"}`,
+			want:        "whatsapp_demo123",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := reusableWhatsappDraftAccountID(tt.extraConfig); got != tt.want {
+				t.Fatalf("reusableWhatsappDraftAccountID(%q) = %q, want %q", tt.extraConfig, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestEnsureWhatsappAccountConfigEntry(t *testing.T) {
 	tests := []struct {
 		name    string
