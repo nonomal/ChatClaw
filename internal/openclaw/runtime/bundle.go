@@ -22,7 +22,8 @@ type bundledRuntimeManifest struct {
 
 type bundledRuntime struct {
 	Root       string
-	CLIPath    string
+	CLIPath    string // path to openclaw.cmd / openclaw
+	NodeExePath string // path to tools/node/node.exe (Windows) or tools/node/bin/node (non-Windows)
 	StateDir   string
 	ConfigPath string
 	LogsDir    string
@@ -119,14 +120,22 @@ func loadBundledRuntimeCandidate(
 		return nil, fmt.Errorf("runtime CLI missing at %s: %w", cliPath, err)
 	}
 
+	var nodeExePath string
+	if runtime.GOOS == "windows" {
+		nodeExePath = filepath.Join(root, "tools", "node", "node.exe")
+	} else {
+		nodeExePath = filepath.Join(root, "tools", "node", "bin", "node")
+	}
+
 	return &bundledRuntime{
-		Root:       root,
-		CLIPath:    cliPath,
-		StateDir:   stateDir,
-		ConfigPath: filepath.Join(stateDir, "openclaw.json"),
-		LogsDir:    filepath.Join(stateDir, "logs"),
-		Source:     candidate.Source,
-		Manifest:   manifest,
+		Root:        root,
+		CLIPath:     cliPath,
+		NodeExePath: nodeExePath,
+		StateDir:    stateDir,
+		ConfigPath:  filepath.Join(stateDir, "openclaw.json"),
+		LogsDir:     filepath.Join(stateDir, "logs"),
+		Source:      candidate.Source,
+		Manifest:    manifest,
 	}, nil
 }
 
