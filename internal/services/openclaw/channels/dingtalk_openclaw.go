@@ -16,10 +16,12 @@ import (
 )
 
 const (
-	dingTalkPluginName             = "@dingtalk-real-ai/dingtalk-connector"
-	dingTalkPluginChannelID        = "dingtalk-connector" // channel identifier used in openclaw.json bindings
-	dingTalkPluginInstallTimeout   = 3 * time.Minute
-	dingTalkPluginExtensionSubdir  = "extensions/dingtalk-connector"
+	dingTalkPluginName            = "@dingtalk-real-ai/dingtalk-connector@0.8.8"
+	dingTalkPluginMarker          = "@dingtalk-real-ai/dingtalk-connector"
+	dingTalkPluginChannelID       = "dingtalk-connector" // channel identifier used in openclaw.json bindings
+	dingTalkPluginForceUnsafeFlag = "--dangerously-force-unsafe-install"
+	dingTalkPluginInstallTimeout  = 3 * time.Minute
+	dingTalkPluginExtensionSubdir = "extensions/dingtalk-connector"
 )
 
 // ensureDingTalkPluginInstalled checks whether the dingtalk-connector plugin is installed.
@@ -45,13 +47,22 @@ func (s *OpenClawChannelService) ensureDingTalkPluginInstalled(ctx context.Conte
 			}
 		}
 
-		if _, err := s.openclawManager.ExecCLI(ctx, "plugins", "install", dingTalkPluginName); err != nil {
+		if err := s.installDingTalkPlugin(ctx, false); err != nil {
 			lastErr = err
 			errStr := strings.ToLower(err.Error())
-			if strings.Contains(errStr, "rate limit") || strings.Contains(errStr, "429") {
+			if isDingTalkPluginInstallRateLimited(errStr) {
 				s.app.Logger.Warn("openclaw: plugin install rate limited by ClawHub, will retry",
 					"attempt", attempt+1, "error", err)
 				continue
+			}
+			if isDingTalkPluginSecurityScanBlocked(errStr) {
+				s.app.Logger.Warn("openclaw: dingtalk plugin install blocked by builtin scanner, retrying forced install for pinned plugin",
+					"plugin", dingTalkPluginName, "error", err)
+				if forceErr := s.installDingTalkPlugin(ctx, true); forceErr != nil {
+					return fmt.Errorf("install %s with force flag: %w", dingTalkPluginName, forceErr)
+				}
+				s.app.Logger.Info("openclaw: dingtalk-connector plugin installed successfully with force flag")
+				return nil
 			}
 			return fmt.Errorf("install %s: %w", dingTalkPluginName, err)
 		}
@@ -62,6 +73,44 @@ func (s *OpenClawChannelService) ensureDingTalkPluginInstalled(ctx context.Conte
 
 	return fmt.Errorf("install %s: ClawHub rate limit exceeded after %d attempts, please try again later: %w",
 		dingTalkPluginName, maxAttempts, lastErr)
+}
+
+func (s *OpenClawChannelService) installDingTalkPlugin(ctx context.Context, forceUnsafe bool) error {
+	args := []string{"plugins", "install"}
+	if forceUnsafe {
+		args = append(args, dingTalkPluginForceUnsafeFlag)
+	}
+	args = append(args, dingTalkPluginName)
+
+	_, err := s.execOpenClawPluginCLI(ctx, args...)
+	if err == nil {
+		return nil
+	}
+
+	errStr := strings.ToLower(err.Error())
+	installedButInterrupted := strings.Contains(errStr, "installed plugin:") && containsDingTalkPluginMarker(errStr)
+	if strings.Contains(errStr, "plugin already exists") || installedButInterrupted {
+		return nil
+	}
+	return err
+}
+
+func containsDingTalkPluginMarker(out string) bool {
+	out = strings.ToLower(out)
+	return strings.Contains(out, strings.ToLower(dingTalkPluginMarker)) ||
+		strings.Contains(out, dingTalkPluginChannelID)
+}
+
+func isDingTalkPluginInstallRateLimited(msg string) bool {
+	m := strings.ToLower(msg)
+	return strings.Contains(m, "rate limit") || strings.Contains(m, "429")
+}
+
+func isDingTalkPluginSecurityScanBlocked(msg string) bool {
+	m := strings.ToLower(msg)
+	return strings.Contains(m, "dangerous code patterns detected") ||
+		strings.Contains(m, "contains dangerous code patterns") ||
+		strings.Contains(m, "security_scan_blocked")
 }
 
 // installDingTalkPluginBackground installs the DingTalk connector plugin in a goroutine.

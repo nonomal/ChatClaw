@@ -588,6 +588,9 @@ func NewApp(opts Options) (app *application.App, cleanup func(), err error) {
 		floatingBallService.InitFromSettings()
 		// Ensure external toolchain binaries (uv, bun) are installed/updated in background.
 		go toolchainService.EnsureAll()
+		// Pre-warm WhatsApp channel config before the gateway process starts to avoid
+		// a user-triggered restart when opening "立即添加".
+		openClawChannelService.PrepareWhatsappChannelOnAppStartup()
 		// Start OpenClaw Gateway in background.
 		openclawManager.Start()
 		// Ensure builtin skills are installed in background.

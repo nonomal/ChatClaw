@@ -358,9 +358,14 @@ func (s *AgentService) stateDir() string {
 }
 
 func (s *AgentService) createAgent(ctx context.Context, agent openclawagents.OpenClawAgent) error {
+	workspace := s.resolveAgentWorkspace(agent)
+	if err := ensureAgentWorkspaceStateDir(workspace); err != nil {
+		return fmt.Errorf("prepare agent workspace %s: %w", workspace, err)
+	}
+
 	params := map[string]any{
 		"name":      agent.OpenClawAgentID,
-		"workspace": s.resolveAgentWorkspace(agent),
+		"workspace": workspace,
 	}
 	// Pass identity (emoji/theme) for OpenClaw console UI display.
 	identity := map[string]any{}
@@ -374,8 +379,39 @@ func (s *AgentService) createAgent(ctx context.Context, agent openclawagents.Ope
 		params["identity"] = identity
 	}
 	var resp map[string]any
-	if err := s.manager.Request(ctx, "agents.create", params, &resp); err != nil {
-		return err
+	sendCreate := func() error {
+		resp = nil
+		return s.manager.Request(ctx, "agents.create", params, &resp)
+	}
+	if err := sendCreate(); err != nil {
+		if isAgentAlreadyExistsError(err) {
+			// Another concurrent flow may have created it already.
+			s.app.Logger.Info("openclaw: agents.create skipped because agent already exists",
+				"agentId", agent.OpenClawAgentID,
+				"workspace", workspace)
+		} else if isWorkspaceStateRenameENOENT(err) {
+			// OpenClaw occasionally fails the first create with:
+			// ENOENT ... rename workspace-state.json.tmp -> workspace-state.json.
+			// Ensure workspace/.openclaw and retry once to avoid surfacing a transient bind error.
+			s.app.Logger.Warn("openclaw: agents.create hit transient workspace-state ENOENT, retrying once",
+				"agentId", agent.OpenClawAgentID,
+				"workspace", workspace,
+				"error", err)
+			if ensureErr := ensureAgentWorkspaceStateDir(workspace); ensureErr != nil {
+				return fmt.Errorf("re-prepare agent workspace %s: %w", workspace, ensureErr)
+			}
+			time.Sleep(250 * time.Millisecond)
+			if retryErr := sendCreate(); retryErr != nil {
+				if !isAgentAlreadyExistsError(retryErr) {
+					return retryErr
+				}
+				s.app.Logger.Info("openclaw: agents.create retry resolved as already-exists",
+					"agentId", agent.OpenClawAgentID,
+					"workspace", workspace)
+			}
+		} else {
+			return err
+		}
 	}
 	// agents.create derives the agent ID from the name param, so we pass
 	// OpenClawAgentID above. Now set the human-readable display name via update.
@@ -456,4 +492,40 @@ func ensureLongTermMemoryFile(workspaceDir string) error {
 	}
 
 	return os.WriteFile(path, nil, 0o644)
+}
+
+func ensureAgentWorkspaceStateDir(workspaceDir string) error {
+	workspaceDir = strings.TrimSpace(workspaceDir)
+	if workspaceDir == "" {
+		return fmt.Errorf("workspace path is empty")
+	}
+	if err := os.MkdirAll(workspaceDir, 0o755); err != nil {
+		return err
+	}
+	return os.MkdirAll(filepath.Join(workspaceDir, ".openclaw"), 0o755)
+}
+
+func isWorkspaceStateRenameENOENT(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	if !strings.Contains(msg, "enoent") {
+		return false
+	}
+	if !strings.Contains(msg, "workspace-state.json") {
+		return false
+	}
+	return strings.Contains(msg, "rename")
+}
+
+func isAgentAlreadyExistsError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	if !strings.Contains(msg, "already exists") {
+		return false
+	}
+	return strings.Contains(msg, "agent")
 }

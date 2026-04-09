@@ -1660,16 +1660,11 @@ func (s *OpenClawChannelService) syncOpenClawWeComDefaultConfig(ctx context.Cont
 func (s *OpenClawChannelService) restartOpenClawGateway() error {
 	// Notify frontend immediately so it shows "重启中" before reconcile runs.
 	s.openclawManager.NotifyGatewayRestarting()
-	// Must run Manager restart (not only CLI): reconciles process + WS and broadcasts
-	ctx, cancel := context.WithTimeout(context.Background(), openClawCLIRetryTimeout)
-	defer cancel()
-	_, err := s.openclawManager.ExecCLI(ctx, "gateway", "stop")
+	// Use Manager lifecycle restart to avoid depending on `openclaw gateway start`,
+	// which may require launchctl bootstrap on macOS.
+	_, err := s.openclawManager.RestartGateway()
 	if err != nil {
-		return fmt.Errorf("openclaw gateway stop: %w", err)
-	}
-	_, err = s.openclawManager.ExecCLI(ctx, "gateway", "start")
-	if err != nil {
-		return fmt.Errorf("openclaw gateway start: %w", err)
+		return fmt.Errorf("openclaw gateway restart: %w", err)
 	}
 	return nil
 }
