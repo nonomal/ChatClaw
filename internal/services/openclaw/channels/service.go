@@ -582,8 +582,8 @@ func (s *OpenClawChannelService) connectChannelInBackground(id int64) {
 		s.app.Logger.Warn("openclaw: background connect channel failed", "channel_id", id, "error", err)
 		errCtx, errCancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer errCancel()
-		enabled := true
-		if setErr := s.setOpenClawChannelState(errCtx, id, &enabled, channels.StatusError); setErr != nil {
+		enabled := false
+		if setErr := s.setOpenClawChannelState(errCtx, id, &enabled, channels.StatusOffline); setErr != nil {
 			s.app.Logger.Warn("openclaw: failed to persist channel error state", "channel_id", id, "error", setErr)
 		}
 	}
