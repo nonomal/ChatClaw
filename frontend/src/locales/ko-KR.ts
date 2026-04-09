@@ -1055,6 +1055,9 @@ export default {
         '각 봇은 하나의 AI 어시스턴트에만 연결할 수 있습니다. 연결되지 않은 봇만 표시됩니다',
       noUnboundBot: '연결 가능한 봇 없음',
       selectBot: '연결할 봇을 선택하세요',
+      statusOnline: "연결됨",
+      statusError: "오류",
+      statusOffline: "연결 안 됨",
     },
     conversation: {
       empty: '채팅 기록 없음',
@@ -1867,7 +1870,7 @@ export default {
       online: '연결됨',
       error: '오류',
       offline: '연결 끊김',
-      provisioning: '생성 중',
+      provisioning: "연결 중",
     },
     bindAgent: {
       title: '어시스턴트 선택',

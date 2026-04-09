@@ -1025,6 +1025,9 @@ export default {
         'Cada bot solo puede vincularse a un asistente de IA. Solo se muestran los bots no vinculados.',
       noUnboundBot: 'Sin bots no vinculados disponibles',
       selectBot: 'Por favor selecciona un bot para vincular',
+      statusOnline: "Conectado",
+      statusError: "Error",
+      statusOffline: "Desconectado",
     },
     conversation: {
       empty: 'Sin historial de chat',
@@ -1757,7 +1760,7 @@ export default {
       online: 'Conectado',
       error: 'Error',
       offline: 'Desconectado',
-      provisioning: 'Creando',
+      provisioning: "Conectando…",
     },
     bindAgent: {
       title: 'Seleccionar asistente',

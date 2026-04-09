@@ -1025,6 +1025,9 @@ export default {
         '各ボットは 1 つの AI アシスタントにのみ連携できます。未連携のボットのみ表示されます',
       noUnboundBot: '未連携のボットはありません',
       selectBot: '連携するボットを選択してください',
+      statusOnline: "接続済み",
+      statusError: "エラー",
+      statusOffline: "未接続",
     },
     conversation: {
       empty: 'チャット履歴はありません',
@@ -1758,7 +1761,7 @@ export default {
       online: '接続済み',
       error: 'エラー',
       offline: '切断済み',
-      provisioning: '作成中',
+      provisioning: "接続中",
     },
     bindAgent: {
       title: 'アシスタントを選択',

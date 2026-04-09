@@ -1015,6 +1015,9 @@ export default {
         'প্রতিটি বট কেবল একটি AI অ্যাসিস্ট্যান্টের সাথে যুক্ত হতে পারে। শুধু আনবাইন্ড থাকা বটগুলো দেখানো হয়।',
       noUnboundBot: 'কোনো আনবাইন্ড বট নেই',
       selectBot: 'বাইন্ড করার জন্য বট সিলেক্ট করুন',
+      statusOnline: "সংযুক্ত",
+      statusError: "ত্রুটি",
+      statusOffline: "সংযোগহীন",
     },
     conversation: {
       empty: 'কোনো চ্যাট ইতিহাস নেই',
@@ -1737,7 +1740,7 @@ export default {
       online: 'কানেক্টেড',
       error: 'ত্রুটি',
       offline: 'ডিসকানেক্টেড',
-      provisioning: 'তৈরি হচ্ছে',
+      provisioning: "সংযোগ হচ্ছে…",
     },
     bindAgent: {
       title: 'অ্যাসিস্ট্যান্ট সিলেক্ট',
