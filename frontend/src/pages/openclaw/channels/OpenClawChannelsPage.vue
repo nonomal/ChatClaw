@@ -145,6 +145,12 @@ const platformGroupsWithChannels = computed(() => {
     .filter((g) => g.channels.length > 0)
 })
 
+/** Supported grid: only platforms with no channel yet; hide whole block when none left. */
+const platformsWithoutConfiguredChannel = computed(() => {
+  const withChannel = new Set(channels.value.map((c) => c.platform))
+  return platforms.value.filter((p) => !withChannel.has(p.id))
+})
+
 function platformTileIconBgClass(platformId: string): string {
   switch (platformId) {
     case 'wechat':
@@ -791,10 +797,10 @@ watch(isTabActive, (active) => {
           {{ t('channels.subtitle') }}
         </p>
       </div>
-      <Button class="h-9 gap-1" variant="default" @click="handleAddChannel">
+      <!-- <Button class="h-9 gap-1" variant="default" @click="handleAddChannel">
         <Plus class="h-4 w-4 shrink-0" />
         {{ t('channels.addChannel') }}
-      </Button>
+      </Button>-->
     </div>
 
     <div class="flex-1 overflow-y-auto px-6 pb-6">
@@ -1058,15 +1064,16 @@ watch(isTabActive, (active) => {
           </div>
         </template>
 
-        <h2
-          class="mb-4 text-base font-semibold text-[#262626] dark:text-foreground"
-          :class="channels.length > 0 ? 'mt-8' : ''"
-        >
-          {{ t('channels.supported.title') }}
-        </h2>
-        <div class="flex flex-wrap gap-4">
+        <template v-if="platformsWithoutConfiguredChannel.length > 0">
+          <h2
+            class="mb-4 text-base font-semibold text-[#262626] dark:text-foreground"
+            :class="channels.length > 0 ? 'mt-8' : ''"
+          >
+            {{ t('channels.supported.title') }}
+          </h2>
+          <div class="flex flex-wrap gap-4">
           <div
-            v-for="p in platforms"
+            v-for="p in platformsWithoutConfiguredChannel"
             :key="p.id"
             class="flex h-[138px] w-[300px] flex-col justify-between rounded-2xl border border-[#d9d9d9] bg-white p-4 shadow-sm dark:border-border dark:bg-card dark:shadow-none dark:ring-1 dark:ring-white/10"
           >
@@ -1110,6 +1117,7 @@ watch(isTabActive, (active) => {
             </div>
           </div>
         </div>
+        </template>
       </template>
 
       <template v-else>
