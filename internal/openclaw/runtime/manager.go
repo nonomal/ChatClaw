@@ -46,6 +46,9 @@ type Manager struct {
 
 	opMu sync.Mutex
 	mu   sync.RWMutex
+	// reconciling blocks pollClient from broadcasting PhaseRestarting during
+	// intentional restarts (reconcile), so the UI stays stable.
+	reconciling atomic.Bool
 
 	status       RuntimeStatus
 	gatewayState GatewayConnectionState
@@ -58,28 +61,28 @@ type Manager struct {
 	processDone  chan error
 	processLog   *os.File
 
-	expectedStopPID   int
-	shuttingDown      bool
-	reconnecting      atomic.Bool
-	pendingPairApproval atomic.Bool // set when NOT_PAIRED detected; cleared after approve succeeds or gives up
-	consecutiveFailures int         // resets on successful connect; triggers Doctor auto-fix at threshold
-	doctorTriggered    bool        // prevents repeated Doctor triggers for the same outage window
-	pollingStop       chan struct{} // closed when Manager is shut down; context for polling goroutine
-	pollingMu         sync.Mutex   // serialises pollClient and Shutdown to prevent stale-phase flash
+	expectedStopPID     int
+	shuttingDown        bool
+	reconnecting        atomic.Bool
+	pendingPairApproval atomic.Bool   // set when NOT_PAIRED detected; cleared after approve succeeds or gives up
+	consecutiveFailures int           // resets on successful connect; triggers Doctor auto-fix at threshold
+	doctorTriggered     bool          // prevents repeated Doctor triggers for the same outage window
+	pollingStop         chan struct{} // closed when Manager is shut down; context for polling goroutine
+	pollingMu           sync.Mutex    // serialises pollClient and Shutdown to prevent stale-phase flash
 
 	eventListenersMu sync.RWMutex
 	eventListeners   map[string]EventListener // keyed by caller-chosen ID
 
-	upgradeProgressCb    func(progress int, message string)
-	upgradeMu            sync.Mutex  // serialises upgradeRuntimeLocked vs reconcileLocked to prevent OSS cascade
-	upgradeInProgress    atomic.Bool // set during upgrade so reconcileLocked skips OSS fallback
-	upgradeCancelCh      chan struct{}
-	upgradeStartTime     time.Time
-	upgradeOutputBuf     strings.Builder
+	upgradeProgressCb func(progress int, message string)
+	upgradeMu         sync.Mutex  // serialises upgradeRuntimeLocked vs reconcileLocked to prevent OSS cascade
+	upgradeInProgress atomic.Bool // set during upgrade so reconcileLocked skips OSS fallback
+	upgradeCancelCh   chan struct{}
+	upgradeStartTime  time.Time
+	upgradeOutputBuf  strings.Builder
 
 	doctorRunSeq uint64 // atomic: correlates streamed doctor chunks with the active UI run
 
-	configSvc *ConfigService            // injected via SetConfigService for SyncConfig
+	configSvc   *ConfigService      // injected via SetConfigService for SyncConfig
 	modelsCache *gatewayModelsCache // in-memory cache of gateway models, loaded from openclaw.json
 
 	systemModeIsOpenClaw atomic.Bool // set by frontend to signal that the sidebar is in openclaw mode
@@ -436,7 +439,7 @@ func (m *Manager) Start() {
 // real state and updates the UI — it never blocks, never stops on its own,
 // and is only cancelled when Shutdown() closes pollingStop.
 func (m *Manager) pollGateway() {
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -462,21 +465,48 @@ func (m *Manager) pollClient() {
 	m.mu.RUnlock()
 
 	if connected {
-		return // Already connected, nothing to do.
+		// WS is up — if the UI still shows a degraded phase (e.g. "restarting" after
+		// NotifyGatewayRestarting), push the correct state so it updates immediately
+		// without waiting for the next GetStatus() poll.
+		m.mu.RLock()
+		phase := m.status.Phase
+		m.mu.RUnlock()
+		if phase != PhaseConnected {
+			m.mu.RLock()
+			pid := m.processPID
+			version := m.status.InstalledVersion
+			runtimeSource := m.status.RuntimeSource
+			runtimePath := m.status.RuntimePath
+			m.mu.RUnlock()
+			cfg := m.store.Get()
+			m.broadcastStatus(RuntimeStatus{
+				Phase:            PhaseConnected,
+				Message:          "OpenClaw Gateway connected",
+				InstalledVersion: version,
+				RuntimeSource:    runtimeSource,
+				RuntimePath:      runtimePath,
+				GatewayPID:       pid,
+				GatewayURL:       gatewayURL(cfg.GatewayPort),
+			})
+		}
+		return
 	}
 
 	// Not connected — determine the right response based on gateway liveness.
+	// Skip if a reconcile is in progress (intentional restart), which manages its own broadcasts.
 	if !alive {
 		// Gateway not responding at all.
 		m.mu.RLock()
 		prevPhase := m.status.Phase
 		m.mu.RUnlock()
 		if prevPhase == PhaseConnected || prevPhase == PhaseConnecting || prevPhase == PhaseError {
-			m.broadcastStatus(RuntimeStatus{
-				Phase:      PhaseRestarting,
-				Message:    "OpenClaw Gateway not responding",
-				GatewayURL: gatewayURL(cfg.GatewayPort),
-			})
+			if !m.reconciling.Load() {
+				m.broadcastStatus(RuntimeStatus{
+					Phase:      PhaseRestarting,
+					Message:    "OpenClaw Gateway not responding",
+					GatewayURL: gatewayURL(cfg.GatewayPort),
+				})
+			}
 		}
 		// No process, no port — nothing to reconnect to.
 		return
@@ -684,6 +714,10 @@ func (m *Manager) reconcileLocked(restart bool) error {
 	if m.isShuttingDown() {
 		return fmt.Errorf("runtime is shutting down")
 	}
+
+	// Block pollClient from broadcasting PhaseRestarting during this whole operation.
+	m.reconciling.Store(true)
+	defer m.reconciling.Store(false)
 
 	cfg := m.store.Get()
 
@@ -1090,10 +1124,10 @@ func (m *Manager) handleProcessExit(pid int, exitErr error) {
 	// We only update the status; WebSocket reconnect will naturally fail
 	// until OpenClaw recovers, then succeed on the next attempt.
 	m.broadcastStatus(RuntimeStatus{
-		Phase:            PhaseRestarting,
-		Message:          "OpenClaw Gateway exited, waiting for auto-recovery",
-		GatewayPID:       0,
-		GatewayURL:       gatewayURL(m.store.Get().GatewayPort),
+		Phase:      PhaseRestarting,
+		Message:    "OpenClaw Gateway exited, waiting for auto-recovery",
+		GatewayPID: 0,
+		GatewayURL: gatewayURL(m.store.Get().GatewayPort),
 	})
 	m.broadcastGatewayState(GatewayConnectionState{
 		Connected:     false,
@@ -1205,7 +1239,8 @@ func (m *Manager) closeClient() {
 // REST endpoint (/) returns an HTML redirect instead of JSON.
 //
 // Actual JSON structure observed from openclaw CLI --json:
-//   { "pending": [{ "requestId": "...", "deviceId": "...", "displayName": "ChatClaw", ... }], "paired": [...] }
+//
+//	{ "pending": [{ "requestId": "...", "deviceId": "...", "displayName": "ChatClaw", ... }], "paired": [...] }
 func (m *Manager) approvePendingDevices() {
 	if !m.pendingPairApproval.CompareAndSwap(false, true) {
 		return
@@ -1257,7 +1292,7 @@ func (m *Manager) approvePendingDevices() {
 	var approveResult struct {
 		RequestID string `json:"requestId"`
 		Device    struct {
-			DeviceID    string `json:"deviceId"`
+			DeviceID     string `json:"deviceId"`
 			ApprovedAtMs int64  `json:"approvedAtMs"`
 		} `json:"device"`
 	}
@@ -1448,6 +1483,8 @@ func (m *Manager) handleGatewayDisconnect(err error) {
 
 func (m *Manager) broadcastStatus(s RuntimeStatus) {
 	m.mu.Lock()
+	// Capture connected state while holding the lock
+	connected := m.client != nil
 	// Intermediate broadcasts often omit runtime metadata; keep last known values so
 	// UI state stays stable during reconnects and errors.
 	if s.InstalledVersion == "" && m.status.InstalledVersion != "" {
@@ -1475,6 +1512,12 @@ func (m *Manager) broadcastStatus(s RuntimeStatus) {
 	m.mu.Unlock()
 	if m.app != nil {
 		m.app.Event.Emit(EventStatus, s)
+		m.app.Logger.Debug("openclaw: broadcast status",
+			"phase", s.Phase,
+			"message", s.Message,
+			"version", s.InstalledVersion,
+			"connected", connected,
+		)
 	}
 }
 
@@ -1492,6 +1535,32 @@ func (m *Manager) runtimeStatusRestarting() RuntimeStatus {
 		RuntimePath:      prev.RuntimePath,
 		GatewayURL:       gatewayURL(cfg.GatewayPort),
 	}
+}
+
+// NotifyGatewayRestarting broadcasts PhaseRestarting to the frontend before a gateway
+// restart is initiated via CLI. This allows the UI to show "重启中" immediately,
+// rather than waiting for the passive polling loop to detect the port/WS change.
+// Skips the broadcast if the gateway is still connected — in that case the backend
+// naturally reports the real connected state on the next poll.
+func (m *Manager) NotifyGatewayRestarting() {
+	m.mu.RLock()
+	prev := m.status
+	stillConnected := m.client != nil
+	m.mu.RUnlock()
+	// Only override the status if the gateway is actually down.
+	// If it's still connected, the backend will correctly report "running" on the next poll.
+	if stillConnected {
+		return
+	}
+	cfg := m.store.Get()
+	m.broadcastStatus(RuntimeStatus{
+		Phase:            PhaseRestarting,
+		Message:          "OpenClaw Gateway restarting",
+		InstalledVersion: prev.InstalledVersion,
+		RuntimeSource:    prev.RuntimeSource,
+		RuntimePath:      prev.RuntimePath,
+		GatewayURL:       gatewayURL(cfg.GatewayPort),
+	})
 }
 
 func (m *Manager) broadcastGatewayState(gs GatewayConnectionState) {
@@ -1590,6 +1659,7 @@ func (m *Manager) ExecCLI(ctx context.Context, args ...string) ([]byte, error) {
 	cmd.Env = buildGatewayEnv(m.store.Get(), bundle)
 	cmd.Dir = bundle.Root
 	setCmdHideWindow(cmd)
+	m.app.Logger.Info("openclaw: exec CLI", "cmd", cmd.String())
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return out, fmt.Errorf("openclaw CLI %v: %w\n%s", args, err, string(out))

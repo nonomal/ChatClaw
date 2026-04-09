@@ -47,11 +47,10 @@ const wecomPluginPackage = "@wecom/wecom-openclaw-plugin"
 const wecomPluginID = "wecom-openclaw-plugin"
 const wecomPluginFallbackTimeout = 2 * time.Minute
 
-// Timeouts for OpenClaw CLI (config set), plugin install/list, and gateway restart.
+// Timeouts for OpenClaw CLI (config set), plugin install/list.
 const (
-	openClawChannelSyncTimeout       = 120 * time.Second
-	openClawCLIRetryTimeout         = 90 * time.Second
-	openClawGatewayRestartTimeout   = 20 * time.Second
+	openClawChannelSyncTimeout = 120 * time.Second
+	openClawCLIRetryTimeout    = 90 * time.Second
 )
 
 func NewOpenClawChannelService(
@@ -1633,18 +1632,18 @@ func (s *OpenClawChannelService) syncOpenClawWeComDefaultConfig(ctx context.Cont
 }
 
 func (s *OpenClawChannelService) restartOpenClawGateway() error {
-	if s.openclawManager == nil {
-		return fmt.Errorf("openclaw manager is not initialized")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), openClawGatewayRestartTimeout)
+	// Notify frontend immediately so it shows "重启中" before reconcile runs.
+	s.openclawManager.NotifyGatewayRestarting()
+	// Must run Manager restart (not only CLI): reconciles process + WS and broadcasts
+	ctx, cancel := context.WithTimeout(context.Background(), openClawCLIRetryTimeout)
 	defer cancel()
-	// Tell the gateway to reload its config by sending a restart command.
-	// The gateway auto-restarts on openclaw.json file changes, so no explicit start is needed.
-	// This avoids the heavy reconcile path that broadcasts PhaseStarting and causes
-	// the UI to show "启动中" during routine config updates.
-	_, err := s.openclawManager.ExecCLI(ctx, "gateway", "restart")
+	_, err := s.openclawManager.ExecCLI(ctx, "gateway", "stop")
 	if err != nil {
 		return fmt.Errorf("openclaw gateway stop: %w", err)
+	}
+	_, err = s.openclawManager.ExecCLI(ctx, "gateway", "start")
+	if err != nil {
+		return fmt.Errorf("openclaw gateway start: %w", err)
 	}
 	return nil
 }
