@@ -1021,6 +1021,9 @@ export default {
         'Vsak bot je lahko vezan samo na enega AI pomočnika. Prikazani so le nevezani boti.',
       noUnboundBot: 'Na voljo ni nobenih nevezanih botov',
       selectBot: 'Prosim, izberite bota za vezavo',
+      statusOnline: "Povezano",
+      statusError: "Napaka",
+      statusOffline: "Brez povezave",
     },
     conversation: {
       empty: 'Ni zgodovine klepeta',

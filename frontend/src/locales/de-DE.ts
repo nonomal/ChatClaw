@@ -1022,6 +1022,9 @@ export default {
         'Jeder Bot kann nur an einen KI-Assistenten gebunden werden. Es werden nur ungebundene Bots angezeigt.',
       noUnboundBot: 'Keine ungebundenen Bots verfügbar',
       selectBot: 'Bitte wählen Sie einen Bot zum Binden',
+      statusOnline: "Verbunden",
+      statusError: "Fehler",
+      statusOffline: "Getrennt",
     },
     conversation: {
       empty: 'Kein Chat-Verlauf',

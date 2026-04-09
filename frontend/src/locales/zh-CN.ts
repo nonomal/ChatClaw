@@ -1007,6 +1007,9 @@ export default {
       addBotHint: '一个机器人只能被一个AI助手绑定，仅显示未绑定的机器人',
       noUnboundBot: '暂无未绑定的机器人',
       selectBot: '请选择要绑定的机器人',
+      statusOnline: "已连接",
+      statusError: "错误",
+      statusOffline: "未连接",
     },
     conversation: {
       empty: '暂无聊天记录',
@@ -1514,6 +1517,28 @@ export default {
       title: '可用频道',
       desc: '连接一个新的频道',
     },
+    supported: {
+      title: '支持的频道',
+    },
+    panel: {
+      add: '添加',
+    },
+    row: {
+      boundToAgent: '已绑定 {name}',
+    },
+    platformCard: {
+      connect: '连接',
+    },
+    platformBlurbs: {
+      wecom: '使用 Bot ID 和 Secret 连接企业微信官方机器人。',
+      wechat: '扫码连接微信，微信直接连接机器人聊天。',
+      qq: '接入 QQ 官方机器人，覆盖群聊、频道与私信全场景互动。',
+      feishu: '接入飞书企业内部应用，实现自动化群聊与私信交互。',
+      dingtalk: '接入钉钉企业内部机器人，通过 Stream 模式实现稳定的群聊与私信交互。',
+      whatsapp: '扫码即连 WhatsApp，快速开展全球业务沟通。',
+      default: '接入该平台以接收与发送消息。',
+    },
+    backToOverview: '返回频道概览',
     add: {
       title: '添加频道',
       desc: '选择要配置的频道类型',

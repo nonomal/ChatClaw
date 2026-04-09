@@ -1138,6 +1138,9 @@ export default {
       addBotHint: 'Each bot can only be bound to one AI assistant. Only unbound bots are shown.',
       noUnboundBot: 'No unbound bots available',
       selectBot: 'Please select a bot to bind',
+      statusOnline: "Connected",
+      statusError: "Error",
+      statusOffline: "Offline",
       createDesc:
         'Follow the add flow on the channel page. After creation, it will be automatically bound to the current assistant.',
     },
@@ -1663,6 +1666,28 @@ export default {
       title: 'Available Channels',
       desc: 'Connect a new channel',
     },
+    supported: {
+      title: 'Supported channels',
+    },
+    panel: {
+      add: 'Add',
+    },
+    row: {
+      boundToAgent: 'Bound to {name}',
+    },
+    platformCard: {
+      connect: 'Connect',
+    },
+    platformBlurbs: {
+      wecom: 'Connect official WeCom bots with Bot ID and Secret.',
+      wechat: 'Scan to connect WeChat and chat through the bot directly.',
+      qq: 'Use the official QQ bot for groups, channels, and DMs.',
+      feishu: 'Connect Feishu enterprise apps for group and DM automation.',
+      dingtalk: 'Connect DingTalk enterprise bots with stable Stream mode.',
+      whatsapp: 'Scan to connect WhatsApp for global messaging.',
+      default: 'Connect this platform to send and receive messages.',
+    },
+    backToOverview: 'Back to overview',
     add: {
       title: 'Add Channel',
       desc: 'Select the channel type to configure',

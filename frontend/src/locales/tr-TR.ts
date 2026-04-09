@@ -1017,6 +1017,9 @@ export default {
         'Her bot yalnizca bir AI asistanina baglanabilir. Yalnizca baglanmamis botlar gosterilir.',
       noUnboundBot: 'Bağlanabilecek bot yok',
       selectBot: 'Bağlanacak botu seçin',
+      statusOnline: "Bağlı",
+      statusError: "Hata",
+      statusOffline: "Bağlı değil",
     },
     conversation: {
       empty: 'Sohbet geçmişi yok',

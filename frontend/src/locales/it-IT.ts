@@ -1030,6 +1030,9 @@ export default {
         'Ogni bot puo essere collegato a un solo assistente IA. Vengono mostrati solo i bot non collegati.',
       noUnboundBot: 'Nessun robot non collegato',
       selectBot: 'Seleziona il robot da collegare',
+      statusOnline: "Connesso",
+      statusError: "Errore",
+      statusOffline: "Disconnesso",
     },
     conversation: {
       empty: 'Nessuna cronologia chat',

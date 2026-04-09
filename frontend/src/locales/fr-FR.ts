@@ -1020,6 +1020,9 @@ export default {
       addBotHint: 'Chaque bot ne peut être lié qu',
       noUnboundBot: 'Aucun bot non lié disponible',
       selectBot: 'Veuillez sélectionner un bot à lier',
+      statusOnline: "Connecté",
+      statusError: "Erreur",
+      statusOffline: "Hors ligne",
     },
     conversation: {
       empty: 'Pas d',

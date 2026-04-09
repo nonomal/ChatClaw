@@ -1009,6 +1009,9 @@ export default {
       addBotHint: 'يمكن ربط كل بوت بمساعد ذكاء اصطناعي واحد فقط. يتم عرض البوتات غير المرتبطة فقط.',
       noUnboundBot: 'لا توجد بوتات غير المرتبطة متاحة',
       selectBot: 'الرجاء تحديد بوت للربط',
+      statusOnline: "متصل",
+      statusError: "خطأ",
+      statusOffline: "غير متصل",
     },
     conversation: {
       empty: 'لا يوجد سجل محادثة',

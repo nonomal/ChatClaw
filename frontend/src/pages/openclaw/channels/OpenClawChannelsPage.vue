@@ -13,6 +13,7 @@ import {
   Check,
   LoaderCircle,
   Edit,
+  ChevronLeft,
 } from 'lucide-vue-next'
 import IconChannels from '@/assets/icons/channelsMax.svg'
 import IconCheck from '@/assets/icons/check-icon.svg'
@@ -133,6 +134,46 @@ const filteredChannels = computed(() => {
   if (selectedFilter.value === 'all') return channels.value
   return channels.value.filter((ch) => ch.platform === selectedFilter.value)
 })
+
+const platformGroupsWithChannels = computed(() => {
+  if (selectedFilter.value !== 'all') return []
+  return platforms.value
+    .map((p) => ({
+      platform: p,
+      channels: channels.value.filter((c) => c.platform === p.id),
+    }))
+    .filter((g) => g.channels.length > 0)
+})
+
+function platformTileIconBgClass(platformId: string): string {
+  switch (platformId) {
+    case 'wechat':
+    case 'whatsapp':
+      return 'bg-[#E6FFE6]'
+    case 'feishu':
+      return 'bg-[#E1FAF7]'
+    default:
+      return 'bg-[#E5F3FF]'
+  }
+}
+
+function getPlatformBlurb(platformId: string): string {
+  const key = `channels.platformBlurbs.${platformId}`
+  if (te(key)) return t(key)
+  return t('channels.platformBlurbs.default')
+}
+
+async function handlePlatformCardConnect(platform: PlatformMeta) {
+  if (!isChannelPlatformSelectable(platform.id)) {
+    toast.default(t('channels.comingSoon'))
+    return
+  }
+  await handleSelectPlatform(platform)
+}
+
+async function handleAddForPlatform(platform: PlatformMeta) {
+  await handleSelectPlatform(platform)
+}
 
 const selectedPlatformMeta = computed(() => {
   if (selectedFilter.value === 'all') return null
@@ -739,7 +780,7 @@ watch(isTabActive, (active) => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col overflow-y-auto bg-white dark:bg-background">
+  <div class="flex h-full flex-col overflow-y-auto bg-[#fafafa] dark:bg-background">
     <!-- Page Header -->
     <div class="flex h-20 shrink-0 items-center justify-between px-6">
       <div class="flex flex-col gap-1">
@@ -819,53 +860,313 @@ watch(isTabActive, (active) => {
         </div>
       </div>
 
-      <!-- Section Header -->
-      <h2 class="mb-2 text-base font-semibold text-[#262626] dark:text-foreground">
-        {{ t('channels.available.title') }}
-      </h2>
+      <!-- All platforms overview (Figma): optional list panels + supported grid -->
+      <template v-if="selectedFilter === 'all'">
+        <template v-if="channels.length > 0">
+          <h2 class="mb-4 text-base font-semibold text-[#262626] dark:text-foreground">
+            {{ t('channels.available.title') }}
+          </h2>
+          <div class="space-y-6">
+            <div
+              v-for="group in platformGroupsWithChannels"
+              :key="group.platform.id"
+              class="overflow-hidden rounded-2xl border border-[#d9d9d9] bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none dark:ring-1 dark:ring-white/10"
+            >
+              <div
+                class="flex items-center justify-between border-b border-[#f0f0f0] bg-[#fafafa] px-4 py-4 dark:border-border dark:bg-muted/30"
+              >
+                <div class="flex min-w-0 items-center gap-2">
+                  <div
+                    class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg"
+                    :class="platformTileIconBgClass(group.platform.id)"
+                  >
+                    <img
+                      v-if="getPlatformIcon(group.platform.id)"
+                      :src="getPlatformIcon(group.platform.id)!"
+                      :alt="group.platform.id"
+                      class="size-5 object-contain"
+                    />
+                  </div>
+                  <span class="truncate text-sm font-semibold text-[#171717] dark:text-foreground">
+                    {{ getPlatformName(group.platform.id) }}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  class="h-9 shrink-0 gap-1 border-[#d4d4d4] bg-white shadow-sm dark:border-border dark:bg-background dark:shadow-none dark:ring-1 dark:ring-white/10"
+                  @click="handleAddForPlatform(group.platform)"
+                >
+                  <Plus class="h-4 w-4 shrink-0" />
+                  {{ t('channels.panel.add') }}
+                </Button>
+              </div>
+              <div
+                v-for="channel in group.channels"
+                :key="channel.id"
+                class="flex h-[54px] min-h-[54px] w-full min-w-0 items-center border-b border-[#f0f0f0] px-4 last:border-b-0 dark:border-border"
+              >
+                <!-- Left 60%: icon + name -->
+                <div class="flex w-[60%] min-w-0 shrink-0 items-center gap-2 pr-2">
+                  <div
+                    class="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-lg"
+                    :class="platformTileIconBgClass(channel.platform)"
+                  >
+                    <img
+                      v-if="channel.avatar"
+                      :src="channel.avatar"
+                      :alt="channel.name"
+                      class="size-5 object-cover"
+                    />
+                    <img
+                      v-else-if="getPlatformIcon(channel.platform)"
+                      :src="getPlatformIcon(channel.platform)!"
+                      :alt="channel.platform"
+                      class="size-3.5 object-contain"
+                    />
+                  </div>
+                  <span
+                    class="min-w-0 truncate text-sm leading-[22px] text-[#262626] dark:text-foreground"
+                    >{{ channel.name }}</span
+                  >
+                </div>
+                <!-- Right 40%: status+binding vs actions, justify-between -->
+                <div
+                  class="flex w-[40%] min-w-0 shrink-0 items-center justify-between gap-2 pl-2"
+                >
+                  <div class="flex min-w-0 items-center gap-4">
+                    <div
+                      class="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm leading-5"
+                      :class="{
+                        'border-amber-300 text-amber-800 dark:border-amber-700 dark:text-amber-200':
+                          channelConnDisplay(channel) === 'provisioning',
+                        'border-green-300 text-green-600 dark:border-green-700 dark:text-green-400':
+                          channelConnDisplay(channel) === 'online',
+                        'border-red-300 text-red-600 dark:border-red-800 dark:text-red-400':
+                          channelConnDisplay(channel) === 'error',
+                        'border-border text-muted-foreground':
+                          channelConnDisplay(channel) === 'offline',
+                      }"
+                    >
+                      <LoaderCircle
+                        v-if="channelConnDisplay(channel) === 'provisioning'"
+                        class="h-3.5 w-3.5 shrink-0 animate-spin text-current"
+                      />
+                      <span
+                        v-else
+                        class="size-2 shrink-0 rounded-full"
+                        :class="{
+                          'bg-green-600': channelConnDisplay(channel) === 'online',
+                          'bg-red-500': channelConnDisplay(channel) === 'error',
+                          'bg-muted-foreground/60': channelConnDisplay(channel) === 'offline',
+                        }"
+                      />
+                      <span class="max-w-[10rem] shrink-0 truncate">{{
+                        t(channelConnStatusI18nKey(channel))
+                      }}</span>
+                    </div>
+                    <span
+                      class="max-w-[14rem] shrink truncate text-sm leading-5 text-[#737373] dark:text-muted-foreground"
+                      :class="{
+                        'cursor-pointer hover:underline':
+                          channel.agent_id === 0 &&
+                          !isBindStatusProvisioning(channel) &&
+                          !isChannelConnectionProvisioning(channel),
+                      }"
+                      @click="
+                        channel.agent_id === 0 &&
+                        !isBindStatusProvisioning(channel) &&
+                        !isChannelConnectionProvisioning(channel)
+                          ? handleOpenBind(channel)
+                          : undefined
+                      "
+                    >
+                      {{
+                        isBindStatusProvisioning(channel)
+                          ? t('channels.card.provisioning')
+                          : channel.agent_id !== 0
+                            ? t('channels.row.boundToAgent', { name: getAgentName(channel.agent_id) })
+                            : t('channels.card.unbound')
+                      }}
+                    </span>
+                  </div>
+                  <div class="flex shrink-0 items-center gap-2">
+                  <Switch
+                    :model-value="channel.enabled"
+                    :disabled="channel.agent_id === 0 || isChannelConnectionProvisioning(channel)"
+                    @update:model-value="(v: boolean) => handleToggleConnection(channel, v)"
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger as-child>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        class="size-6 shrink-0 rounded-sm bg-transparent p-1 hover:bg-muted"
+                      >
+                        <MoreHorizontal class="h-4 w-4 text-[#171717] dark:text-foreground" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                        align="end"
+                        class="min-w-24 rounded-md bg-white p-0.5 shadow-sm dark:bg-popover dark:shadow-none dark:ring-1 dark:ring-white/10"
+                      >
+                        <DropdownMenuItem
+                          v-if="!isChannelConnectionProvisioning(channel)"
+                          class="gap-2 rounded px-4 py-[5px]"
+                          @click="handleEditChannel(channel)"
+                        >
+                          <Edit class="h-4 w-4" />
+                          {{ t('common.edit') }}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          v-if="!isChannelConnectionProvisioning(channel)"
+                          class="gap-2 rounded px-4 py-[5px]"
+                          @click="handleOpenBind(channel)"
+                        >
+                          <Link class="h-4 w-4" />
+                          {{
+                            channel.agent_id === 0
+                              ? t('channels.card.bind')
+                              : t('channels.card.switchBind')
+                          }}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          v-if="!isChannelConnectionProvisioning(channel)"
+                          class="gap-2 rounded px-4 py-[5px]"
+                          :disabled="channel.agent_id === 0"
+                          @click="openUnbindConfirm(channel)"
+                        >
+                          <Unlink class="h-4 w-4" />
+                          {{ t('channels.card.unbind') }}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator
+                          v-if="!isChannelConnectionProvisioning(channel)"
+                          class="my-0.5 bg-[#f0f0f0] dark:bg-border"
+                        />
+                        <DropdownMenuItem
+                          class="gap-2 rounded px-4 py-[5px] text-destructive focus:bg-destructive/10 focus:text-destructive"
+                          @click="confirmDelete(channel)"
+                        >
+                          <Trash2 class="h-4 w-4" />
+                          {{ t('common.delete') }}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
 
-      <!-- Platform Filter Tabs -->
-      <div
-        class="mb-4 inline-flex overflow-x-auto rounded-lg border border-[#e5e5e5] bg-[rgba(0,0,0,0.05)] shadow-[0_1px_2px_0_rgba(0,0,0,0.05)] dark:border-border dark:bg-muted/50"
-      >
-        <button
-          class="px-3 py-[7.5px] text-sm font-medium transition-colors first:rounded-l-lg last:rounded-r-lg"
-          :class="
-            selectedFilter === 'all'
-              ? 'bg-white text-[#0a0a0a] dark:bg-background dark:text-foreground'
-              : 'text-[#0a0a0a] hover:bg-white/50 dark:text-foreground dark:hover:bg-background/50'
-          "
+        <h2
+          class="mb-4 text-base font-semibold text-[#262626] dark:text-foreground"
+          :class="channels.length > 0 ? 'mt-8' : ''"
+        >
+          {{ t('channels.supported.title') }}
+        </h2>
+        <div class="flex flex-wrap gap-4">
+          <div
+            v-for="p in platforms"
+            :key="p.id"
+            class="flex h-[138px] w-[300px] flex-col justify-between rounded-2xl border border-[#d9d9d9] bg-white p-4 shadow-sm dark:border-border dark:bg-card dark:shadow-none dark:ring-1 dark:ring-white/10"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex min-w-0 flex-1 items-center gap-2">
+                <div
+                  class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg"
+                  :class="platformTileIconBgClass(p.id)"
+                >
+                  <img
+                    v-if="getPlatformIcon(p.id)"
+                    :src="getPlatformIcon(p.id)!"
+                    :alt="p.id"
+                    class="size-5 object-contain"
+                  />
+                </div>
+                <span class="truncate text-sm font-semibold text-[#171717] dark:text-foreground">
+                  {{ getPlatformName(p.id) }}
+                </span>
+              </div>
+            </div>
+            <p class="line-clamp-3 text-xs leading-4 text-[#737373] dark:text-muted-foreground">
+              {{ getPlatformBlurb(p.id) }}
+            </p>
+            <div class="flex justify-end">
+              <Button
+                v-if="isChannelPlatformSelectable(p.id)"
+                class="h-7 min-h-7 gap-1 bg-[#171717] px-2 text-sm text-white hover:bg-[#171717]/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+                @click="handlePlatformCardConnect(p)"
+              >
+                {{ t('channels.platformCard.connect') }}
+              </Button>
+              <Button
+                v-else
+                variant="outline"
+                disabled
+                class="h-7 min-h-7 cursor-not-allowed border-destructive/40 px-2 text-xs text-destructive opacity-60"
+              >
+                {{ t('channels.comingSoon') }}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <template v-else>
+        <Button
+          variant="ghost"
+          class="mb-4 -ml-2 h-auto gap-1 px-2 text-sm text-muted-foreground hover:text-foreground"
           @click="selectedFilter = 'all'"
         >
-          {{ t('common.all') }}
-        </button>
-        <button
-          v-for="platform in platforms"
-          :key="platform.id"
-          class="px-3 py-[7.5px] text-sm font-medium transition-colors first:rounded-l-lg last:rounded-r-lg border-l border-[#e5e5e5] dark:border-border"
-          :class="[
-            selectedFilter === platform.id
-              ? 'bg-white text-[#0a0a0a] dark:bg-background dark:text-foreground'
-              : 'text-[#0a0a0a] hover:bg-white/50 dark:text-foreground dark:hover:bg-background/50',
-            !isChannelPlatformSelectable(platform.id) ? 'opacity-50 cursor-not-allowed' : '',
-          ]"
-          @click="
-            isChannelPlatformSelectable(platform.id)
-              ? (selectedFilter = platform.id)
-              : toast.default(t('channels.comingSoon'))
-          "
-        >
-          {{ getPlatformName(platform.id) }}
-        </button>
-      </div>
+          <ChevronLeft class="h-4 w-4 shrink-0" />
+          {{ t('channels.backToOverview') }}
+        </Button>
+        <h2 class="mb-2 text-base font-semibold text-[#262626] dark:text-foreground">
+          {{ t('channels.available.title') }}
+        </h2>
 
-      <!-- Channels Grid -->
-      <div v-if="filteredChannels.length > 0" class="flex flex-wrap gap-4">
+        <!-- Platform Filter Tabs -->
         <div
-          v-for="channel in filteredChannels"
-          :key="channel.id"
-          class="flex w-[300px] min-w-0 flex-col gap-2 rounded-[16px] border border-[#d9d9d9] bg-white p-4 shadow-sm transition-all hover:border-[#171717] dark:shadow-none dark:ring-1 dark:ring-white/10 dark:border-border dark:bg-card dark:hover:border-primary/50"
+          class="mb-4 inline-flex overflow-x-auto rounded-lg border border-[#e5e5e5] bg-[rgba(0,0,0,0.05)] shadow-[0_1px_2px_0_rgba(0,0,0,0.05)] dark:border-border dark:bg-muted/50"
         >
+          <button
+            class="px-3 py-[7.5px] text-sm font-medium transition-colors first:rounded-l-lg last:rounded-r-lg"
+            :class="
+              selectedFilter === 'all'
+                ? 'bg-white text-[#0a0a0a] dark:bg-background dark:text-foreground'
+                : 'text-[#0a0a0a] hover:bg-white/50 dark:text-foreground dark:hover:bg-background/50'
+            "
+            @click="selectedFilter = 'all'"
+          >
+            {{ t('common.all') }}
+          </button>
+          <button
+            v-for="platform in platforms"
+            :key="platform.id"
+            class="px-3 py-[7.5px] text-sm font-medium transition-colors first:rounded-l-lg last:rounded-r-lg border-l border-[#e5e5e5] dark:border-border"
+            :class="[
+              selectedFilter === platform.id
+                ? 'bg-white text-[#0a0a0a] dark:bg-background dark:text-foreground'
+                : 'text-[#0a0a0a] hover:bg-white/50 dark:text-foreground dark:hover:bg-background/50',
+              !isChannelPlatformSelectable(platform.id) ? 'opacity-50 cursor-not-allowed' : '',
+            ]"
+            @click="
+              isChannelPlatformSelectable(platform.id)
+                ? (selectedFilter = platform.id)
+                : toast.default(t('channels.comingSoon'))
+            "
+          >
+            {{ getPlatformName(platform.id) }}
+          </button>
+        </div>
+
+        <!-- Channels Grid (single-platform view) -->
+        <div v-if="filteredChannels.length > 0" class="flex flex-wrap gap-4">
+          <div
+            v-for="channel in filteredChannels"
+            :key="channel.id"
+            class="flex w-[300px] min-w-0 flex-col gap-2 rounded-[16px] border border-[#d9d9d9] bg-white p-4 shadow-sm transition-all hover:border-[#171717] dark:shadow-none dark:ring-1 dark:ring-white/10 dark:border-border dark:bg-card dark:hover:border-primary/50"
+          >
           <!-- Card Header -->
           <div class="flex items-center justify-between">
             <div class="flex flex-1 items-center gap-2 min-w-0">
@@ -1044,11 +1345,11 @@ watch(isTabActive, (active) => {
             </div>
           </div>
         </div>
-      </div>
+        </div>
 
-      <!-- Empty State - All platforms tab (generic) or WeCom tab (WeCom-specific copy) -->
+      <!-- Empty State - WeCom tab (no channels yet) -->
       <div
-        v-else-if="selectedFilter === 'all' || selectedFilter === 'wecom'"
+        v-else-if="selectedFilter === 'wecom'"
         class="flex flex-col items-center justify-center py-12 text-center"
       >
         <div
@@ -1057,14 +1358,10 @@ watch(isTabActive, (active) => {
           <SquareDashed class="h-6 w-6 text-[#737373] dark:text-muted-foreground" />
         </div>
         <h3 class="text-base font-medium text-[#262626] dark:text-foreground">
-          {{
-            selectedFilter === 'wecom' ? t('channels.wecom.emptyTitle') : t('channels.empty.title')
-          }}
+          {{ t('channels.wecom.emptyTitle') }}
         </h3>
         <p class="mt-2 max-w-sm text-sm text-[#737373] dark:text-muted-foreground">
-          {{
-            selectedFilter === 'wecom' ? t('channels.wecom.emptyDesc') : t('channels.empty.desc')
-          }}
+          {{ t('channels.wecom.emptyDesc') }}
         </p>
         <Button
           class="mt-6 gap-1 bg-[#171717] text-white hover:bg-[#171717]/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
@@ -1223,6 +1520,7 @@ watch(isTabActive, (active) => {
           </Button>
         </div>
       </div>
+      </template>
     </div>
 
     <!-- WeChat Config Dialog (QR code flow) -->

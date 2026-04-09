@@ -1019,6 +1019,9 @@ export default {
         'Mỗi bot chỉ có thể liên kết với một trợ lý AI. Chỉ các bot chưa liên kết mới được hiển thị.',
       noUnboundBot: 'Không có bot khả dụng để liên kết',
       selectBot: 'Vui lòng chọn bot để liên kết',
+      statusOnline: "Đã kết nối",
+      statusError: "Lỗi",
+      statusOffline: "Chưa kết nối",
     },
     conversation: {
       empty: 'Không có lịch sử chat',
