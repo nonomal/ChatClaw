@@ -5,6 +5,7 @@ package openclawruntime
 import "os/exec"
 
 // setCmdHideWindow is a no-op on non-Windows platforms.
-func setCmdHideWindow(cmd *exec.Cmd) {
+func setCmdHideWindow(cmd *exec.Cmd) bool {
 	_ = cmd
+	return false
 }

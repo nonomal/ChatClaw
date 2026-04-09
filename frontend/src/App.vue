@@ -294,11 +294,6 @@ onMounted(async () => {
     if (!raw || typeof raw !== 'object') return
     if (toolchainUpdatesToastShown) return
     toolchainUpdatesToastShown = true
-    pushToast({
-      title: t('settings.general.toolchain.updatesAvailableToast'),
-      duration: 6000,
-      variant: 'default',
-    })
   })
 
   // Floating ball: open settings page
