@@ -193,6 +193,8 @@
   "error.channel_openclaw_sync_timeout": "Đồng bộ cấu hình OpenClaw hết thời gian. Hãy thử lại sau hoặc kiểm tra OpenClaw Gateway đang chạy.",
   "error.channel_update_failed": "Cập nhật kênh thất bại",
   "error.dingtalk_plugin_not_ready": "Plugin kết nối DingTalk vẫn đang cài đặt hoặc chưa sẵn sàng. Vui lòng thử lại sau.",
+  "error.qq_plugin_not_ready": "Plugin QQ OpenClaw chưa được cài đặt hoặc chưa sẵn sàng. Hãy cài plugin trước khi đồng bộ cấu hình.",
+  "error.wecom_plugin_not_ready": "Plugin WeCom OpenClaw chưa được cài đặt hoặc chưa sẵn sàng. Hãy cài plugin trước khi đồng bộ cấu hình.",
   "error.wechat_plugin_not_ready": "Plugin WeChat OpenClaw chính thức vẫn đang được cài đặt hoặc chưa sẵn sàng. Vui lòng thử lại sau.",
   "error.channel_delete_failed": "Xóa kênh thất bại",
   "error.channel_read_failed": "Đọc kênh thất bại",

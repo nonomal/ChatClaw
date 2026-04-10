@@ -3,7 +3,6 @@ import { nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { useThemeLogo } from '@/composables/useLogo'
 import { useNavigationStore, useSettingsStore } from '@/stores'
 import { Events } from '@wailsio/runtime'
 import {
@@ -21,7 +20,6 @@ const props = withDefaults(
 )
 
 const { t } = useI18n()
-const { logoSrc } = useThemeLogo()
 const navigationStore = useNavigationStore()
 const settingsStore = useSettingsStore()
 
