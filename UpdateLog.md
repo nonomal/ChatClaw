@@ -1,5 +1,27 @@
 ## Changelog
 
+### 2026/04/10
+1. **OpenClaw Gateway Startup Enhancements**: Implemented a new heartbeat mechanism for the Gateway offline banner to ensure responsiveness to backend status changes. Added detailed startup steps in the runtime manager for better tracking of the gateway's initialization process.
+2. **Toast Duration Customization**: Introduced `TOAST_DURATION_HINT` for longer informational messages and updated toast functionality to accept custom durations.
+3. **Default Configuration for New Users**: Added default configuration generation for new users to prevent startup errors when first launching the application.
+4. **Default Mode for First Launch**: Enhanced first-launch experience with ChatClaw mode as the default entry point and runtime environment automatically opened.
+5. **OpenClaw Auto-Start**: Implemented auto-start functionality in OpenClaw settings, allowing users to enable or disable automatic startup of the gateway with UI toggle and backend process management.
+6. **Channel Auto-Close on Connection Failure**: Added automatic channel closure when connection fails to improve reliability and user feedback.
+7. **Localization Updates**: Updated localization files for English, Japanese, Korean, Simplified Chinese, and Traditional Chinese to include new messages related to the gateway startup process.
+8. **README Multi-Language Enhancement**: Revised readme-from-docx skill documentation and updated README files across multiple languages with improved clarity and structure.
+9. **i18n Rule Refactor**: Removed double quotes locale rule and introduced single quotes locale rule for consistent string escaping in TypeScript files.
+10. **Style & UI Refinements**: Various text adjustments, component extraction, and UI polish improvements.
+
+### 2026/04/09
+1. **OpenClaw Auto-Start Feature**: Implemented auto-start feature in OpenClaw settings, allowing users to enable or disable automatic startup of the gateway with improved process management on Windows.
+2. **Gateway Status Race Condition Fix**: Introduced a 4-second delay before checking the gateway port after process exit to prevent race conditions during the gateway restart process.
+3. **Gateway Restart Logic Refinement**: Replaced gateway restart logic with explicit stop and start commands using ExecCLI for improved control over the gateway lifecycle.
+4. **Channel Integration Optimizations**: Enhanced Feishu (Lark) channel integration with improved message hook functionality; completed DingTalk agent and channel integration; optimized WeChat channel features.
+5. **Build System Enhancement**: Enhanced Taskfile for Windows build with `SHOW_CMD` variable to control console window visibility during development and production builds.
+6. **README Updates**: Updated README files with improved clarity and structure; introduced new `README_en.md` for English documentation with enhanced AI feature descriptions.
+7. **UI/UX Improvements**: Channel display optimization; login popup style refinements; various text adjustments.
+8. **Code Cleanup**: Removed nil checks for openclawManager in restart method for simplified logic; updated logging and comments for better clarity.
+
 ### 2026/04/08
 1. **OpenClaw In-Memory Models Cache**: Implemented in-memory models cache for improved efficiency in model registration and synchronization. The cache is populated from openclaw.json at startup and refreshed during config sync.
 2. **OpenClaw Real-Time Status Updates**: Enhanced real-time status updates by subscribing to backend events for gateway state and runtime status, replacing the previous polling mechanism for immediate frontend updates.
