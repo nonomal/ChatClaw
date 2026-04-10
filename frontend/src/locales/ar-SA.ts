@@ -750,6 +750,13 @@ export default {
         cn: 'الصين',
         global: 'عالمي',
       },
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "اربط حساب ChatWiki للحصول على رصيد وتجربة سريعة",
+        footer: "ChatWiki هو الإصدار السحابي من عميل ChatClaw",
+        loginNow: "تسجيل الدخول الآن",
+        loginLater: "لاحقًا",
+      },
     },
     tools: {
       tray: {

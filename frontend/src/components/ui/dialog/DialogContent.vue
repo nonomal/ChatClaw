@@ -17,6 +17,8 @@ const props = withDefaults(
   defineProps<
     DialogContentProps & {
       class?: HTMLAttributes['class']
+      /** Optional classes for the overlay (e.g. higher z-index when stacking dialogs). */
+      overlayClass?: HTMLAttributes['class']
       showCloseButton?: boolean
       /** 桌面端弹窗宽度预设（不做小屏断点适配） */
       size?: DialogSize
@@ -29,7 +31,7 @@ const props = withDefaults(
 )
 const emits = defineEmits<DialogContentEmits>()
 
-const delegatedProps = reactiveOmit(props, 'class')
+const delegatedProps = reactiveOmit(props, 'class', 'overlayClass')
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
 
@@ -44,7 +46,7 @@ const sizeClassMap: Record<DialogSize, string> = {
 
 <template>
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay :class="props.overlayClass" />
     <DialogContent
       data-slot="dialog-content"
       v-bind="{ ...$attrs, ...forwarded }"

@@ -55,6 +55,7 @@ import {
 import type { Model, ProviderWithModels } from '@bindings/chatclaw/internal/services/providers'
 import type { Library } from '@bindings/chatclaw/internal/services/library'
 import { useThemeLogo } from '@/composables/useLogo'
+import { openChatwikiLoginReminder } from '@/composables/useChatwikiLoginReminderDialog'
 import { useOpenClawGatewayComposerGate } from '@/composables/useOpenClawGatewayComposerGate'
 import OpenClawGatewayComposerBanner from '@/components/openclaw/OpenClawGatewayComposerBanner.vue'
 
@@ -103,6 +104,7 @@ const props = withDefaults(
     } | null
     providersWithModels: ProviderWithModels[]
     hasModels: boolean
+    hasSelectableLlmModels?: boolean
     enableThinking: boolean
     selectedLibraryIds: number[]
     libraries: Library[]
@@ -133,6 +135,7 @@ const props = withDefaults(
   {
     mode: 'assistant',
     hideChatModeSelector: false,
+    hasSelectableLlmModels: true,
     isTeamMode: false,
     selectedTeamLibrary: null,
     teamLibraries: () => [],
@@ -202,6 +205,17 @@ function getDisplayModelName(providerId: string, model: Model): string {
 
 const { blocksComposer, visualStatus } = useOpenClawGatewayComposerGate()
 
+function wantsToSendButNoSelectableModel(): boolean {
+  if (props.isTeamMode) return false
+  const agentId = props.activeAgentId
+  if (agentId == null || agentId < 0) return false
+  const hasContent =
+    String(props.chatInput ?? '').trim() !== '' ||
+    (props.pendingImages?.length ?? 0) > 0 ||
+    (props.pendingFiles?.length ?? 0) > 0
+  return hasContent && !props.hasSelectableLlmModels
+}
+
 const canSendEffective = computed(() => props.canSend && !blocksComposer.value)
 
 const sendTooltipText = computed(() => {
@@ -230,6 +244,14 @@ const handleChatEnter = (event: KeyboardEvent) => {
     return
   }
 
+  if (!canSendEffective.value) {
+    event.preventDefault()
+    if (wantsToSendButNoSelectableModel()) {
+      openChatwikiLoginReminder()
+    }
+    return
+  }
+
   console.warn('[assistant][input] Enter pressed', {
     isTeamMode: props.isTeamMode,
     canSend: props.canSend,
@@ -254,6 +276,10 @@ const handleSendClick = () => {
 }
 
 const handleDisabledSendClick = () => {
+  if (wantsToSendButNoSelectableModel()) {
+    openChatwikiLoginReminder()
+    return
+  }
   console.warn('[assistant][input] Disabled send clicked', {
     isTeamMode: props.isTeamMode,
     canSend: props.canSend,

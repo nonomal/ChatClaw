@@ -754,6 +754,13 @@ export default {
         cn: 'चीन',
         global: 'ग्लोबल',
       },
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "ChatWiki खाता लिंक करें — जल्दी आज़माने के लिए क्रेडिट पाएँ",
+        footer: "ChatWiki, ChatClaw क्लाइंट का क्लाउड संस्करण है",
+        loginNow: "अभी लॉग इन करें",
+        loginLater: "बाद में",
+      },
     },
     tools: {
       tray: {

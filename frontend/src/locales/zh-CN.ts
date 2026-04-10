@@ -750,6 +750,13 @@ export default {
         cn: '国内',
         global: '全球',
       },
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "绑定 ChatWiki 账号，赠送积分快速体验",
+        footer: "ChatWiki 为 ChatClaw 客户端云端版",
+        loginNow: "立即登录",
+        loginLater: "稍后登录",
+      },
     },
     tools: {
       tray: {

@@ -761,6 +761,13 @@ export default {
         cn: 'China',
         global: 'Global',
       },
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "ChatWiki-Konto verknüpfen — Credits sichern und schnell testen",
+        footer: "ChatWiki ist die Cloud-Version des ChatClaw-Clients",
+        loginNow: "Jetzt anmelden",
+        loginLater: "Später",
+      },
     },
     tools: {
       tray: {
