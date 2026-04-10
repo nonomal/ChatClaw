@@ -217,6 +217,28 @@ func cliName() string {
 	return "openclaw"
 }
 
+// ActiveRuntimeSummary describes the OpenClaw runtime bundle the gateway uses
+// (same candidate order as resolveBundledRuntime).
+type ActiveRuntimeSummary struct {
+	Root    string
+	Version string
+	Source  string
+}
+
+// LookupActiveRuntime resolves the active OpenClaw runtime bundle, if any.
+// It returns (nil, nil) when no valid bundle exists; err is reserved for future use and is always nil today.
+func LookupActiveRuntime() (*ActiveRuntimeSummary, error) {
+	b, err := resolveBundledRuntime()
+	if err != nil {
+		return nil, nil
+	}
+	return &ActiveRuntimeSummary{
+		Root:    b.Root,
+		Version: strings.TrimSpace(b.Manifest.OpenClawVersion),
+		Source:  b.Source,
+	}, nil
+}
+
 // BundledSkillsDir returns the skills directory shipped inside the bundled OpenClaw npm package
 // (node_modules/openclaw/skills), if present. Matches OpenClaw docs: bundled install skills.
 func BundledSkillsDir() (string, error) {
