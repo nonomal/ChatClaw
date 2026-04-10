@@ -434,6 +434,7 @@ export default {
         },
         openclaw: {
           name: 'OpenClaw 运行环境',
+          description: '一键安装和管理 OpenClaw 运行环境，支持智能体工作流与工具链能力。',
         },
       },
     },

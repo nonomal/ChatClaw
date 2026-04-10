@@ -433,6 +433,8 @@ export default {
         },
         openclaw: {
           name: 'OpenClaw Runtime',
+          description:
+            'Install and manage the OpenClaw runtime with one click to support agent workflows and toolchain capabilities.',
         },
         updatesAvailableToast: '检测到扩展组件有新版本，可以到「设置 → 常规设置」中手动更新。',
       },
