@@ -114,15 +114,24 @@ const upgradeOutputLines = computed(() => {
 // 启动步骤行（从后端 upgradeOutput 解析，后端在启动期间写入步骤）
 // 升级期间 upgradeOutput 包含的是 npm install 输出，不需要在此展示。
 const startStepLines = computed(() => {
-  // Only show during starting/connecting phase, not during upgrading.
-  if (gatewayStore.visualStatus !== GatewayVisualStatus.Starting) return []
+  // 升级期间不显示启动步骤。
+  if (gatewayStore.visualStatus === GatewayVisualStatus.Upgrading) return []
   const out = gatewayStore.upgradeOutput || ''
   return out.split('\n').filter((l) => l.trim() !== '')
 })
 
-// 是否正在启动（用于控制启动步骤面板显示）
+// 启动步骤面板：启动中（starting）显示，"已连接"（connected）步骤出现后保留至网关达到 running 状态后隐藏。
+// 这样"已连接"步骤的绿色勾号能在网关达到 connected 状态时完整显示一次。
 const isStartInProgress = computed(() => {
-  return startStepLines.value.length > 0
+  const lines = startStepLines.value
+  if (lines.length === 0) return false
+  const status = gatewayStore.visualStatus
+  // running 之后立即隐藏，同时清空步骤缓存。
+  if (status === GatewayVisualStatus.Running) {
+    gatewayStore.upgradeOutput = ''
+    return false
+  }
+  return status === GatewayVisualStatus.Starting
 })
 
 const badgeText = computed(() => {
