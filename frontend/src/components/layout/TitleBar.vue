@@ -36,6 +36,7 @@ const moduleTabIcons: Partial<Record<NavModule, any>> = {
   assistant: IconAssistant,
   openclaw: IconAssistant,
   'openclaw-runtime': IconSettings,
+  'openclaw-runtime-environment': IconSettings,
   'openclaw-dashboard': IconSettings,
   knowledge: IconKnowledge,
   memory: IconMemory,

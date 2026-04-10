@@ -123,6 +123,17 @@ func (s *ToolchainService) InstallOpenClawRuntime() error {
 		}
 	}
 
+	// Create cancellable context for this install so UI can pause/cancel.
+	ctx, cancel := context.WithCancel(context.Background())
+	s.mu.Lock()
+	s.installCtx["openclaw"] = cancel
+	s.mu.Unlock()
+	defer func() {
+		s.mu.Lock()
+		delete(s.installCtx, "openclaw")
+		s.mu.Unlock()
+	}()
+
 	// Fetch download URL from API using fixed version
 	emitProgress(5, "Fetching download URL...")
 	ossURL, err := s.fetchOSSDownloadURL("openclaw", version, runtime.GOOS, runtime.GOARCH)
@@ -153,7 +164,7 @@ func (s *ToolchainService) InstallOpenClawRuntime() error {
 	archiveFormat := openclawSpec.archiveFormat(runtime.GOOS)
 	archivePath := filepath.Join(stagingDir, "archive."+archiveFormat)
 	emitProgress(10, "Downloading OpenClaw runtime...")
-	if err := s.downloadOpenClawArchive(context.Background(), ossURL, archivePath, version); err != nil {
+	if err := s.downloadOpenClawArchive(ctx, ossURL, archivePath, version); err != nil {
 		cleanup()
 		return fmt.Errorf("download openclaw from OSS: %w", err)
 	}
@@ -241,9 +252,10 @@ type OpenClawRuntimeStatus struct {
 
 // GetOpenClawRuntimeStatus returns the installation status of the OpenClaw runtime
 // by reading manifest.json from (in order):
-//   1) ~/.chatclaw/openclaw/runtime/<target>/current (OSS download install)
-//   2) <exeDir>/rt/<target> (NSIS / installer bundle next to ChatClaw.exe)
-//   3) on macOS: <exeDir>/../Resources/rt/<target> (app bundle)
+//  1. ~/.chatclaw/openclaw/runtime/<target>/current (OSS download install)
+//  2. <exeDir>/rt/<target> (NSIS / installer bundle next to ChatClaw.exe)
+//  3. on macOS: <exeDir>/../Resources/rt/<target> (app bundle)
+//
 // We do not spawn openclaw --version here: on Windows that flashes a console window, and CLI
 // output is verbose. Upgrade availability is handled by the OpenClaw runtime service (manager UI).
 func (s *ToolchainService) GetOpenClawRuntimeStatus() (*OpenClawRuntimeStatus, error) {
@@ -867,8 +879,8 @@ type ToolchainService struct {
 
 	initOnce sync.Once
 
-	mu          sync.Mutex
-	installing  map[string]bool // tracks which tools are currently being installed
+	mu         sync.Mutex
+	installing map[string]bool // tracks which tools are currently being installed
 	// pendingToolLatest records a newer remote version discovered during EnsureAll;
 	// we do not auto-download when the tool is already installed — user must use Install from settings.
 	pendingToolLatest map[string]string
@@ -878,6 +890,10 @@ type ToolchainService struct {
 	// testInstall 用于测试安装的上下文（支持取消）
 	testInstallCtx    map[string]context.CancelFunc // tool name -> cancel function
 	testInstallCalled map[string]bool               // tool name -> 是否已调用过（用于触发进度事件）
+
+	// installCtx 用于真实下载/安装的上下文（支持取消）
+	// 目前主要用于 openclaw runtime 的 OSS 下载中断
+	installCtx map[string]context.CancelFunc // name -> cancel function
 
 	upgradeProgressCb func(progress int, message string)
 }
@@ -891,6 +907,7 @@ func NewToolchainService(app *application.App) *ToolchainService {
 		installing:        make(map[string]bool),
 		testInstallCtx:    make(map[string]context.CancelFunc),
 		testInstallCalled: make(map[string]bool),
+		installCtx:        make(map[string]context.CancelFunc),
 	}
 }
 
@@ -1289,15 +1306,22 @@ func (s *ToolchainService) IsDevMode() bool {
 	return define.IsDev()
 }
 
-// AbortDownload 终止当前下载（仅对 TestInstall 有效）
+// AbortDownload 终止当前下载（TestInstall / 部分真实下载有效）
 func (s *ToolchainService) AbortDownload(toolName string) {
 	s.mu.Lock()
 	cancel, ok := s.testInstallCtx[toolName]
+	installCancel, installOK := s.installCtx[toolName]
 	s.mu.Unlock()
 
 	if ok && cancel != nil {
 		cancel()
 		s.emitTestInstallStatus(toolName, "aborted", "已终止下载")
+		return
+	}
+
+	// Real install cancellation (e.g. openclaw runtime OSS download)
+	if installOK && installCancel != nil {
+		installCancel()
 	}
 }
 
@@ -1841,6 +1865,7 @@ func (s *ToolchainService) fetchOSSDownloadURL(tool, version, goos, goarch strin
 		OS:      goos,
 		Arch:    goarch,
 	}
+	s.app.Logger.Info("toolchain: tool-download request data", reqBody)
 
 	bodyBytes, err := json.Marshal(reqBody)
 	if err != nil {

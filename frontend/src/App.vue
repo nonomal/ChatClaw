@@ -7,6 +7,7 @@ import AssistantPage from '@/pages/assistant/AssistantPage.vue'
 import { Events } from '@wailsio/runtime'
 import { UpdaterService } from '@bindings/chatclaw/internal/services/updater'
 import { SettingsService } from '@bindings/chatclaw/internal/services/settings'
+import * as ToolchainService from '@bindings/chatclaw/internal/services/toolchain/toolchainservice'
 
 const SettingsPage = defineAsyncComponent(() => import('@/pages/settings/SettingsPage.vue'))
 const KnowledgePage = defineAsyncComponent(() => import('@/pages/knowledge/KnowledgePage.vue'))
@@ -34,6 +35,9 @@ const OpenClawPage = defineAsyncComponent(
 )
 const OpenClawRuntimePage = defineAsyncComponent(
   () => import('@/pages/openclaw/OpenClawRuntimePage.vue')
+)
+const OpenClawRuntimeEnvironmentPage = defineAsyncComponent(
+  () => import('@/pages/openclaw/OpenClawRuntimeEnvironmentPage.vue')
 )
 const OpenClawDashboardPage = defineAsyncComponent(
   () => import('@/pages/openclaw/OpenClawDashboardPage.vue')
@@ -161,6 +165,7 @@ const moduleComponents: Record<NavModule, unknown> = {
   assistant: AssistantPage,
   openclaw: OpenClawPage,
   'openclaw-runtime': OpenClawRuntimePage,
+  'openclaw-runtime-environment': OpenClawRuntimeEnvironmentPage,
   'openclaw-cron': OpenClawCronPage,
   'openclaw-dashboard': OpenClawDashboardPage,
   knowledge: KnowledgePage,
@@ -190,8 +195,25 @@ watch(
   () => navigationStore.tabs.length,
   (len) => {
     if (len === 0) {
-      const module: NavModule = appStore.currentSystem === 'openclaw' ? 'openclaw' : 'assistant'
-      navigationStore.navigateToModule(module, appStore.currentSystem)
+      const openDefaultTab = async () => {
+        if (appStore.currentSystem === 'openclaw') {
+          try {
+            const status = await ToolchainService.GetOpenClawRuntimeStatus()
+            if (!status?.installed) {
+              navigationStore.navigateToModule('openclaw-runtime-environment', appStore.currentSystem)
+              return
+            }
+          } catch {
+            // Treat unknown status as not installed to keep behavior safe and explicit.
+            navigationStore.navigateToModule('openclaw-runtime-environment', appStore.currentSystem)
+            return
+          }
+          navigationStore.navigateToModule('openclaw', appStore.currentSystem)
+          return
+        }
+        navigationStore.navigateToModule('assistant', appStore.currentSystem)
+      }
+      void openDefaultTab()
     }
   },
   { immediate: true }

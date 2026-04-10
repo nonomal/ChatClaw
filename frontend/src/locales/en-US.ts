@@ -249,6 +249,7 @@ export default {
     menu: {
       modelService: 'Model Service',
       generalSettings: 'General Settings',
+      runtimeEnvironment: "Runtime Environment",
       skills: 'Skills Settings',
       mcp: 'MCPSettings',
       snapSettings: 'Snap Settings',
@@ -364,6 +365,20 @@ export default {
       portOccupiedHint: '端口 {port} 被进程 {process} (PID: {pid}) 占用，请先停止该进程后再试。',
       portStillOccupiedAfterStopHint: '请手动终止占用端口的进程 (PID: {pid})。',
     },
+    runtimeEnvironment: {
+      title: "Runtime Environment Setup",
+      subtitle: "Before using OpenClaw, please install the OpenClaw runtime environment.",
+      installNow: "Install",
+      later: "Later",
+      pause: "Pause",
+      paused: "Download paused",
+      pauseFailed: "Failed to pause",
+      startUsing: "Start Using",
+      notInstalledHint: "OpenClaw runtime is not installed yet. Install it first.",
+      installedHint: "OpenClaw runtime is installed. If you do not need it now, you can pause it and later manage it in ",
+      managerText: "OpenClaw Manager",
+      managerSuffix: ".",
+    },
     general: {
       title: 'General Settings',
       language: 'Language',
@@ -418,6 +433,8 @@ export default {
         },
         openclaw: {
           name: 'OpenClaw Runtime',
+          description:
+            'Install and manage the OpenClaw runtime with one click to support agent workflows and toolchain capabilities.',
         },
         updatesAvailableToast: '检测到扩展组件有新版本，可以到「设置 → 常规设置」中手动更新。',
       },
