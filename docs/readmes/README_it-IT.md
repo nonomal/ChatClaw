@@ -27,61 +27,101 @@
   <a href="README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-Ottieni un agente AI personale come OpenClaw in 5 minuti. Protetto da Sandbox, con un installatore ultra-compatto di 30MB per macOS e Windows (installa in 1 minuto). Si connette a WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu e altre app di messaggistica. Marketplace competenze integrato, Base di Conoscenza, Memoria, MCP, Attività Programmate. Sviluppato in Go: veloce e basso utilizzo delle risorse.
+ChatClaw è un'applicazione di assistente desktop grafico open source e base di conoscenza locale.
+Nessuna programmazione richiesta — distribuzione sul PC locale con un clic. Connettiti a WeChat, DingTalk, WeCom, QQ, Feishu, WhatsApp e altre app di messaggistica.
+Invia comandi e lascia che l'IA esegua le attività per te. Libreria di competenze integrata con oltre 5000 skill, con supporto per la gestione di base di conoscenza locale di tipo IMA.
 
 ## Anteprime
 
-### Assistente Chat AI
-Fai qualsiasi domanda al tuo assistente AI; cercherà intelligentemente nella tua base di conoscenza per generare una risposta pertinente.
+### AI Chatbot Assistant
+
+Fai qualsiasi domanda al tuo assistente AI; cercherà intelligentemente nella tua knowledge base e genererà risposte pertinenti. Con il mercato delle competenze integrato, gli agenti AI lavorano in modo autonomo, senza necessità di supervisione manuale. Dalla pianificazione di progetti complessi e organizzazione di documenti alla generazione di PowerPoint e all'esecuzione di attività multi-step, gli agenti AI possono analizzare autonomamente, avanzare efficientemente e fornire risultati completi.
+
 ![](../../images/previews/en/image1.png)
 
-### Commutazione in modalità duale per un'efficiente gestione dei task
-La modalità Chat si adatta a domande e risposte multi-scenario e ragionamento; la modalità Task è associata a un mercato delle competenze integrato, permettendo agli agenti AI di decomporre e far avanzare in autonomia attività multi-step per migliorare l'efficienza.
 ![](../../images/previews/en/image2.png)
 
-### Generazione Rapida PPT
-Invia un comando di una frase all'assistente intelligente per creare e generare automaticamente una presentazione PowerPoint.
+### Multi-Agent Mode, Tailored for Different Scenarios
+
+Crea più agenti AI indipendenti, ciascuno con la propria personalità, memoria e competenze. Passa da uno all'altro on-demand senza interferenze. A ogni agente possono essere assegnati ruoli diversi (es. "Servizio Clienti", "Analista Dati", "Assistente di Copia") e configurati con competenze, knowledge base e stili di risposta differenti.
+
 ![](../../images/previews/en/image3.png)
 
-### Gestore Competenze
-Usa un comando per far sì che l'assistente ti aiuti a trovare le funzionalità installate sul tuo computer o installare nuovi plugin di estensione. Mercato delle Competenze — naviga e installa liberamente competenze.
+### Local Knowledge Base Management
+
+Carica i tuoi documenti (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Il sistema analizza automaticamente, divide e converte in insertions vectorielles memorizzate nella tua knowledge base privata per il recupero e l'utilizzo preciso da parte dell'AI. Supporta l'organizzazione dei documenti per cartella e knowledge base.
+
 ![](../../images/previews/en/image4.png)
 
-### Memoria: Interazione Più Naturale e Intelligente
-Attiva conversazioni contestuali e assistenza personalizzata. Apprendimento continuo ed evoluzione — l'assistente sembra un partner in crescita che offre un servizio sempre più premuroso e intelligente.
+### Skill Manager — AI Responds at Command
+
+5000+ competenze AI pronte all'uso coprono produttività, strumenti di sviluppo, multimedia, smart home e altro. Lascia che l'AI lavori per te senza programmazione. Usa i comandi per trovare le funzionalità installate o installare nuovi plugin di estensione. Skill Market — sfoglia e installa competenze liberamente.
+
 ![](../../images/previews/en/image5.png)
 
-### Prova Gratuita del Modello — Base di Conoscenza Condivisa del Team
-Autorizzazione con un clic per connettersi a ChatWiki, sincronizzare i crediti dell'account ChatWiki e supportare modelli personalizzati. LLM nazionali e internazionali di alta qualità integrati, tra cui Ollama, Google Gemini e OpenAI — usa il tuo modello AI preferito per il lavoro d'ufficio quotidiano o scenari professionali.
+### Memory — Natural & Smarter Interactions
+
+Abilita conversazioni contestuali, fornendo servizi personalizzati, completando attività complesse e permettendo apprendimento ed evoluzione continui. Il robot diventa un compagno in crescita che offre un servizio sempre più premuroso e intelligente.
+
 ![](../../images/previews/en/image6.png)
 
-### Base di Conoscenza | Archiviazione Vettoriale Documenti
-Carica i tuoi documenti (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Il sistema li analizza, divide e converte automaticamente in嵌入dings vettoriali, archiviati nella tua base di conoscenza privata per un recupero e utilizzo precisi da parte dei modelli AI.
+### Free Model Trial
+
+Autorizzazione con un clic per connettersi a ChatWiki, sincronizzare crediti, supportare modelli personalizzati. LLM integrati di alta qualità: Ollama, Google Gemini, OpenAI e altri. Usa il tuo modello AI preferito per lavoro d'ufficio o scenari professionali.
+
 ![](../../images/previews/en/image7.png)
 
-### Integrazioni Canali IM
-Attraverso l'integrazione di SDK forniti da fornitori di messaggistica istantanea (Feishu, WeCom, QQ, DingTalk, WeChat, WhatsApp e altro), implementa rapidamente capacità complete di comunicazione IM nell'app, inclusa la creazione di canali, gestione utenti e invio/ricezione messaggi.
+### Multi-Channel Remote Control via WeChat/QQ/WhatsApp
+
+ChatClaw supporta più canali di messaggistica, inviando risultati di analisi, avvisi di monitoraggio e riassunti di ricerca direttamente al telefono. Dopo l'elaborazione AI, i risultati vengono inviati automaticamente al canale designato. Invia comandi nella finestra di chat per controllare remotamente l'esecuzione delle attività AI.
+
 ![](../../images/previews/en/image8.png)
 
-### Attività Programmata — Esecuzione Automatica dei Comandi
-Lascia che l'assistente esegua automaticamente operazioni specifiche a orari o intervalli preimpostati, come fornire promemoria tempestivi, eseguire lavori ricorrenti e eseguire attività di manutenzione a livello di sistema.
+### Scheduled Tasks — Automated Execution
+
+Imposta la frequenza di monitoraggio: ogni 5 minuti, ogni ora o quotidianamente a orari fissi. Scheduler grafico con espressioni cron. Recupera periodicamente pagine o fonti di dati, confronta le modifiche, monitora gli indicatori chiave e invia avvisi tramite canali di messaggistica quando vengono rilevate anomalie.
+
 ![](../../images/previews/en/image9.png)
 
-### Selezione Testo per Q&A Istantaneo
-Seleziona qualsiasi testo sullo schermo e verrà automaticamente copiato in una casella di domanda rapida flottante. Un clic per inviarlo all'assistente AI e ottenere una risposta istantanea.
+### Text Selection for Instant Q&A
+
+Seleziona qualsiasi testo sullo schermo; viene automaticamente copiato in una casella di domanda rapida fluttuante. Un clic lo invia all'assistente AI per una risposta istantanea.
+
 ![](../../images/previews/en/image10.png)
 
-### Barra Laterale Intelligente
-Un assistente intelligente che può essere ancorato accanto ad altre finestre di applicazioni. Passa rapidamente tra assistenti AI configurati in modo diverso per porre domande. Il robot genera risposte basate sulla tua base di conoscenza associata, e supporta l'invio delle risposte con un clic nelle tue conversazioni.
+### Smart Sidebar
+
+Un assistente intelligente che può agganciarsi accanto ad altre finestre di app. Passa rapidamente tra assistenti AI configurati diversamente per fare domande. Il robot genera risposte basate sulla tua knowledge base associata e supporta l'invio di risposte con un clic. Segui fluttuante intelligente — accesso agli strumenti sempre a portata di mano.
+
 ![](../../images/previews/en/image11.png)
 
-### Una Domanda, Più Risposte: Confronta con Facilità
-Non c'è bisogno di ripetere le domande. Consulta più "esperti AI" simultaneamente e visualizza le loro risposte una accanto all'altra nella stessa interfaccia. Facile da confrontare e ti aiuta a raggiungere la migliore conclusione.
 ![](../../images/previews/en/image12.png)
 
-### Palla di Avvio con Un Clic
-Fai clic sulla sfera flottante sul desktop per riattivare o aprire istantaneamente la finestra principale dell'applicazione ChatClaw.
+### One Question, Multiple Answers: Compare with Ease
+
+Non c'è bisogno di ripetere le domande. Consulta più "esperti AI" simultaneamente, confronta le loro risposte fianco a fianco nella stessa interfaccia e arriva alla migliore conclusione.
+
 ![](../../images/previews/en/image13.png)
+
+### One-Click Launcher Ball
+
+Fai clic sulla sfera fluttuante sul desktop per riattivare o aprire istantaneamente la finestra dell'applicazione principale di ChatClaw.
+
+![](../../images/previews/en/image14.png)
+
+### Community & Contact Us
+
+Benvenuto a contattarci per assistenza o per fornire suggerimenti. WeChat: scansiona il codice QR per unirti al gruppo di scambio tecnico di ChatClaw. Per favore menziona "chatclaw" quando aggiungi.
+
+
+## Distribuzione Modalità Server
+
+
+## Distribuzione Modalità Server
+
+
+## Distribuzione Modalità Server
+
 
 ## Distribuzione Modalità Server
 

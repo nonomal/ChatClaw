@@ -27,61 +27,101 @@
   <a href="README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-5 dakikada OpenClaw benzeri kişisel AI ajanı edinin. Sandbox güvenliği ile, macOS ve Windows için ultra küçük 30MB yükleyici (1 dakikada kurulum). WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu ve diğer mesajlaşma uygulamalarına bağlanır. Yerleşik Yetenek Pazarı, Bilgi Tabanı, Hafıza, MCP, Planlı Görevler. Go ile geliştirildi: hızlı ve düşük kaynak kullanımı.
+ChatClaw açık kaynaklı bir yerel bilgi tabanı ve OpenClaw grafik masaüstü asistan uygulamasıdır.
+Programlama gerektirmez — tek tıklamayla yerel bilgisayarınıza dağıtın. WeChat, DingTalk, WeCom, QQ, Feishu, WhatsApp ve diğer ana mesajlaşma uygulamalarına bağlanın.
+Komut gönderin ve AI'ın sizin için görevleri yerine getirmesine izin verin. Entegre 5000'den fazla beceri kitaplığı ve IMA tarzı yerel bilgi tabanı yönetimi desteği.
 
 ## Önizlemeler
 
-### AI Sohbet Asistanı
-AI asistanınıza herhangi bir soru sorun; o, bilgi tabanınızda akıllıca arama yaparak ilgili bir yanıt oluşturacaktır.
+### AI Chatbot Assistant
+
+AI asistanınıza herhangi bir soru sorun; bilgi tabanınızı akıllıca arayacak ve ilgili yanıtlar üretecektir. Yerleşik Yetenek Pazarı ile AI Ajanları özerk olarak çalışır — tüm süreç boyunca manuel denetim gerektirmez. Karmaşık proje planlaması, belge organizasyonu, PPT oluşturma veya çok adımlı görev yürütme olsun, AI Ajanları özerk olarak analiz edebilir, verimli bir şekilde ilerleyebilir ve sonunda tam sonuçlar sunabilir.
+
 ![](../../images/previews/en/image1.png)
 
-### Verimli görev yönetimi için çift mod geçişi
-Sohbet modu çoklu senaryo soru-cevap ve muhakemeye uyum sağlar; Görev modu yerleşik bir beceri pazarıyla eşleşerek AI ajanlarının verimliliği artırmak için çok adımlı görevleri özerk bir şekilde ayrıştırmasını ve ilerletmesini sağlar.
 ![](../../images/previews/en/image2.png)
 
-### Hızlı PPT Oluşturma
-Akıllı asistană bir cümlelik komut göndererek PowerPoint sunumunu otomatik olarak oluşturup üretin.
+### Multi-Agent Mode, Tailored for Different Scenarios
+
+Her birinin kendine özgü kişiliği, belleği ve yetenekleri olan birden fazla bağımsız AI Ajanı oluşturun. İhtiyaç duyduğunuzda aralarında kesinti olmadan geçiş yapın. Her Ajan'a farklı roller (örn. "Müşteri Hizmetleri", "Veri Analisti", "Yazım Asistanı") atanabilir ve farklı yetenekler, bilgi tabanları ve yanıt stilleriyle yapılandırılabilir.
+
 ![](../../images/previews/en/image3.png)
 
-### Beceri Yöneticisi
-Asistanın bilgisayarınızda yüklü özellikleri bulmasına veya yeni uzantı eklentileri yüklemesine yardımcı olması için bir komut kullanın. Beceri Pazarı — becerileri özgürce göz atın ve yükleyin.
+### Local Knowledge Base Management
+
+Belgelerinizi yükleyin (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Sistem bunları otomatik olarak ayrıştırır, böler ve AI tarafından hassas alma ve kullanım için özel bilgi tabanınızda saklanan vektör gömüleri dönüştürür. Belgelerin klasöre ve bilgi tabanına göre düzenlenmesini destekler.
+
 ![](../../images/previews/en/image4.png)
 
-### Bellek: Daha Doğal, Daha Akıllı Etkileşim
-Bağlamsal konuşmaları ve kişiselleştirilmiş yardımı etkinleştirin. Sürekli öğrenme ve evrim — asistan, giderek daha düşünceli ve akıllı hizmet sunan büyüyen bir ortak gibi hissedilir.
+### Skill Manager — AI Responds at Command
+
+5000+ kullanıma hazır AI yeteneği üretkenlik, geliştirme araçları, multimedya, akıllı ev ve daha fazlasını kapsar — programlama yapmadan AI'nın sizin için çalışmasını sağlar. Yüklü özellikleri bulmak veya yeni uzantı eklentileri yüklemek için komutları kullanın. Yetenek Pazarı — yetenekleri özgürce göz atın ve yükleyin.
+
 ![](../../images/previews/en/image5.png)
 
-### Ücretsiz Model Deneme — Paylaşılan Ekip Bilgi Tabanı
-ChatWiki'ye bağlanmak için tek tıklamayla yetkilendirme, ChatWiki hesap kredilerini senkronize etme ve özel modelleri destekleme. Ollama, Google Gemini ve OpenAI dahil yüksek kaliteli yerli ve uluslararası LLM'ler yerleşik — günlük ofis işi veya profesyonel senaryolar için favori AI modelinizi kullanın.
+### Memory — Natural & Smarter Interactions
+
+Bağlamsal konuşmaları etkinleştirin, kişiselleştirilmiş hizmet sunun, karmaşık görevleri tamamlayın ve sürekli öğrenme ve evrime izin verin. Robot, giderek daha düşünceli ve akıllı hizmet sunan büyüyen bir arkadaş haline gelir.
+
 ![](../../images/previews/en/image6.png)
 
-### Bilgi Tabanı | Belge Vektörleştirme Deposu
-Belgelerinizi yükleyin (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Sistem bunları otomatik olarak ayrıştırır, böler ve vektör gömüntülerine dönüştürür, AI modelleri tarafından hassas alma ve kullanım için özel bilgi tabanınızda saklar.
+### Free Model Trial
+
+ChatWiki'ye bağlanmak için tek tıkla yetkilendirme, kredi senkronizasyonu, özel model desteği. Ollama, Google Gemini, OpenAI ve daha fazlası gibi yerleşik yüksek kaliteli LLM'ler — ofis işleri veya profesyonel senaryolar için favori AI modelinizi kullanın.
+
 ![](../../images/previews/en/image7.png)
 
-### Zengin IM Kanal Entegrasyonları
-Anlık mesajlaşma hizmet sağlayıcıları (Feishu, WeCom, QQ, DingTalk, WeChat, WhatsApp ve daha fazlası) tarafından sağlanan SDK'ları entegre ederek, kanal oluşturma, kullanıcı yönetimi ve mesaj gönderme/alma dahil olmak üzere uygulama içinde eksiksiz IM iletişim yeteneklerini hızla uygulayın.
+### Multi-Channel Remote Control via WeChat/QQ/WhatsApp
+
+ChatClaw birden fazla mesaj kanalını destekler, analiz sonuçlarını, izleme uyarılarını ve araştırma özetlerini doğrudan telefonunuza gönderir. AI işlemeden sonra sonuçlar otomatik olarak belirlenen kanala gönderilir. Sohbet penceresinde komutlar göndererek AI görev yürütmeyi uzaktan kontrol edin.
+
 ![](../../images/previews/en/image8.png)
 
-### Zamanlanmış Görevler — Otomatik Komut Çalıştırma
-Asistanın önceden belirlenmiş zamanlarda veya aralıklarla belirli işlemleri otomatik olarak gerçekleştirmesine izin verin; örneğin zamanında hatırlatıcılar sağlama, tekrarlayan işleri yürütme ve sistem düzeyinde bakım görevlerini gerçekleştirme.
+### Scheduled Tasks — Automated Execution
+
+İzleme sıklığını ayarlayın: her 5 dakikada bir, saatlik veya günlük olarak belirli saatlerde. Cron ifadeleriyle grafik zamanlayıcı. Düzenli olarak sayfaları veya veri kaynaklarını getirin, değişiklikleri karşılaştırın, temel göstergeleri izleyin ve anomaliler tespit edildiğinde mesaj kanalları aracılığıyla uyarı gönderin.
+
 ![](../../images/previews/en/image9.png)
 
-### Anında S&C için Metin Seçimi
-Ekranda herhangi bir metin seçin ve otomatik olarak kayan bir hızlı soru kutusuna kopyalanır. Bir tıklamayla AI asistanına gönderin ve anında yanıt alın.
+### Text Selection for Instant Q&A
+
+Ekrandaki herhangi bir metni seçin; otomatik olarak yüzen bir hızlı-soru kutusuna kopyalanır. Tek tıklama ile anında yanıt için AI asistanına gönderilir.
+
 ![](../../images/previews/en/image10.png)
 
-### Akıllı Kenar Çubuğu
-Diğer uygulama pencerelerinin yanına yaslanabilen akıllı bir asistan. Soru sormak için farklı yapılandırılmış AI asistanları arasında hızla geçiş yapın. Robot, ilişkili bilgi tabanınıza dayalı yanıtlar oluşturur ve sohbetlerinize yanıt göndermeyi tek tıklamayla destekler.
+### Smart Sidebar
+
+Diğer uygulama pencerelerinin yanına yaslanabilen akıllı bir asistan. Sorular sormak için farklı yapılandırılmış AI asistanları arasında hızla geçiş yapın. Robot, ilişkili bilgi tabanınıza göre yanıtlar oluşturur ve tek tıklama ile yanıt göndermeyi destekler. Akıllı kayan takip — araç girişi her zaman elinizin altında.
+
 ![](../../images/previews/en/image11.png)
 
-### Bir Soru, Birden Fazla Yanıt: Kolayca Karşılaştırın
-Soruları tekrarlamaya gerek yok. Aynı anda birden fazla "AI uzmanına" danışın ve yanıtlarını aynı arayüzde yan yana görüntüleyin. Karşılaştırması kolay ve en iyi sonuca ulaşmanıza yardımcı olur.
 ![](../../images/previews/en/image12.png)
 
-### Tek Tıklamayla Başlatma Topu
-ChatClaw ana uygulama penceresini anında uyandırmak veya açmak için masaüstündeki kayan topa tıklayın.
+### One Question, Multiple Answers: Compare with Ease
+
+Soruları tekrarlamanıza gerek yok. Aynı anda birden fazla "AI uzmanına" danışın, yanıtlarını aynı arayüzde yan yana karşılaştırın ve en iyi sonuca ulaşın.
+
 ![](../../images/previews/en/image13.png)
+
+### One-Click Launcher Ball
+
+ChatClaw ana uygulama penceresini anında uyandırmak veya açmak için masaüstünüzdeki kayan topa tıklayın.
+
+![](../../images/previews/en/image14.png)
+
+### Community & Contact Us
+
+Yardım için veya öneri sunmak için bizimle iletişime geçmenizi bekliyoruz. WeChat: ChatClaw teknik paylaşım grubuna katılmak için QR kodunu tarayın. Eklerken lütfen "chatclaw" belirtin.
+
+
+## Sunucu Modu Dağıtımı
+
+
+## Sunucu Modu Dağıtımı
+
+
+## Sunucu Modu Dağıtımı
+
 
 ## Sunucu Modu Dağıtımı
 

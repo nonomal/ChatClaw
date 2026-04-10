@@ -27,61 +27,95 @@
   <a href="README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-5分鐘擁有類 OpenClaw 的小龍蝦個人AI智慧體，沙箱安全防護，macOS/Windows 30M 極小安裝包，1 分鐘安裝。連接 WhatsApp、Telegram、Slack、Discord、Gmail、釘釘、企業微信、QQ、飛書等主流通訊應用，內建技能市場、知識庫、記憶、MCP、計劃任務等核心功能。Go語言開發，運行快、佔資源少。
+ChatClaw是一款開源的本地知識庫、OpenClaw圖形化桌面管家應用
+無需編程，一鍵部署至本地電腦。可連接 微信、 釘釘、企業微信、QQ、飛書，WhatsApp等主流通訊應用，
+發送指令即可讓 AI 幫你執行任務。內置 OpenClaw 5000+ 技能庫，並支持類 ima 的本地知識庫管理
 
 ## 功能預覽
 
-### AI 聊天助手
-向 AI 助手提出任何問題，它會智能搜尋您的知識庫並產生相關回答。
+### AI Chatbot Assistant
+
+向 AI 助手提出任何問題，它會智慧搜索您的知識庫並生成相關回答。搭配內建技能市場，讓 AI Agent 自主工作，無需人工全程干預。無論是複雜的項目規劃、文檔整理，還是 PPT 快速生成、多步驟任務執行，都能自主拆解，高效推進，最終交付完整結果，大幅節省人工時間，提升工作效率。
+
 ![](../../images/previews/en/image1.png)
 
-### 雙模式切換，高效搞定各類需求
-聊天模式適配多場景多輪問答與推理；任務模式搭配內置技能市場，讓 AI Agent 自主拆解並推進多步驟任務，提升效率。
 ![](../../images/previews/en/image2.png)
 
-### PPT 快速生成
-向智能助手發送一句話指令，即可自動建立並生成 PowerPoint 簡報。
+### Multi-Agent Mode, Tailored for Different Scenarios
+
+建立多個獨立 AI Agent，每個擁有專屬角色、記憶和技能，按需切換使用，互不干擾。每個 Agent 可設定不同身份，如「客服專員」「數據分析師」「文案助手」，可分別為每個 Agent 配置不同的技能、知識庫、回覆風格。在介面中自由切換 Agent，適應不同任務場景。
+
 ![](../../images/previews/en/image3.png)
 
-### 技能管理員
-使用指令讓機器人幫您查找電腦上已安裝的功能或安裝新的擴充外掛。技能市場，自由選擇和安裝技能。
+### Local Knowledge Base Management
+
+上傳您的文檔（如 TXT、PDF、Word、Excel、CSV、HTML、Markdown），系統會自動解析、分割並轉換為向量嵌入，儲存到您的私有知識庫中，供 AI 模型進行精準檢索和利用，支援按資料夾，知识庫文檔進行分類整理。
+
 ![](../../images/previews/en/image4.png)
 
-### 記憶功能 — 互動更自然、更智能
-實現上下文對話，提供個人化服務，完成複雜任務，持續學習和進化，讓機器人像不斷成長的夥伴，能提供越來越貼心、越來越智能的服務。
+### Skill Manager — AI Responds at Command
+
+5000+ 開箱即用的 AI 技能，覆蓋效率辦公、開發工具、多媒體創作、智慧家居等全場景，讓 AI 幫你幹活，無需編程。使用指令讓機器人幫您查找電腦上已安裝的功能或安裝新的擴展插件。技能市場，自主選擇和安裝技能。
+
 ![](../../images/previews/en/image5.png)
 
-### 免費模型試用 — 共享團隊知識庫
-一鍵授權接入 ChatWiki，同步 ChatWiki 帳戶積分，同時支援自訂模型，內置優質海內外大模型，Ollama、Google Gemini、OpenAI 等。無論是日常辦公還是專業場景，使用您喜歡的 AI 模型。
+### Memory — Natural & Smarter Interactions
+
+實現上下文對話，提供個人化服務，完成複雜任務，持續學習和進化，讓機器人像一個不斷成長的夥伴，能提供越來越貼心、越來越智慧的服務。
+
 ![](../../images/previews/en/image6.png)
 
-### 知識庫 | 文件向量化儲存
-上傳您的文件（如 TXT、PDF、Word、Excel、CSV、HTML、Markdown），系統會自動解析、分割並轉換為向量嵌入，存儲到您的私有知識庫中，供 AI 模型進行精準檢索和利用。
+### Free Model Trial
+
+一鍵授權接入 ChatWiki，同步 ChatWiki 帳戶積分，同時支援自訂模型，內建優質海內外大模型，Ollama、Google Gemini、OpenAI 等，無論是日常辦公還是專業場景，使用您喜歡的 AI 模型。
+
 ![](../../images/previews/en/image7.png)
 
-### 豐富的 IM 頻道接入
-通過集成即時通訊服務商（如飛書、企微、QQ、釘釘、IM、LINE、Discord、WhatsApp、Telegram 等）提供的 SDK，在應用中快速實現包括頻道建立、使用者管理、訊息收發在內的完整 IM 通訊能力。
+### Multi-Channel Remote Control via WeChat/QQ/WhatsApp
+
+ChatClaw 支援多種消息通道，讓分析結果、監控告警、研究摘要直接推送到您的手機上，突破平台壁壘。接入多家消息通道，海內外主流通訊應用全支援。AI 處理完成後，結果自動發送到指定渠道，無需主動刷新。在聊天視窗中發送指令，即可遠程操控 AI 執行任務。
+
 ![](../../images/previews/en/image8.png)
 
-### 定時任務 — 自動化完成指令
-讓機器人在預設的時間點或時間間隔，自動執行特定的操作，例如提供準時的提醒服務，執行週期性的工作，執行系統級的維護任務等。
+### Scheduled Tasks — Automated Execution
+
+設定監控頻率：每 5 分鐘、每小時、每天固定時間點，圖形化排程器配合 cron 表達式，讓自動執行更直觀。定時抓取特定頁面或數據源，對比變化，監控關鍵指標、政策發布、公告更新，異常觸發時，第一時間透過消息通道推送提醒。
+
 ![](../../images/previews/en/image9.png)
 
-### 劃詞即時問答
+### Text Selection for Instant Q&A
+
 選中螢幕上的任意文字，它會被自動複製並填入懸浮快問框。一鍵傳送給 AI 助手，即刻獲得回答。
+
 ![](../../images/previews/en/image10.png)
 
-### 智能側邊欄
-可以貼靠在其他應用視窗旁的智能助手。在其中快速切換不同配置的 AI 助手進行提問。機器人根據您關聯的知識庫生成回答，並支援一鍵將回覆傳送到您的對話中。
+### Smart Sidebar
+
+可以貼靠在其他應用程式視窗旁的智慧助手。在其中快速切換不同配置的 AI 助手進行提問。機器人根據您關聯的知識庫生成回答，並支援一鍵將回覆發送到您的對話中。智慧懸浮跟隨，工具入口隨手可得，不遮擋、不打斷。
+
 ![](../../images/previews/en/image11.png)
 
-### 一問多答：輕鬆比較
-無需重複提問。同時咨詢多個「AI 專家」，在同一介面中並排查看它們的回覆。方便比較，幫助您得出最佳結論。
 ![](../../images/previews/en/image12.png)
 
-### 一鍵啟動球
-點擊桌面上的懸浮球，即可喚醒或打開 ChatClaw 主應用視窗。
+### One Question, Multiple Answers: Compare with Ease
+
+無需重複提問。同時諮詢多個「AI 專家」，在一個介面中並排查看它們的回覆，方便比較，幫助您得出最佳結論。
+
 ![](../../images/previews/en/image13.png)
+
+### One-Click Launcher Ball
+
+點擊桌面上的懸浮球，即可喚醒或打開 ChatClaw 主應用程式視窗。
+
+![](../../images/previews/en/image14.png)
+
+### Community & Contact Us
+
+歡迎聯繫我們獲取幫助，或者提供建議幫助我們改善 ChatClaw。您可以通過以下方式聯繫我們：微信，使用微信掃碼加入 ChatClaw 技術交流群，添加請備註「chatclaw」。
+
+
+## 伺服器模式部署
+
 
 ## 伺服器模式部署
 

@@ -27,61 +27,101 @@
   <a href="README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-5 minutah dobite osebnega agenta AI, kot je OpenClaw. Z varnostjo Sandbox, z ultra majhnim 30MB namestitvenim programom za macOS in Windows (namestitev v 1 minuti). Poveže se s WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu in drugimi aplikacijami za sporočanje. Vgrajeno tržnico spretnosti, baza znanja, spomin, MCP, načrtovane naloge. Razvito v Go: hitro in majhna poraba virov.
+ChatClaw je odprtokodna lokalna baza znanja in grafična namizna pomočnica.
+Brez programiranja — namestitev na lokalni računalnik z enim klikom. Povežite se s WeChat, DingTalk, WeCom, QQ, Feishu, WhatsApp in drugimi priljubljenimi messaging aplikacijami.
+Pošljite ukaze in pustite, da umetna inteligenca izvaja naloge za vas. Vgrajena knjižnica spletnih več kot 5000 spretnosti, s podporo za upravljanje lokalne baze znanja v slogu IMA.
 
 ## Predogledi
 
-### AI Chatbot Asistent
-Zastavite svoEMU AI asistentu katerokoli vprašanje; pametno bo preiskal vašo bazo znanja in ustvaril ustrezen odgovor.
+### AI Chatbot Assistant
+
+Postavite vprašanje svojemu AI pomočniku; inteligentno bo preiskal vašo zbirko znanja in ustvaril ustrezne odgovore. Z vgrajenim trgom spretnosti delujejo AI agenti avtonomno — brez potrebe po ročnem nadzoru. Od načrtovanja zapletenih projektov in organiziranja dokumentov do ustvarjanja PowerPointov ter izvajanja večstopenjskih nalog lahko AI agenti avtonomno analizirajo, učinkovito napredujejo in končno dostavijo popolne rezultate.
+
 ![](../../images/previews/en/image1.png)
 
-### Dvojni način preklapljanja za učinkovito opravljanje nalog
-Način klepeta se prilagaja večscenarijskemu Q&A in sklepanju; način opravil je povezan z vgrajenim trgom spretnosti, kar agentom AI omogoča avtonomno razčlenjevanje in napredovanje večkorakčnih nalog za izboljšanje učinkovitosti.
 ![](../../images/previews/en/image2.png)
 
-### Hitro ustvarjanje PPT
-Pošljite ukaz enega stavka inteligentnemu asistentu za samodejno ustvarjanje in generiranje predstavitve PowerPoint.
+### Multi-Agent Mode, Tailored for Different Scenarios
+
+Ustvarite več neodvisnih AI agentov, vsak s svojo osebnostjo, spominom in spretnostmi. Preklapljajte med njimi po potrebi brez motenj. Vsakemu agentu je mogoče dodeliti različne vloge (npr. "Služba za stranke", "Analitik podatkov", "Pomočnik za pisanje") ter konfigurirati različne spretnosti, zbirke znanja in sloge odgovorov.
+
 ![](../../images/previews/en/image3.png)
 
-### Upravitelj spretnosti
-Uporabite ukaz, da vas asistent poišče nameščene funkcije na vašem računalniku ali namesti nove razširitvene vtičnike. Trg spretnosti — prosto brskajte in nameščajte spretnosti.
+### Local Knowledge Base Management
+
+Naložite svoje dokumente (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Sistem samodejno razčleni, razdeli in pretvori v vektorske vložke, shranjene v vaši zasebni zbirki znanja za natančno pridobivanje in uporabo s strani AI. Podpira organiziranje dokumentov po mapah in zbirki znanja.
+
 ![](../../images/previews/en/image4.png)
 
-### Spomin: Bolj naravna in pametna interakcija
-Omogočite kontekstualne pogovore in personalizirano pomoč. Kontinuirano učenje in evolucija — asistent se počuti kot rastjoč partner, ki zagotavlja vse bolj preudarno in inteligentno storitev.
+### Skill Manager — AI Responds at Command
+
+5000+ takoj uporabnih AI spretnosti pokriva produktivnost, razvojna orodja, multimedije, pametni dom in še več — AI naj dela za vas brez programiranja. Uporabite ukaze, da robot poišče nameščene funkcije ali namesti nove razširitvene vtičnike. Trg spretnosti — prosto brskajte in nameščajte spretnosti.
+
 ![](../../images/previews/en/image5.png)
 
-### Brezplačno preizkušanje modela — Skupna baza znanja ekipe
-Poverilo z enim klikom za povezavo s ChatWiki, sinhronizacijo dobropisov računa ChatWiki in podporo za angepasste modele. Vgrajeni visokokakovostni domači in mednarodni LLM-ji, vključno z Ollama, Google Gemini in OpenAI — uporabljajte svoj priljubljeni model AI za vsakdanje pisarniško delo ali profesionalne scenarije.
+### Memory — Natural & Smarter Interactions
+
+Omogočite kontekstualne pogovore, prilagojene storitve, dokončanje zapletenih nalog ter stalno učenje in evolucijo. Robot postaja rastni spremljevalec, ki nudi vse bolj preudarno in inteligentno storitev.
+
 ![](../../images/previews/en/image6.png)
 
-### Baza znanja | Vektorska shramba dokumentov
-Naložite svoje dokumente (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Sistem samodejno analizira, razdeli in pretvori v vektorske vložke, shranjene v vaši zasebni bazi znanja za natančno iskanje in uporabo s strani modelov AI.
+### Free Model Trial
+
+En klik za avtorizacijo povezave s ChatWiki, sinhronizacijo kreditov, podporo merilom po meri. Vgrajeni visokokakovostni LLM: Ollama, Google Gemini, OpenAI in drugi — uporabite svoj priljubljeni AI model za pisarniško delo ali profesionalne scenarije.
+
 ![](../../images/previews/en/image7.png)
 
-### Bogate integracije IM kanalov
-Z integracijo SDK-jev, ki jih zagotavljajo ponudniki instant sporočil (Feishu, WeCom, QQ, DingTalk, WeChat, WhatsApp in drugi), hitro implementirajte popolne zmogljivosti IM komunikacije v aplikaciji, vključno z ustvarjanjem kanalov, upravljanjem uporabnikov in pošiljanjem/prejemanjem sporočil.
+### Multi-Channel Remote Control via WeChat/QQ/WhatsApp
+
+ChatClaw podpira več komunikacijskih kanalov ter pošilja rezultate analiz, opozorila spremljanja in raziskovalna povzetka neposredno na vaš telefon. Po obdelavi z AI se rezultati samodejno pošljejo v določen kanal. Pošljite ukaze v okno klepeta za daljinsko upravljanje izvajanja AI nalog.
+
 ![](../../images/previews/en/image8.png)
 
-### Načrtovane naloge — Samodejno izvajanje ukazov
-Asistentu dovolite, da samodejno izvaja določene operacije v vnaprej določenih časih ali intervalih, kot je zagotavljanje pravočasnih opomnikov, izvajanje ponavljajočih se del in izvajanje nalog vzdrževanja na ravni sistema.
+### Scheduled Tasks — Automated Execution
+
+Nastavite pogostost spremljanja: vsakih 5 minut, na uro ali dnevno ob določenih časih. Grafični razporejevalnik s cron izrazi. Občasno pridobivajte strani ali vire podatkov, primerjajte spremembe, spremljajte ključne kazalnike in pošiljajte opozorila prek sporočilnih kanalov, ko zaznate nepravilnosti.
+
 ![](../../images/previews/en/image9.png)
 
-### Izbira besedila za takojšnje Vprašanje in odgovor
-Izberite katero koli besedilo na zaslonu in bo samodejno kopirano v plavajoče polje za hitro vprašanje. En klik za pošiljanje asistentu AI za takojšen odgovor.
+### Text Selection for Instant Q&A
+
+Izberite katero koli besedilo na zaslonu; samodejno se kopira v plavajoče polje za hitro vprašanje. En klik ga pošlje AI pomočniku za takojšen odgovor.
+
 ![](../../images/previews/en/image10.png)
 
-### Pametna stranska vrstica
-Inteligentni asistent, ki ga lahko pripnete ob druga okna aplikacij. Hitro preklapljajte med različno konfiguriranimi AI asistenti za zastavljanje vprašanj. Robot ustvarja odgovore na podlagi vaše povezane baze znanja in podpira pošiljanje odgovorov z enim klikom v vaše pogovore.
+### Smart Sidebar
+
+Pametni pomočnik, ki se lahko pritrdi ob drugih oknih aplikacij. Hitro preklapljajte med različno konfiguriranimi AI pomočniki za zastavljanje vprašanj. Robot ustvarja odgovore na podlagi vaše povezane zbirke znanja in podpira pošiljanje odgovorov z enim klikom. Pametno plavajoče sledenje — vnos orodja je vedno pri roki.
+
 ![](../../images/previews/en/image11.png)
 
-### Eno vprašanje, več odgovorov: Enostavno primerjajte
-Ni potrebe po ponavljanju vprašanj. Hkrati se posvetujte z več "AI strokovnjaki" in si oglejte njihove odgovore drug poleg drugega v istem vmesniku. Preprosto primerjanje vam pomaga priti do najboljšega sklepa.
 ![](../../images/previews/en/image12.png)
 
-### Žoga za zagon z enim klikom
-Kliknite plavajočo kroglo na namizju, da takoj prebudite ali odprete glavno okno aplikacije ChatClaw.
+### One Question, Multiple Answers: Compare with Ease
+
+Ni potrebe po ponavljanju vprašanj. Hkrati se posvetujte z več "AI strokovnjaki", primerjajte njihove odgovore drug poleg drugega v istem vmesniku in pridite do najboljšega sklepa.
+
 ![](../../images/previews/en/image13.png)
+
+### One-Click Launcher Ball
+
+Kliknite plavajočo kroglico na namizju, da takoj prebudite ali odprete glavno okno aplikacije ChatClaw.
+
+![](../../images/previews/en/image14.png)
+
+### Community & Contact Us
+
+Dobrodošli, da nas kontaktirate za pomoč ali podate predloge. WeChat: skenirajte QR kodo za vstop v tehnično izmenjevalno skupino ChatClaw. Pri dodajanju navedite "chatclaw".
+
+
+## Namestitev v načinu strežnika
+
+
+## Namestitev v načinu strežnika
+
+
+## Namestitev v načinu strežnika
+
 
 ## Namestitev v načinu strežnika
 

@@ -27,61 +27,101 @@
   <a href="README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-Nhận AI cá nhân như OpenClaw trong 5 phút. Bảo mật Sandbox, với trình cài đặt cực nhỏ 30MB cho macOS và Windows (cài đặt trong 1 phút). Kết nối với WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu và các ứng dụng nhắn tin khác. Thị trường Kỹ năng tích hợp, Cơ sở Tri thức, Bộ nhớ, MCP, Nhiệm vụ Định kỳ. Được phát triển bằng Go: nhanh và sử dụng ít tài nguyên.
+ChatClaw là ứng dụng trợ lý desktop đồ họa mã nguồn mở và cơ sở tri thức cục bộ.
+Không cần lập trình — triển khai lên máy tính cục bộ chỉ với một lần nhấp. Kết nối với WeChat, DingTalk, WeCom, QQ, Feishu, WhatsApp và các ứng dụng nhắn tin phổ biến.
+Gửi lệnh để AI thực hiện tác vụ cho bạn. Thư viện kỹ năng tích hợp hơn 5000+, hỗ trợ quản lý cơ sở tri thức cục bộ kiểu IMA.
 
 ## Xem trước
 
-### Trợ lý Chat AI
-Đặt câu hỏi bất kỳ cho trợ lý AI của bạn và nó sẽ tìm kiếm thông minh trong cơ sở tri thức của bạn để tạo câu trả lời liên quan.
+### AI Chatbot Assistant
+
+Đặt câu hỏi bất kỳ cho trợ lý AI của bạn; nó sẽ thông minh tìm kiếm cơ sở tri thức của bạn và tạo ra các câu trả lời liên quan. Với Thị trường Kỹ năng được tích hợp sẵn, các Tác nhân AI hoạt động tự chủ — không cần giám sát thủ công trong suốt quá trình. Từ lập kế hoạch dự án phức tạp, tổ chức tài liệu đến tạo PPT và thực thi nhiệm vụ nhiều bước, các Tác nhân AI có thể tự phân tích, tiến triển hiệu quả và cuối cùng mang lại kết quả đầy đủ.
+
 ![](../../images/previews/en/image1.png)
 
-### Chuyển đổi chế độ kép để xử lý công việc hiệu quả
-Chế độ Chat thích ứng với hỏi đáp và suy luận đa tình huống; Chế độ Tác vụ kết hợp với thị trường kỹ năng tích hợp, cho phép các tác tử AI tự động phân rã và tiến triển các tác vụ nhiều bước để cải thiện hiệu quả.
 ![](../../images/previews/en/image2.png)
 
-### Tạo PPT nhanh
-Gửi một câu lệnh một câu cho trợ lý thông minh để tự động tạo và tạo bản trình chiếu PowerPoint.
+### Multi-Agent Mode, Tailored for Different Scenarios
+
+Tạo nhiều Tác nhân AI độc lập, mỗi cái có nhân cách, bộ nhớ và kỹ năng riêng. Chuyển đổi giữa chúng theo nhu cầu mà không can thiệp lẫn nhau. Mỗi Tác nhân có thể được giao các vai trò khác nhau (ví dụ "Dịch vụ Khách hàng", "Nhà Phân tích Dữ liệu", "Trợ lý Soạn thảo") và được cấu hình với các kỹ năng, cơ sở tri thức và phong cách phản hồi khác nhau.
+
 ![](../../images/previews/en/image3.png)
 
-### Quản lý kỹ năng
-Sử dụng lệnh để trợ lý giúp bạn tìm các tính năng đã cài đặt trên máy tính hoặc cài đặt các plugin mở rộng mới. Thị trường Kỹ năng — duyệt và cài đặt kỹ năng một cách tự do.
+### Local Knowledge Base Management
+
+Tải lên tài liệu của bạn (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Hệ thống tự động phân tích, chia nhỏ và chuyển đổi chúng thành các embedding vector được lưu trữ trong cơ sở tri thức riêng tư của bạn để AI tìm kiếm và sử dụng chính xác. Hỗ trợ tổ chức tài liệu theo thư mục và cơ sở tri thức.
+
 ![](../../images/previews/en/image4.png)
 
-### Bộ nhớ: Tương tác tự nhiên và thông minh hơn
-Bật hội thoại theo ngữ cảnh và hỗ trợ cá nhân hóa. Học tập liên tục và phát triển — trợ lý cảm thấy như một đối tác đang phát triển cung cấp dịch vụ ngày càng chu đáo và thông minh hơn.
+### Skill Manager — AI Responds at Command
+
+5000+ kỹ năng AI sẵn sàng sử dụng bao gồm năng suất, công cụ phát triển, đa phương tiện, nhà thông minh và hơn thế nữa — để AI làm việc cho bạn mà không cần lập trình. Sử dụng lệnh để robot tìm các tính năng đã cài đặt hoặc cài đặt các plugin mở rộng mới. Thị trường Kỹ năng — thoải mái duyệt và cài đặt kỹ năng.
+
 ![](../../images/previews/en/image5.png)
 
-### Dùng thử mô hình miễn phí — Cơ sở kiến thức nhóm dùng chung
-Ủy quyền một cú nhấp để kết nối với ChatWiki, đồng bộ hóa tín dụng tài khoản ChatWiki và hỗ trợ các mô hình tùy chỉnh. Các LLM trong nước và quốc tế chất lượng cao được tích hợp sẵn, bao gồm Ollama, Google Gemini và OpenAI — sử dụng mô hình AI yêu thích của bạn cho công việc văn phòng hàng ngày hoặc các tình huống chuyên nghiệp.
+### Memory — Natural & Smarter Interactions
+
+Cho phép các cuộc trò chuyện theo ngữ cảnh, cung cấp dịch vụ cá nhân hóa, hoàn thành các nhiệm vụ phức tạp, học tập và phát triển liên tục. Robot trở thành một người bạn đồng hành đang phát triển, cung cấp dịch vụ ngày càng chu đáo và thông minh hơn.
+
 ![](../../images/previews/en/image6.png)
 
-### Cơ sở kiến thức | Lưu trữ véc-tơ tài liệu
-Tải lên tài liệu của bạn (TXT, PDF, Word, Excel, CSV, HTML, Markdown). Hệ thống tự động phân tích, chia nhỏ và chuyển đổi chúng thành các vectơ embedding, được lưu trữ trong cơ sở tri thức riêng tư của bạn để truy xuất và sử dụng chính xác bởi các mô hình AI.
+### Free Model Trial
+
+Ủy quyền một lần để kết nối với ChatWiki, đồng bộ tín dụng, hỗ trợ mô hình tùy chỉnh. Các LLM chất lượng cao tích hợp sẵn: Ollama, Google Gemini, OpenAI và hơn thế nữa — sử dụng mô hình AI yêu thích của bạn cho công việc văn phòng hoặc các kịch bản chuyên nghiệp.
+
 ![](../../images/previews/en/image7.png)
 
-### Tích hợp kênh IM phong phú
-Thông qua việc tích hợp SDK do các nhà cung cấp dịch vụ nhắn tin tức thời (Feishu, WeCom, QQ, DingTalk, WeChat, WhatsApp, v.v.) cung cấp, nhanh chóng triển khai các khả năng giao tiếp IM đầy đủ trong ứng dụng, bao gồm tạo kênh, quản lý người dùng và gửi/nhận tin nhắn.
+### Multi-Channel Remote Control via WeChat/QQ/WhatsApp
+
+ChatClaw hỗ trợ nhiều kênh nhắn tin, đẩy kết quả phân tích, cảnh báo giám sát và tóm tắt nghiên cứu trực tiếp đến điện thoại của bạn. Sau khi xử lý AI, kết quả được gửi tự động đến kênh được chỉ định. Gửi lệnh trong cửa sổ trò chuyện để điều khiển từ xa việc thực thi nhiệm vụ AI.
+
 ![](../../images/previews/en/image8.png)
 
-### Tác vụ theo lịch — Thực hiện lệnh tự động
-Để trợ lý tự động thực hiện các thao tác cụ thể vào thời điểm hoặc khoảng thời gian đặt trước, chẳng hạn như cung cấp lời nhắc kịp thời, thực hiện công việc định kỳ và thực hiện các tác vụ bảo trì cấp hệ thống.
+### Scheduled Tasks — Automated Execution
+
+Đặt tần suất giám sát: mỗi 5 phút, hàng giờ hoặc hàng ngày vào các thời điểm cố định. Bộ lập lịch đồ họa với biểu thức cron. Định kỳ truy xuất trang hoặc nguồn dữ liệu, so sánh thay đổi, giám sát các chỉ số chính và đẩy cảnh báo qua các kênh nhắn tin khi phát hiện bất thường.
+
 ![](../../images/previews/en/image9.png)
 
-### Chọn văn bản để Hỏi đáp tức thì
-Chọn bất kỳ văn bản nào trên màn hình và nó sẽ được tự động sao chép vào hộp câu hỏi nhanh nổi. Một cú nhấp để gửi đến trợ lý AI và nhận câu trả lời tức thì.
+### Text Selection for Instant Q&A
+
+Chọn bất kỳ văn bản nào trên màn hình; nó được tự động sao chép vào hộp hỏi nhanh nổi. Một lần nhấp gửi nó đến trợ lý AI để nhận câu trả lời tức thì.
+
 ![](../../images/previews/en/image10.png)
 
-### Thanh bên thông minh
-Một trợ lý thông minh có thể gắn bên cạnh các cửa sổ ứng dụng khác. Chuyển đổi nhanh giữa các trợ lý AI được cấu hình khác nhau để đặt câu hỏi. Robot tạo câu trả lời dựa trên cơ sở tri thức liên kết của bạn và hỗ trợ gửi câu trả lời bằng một cú nhấp vào cuộc trò chuyện của bạn.
+### Smart Sidebar
+
+Một trợ lý thông minh có thể gắn bên cạnh các cửa sổ ứng dụng khác. Nhanh chóng chuyển đổi giữa các trợ lý AI được cấu hình khác nhau để đặt câu hỏi. Robot tạo câu trả lời dựa trên cơ sở tri thức liên kết của bạn và hỗ trợ gửi trả lời bằng một lần nhấp. Theo dõi nổi thông minh — đầu vào công cụ luôn trong tầm tay.
+
 ![](../../images/previews/en/image11.png)
 
-### Một câu hỏi, nhiều câu trả lời: So sánh dễ dàng
-Không cần lặp lại câu hỏi. Tham khảo ý kiến nhiều "chuyên gia AI" cùng lúc và xem câu trả lời của họ cạnh nhau trong cùng một giao diện. Dễ dàng so sánh và giúp bạn đưa ra kết luận tốt nhất.
 ![](../../images/previews/en/image12.png)
 
-### Nút khởi chạy một cú nhấp
-Nhấp vào quả bóng nổi trên màn hình để đánh thức hoặc mở ngay cửa sổ ứng dụng chính của ChatClaw.
+### One Question, Multiple Answers: Compare with Ease
+
+Không cần lặp lại câu hỏi. Tham khảo ý kiến nhiều "chuyên gia AI" cùng một lúc, so sánh câu trả lời của họ song song trong cùng một giao diện và đi đến kết luận tốt nhất.
+
 ![](../../images/previews/en/image13.png)
+
+### One-Click Launcher Ball
+
+Nhấp vào quả cầu nổi trên màn hình nền để đánh thức hoặc mở ngay cửa sổ ứng dụng chính của ChatClaw.
+
+![](../../images/previews/en/image14.png)
+
+### Community & Contact Us
+
+Chào mừng liên hệ với chúng tôi để được trợ giúp hoặc đưa ra đề xuất. WeChat: quét mã QR để tham gia nhóm trao đổi kỹ thuật ChatClaw. Vui lòng đề cập "chatclaw" khi thêm.
+
+
+## Triển khai Chế độ Máy chủ
+
+
+## Triển khai Chế độ Máy chủ
+
+
+## Triển khai Chế độ Máy chủ
+
 
 ## Triển khai Chế độ Máy chủ
 
