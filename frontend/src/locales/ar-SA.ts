@@ -764,7 +764,6 @@ export default {
       modelServiceDesc: 'بعد ربط ChatWiki يمكنك عرض النماذج المتاحة وحالة النقاط مباشرة في خدمات النموذج',
       unbindConfirmDesc: 'بعد إلغاء الربط، لن تتمكن من استخدام التطبيقات ومكتبة المعرفة التي يوفرها ChatWiki. هل أنت متأكد من المتابعة؟',
       loginReminder: {
-        title: "Chat Claw",
         subtitle: "اربط حساب ChatWiki للحصول على رصيد وتجربة سريعة",
         footer: "ChatWiki هو الإصدار السحابي من عميل ChatClaw",
         loginNow: "تسجيل الدخول الآن",

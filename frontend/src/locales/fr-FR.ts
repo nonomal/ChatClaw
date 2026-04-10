@@ -764,7 +764,6 @@ description: '授权绑定ChatWiki，获取机器人和对应的知识库',
       modelUnboundHint: '登录后会根据当前绑定账号加载可用模型列表。',
       notLoggedInDesc: '登录后即可同步 ChatWiki Cloud 的模型列表与积分信息。',
 loginReminder: {
-        title: "Chat Claw",
         subtitle: "Liez votre compte ChatWiki — obtenez des crédits pour essayer rapidement",
         footer: "ChatWiki est l’édition cloud du client ChatClaw",
         loginNow: "Se connecter",

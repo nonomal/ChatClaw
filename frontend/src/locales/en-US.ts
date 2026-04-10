@@ -874,7 +874,6 @@ export default {
       modelServiceDesc: '绑定 ChatWiki 后可直接在模型服务中查看可用模型与积分情况',
       unbindConfirmDesc: '解除绑定后，将无法使用 ChatWiki 提供的应用和知识库。确定要继续吗？',
       loginReminder: {
-        title: "Chat Claw",
         subtitle: "Link your ChatWiki account — get credits to try quickly",
         footer: "ChatWiki is the cloud edition of the ChatClaw client",
         loginNow: "Log in now",

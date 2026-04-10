@@ -15,6 +15,15 @@ import SnapSettingsIcon from '@/assets/icons/snap-settings.svg'
 import ToolsIcon from '@/assets/icons/tools.svg'
 import AboutIcon from '@/assets/icons/about.svg'
 
+const props = withDefaults(
+  defineProps<{
+    showRuntimeEnvironmentTestMenu?: boolean
+  }>(),
+  {
+    showRuntimeEnvironmentTestMenu: false,
+  }
+)
+
 const { t } = useI18n()
 const settingsStore = useSettingsStore()
 const appStore = useAppStore()
@@ -40,6 +49,11 @@ const allMenuItems: MenuItem[] = [
     guiOnly: true,
   },
   { id: 'tools', labelKey: 'settings.menu.tools', icon: ToolsIcon, guiOnly: true },
+  {
+    id: 'runtimeEnvironmentTest',
+    labelKey: 'settings.menu.runtimeEnvironmentTest',
+    icon: GeneralSettingsIcon,
+  },
   { id: 'about', labelKey: 'settings.menu.about', icon: AboutIcon },
 ]
 
@@ -48,6 +62,9 @@ const menuItems = computed(() =>
   allMenuItems.filter((item) => {
     if (item.guiOnly && !appStore.isGUIMode) return false
     if (appStore.currentSystem === 'openclaw' && item.id === 'mcp') {
+      return false
+    }
+    if (item.id === 'runtimeEnvironmentTest' && !props.showRuntimeEnvironmentTestMenu) {
       return false
     }
     return true

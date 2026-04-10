@@ -359,19 +359,6 @@ export default {
       startFailed: 'Khởi động gateway thất bại',
       startSuccess: 'Gateway đã khởi động',
       starting: 'Đang khởi động...',
-      startSteps: {
-        resolvedRuntime: 'Đã tìm thấy runtime: {path}',
-        hotfixApplied: 'Đã áp dụng {count} tệp hotfix',
-        stoppedExisting: 'Đã dừng tiến trình hiện có',
-        verifiedInstall: 'Đã xác minh phiên bản đã cài đặt {version}',
-        ensuredStateDir: 'Đã khởi tạo thư mục trạng thái runtime',
-        adoptingExisting: 'Đang sử dụng lại gateway hiện có (PID: {pid})',
-        startedProcess: 'Đang khởi động tiến trình gateway (cổng: {port})',
-        existingProcessReused: 'Đang tái sử dụng tiến trình hiện có (PID: {pid})',
-        connecting: 'Đang kết nối WebSocket (cổng: {port})',
-        autoApproved: 'Đã tự động phê duyệt ghép nối thiết bị',
-        connected: 'Gateway đã kết nối',
-      },
       upgradeCancelFailed: 'Hủy nâng cấp thất bại',
       upgradeCancelled: 'Nâng cấp đã hủy',
       upgradeDetails: 'Chi tiết',
@@ -769,7 +756,6 @@ export default {
 
 
       loginReminder: {
-        title: "Chat Claw",
         subtitle: "Liên kết tài khoản ChatWiki — nhận tín dụng để trải nghiệm nhanh",
         footer: "ChatWiki là phiên bản đám mây của ứng dụng ChatClaw",
         loginNow: "Đăng nhập ngay",

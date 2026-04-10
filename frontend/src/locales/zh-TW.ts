@@ -764,7 +764,6 @@ export default {
         global: '全球',
       },
       loginReminder: {
-        title: "Chat Claw",
         subtitle: "綁定 ChatWiki 帳號，贈送積分快速體驗",
         footer: "ChatWiki 為 ChatClaw 用戶端雲端版",
         loginNow: "立即登入",

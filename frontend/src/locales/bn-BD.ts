@@ -766,7 +766,6 @@ export default {
       modelServiceDesc: 'ChatWiki বাঁধার পর সরাসরি মডেল সার্ভিসে উপলব্ধ মডেল ও পয়েন্ট অবস্থা দেখতে পারবেন',
       unbindConfirmDesc: 'বাইন্ডিং বাতিল করার পর, ChatWiki-এর প্রদত্ত অ্যাপ ও নলেজ বেস ব্যবহার করতে পারবেন না। আপনি কি এগিয়ে যেতে চান?',
       loginReminder: {
-        title: "Chat Claw",
         subtitle: "Link your ChatWiki account — get credits to try quickly",
         footer: "ChatWiki is the cloud edition of the ChatClaw client",
         loginNow: "Log in now",
