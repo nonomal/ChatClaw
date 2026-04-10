@@ -2049,6 +2049,12 @@ func ensureOpenClawStateDir(bundle *bundledRuntime, defaultPort int, gatewayToke
 		return fmt.Errorf("create openclaw state dir: %w", err)
 	}
 	log := slog.Default()
+	// If openclaw.json does not exist, write a minimal baseline config so the gateway
+	// can start with a valid port, local mode, and token auth. This prevents the
+	// "no gateway url / no token" error loop for new users.
+	if err := ensureOpenClawDefaultConfig(bundle.ConfigPath, defaultPort, gatewayToken, log); err != nil {
+		log.Warn("openclaw: ensure default config failed", "error", err, "config", bundle.ConfigPath)
+	}
 	// Fix config version downgrade: if openclaw.json was written by a newer version,
 	// gateway will refuse to start ("Config was last written by a newer OpenClaw").
 	// Remove _config_version field to allow the older runtime to start.
@@ -2065,6 +2071,40 @@ func ensureOpenClawStateDir(bundle *bundledRuntime, defaultPort int, gatewayToke
 	if err := ensureGatewayAuthConfig(bundle.ConfigPath, defaultPort, gatewayToken, log); err != nil {
 		log.Warn("openclaw: ensure gateway auth config failed", "error", err, "config", bundle.ConfigPath)
 	}
+	return nil
+}
+
+// ensureOpenClawDefaultConfig writes a minimal openclaw.json if the file does not exist yet.
+// This gives new users a working gateway config (port + local mode + token auth) on first start,
+// avoiding the "no gateway url / no token" error loop.
+func ensureOpenClawDefaultConfig(configPath string, defaultPort int, gatewayToken string, log *slog.Logger) error {
+	if _, statErr := os.Stat(configPath); statErr == nil {
+		// File already exists — nothing to do.
+		return nil
+	} else if !os.IsNotExist(statErr) {
+		return fmt.Errorf("stat config: %w", statErr)
+	}
+
+	cfg := map[string]any{
+		"gateway": map[string]any{
+			"port": defaultPort,
+			"mode": "local",
+			"auth": map[string]any{
+				"mode":   "token",
+				"token":  gatewayToken,
+			},
+		},
+	}
+
+	out, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal default config: %w", err)
+	}
+	if err := os.WriteFile(configPath, out, 0o600); err != nil {
+		return fmt.Errorf("write default config: %w", err)
+	}
+	log.Info("openclaw: wrote default openclaw.json",
+		"port", defaultPort, "config", configPath)
 	return nil
 }
 
