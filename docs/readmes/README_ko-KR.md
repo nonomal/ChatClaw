@@ -27,7 +27,9 @@
   <a href="README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-5분 만에 OpenClaw 같은 개인 AI 에이전트를 확보하세요. 샌드박스 보안, macOS 및 Windows용 초소형 30MB 설치 프로그램(1분 설치). WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu 및 기타 메시징 앱에 연결됩니다. 기본 제공 스킬 마켓, 지식 베이스, 메모리, MCP, 예약 작업. Go로 개발: 빠르고 리소스 사용량 적음.
+ChatClaw는 오픈소스 로컬 지식 베이스 및 OpenClaw 그래픽 데스크톱 어시스턴트 애플리케이션입니다.
+프로그래밍 없이 원클릭으로 로컬 PC에 배포할 수 있습니다.微信、 釘钉、기업微信、QQ、웍스、WhatsApp 등 주류 메신저 앱에 연결하여,
+명령을 보내기만 하면 AI가 대신 작업을 실행해 줍니다.내장된 OpenClaw 5000+ 스킬 라이브러리를 갖추고 있으며, ima와 유사한 로컬 지식 베이스 관리도 지원합니다.
 
 ## 미리보기
 

@@ -27,7 +27,9 @@
   <a href="README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-5 minutah dobite osebnega agenta AI, kot je OpenClaw. Z varnostjo Sandbox, z ultra majhnim 30MB namestitvenim programom za macOS in Windows (namestitev v 1 minuti). Poveže se s WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu in drugimi aplikacijami za sporočanje. Vgrajeno tržnico spretnosti, baza znanja, spomin, MCP, načrtovane naloge. Razvito v Go: hitro in majhna poraba virov.
+ChatClaw je odprtokodna lokalna baza znanja in grafična namizna pomočnica.
+Brez programiranja — namestitev na lokalni računalnik z enim klikom. Povežite se s WeChat, DingTalk, WeCom, QQ, Feishu, WhatsApp in drugimi priljubljenimi messaging aplikacijami.
+Pošljite ukaze in pustite, da umetna inteligenca izvaja naloge za vas. Vgrajena knjižnica spletnih več kot 5000 spretnosti, s podporo za upravljanje lokalne baze znanja v slogu IMA.
 
 ## Predogledi
 

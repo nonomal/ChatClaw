@@ -27,7 +27,9 @@
   <a href="README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-5分鐘擁有類 OpenClaw 的小龍蝦個人AI智慧體，沙箱安全防護，macOS/Windows 30M 極小安裝包，1 分鐘安裝。連接 WhatsApp、Telegram、Slack、Discord、Gmail、釘釘、企業微信、QQ、飛書等主流通訊應用，內建技能市場、知識庫、記憶、MCP、計劃任務等核心功能。Go語言開發，運行快、佔資源少。
+ChatClaw是一款開源的本地知識庫、OpenClaw圖形化桌面管家應用
+無需編程，一鍵部署至本地電腦。可連接 微信、 釘釘、企業微信、QQ、飛書，WhatsApp等主流通訊應用，
+發送指令即可讓 AI 幫你執行任務。內置 OpenClaw 5000+ 技能庫，並支持類 ima 的本地知識庫管理
 
 ## 功能預覽
 
