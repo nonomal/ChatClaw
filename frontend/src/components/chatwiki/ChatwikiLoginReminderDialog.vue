@@ -58,9 +58,7 @@ function goLoginLater() {
         >
           <img src="@/assets/icons/chatclaw.svg?url" alt="" class="size-[51px] object-contain" />
         </div>
-        <h2 class="text-center text-base font-semibold leading-6 text-foreground">
-          {{ t('settings.chatwiki.loginReminder.title') }}
-        </h2>
+        <h2 class="text-center text-base font-semibold leading-6 text-foreground">ChatClaw</h2>
         <p class="mt-2 max-w-[320px] text-center text-sm leading-5 text-muted-foreground">
           {{ t('settings.chatwiki.loginReminder.subtitle') }}
         </p>

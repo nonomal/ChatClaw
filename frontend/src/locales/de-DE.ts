@@ -751,7 +751,6 @@ export default {
       notLoggedInDesc: '登录后即可同步 ChatWiki Cloud 的模型列表与积分信息。',
       unbindConfirmDesc: '解除绑定后，将无法使用 ChatWiki 提供的应用和知识库。确定要继续吗？',
       loginReminder: {
-        title: "Chat Claw",
         subtitle: "ChatWiki-Konto verknüpfen — Credits sichern und schnell testen",
         footer: "ChatWiki ist die Cloud-Version des ChatClaw-Clients",
         loginNow: "Jetzt anmelden",
