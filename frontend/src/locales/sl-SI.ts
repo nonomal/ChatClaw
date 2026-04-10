@@ -179,8 +179,7 @@ export default {
     subtitle: 'Hiter dostop do izpostavljenih orodij',
     smartSidebar: {
       title: 'Pametna stranska vrstica',
-      description:
-        'Pripnite jo ob WeCom, QQ in druge klepetalne aplikacije za sprotna vprašanja AI-ju',
+      description: 'Prilepite na stranske vrstice klepeta WeCom, QQ in drugih za sproten povpraševanje AI',
     },
     selectionSearch: {
       title: 'Iskanje po izbiri',
@@ -297,40 +296,41 @@ export default {
       alreadyLatest: 'Že uporabljate najnovejšo različico',
       upgradeSuccess: 'OpenClaw je bil posodobljen na {version}',
       upgradeFailed: 'Posodobitev OpenClaw ni uspela',
-      upgradeProgress: '升级进度',
+      upgradeProgress: 'Napredek nadgradnje',
       composer: {
-        gatewayDisabledHint: '网关未启用',
-        gatewayTagError: '网关异常',
-        gatewayTagStarting: '网关启动中',
+        gatewayDisabledHint: 'Prehod ni omogočen',
+        gatewayTagError: 'Prehod ima napako',
+        gatewayTagStarting: 'Prehod se začenja',
         gatewayTagUpgrading: 'Runtime upgrading',
-        gatewayTagStop: '网关未运行',
+        gatewayTagStop: 'Prehod ne deluje',
       },
       doctor: {
-        command: '命令',
-        duration: '耗时',
-        exitCode: '退出码',
-        failed: '执行失败',
-        fixed: '已修复',
-        noErrors: '暂无错误',
-        noOutput: '暂无输出',
-        run: '运行',
-        runAndFix: '运行并修复',
-        running: '运行中…',
-        stderr: '标准错误',
-        stdout: '标准输出',
-        success: '执行成功',
-        title: 'OpenClaw Doctor 诊断',
-        workingDir: '工作目录',
+        command: 'Ukaz',
+        duration: 'Trajanje',
+        exitCode: 'Izhodna koda',
+        failed: 'Izvajanje ni uspelo',
+        fixed: 'Popravljeno',
+        noErrors: 'Trenutno ni napak',
+        noOutput: 'Trenutno ni izhoda',
+        run: 'Zaženi',
+        runAndFix: 'Zaženi in popravi',
+        running: 'Se izvaja...',
+        stderr: 'Standardna napaka',
+        stdout: 'Standardni izhod',
+        success: 'Izvajanje uspešno',
+        title: 'Diagnoza OpenClaw Doctor',
+        workingDir: 'Delovni imenik',
+        autoTriggered: 'Povezava OpenClaw je propadla več kot 3-krat, samodejno se začenja diagnoza in popravilo...',
       },
-      gatewayStatusLabel: '网关状态',
-      logs: '日志',
-      logsHint: '网关日志位于运行目录下的 logs 文件夹（openclaw-gateway.log）。',
-      pageSubtitle: '配置网关等基础设置信息',
-      restart: '重启',
-      restartFailed: '网关重启失败',
-      restartSuccess: '网关已重启',
+      gatewayStatusLabel: 'Stanje prehoda',
+      logs: 'Dnevniki',
+      logsHint: 'Dnevniki prehoda so v mapi logs pod imenikom izvajanja (openclaw-gateway.log).',
+      pageSubtitle: 'Konfigurirajte osnovne nastavitve, kot je prehod',
+      restart: 'Znova zaženi',
+      restartFailed: 'Zagon prehoda ni uspel',
+      restartSuccess: 'Prehod je bil znova zagnan',
       sidebarGatewayLabelSeparator: '：',
-      sidebarGatewayPrefix: '网关',
+      sidebarGatewayPrefix: 'Prehod',
       statusBadge: {
         error: 'error',
         running: 'running',
@@ -338,9 +338,31 @@ export default {
         stop: 'stop',
         upgrading: 'upgrading',
       },
-      stop: '停止',
-      stopFailed: '网关停止失败',
-      stopSuccess: '网关已停止',
+      stop: 'Ustavi',
+      stopFailed: 'Ustavljanje prehoda ni uspelo',
+      stopSuccess: 'Prehod je ustavljen',
+      autoStartDisabled: 'OpenClaw prehod je zaprt',
+      autoStartEnabled: 'OpenClaw prehod je odprt',
+      autoStartFailed: 'Preklop stanja prehoda ni uspel',
+      autoStartLabel: 'Stikalo delovanja prehoda',
+      autoStartTooltip: 'Kliknite za vklop ali izklop samodejnega zagona prehoda OpenClaw, po vklopu se bo prehod samodejno zagnal ob zagonu aplikacije',
+      cancelUpgrade: 'Prekliči nadgradnjo',
+      continueOrRestartDesc: 'Najden je predpomnilnik prenosa različice {version}, prosimo izberite nadaljevanje nadgradnje (začenši z npm install) ali ponoven prenos.',
+      continueOrRestartTitle: 'Zaznan obstoječ predpomnilnik nadgradnje',
+      continueUpgrade: 'Nadaljuj nadgradnjo',
+      portOccupied: 'Vrata so zasedena',
+      portOccupiedHint: 'Vrata {port} zaseda proces {process} (PID: {pid}), prosimo najprej ustavite ta proces in poskusite znova.',
+      portStillOccupiedAfterStop: 'Vrata {port} se po ustavitvi prehoda še niso sprostila',
+      portStillOccupiedAfterStopHint: 'Prosimo ročno končajte proces, ki zaseda vrata (PID: {pid}).',
+      restartUpgrade: 'Znova nadgradi',
+      start: 'Zaženi',
+      startFailed: 'Zagon prehoda ni uspel',
+      startSuccess: 'Prehod je zagnan',
+      starting: 'Se začenja...',
+      upgradeCancelFailed: 'Preklic nadgradnje ni uspel',
+      upgradeCancelled: 'Nadgradnja je preklicana',
+      upgradeDetails: 'Podrobnosti',
+      upgradeOutputWaiting: 'Čakam na izhod...',
     },
     general: {
       title: 'Splošne nastavitve',
@@ -380,13 +402,11 @@ export default {
         },
         uv: {
           name: 'Python izvajalno okolje',
-          description:
-            'AI pomočniku omogoča pisanje in izvajanje skriptov Python za dokončanje zahtevnejših opravil.',
+          description: 'Omogočite AI asistentu pisanje in izvajanje skript Python za izvajanje kompleksnih nalog.',
         },
         bun: {
           name: 'JavaScript izvajalno okolje',
-          description:
-            'AI pomočniku omogoča pisanje in izvajanje skriptov JavaScript za dokončanje zahtevnejših opravil.',
+          description: 'Omogočite AI asistentu pisanje in izvajanje skript JavaScript za izvajanje kompleksnih nalog.',
         },
         codex: {
           name: 'Varna peskovnik',
@@ -394,49 +414,38 @@ export default {
         },
         openclaw: {
           name: 'Izvajalno okolje OpenClaw',
-          description:
-            'Node.js izvajalno okolje za OpenClaw Agent, vključno z openclaw CLI in gatewayem. Prenese se iz OSS in namesti v ~/.chatclaw/openclaw/runtime/',
         },
-        newVersionHint: '新版本 {version}',
-        openPathFailed: '无法打开该路径',
-        openPathHint: '在文件管理器中打开所在目录',
-        update: '更新',
-        updatesAvailableToast: '检测到扩展组件有新版本，可以到「设置 → 常规设置」中手动更新。',
+        newVersionHint: 'Nova različica {version}',
+        openPathFailed: 'Te poti ni mogoče odpreti',
+        openPathHint: 'Odprite mapo, ki vsebuje, v upravljalcu datotek',
+        update: 'Posodobi',
+        updatesAvailableToast: 'Zaznana je nova različica komponent razširitev, lahko jo posodobite ročno v "Nastavitve > Splošne nastavitve".',
       },
     },
     memory: {
       title: 'Dolgoročni spomin',
       enable: 'Omogoči dolgoročni spomin',
-      enableHint:
-        'Ko je omogočeno, bo AI v pogovorih samodejno izluščil in si zapomnil vaše nastavitve, navade in pomembna dejstva.',
       extractModel: 'Model za ekstrakcijo spomina',
-      extractModelHint:
-        'Uporablja se za povzemanje in izluščenje koristnih informacij iz spomina po vsakem pogovoru.',
       embeddingModel: 'Model za vdelavo spomina',
-      embeddingModelHint:
-        'Uporablja se za pretvorbo besedila spomina v vektorje za semantično iskanje med pogovori.',
       embeddingDimension: 'Dimenzija vdelave',
-      embeddingDimensionHint:
-        'Dimenzija vdelanega vektorja mora ustrezati izhodu izbranega modela.',
       save: 'Shrani nastavitve',
       saved: 'Nastavitve shranjene',
       saveFailed: 'Shranjevanje nastavitev ni uspelo',
-      rebuildWarning:
-        'Po spremembi vektorskega modela ali dimenzije bodo vsi obstoječi podatki vektorjev spomina ponovno zgrajeni asinhrono.',
       rebuilding: 'Ponovno grajenje vektorjev spomina...',
       rebuildSuccess: 'Vektorji spomina uspešno ponovno zgrajeni',
       rebuildFailed: 'Ponovno grajenje vektorjev spomina ni uspelo',
       confirmRebuildTitle: 'Potrdite ponovno grajenje vektorjev spomina',
+      embeddingDimensionHint: 'Dimenzija vdelanega vektorja mora biti skladna z izhodom izbranega modela.',
+      embeddingModelHint: 'Uporablja se za pretvorbo besedila spomina v vektorje za semantično pridobivanje med klepetom.',
+      enableHint: 'Po omogočanju bo AI med klepetom samodejno ekstrahiral in pomnil vaše preference, navade in pomembna dejstva.',
+      extractModelHint: 'Uporablja se za povzemanje in ekstrahiranje dragocenih informacij spomina po vsakem klepetu.',
+      rebuildWarning: 'Po spremembi vektorskega modela ali dimenzije se bodo vsi obstoječi vektorski podatki spomina asinhrono zgradili znova.',
     },
     skills: {
       title: 'Veščine',
       enable: 'Omogoči veščine',
-      enableHint:
-        'Ko je omogočeno, bo AI pomočnik med pogovori samodejno naložil in uporabljal nameščene veščine.',
       pageDesc: 'Raziskovanje in upravljanje AI zmogljivosti',
       directory: 'Imenik za nalaganje veščin',
-      directoryHint:
-        'Prenesene mape veščin postavite v ta imenik. Med AI pogovori bodo samodejno zaznane in naložene.',
       tabInstalled: 'Nameščeno',
       tabMarket: 'Trg',
       filterAll: 'Vse',
@@ -487,6 +496,8 @@ export default {
       loadFailed: 'Nalaganje ni uspelo, poskusite pozneje',
       addLocalSkillHint: 'Ustvarite mapo v imeniku veščin, dodajte SKILL.md',
       noLocalSkillsHint: 'Ustvarite mapo v imeniku veščin, dodajte SKILL.md',
+      directoryHint: 'V to mapo vstavite mape prenesenih veščin, AI asistent jih bo med klepetom samodejno prepoznal in naložil.',
+      enableHint: 'Po omogočanju bo AI asistent med klepetom samodejno naložil in uporabljal nameščene veščine.',
     },
     openclawSkills: {
       title: 'Veščine OpenClaw',
@@ -494,14 +505,10 @@ export default {
       listSubheading: 'Raziščite in upravljajte zmožnosti AI',
       refreshCta: 'Osveži',
       addSkillCta: 'Dodaj veščino',
-      pageDesc:
-        'Ko je povezava vzpostavljena, uporablja OpenClaw Gateway skills.status; sicer pregleda enako postavitev na disku kot OpenClaw (managed, workspace, bundled, extraDirs).',
       filterAll: 'Vse',
       filterBuiltin: 'Vgrajeno',
       filterInstalled: 'Nameščeno',
       builtinCannotDelete: 'Vgrajenih veščin ni mogoče izbrisati',
-      openSkillFolderToRemove:
-        'Če želite odstraniti to veščino, odprite mapo v upravljalniku datotek',
       filterShared: 'V skupni rabi',
       filterWorkspace: 'Delovni prostor',
       locationShared: 'V skupni rabi',
@@ -510,16 +517,12 @@ export default {
       locationCount: '{count} kopij',
       searchPlaceholder: 'Išči veščine, poti, pomočnika ali dovoljenja…',
       noSkills: 'Ni najdenih veščin OpenClaw',
-      noSkillsHint:
-        'Za sprotni seznam se povežite z gatewayem; brez povezave sledite dokumentaciji OpenClaw (state dir skills/, workspace-*/skills/, bundled package, skills.load.extraDirs).',
       openSharedDir: 'Odpri glavno mapo veščin delovnega prostora',
       openMainWorkspaceSkillsDir: 'Odpri glavne veščine delovnega prostora (workspace-main/skills)',
       openManagedSkillsDir: 'Odpri mapo upravljanih veščin (openclaw/skills)',
       permissionLabel: 'Dovoljenje',
       scopeLabel: 'Obseg',
       agentBinding: 'Pomočnik',
-      gatewayOfflineHint:
-        'Gateway ni povezan: seznam je zgrajen iz postavitve OpenClaw na disku. Ko je povezava vzpostavljena, ima prednost skills.status.',
       backToList: 'Nazaj na seznam',
       loadFailed: 'Nalaganje veščin OpenClaw ni uspelo',
       dataSourceLabel: 'Vir',
@@ -533,26 +536,19 @@ export default {
       eligibleNo: 'Ne',
       eligibleUnknown: 'Neznano',
       gateHintLabel: 'Opomba gatewaya',
-      previewNoLocalPath:
-        'Ta vrstica prihaja samo iz gatewaya — lokalne mape za brskanje ni. Pot se prikaže, ko na disku obstaja ustrezna veščina.',
       add: {
         title: 'Dodaj',
         createViaChatTitle: 'Ustvari prek klepeta',
         createViaChatDesc: 'Opišite, kaj potrebujete, AI pa bo pripravil ogrodje veščine OpenClaw',
         choosePackageTitle: 'Izberi paket veščine',
         choosePackageDesc: 'Odprite mapo veščin in vanjo postavite paket veščine',
-        createViaChatPrompt:
-          'Pomagaj mi ustvariti veščino OpenClaw. Najprej vprašaj, kakšno funkcionalnost potrebujem, nato ustvari SKILL.md (z frontmatterjem), potrebno strukturo map in vzorčno kodo. Na koncu mi povej, naj mapo veščine postavim v workspace-main/skills, da jo aktiviram.',
       },
+      openSkillFolderToRemove: 'Po odprtju mape veščin v upravljalcu datotek lahko ročno odstranite',
     },
     mcp: {
       title: 'MCP',
       enable: 'Omogoči MCP',
-      enableHint:
-        'Ko je omogočeno, se bo AI pomočnik samodejno povezal in uporabil konfigurirane strežnike MCP.',
       directory: 'Imenik konfiguracije MCP',
-      directoryHint:
-        'Datoteke konfiguracije strežnika MCPpostavite v ta imenik. Samodejno bodo zaznane in povezane.',
       tabServers: 'MCP',
       tabSettings: 'Nastavitve',
       tabInstalled: 'Nameščeno',
@@ -634,6 +630,8 @@ export default {
       assistantMcpToolName: 'Ime orodja',
       assistantMcpToolNamePlaceholder: 'Vnesite veljavno ime funkcije',
       assistantMcpToolDesc: 'Opis orodja',
+      directoryHint: 'V to mapo vstavite konfiguracijske datoteke storitve MCP, AI asistent jih bo med klepetom samodejno prepoznal in povezal.',
+      enableHint: 'Po omogočanju se bo AI asistent med klepetom samodejno povezal in uporabljal konfigurirane storitve MCP.',
     },
     snap: {
       title: 'Nastavitve',
@@ -686,8 +684,6 @@ export default {
       reauthBind: 'Ponovna avtorizacija',
       unbind: 'Odveži',
       unbindConfirmTitle: 'Potrdite odvezo',
-      unbindConfirmDesc:
-        'Po prekinitvi povezave ne boste mogli več uporabljati aplikacij in baz znanja ChatWiki. Nadaljujem?',
       addBinding: 'Dodaj vezavo',
       applications: 'Aplikacije',
       knowledgeBases: 'Baze znanja',
@@ -708,8 +704,6 @@ export default {
         wechat: 'Baza znanja uradnega računa',
       },
       enabledHint: 'Prikazano pri večkratnem vprašanju, ko je omogočeno',
-      libraryEnabledHint:
-        'Sinhronizira bazo znanja ChatWiki. Ko je omogočeno, se bo pri postavljanju vprašanj prikazala v ekipni bazi znanja.',
       emptyRobots: 'Ni aplikacij',
       emptyLibraries: 'Ni baz znanja',
       loginCloud: 'Prijava v ChatWiki Cloud',
@@ -731,11 +725,7 @@ export default {
       startUsingHint: 'Spodaj kliknite ',
       startUsing: 'Začni uporabljati',
       freeVersion: 'Brezplačno',
-      modelServiceDesc:
-        'Po povezavi s ChatWiki lahko v storitvi modelov neposredno vidiš razpoložljive modele in kredite.',
       notLoggedInTitle: 'Nisi prijavljen v ChatWiki',
-      notLoggedInDesc:
-        'Prijavi se za sinhronizacijo seznama modelov in stanja kreditov ChatWiki Cloud.',
       loginNow: 'Prijavi se zdaj',
       accountIdPrefix: 'ID računa: ',
       buyCredits: 'Kupi kredite',
@@ -746,12 +736,6 @@ export default {
       pricePerKToken: '{price} kreditov / 1K žetonov',
       modelLoadFailed: 'Seznama modelov ni bilo mogoče naložiti',
       openBillingFailed: 'Strani za obračun ni bilo mogoče odpreti',
-      modelBoundHint:
-        'Ta seznam prikazuje modele, ki so trenutno na voljo za povezani račun ChatWiki.',
-      modelUnboundHint:
-        'Najprej se prijavi, da naložiš seznam modelov, ki so na voljo za trenutno povezavo.',
-      modelLoginHint:
-        'Najprej se prijavi in poveži svoj račun ChatWiki. Nato bo tukaj prikazan najnovejši seznam modelov.',
       providerStatus: {
         unbound: '{label} (Ni prijavljen)',
         nonCloud: '{label} (Ni prijavljen)',
@@ -761,6 +745,13 @@ export default {
         cn: 'Kitajska',
         global: 'Globalno',
       },
+      libraryEnabledHint: 'Sinhronizirajte knjižnico znanj ChatWiki, po omogočanju se lahko pri vprašanjih prikaže v ekipni knjižnici znanj',
+      modelBoundHint: 'Tukaj je prikazan seznam konfiguracij modelov, ki so na voljo trenutnemu računu ChatWiki.',
+      modelLoginHint: 'Prosimo najprej se prijavite in povežite račun ChatWiki, nato se bo tukaj prikazal najnovejši seznam storitev modelov.',
+      modelServiceDesc: 'Po povezavi ChatWiki lahko neposredno v storitvah modelov preverite razpoložljive modele in stanje točk',
+      modelUnboundHint: 'Po prijavi se bo glede na trenutni povezani račun naložil seznam razpoložljivih modelov.',
+      notLoggedInDesc: 'Po prijavi lahko sinhronizirate seznam modelov in podatke o točkah storitve ChatWiki Cloud.',
+      unbindConfirmDesc: 'Po razvezavi ne boste mogli uporabljati aplikacij in knjižnice znanj, ki jih ponuja ChatWiki. Ali ste prepričani, da želite nadaljevati?',
       loginReminder: {
         title: "Chat Claw",
         subtitle: "Povežite račun ChatWiki — pridobite kredite za hiter preizkus",
@@ -858,13 +849,12 @@ export default {
       updateFailed: 'Posodobitev ni uspela, poskusite pozneje',
       checkFailed: 'Preverjanje posodobitev ni uspelo',
       updateDialogTitle: 'Nova različica {version} je na voljo',
-      updateDialogSubtitle:
-        'Najnovejša različica je pripravljena. Za uporabo jo namestite in znova zaženite aplikacijo.',
       installAndRestart: 'Namesti in znova zaženi',
       installing: 'Namestitev...',
       updatedTitle: 'Posodobljeno na {version}',
       updatedSubtitle: 'Uspešno posodobljeno na najnovejšo različico',
       gotIt: 'Razumem',
+      updateDialogSubtitle: 'Najnovejša različica je pripravljena, nameščena in zagnana po vnovičnem zagonu bo na voljo',
     },
   },
   assistant: {
@@ -1006,8 +996,6 @@ export default {
       unknownAgent: 'Neznan pomočnik',
       noPlatforms: 'Ni na voljo kanalov',
       createTitle: 'Dodaj {platform} bot',
-      createDesc:
-        'Sledite postopku dodajanja na strani kanalov. Po ustvarjanju bo kanal samodejno vezan na trenutnega pomočnika.',
       addChannel: 'Dodaj kanal',
       addAndBind: 'Dodaj in veži',
       showExisting: 'Poglej dodane kanale',
@@ -1024,13 +1012,13 @@ export default {
       bindSuccess: 'Uspešno vezano',
       unbindSuccess: 'Uspešno odvezano',
       addBot: 'Dodaj bota',
-      addBotHint:
-        'Vsak bot je lahko vezan samo na enega AI pomočnika. Prikazani so le nevezani boti.',
       noUnboundBot: 'Na voljo ni nobenih nevezanih botov',
       selectBot: 'Prosim, izberite bota za vezavo',
-      statusOnline: "Povezano",
-      statusError: "Napaka",
-      statusOffline: "Brez povezave",
+      statusOnline: 'Povezano',
+      statusError: 'Napaka',
+      statusOffline: 'Brez povezave',
+      addBotHint: 'En bot je lahko povezan samo z enim AI asistentom, prikažejo se samo nevezani boti',
+      createDesc: 'Kopirajte postopek dodajanja s strani kanalov, po ustvarjanju se samodejno veže na trenutnega asistenta.',
     },
     conversation: {
       empty: 'Ni zgodovine klepeta',
@@ -1051,8 +1039,6 @@ export default {
     errors: {
       loadFailed: 'Nalaganje pomočnikov ni uspelo',
       loadModelsFailed: 'Nalaganje modelov ni uspelo',
-      loadModelsPartialFailed:
-        'Nekaterih seznamov modelov ni bilo mogoče naložiti; prikazani so razpoložljivi modeli',
       createFailed: 'Ustvarjanje pomočnika ni uspelo',
       updateFailed: 'Posodobitev pomočnika ni uspela',
       deleteFailed: 'Brisanje pomočnika ni uspelo',
@@ -1071,14 +1057,14 @@ export default {
       teamImageNotSupported: 'Pošiljanje slik v ekipnem načinu še ni podprto',
       selectTeamRobotFirst: 'Prosim, najprej izberite ekipnega robota',
       teamRobotMissingKey: 'Trenutni robot nima robot_key, prosim, sinhronizirajte znova',
-      modelNotSupportVision:
-        'Trenutni model ne podpira prepoznavanja slik. Preklopite na večmodalni model, ki podpira vid.',
       modelNotSupportVisionHint: 'Modeli kot GPT-4o, Claude, Gemini podpirajo prepoznavanje slik',
       fileTooLarge: 'Velikost datoteke presega omejitev (maks {max})',
       tooManyFiles: 'Največje število datotek za nalaganje je {max}',
       invalidFileType: 'Nepodprta vrsta datoteke',
       fileReadFailed: 'Branje datoteke ni uspelo',
       fileOpenFailed: 'Odpiranje datoteke ni uspelo',
+      loadModelsPartialFailed: 'Nekaterim modelom na seznamu ni bilo mogoče naložiti, prikazani so na voljo modeli',
+      modelNotSupportVision: 'Trenutni model ne podpira prepoznavanja slik, prosimo, preklopite na multimodalni model s podporo vida',
     },
     toasts: {
       created: 'Pomočnik ustvarjen',
@@ -1100,15 +1086,13 @@ export default {
         sandboxMode: 'Način izvajanja',
         modeCodex: 'Codex peskovnik',
         modeNative: 'Nativno izvajanje',
-        nativeDesc:
-          'Ukaze izvaja neposredno na lokalnem računalniku brez izolacije peskovnika. Ukazi imajo polna dovoljenja trenutnega uporabnika.',
         networkAccess: 'Dovoli dostop do omrežja',
         workDir: 'Delovni imenik',
-        workDirHint:
-          'Struktura: {basePath}{sep}sessions{sep}<agent_hash>{sep}<conversation_hash>{sep}',
         changeDir: 'Spremeni',
         resetDir: 'Ponastavi na privzeto',
         selectDir: 'Izberi delovni imenik',
+        nativeDesc: 'Ukaze izvaja neposredno na lokalnem računalniku, brez izolacije peskovnika. Ukazi imajo popolna dovoljenja trenutnega uporabnika.',
+        workDirHint: 'Struktura: {basePath}{sep}sessions{sep}<agent_hash>{sep}<conversation_hash>{sep}',
       },
       model: {
         defaultModel: 'Privzeti model',
@@ -1141,10 +1125,8 @@ export default {
         sandboxMode: 'Način peskovnika',
         sandbox_off: 'Onemogočeno',
         sandbox_all: 'Vsi agenti',
-        sandboxModeHint:
-          'Sandbox izolira izvajanje ukazov in preprečuje agentom neposredno spreminjanje gostiteljskega sistema',
         groupChatMentionPatterns: 'Vzorci omemb v skupinskem klepetu',
-        groupChatMentionPatternsPlaceholder: "{'@'}assistant, {'@'}bot",
+        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
         groupChatInsertPreset: 'Vstavi predlogo',
         groupChatMentionPatternsHint: 'Vzorci za sprožitev odgovora agenta, ločeni z vejico',
         tools: 'Konfiguracija orodij',
@@ -1155,25 +1137,17 @@ export default {
         toolsProfile_messaging: 'Messaging — sporočila/seje',
         toolsProfile_full: 'Full — brez omejitev',
         builtinTools: 'Vgrajena orodja',
-        builtinToolsHint:
-          'Tukaj lahko neposredno izberete vgrajena orodja OpenClaw. Orodja vtičnikov ali orodja po meri lahko še vedno ročno vnesete spodaj.',
         builtinToolsLoading: 'Nalaganje vgrajenih orodij OpenClaw…',
-        builtinToolsUnavailable:
-          'Kataloga vgrajenih orodij OpenClaw trenutno ni bilo mogoče naložiti. Imena orodij lahko še vedno vnesete ročno.',
         toolModeAllow: 'Dovoli',
         toolModeDeny: 'Prepovej',
         toolsAllow: 'Dovoljena orodja',
         toolsAllowPlaceholder: 'npr. browser, file_search',
         toolsDeny: 'Zavrnjena orodja',
         toolsDenyPlaceholder: 'npr. canvas',
-        toolsHint:
-          'Prepoved ima prednost pred dovolitvijo. Orodja vtičnikov ali orodja po meri lahko še vedno ročno vnesete in potrdite z Enter.',
         heartbeat: 'Interval heartbeat',
         heartbeat_off: 'Izklopljeno',
         heartbeat_custom: 'Po meri',
         heartbeatPlaceholder: 'npr. 10m',
-        heartbeatFormatError:
-          'Neveljavna oblika. Uporabite število + enoto, npr: 10m, 1h, 30s, 500ms',
         heartbeatHint: 'Interval periodičnega preverjanja heartbeat (ms/s/m/h)',
         params: 'Preglasitev parametrov modela',
         paramsTemperature: 'Temperatura',
@@ -1181,6 +1155,10 @@ export default {
         paramsMaxTokens: 'Največje število žetonov',
         paramsMaxTokensPlaceholder: 'Prazno za globalno privzeto',
         paramsHint: 'Preglasi parametre agents.defaults.models za tega agenta',
+        builtinToolsUnavailable: 'Trenutno ni mogoče prebrati imenika vgrajenih orodij OpenClaw, še vedno lahko ročno vnesete ime orodja.',
+        heartbeatFormatError: 'Format ni pravilen, vnesite število + enoto, npr. 10m, 1h, 30s, 500ms',
+        sandboxModeHint: 'Pisarna lahko izolira okolje izvajanja ukazov in prepreči asistentu neposredno upravljanje gostiteljskega sistema',
+        toolsHint: 'Prepoved ima prednost pred dovoljenjem. Vtičniki orodij ali poljubna orodja se lahko še naprej vnašajo ročno, po vnosu pritisnite Enter za potrditev.',
       },
     },
     workspaceDrawer: {
@@ -1203,8 +1181,6 @@ export default {
       mcpAddFromGlobal: 'Dodaj iz globalnega seznama MCP',
       mcpEmptyHint: 'Kliknite + za dodajanje iz globalnega seznama MCP',
       mcpPickerHint: 'Preklopite za dodajanje ali odstranitev strežnikov MCPza tega pomočnika',
-      mcpNoAvailableToAdd:
-        'Ni strežnikov MCP, ki bi jih bilo mogoče dodati. Najprej jih nekaj omogočite v nastavitvah.',
       mcpSearchPlaceholder: 'Iskanje strežnikov MCP',
       mcpNoSearchResults: 'Ni ustreznih rezultatov',
       mcpSelectAll: 'Izberi vse',
@@ -1212,22 +1188,19 @@ export default {
       mcpGlobalDisabled: 'MCPje globalno onemogočen. Omogočite ga v Nastavitvah.',
       mcpGoToSettings: 'Dodaj nov MCP',
       mcpGoToSettingsHint: 'Pojdite na stran z nastavitvami za dodajanje novega strežnika MCP',
+      mcpNoAvailableToAdd: 'Na voljo ni nobene storitve MCP za dodajanje, najprej jo omogočite v nastavitvah',
     },
   },
   knowledge: {
     help: {
       name: 'Ime za razlikovanje različnih baz znanja (največ 30 znakov).',
-      chunkSize:
-        'Velikost odseka (v znakih, 500~5000). Večji odseki nudijo popolnejši kontekst, vendar manj natančno iskanje.',
-      chunkOverlap:
-        'Velikost prekrivanja med sosednjimi odseki (v znakih, 0~1000), da se zmanjša izguba informacij na mejah odsekov.',
-      batchMaxDocuments:
-        'For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.',
-      batchMaxChunks:
-        'Maximum number of segments per embedding request during learning. Range: 1~20.',
       matchThreshold: 'Rezultati z nižjo podobnostjo od tega praga bodo filtrirani (0~1).',
       embeddingModel: 'Model vdelave za pretvorbo besedila v vektorje.',
       embeddingDimension: 'Dimenzija vdelanega vektorja mora ustrezati izhodu izbranega modela.',
+      batchMaxChunks: 'Faza učenja vdelave, največje število segmentov v vsaki zahtevi za vektorizacijo. Obseg vrednosti: 1~20.',
+      chunkOverlap: 'Velikost prekrivanja sosednjih segmentov (število znakov, 0~1000), uporablja se za zmanjšanje izgube informacij zaradi preloma stavkov čez segmente.',
+      chunkSize: 'Velikost segmenta (število znakov, 500~5000). Večji ko je segment, bolj popoln je kontekst, a je granuliranost priklica bolj groba.',
+      raptorLLMModel: 'Jezikovni model za ustvarjanje hierarhičnih povzetkov; če ne izberete, se ta zmožnost ne bo omogočila.',
     },
     tabs: {
       personal: 'Osebno',
@@ -1324,12 +1297,11 @@ export default {
       batchMaxDocuments: 'Max documents per batch',
       batchMaxChunks: 'Max segments per embedding batch',
       matchThreshold: 'Prag ujemanja',
-      advancedWarning:
-        'Spremembe velikosti odsekov in prekrivanja veljajo samo za novo dodano vsebino',
       cancel: 'Prekliči',
       confirm: 'Ustvari',
       success: 'Baza znanja ustvarjena',
       failed: 'Ustvarjanje baze znanja ni uspelo',
+      advancedWarning: 'Spremembe velikosti segmentov in prekrivanja veljajo samo za na novo dodano vsebino',
     },
     embeddingSettings: {
       title: 'Nastavitve modela vdelave',
@@ -1443,8 +1415,6 @@ export default {
       deleteCancel: 'Prekliči',
       deleteConfirm: 'Izbriši',
       deleteSuccess: 'Uspešno izbrisano',
-      deleteDescBatch:
-        'Brisanje {count} map bo dokumente pod njimi premaknilo v "Nekategorizirano". Tega ni mogoče razveljaviti.',
       deleteSuccessBatch: 'Izbrisano {count} map',
       move: {
         title: 'Premakni mapo',
@@ -1462,9 +1432,8 @@ export default {
       nameDuplicate: 'Ime mape že obstaja',
       nameHelp: 'Ime mape (največ 50 znakov).',
       parentFolder: 'Nadrednika mapa',
-      parentFolderHelp:
-        'Izberite nadrejeno mapo za ustvarjanje gnezdenih map. Pustite prazno za ustvarjanje v korenu.',
       rootFolder: 'Korenska mapa (brez nadrejene)',
+      parentFolderHelp: 'Izberite nadrejeno mapo za ustvarjanje ugnezdene mape. Če pustite prazno, se ustvari v korenski mapi.',
     },
     detail: {
       title: 'Podrobnosti dokumenta',
@@ -1524,8 +1493,6 @@ export default {
     saveSuccess: 'Uspešno shranjeno',
     deleteSuccess: 'Uspešno izbrisano',
     deleteConfirmTitle: 'Potrdite brisanje',
-    deleteFileConfirm:
-      'Ali ste prepričani, da želite izbrisati {name}? Tega dejanja ni mogoče razveljaviti.',
     unsavedChangesConfirm: 'Imate neshranjene spremembe. Vseeno preklopim?',
     basicInfo: 'Osnovne informacije',
     basicInfoDesc: 'Temeljne informacije uporabniškega profila',
@@ -1534,11 +1501,7 @@ export default {
     conversationLog: 'Dnevnik pogovora',
     conversationLogDesc: 'Kronološka dejstva pogovora',
     conversationLogEmpty: 'Ni še dnevnikov pogovora',
-    deleteEventStreamConfirm:
-      'Ali ste prepričani, da želite izbrisati ta dnevnik pogovora? Tega dejanja ni mogoče razveljaviti.',
     deleteFailed: 'Brisanje ni uspelo',
-    deleteThematicFactConfirm:
-      'Ali ste prepričani, da želite izbrisati ta povzetek teme? Tega dejanja ni mogoče razveljaviti.',
     editCoreProfile: 'Uredi osnovne informacije',
     editEventStream: 'Uredi dnevnik pogovora',
     editThematicFact: 'Uredi povzetek teme',
@@ -1551,6 +1514,7 @@ export default {
     topicSummaryEmpty: 'Ni še povzetkov tem',
     updateFailed: 'Posodobitev ni uspela',
     updateSuccess: 'Uspešno posodobljeno',
+    deleteFileConfirm: 'Ali ste prepričani, da želite izbrisati {name}? To dejanje ni mogoče razveljaviti.',
   },
   channels: {
     title: 'Kanali za sporočanje',
@@ -1632,8 +1596,6 @@ export default {
       success: 'Kanal uspešno ustvarjen',
       failed: 'Ustvarjanje kanala ni uspelo',
       dingtalkPluginInstalling: 'Nameščanje vtičnika DingTalk',
-      dingtalkPluginInstallingDesc:
-        'Vtičnik DingTalk Connector se namešča v ozadju. Zdaj lahko nadaljujete z vezavo asistenta in pozneje preverite stanje povezave.',
       avatarHint: 'Kliknite za zamenjavo, priporočeno 100*100px, največ 100KB',
       feishuTipPrefix: 'Prijavite se v',
       feishuTipMiddle: 'za ustvarjanje bota, sledite',
@@ -1714,8 +1676,6 @@ export default {
     comingSoon: 'Kmalu na voljo',
     agentFallback: 'AI pomočnik',
     unbindConfirmTitle: 'Potrdite odvezo',
-    unbindConfirmDesc:
-      'Odvezati pomočnika od kanala "{name}"? Sporočila na tem kanalu ne bodo obdelana, dokler znova ne povežete.',
     unbindSuccess: 'Pomočnik odvezan',
     bindSuccess: 'Pomočnik uspešno vezan',
     card: {
@@ -1745,21 +1705,18 @@ export default {
     },
     toggle: {
       enableSuccess: 'Uspešno omogočeno',
-      dingtalkPluginNotReady:
-        'Vtičnik povezovalnika DingTalk se še namešča ali ni pripravljen. Poskusite znova pozneje.',
       disableSuccess: 'Uspešno onemogočeno',
       enableTitle: 'Omogočite ta kanal?',
       disableTitle: 'Onemogočite ta kanal?',
-      enableDesc:
-        'Ko je omogočeno, se bo sistem poskusil povezati s tem kanalom za prejemanje in obdelavo sporočil.',
-      disableDesc:
-        'Ko je onemogočeno, bo povezava s tem kanalom prekinjena in sistem ne bo več prejemal njegovih sporočil.',
+      dingtalkPluginNotReady: 'Vtičnik povezovalnika DingTalk se še namešča ali ni pripravljen, prosimo poskusite znova pozneje.',
+      disableDesc: 'Po izklopu bo povezava s tem kanalom prekinjena, sistem ne bo več prejemal njegovih sporočil.',
+      enableDesc: 'Po vklopu se bo sistem poskušal povezati s tem kanalom za prejemanje in obdelavo sporočil.',
     },
     status: {
       online: 'Povezan',
       error: 'Napaka',
       offline: 'Povezava prekinjena',
-      provisioning: "Povezovanje …",
+      provisioning: 'Povezovanje …',
     },
     bindAgent: {
       title: 'Izberi pomočnika',
@@ -1773,25 +1730,18 @@ export default {
     },
     provisioning: {
       toastTitle: 'Obdelava v ozadju',
-      toastDescription:
-        'Kanal in prehod se še ustvarjata ali usklajujeta. Stanje povezave se bo samodejno posodobilo. Počakajte.',
-      toastDescriptionWithAgent:
-        'Kanal, pomočnik ali prehod se še ustvarjajo ali usklajujejo. Počakajte.',
+      toastDescription: 'Kanal in prehod se ustvarjata ali sinhronizirata, stanje povezave se bo samodejno posodobilo, prosimo počakajte.',
+      toastDescriptionWithAgent: 'Kanal, asistent ali prehod se ustvarjajo ali sinhronizirajo, prosimo počakajte.',
     },
     wecom: {
       emptyTitle: 'WeCom še ni dodan',
-      emptyDesc:
-        'Povežite WeCom s skeniranjem QR kode z uradnim vtičnikom Tencent OpenClaw ali integrirajte obstoječega bota.',
+      emptyDesc: 'S skeniranjem kode prek uradnega vtičnika OpenClaw podjetja Tencent povežite WeCom, podpira pa tudi povezovanje obstoječih botov.',
     },
     wechat: {
       emptyTitle: 'WeChat še ni dodan',
-      emptyDesc:
-        'Povežite svoj osebni WeChat tako, da s pomočjo uradnega vtičnika Tencent OpenClaw skenirate QR kodo, nato pa začnite prejemati in obdelovati sporočila WeChat.',
       addNow: 'Dodaj zdaj',
       configTitle: 'Nastavi WeChat',
       howToConnect: 'Kako povezati',
-      tipsIntro:
-        'Povežite svoj osebni WeChat tako, da z uradnim vtičnikom Tencent OpenClaw skenirate QR kodo',
       stepsLabel: 'Koraki',
       step1: 'Kliknite Ustvari QR kodo, da v OpenClaw namestite in omogočite uradni vtičnik WeChat',
       step2: 'Spodnjo QR kodo skenirajte z WeChat in na telefonu potrdite povezavo',
@@ -1803,38 +1753,23 @@ export default {
       qrExpired: 'Poteklo',
       loginSuccess: 'WeChat je uspešno povezan',
       assistantPromptTitle: 'Poveži pomočnika',
-      assistantPromptDesc:
-        'Ta kanal je trenutno privzeto povezan z glavnim pomočnikom (main), sporočila pa bo obdeloval glavni pomočnik. Če želite uporabiti drugega pomočnika, lahko povežete obstoječega ali ustvarite novega in ga samodejno povežete s tem kanalom WeChat.',
       useMainAssistant: 'Končano (uporabi glavnega pomočnika)',
       bindExistingAssistant: 'Poveži obstoječega pomočnika',
       createAssistantManually: 'Ustvari pomočnika',
-      createAssistantHint:
-        'Ko ustvarite novega pomočnika, boste morali ročno vnesti ime in druge podatke. Po ustvarjanju bo samodejno povezan, povezava pa osvežena.',
-      missingChannelId:
-        'Podatkov o kanalu ni bilo mogoče pridobiti. Zaprite to okno, osvežite seznam kanalov in poskusite znova.',
-      missingChannelIdHint:
-        'ID kanala ni bilo mogoče pridobiti. Zaprite to okno in pomočnika ročno povežite s seznama kanalov.',
       channelNotFound: 'Ustreznega kanala ni bilo mogoče najti. Osvežite in poskusite znova.',
-      pluginInstallTryLater:
-        'Uradni vtičnik WeChat se v ozadju še namešča ali omogoča. Poskusite znova pozneje.',
-      editNotSupported:
-        'WeChat se poveže s skeniranjem QR kode, zato ga tukaj ni mogoče urejati. Če želite zamenjati račun, ta kanal izbrišite na strani kanalov in ga nato znova dodajte s skeniranjem.',
-      qrExpiredHint:
-        'QR-koda ni več veljavna ali je čakanje poteklo. Spodaj kliknite Osveži za novo kodo.',
+      createAssistantHint: 'Pri ustvarjanju novega asistenta morate ročno izpolniti ime in druge informacije; po uspešnem ustvarjanju se bo samodejno vezal in osvežil povezavo.',
+      emptyDesc: 'S skeniranjem kode prek uradnega vtičnika OpenClaw podjetja Tencent se povežite z osebnim WeChatom in začnite prejemati ter obdelovati sporočila WeChat.',
+      missingChannelId: 'Informacije o kanalu ni bilo mogoče pridobiti, prosimo zaprite in osvežite seznam kanalov ter poskusite znova.',
+      missingChannelIdHint: 'ID kanala ni bilo mogoče pridobiti, prosimo zaprite to okno in ročno vezite asistenta na seznamu kanalov.',
+      pluginInstallTryLater: 'Uradni vtičnik WeChat se namešča ali omogoča v ozadju, prosimo poskusite znova pozneje.',
+      qrExpiredHint: 'Koda QR je potekla ali je potekel čas čakanja, prosimo kliknite "Osveži" spodaj, da jo znova pridobite.',
+      tipsIntro: 'S skeniranjem kode prek uradnega vtičnika OpenClaw podjetja Tencent povežite osebni WeChat',
     },
     whatsapp: {
       emptyTitle: 'WhatsApp še ni dodan',
-      emptyDesc:
-        'Povežite WhatsApp prek vgrajenega kanala OpenClaw s skeniranjem QR kode (WhatsApp Web).',
       addNow: 'Dodaj zdaj',
       configTitle: 'Nastavi WhatsApp',
       howToConnect: 'Kako se povezati',
-      step1:
-        'Ko tapnete spodnji gumb, aplikacija po potrebi omogoči vgrajeni WhatsApp kanal v OpenClaw.',
-      step2:
-        'Nato aplikacija v ozadju zažene prijavo z QR kodo; jo skenirajte z WhatsAppom na telefonu.',
-      step3:
-        'Po povezavi na tej strani povežite pomočnika. Brisanje kanala odjavi in odstrani povezave.',
       configStepsLink: 'Uradna dokumentacija',
       generateQRCode: 'Ustvari QR kodo',
       generating: 'Ustvarjanje…',
@@ -1842,14 +1777,36 @@ export default {
       waitingForScan: 'Čakanje na skeniranje…',
       refresh: 'Osveži',
       qrExpired: 'QR-koda je potekla',
-      qrExpiredHint:
-        'QR-koda je potekla ali je čakanje poteklo. Spodaj kliknite Osveži za novo kodo.',
       loginSuccess: 'WhatsApp je povezan',
-      pluginInstallTryLater:
-        'WhatsApp kanal se še omogoča ali še ni pripravljen. Poskusite znova pozneje.',
       channelNotFound: 'Ustrezen kanal ni bil najden. Osvežite in poskusite znova.',
-      editNotSupported:
-        'WhatsApp se poveže s skeniranjem QR kode in ga tukaj ni mogoče urejati. Za zamenjavo računa izbrišite ta kanal in ga dodajte znova.',
+      emptyDesc: 'S skeniranjem kode prek vgrajenega kanala WhatsApp v OpenClaw povežite WhatsApp (WhatsApp Web).',
+      pluginInstallTryLater: 'Kanal WhatsApp se omogoča ali še ni pripravljen, prosimo poskusite znova pozneje.',
+      qrExpiredHint: 'Koda QR je potekla ali je potekel čas čakanja, prosimo kliknite "Osveži" spodaj, da jo znova pridobite.',
+      step1: 'Po kliku spodnjega gumba bo aplikacija najprej omogočila vgrajeni kanal WhatsApp v OpenClaw (če še ni omogočen).',
+      step2: 'Nato bo aplikacija v ozadju zagnala postopek prijave s skeniranjem kode; prosimo s telefonsko aplikacijo WhatsApp skenirajte kodo QR.',
+      step3: 'Po uspešni prijavi lahko na tej strani vezete asistenta in upravljate stanje povezave; izbris kanala bo izvedel odjavo in počistil vezavo.',
+    },
+    backToOverview: 'Nazaj na pregled kanalov',
+    panel: {
+      add: 'Dodaj',
+    },
+    platformBlurbs: {
+      default: 'Povežite se s to platformo za prejemanje in pošiljanje sporočil.',
+      dingtalk: 'Povežite poslovni bot DingTalk, ki prek načina Stream zagotavlja stabilno interakcijo skupinskega klepeta in zasebnih sporočil.',
+      feishu: 'Povežite poslovno aplikacijo Feishu za avtomatizirano interakcijo skupinskega klepeta in zasebnih sporočil.',
+      qq: 'Povežite uradni bot QQ, ki pokriva celotne scenarije interakcije skupinskega klepeta, kanalov in zasebnih sporočil.',
+      wechat: 'Povežite WeChat s skeniranjem kode, WeChat se neposredno poveže z botom za klepet.',
+      wecom: 'Povežite uradnega bota WeCom z ID bota in skrivnostjo.',
+      whatsapp: 'S skeniranjem kode se povežite z WhatsApp in hitro začnite globalno poslovno komunikacijo.',
+    },
+    platformCard: {
+      connect: 'Poveži',
+    },
+    row: {
+      boundToAgent: 'Vezano na {name}',
+    },
+    supported: {
+      title: 'Podprti kanali',
     },
   },
   scheduledTasks: {
@@ -1862,8 +1819,6 @@ export default {
     refresh: 'Osveži',
     edit: 'Uredi opravilo',
     empty: 'Ni še načrtovanih opravil',
-    emptyDescription:
-      'Ustvarite načrtovane naloge za avtomatizacijo potekov dela z umetno inteligenco. Naloge lahko ob določenem času pošiljajo sporočila, izvajajo poizvedbe ali sprožajo dejanja.',
     errorReason: 'Poglej razlog napake',
     actionsMenu: 'Odpri meni dejanj',
     total: 'Skupaj opravil',
@@ -1981,9 +1936,8 @@ export default {
       selectChannel: 'Izberite kanale',
       emptyChannels: 'Za trenutno vrsto obvestila ni na voljo kanalov',
       hintSelected: 'Izberete lahko več kanalov. Rezultati bodo tja poslani po zaključku opravila.',
-      hintUnselected:
-        'Najprej izberite vrsto obvestila, nato pa enega ali več kanalov te platforme.',
       channelFallback: 'Kanal {id}',
+      hintUnselected: 'Najprej izberite vrsto obvestila, nato iz ustreznih platformnih kanalov izberite več specifičnih kanalov.',
     },
     presets: {
       everyMinute: 'Vsako minuto',
@@ -2031,8 +1985,6 @@ export default {
       thinking: 'Razmišljanje',
       enabled: 'Omogoči opravilo',
       expiresAt: 'Datum poteka',
-      expiredHint:
-        'To opravilo je poteklo in se ne bo več zagnalo. Za nadaljevanje premaknite čas poteka v prihodnost.',
       scheduleType: 'Tip načrtovanja',
       schedulePreset: 'Prednastavitev',
       scheduleCustom: 'Poljuben čas',
@@ -2059,14 +2011,16 @@ export default {
       calendarTitle: '{year} / {month}',
       yearOption: '{year}',
       monthOption: '{month}',
+      expiredHint: 'Ta naloga je potekla in se ne bo več izvajala. Za nadaljevanje izvajanja spremenite čas poteka na prihodnost.',
     },
   },
   openclawGateway: {
     banner: {
       starting: 'The gateway is starting. Please try again in a moment.',
       upgrading: 'OpenClaw runtime is upgrading. Please try again in a moment.',
-      channels: '网关未运行，未启用网关时无法管理消息频道',
-      scheduledTasks: '网关未运行，未启用网关时无法管理定时任务',
+      channels: 'Prehodnik ne deluje, ko prehodnik ni omogočen, ni mogoče upravljati s kanali sporočil',
+      scheduledTasks: 'Prehodnik ne deluje, ko prehodnik ni omogočen, ni mogoče upravljati s časovnimi nalogami',
+      notInstalled: 'OpenClaw runtime ni bil zaznan. Namestite ga v「Nastavitve → Splošno」ali「OpenClaw Manager」.',
     },
   },
   openclawCron: {
@@ -2133,8 +2087,6 @@ export default {
       timezone: 'Časovni pas',
       systemTimezone: 'Sistemsko privzeto',
       exact: 'Natančno izvajanje',
-      exactHint:
-        'Omogočite način exact v OpenClaw, da se opravilo izvede čim bližje nastavljenemu trenutku.',
       enableNowTitle: 'Omogoči takoj',
       enableNowHint: 'Začni to opravilo takoj po ustvarjanju',
       message: 'Sporočilo',
@@ -2159,8 +2111,6 @@ export default {
       deliveryTargetId: 'Ciljni ID',
       deliveryTargetIdPlaceholder: 'Vnesite ID pogovora ali uporabnika',
       deliveryTargetHintTitle: 'Privzeti cilj',
-      deliveryTargetFixedHint:
-        'Najnovejši dostavljeni ciljni ID za izbranega pomočnika in vrsto kanala je vnaprej izpolnjen, vendar ga lahko še vedno ročno prilagodite.',
       deliveryTargetModes: {
         lastActive: 'Zadnji aktivni cilj',
         targetId: 'Vnesi ciljni ID',
@@ -2177,50 +2127,51 @@ export default {
       deleteAfterRun: 'Izbriši po zagonu',
       keepAfterRun: 'Obdrži po zagonu',
       enabled: 'Omogoči opravilo',
+      exactHint: 'Omogočite natančen način OpenClaw, sprožite čim bližje nastavljenemu času',
     },
     history: {
-      conversationPreparing: '正在准备历史会话，请稍后...',
-      delivery: '投递状态',
+      conversationPreparing: 'Pripravljam zgodovino sej, prosimo počakajte...',
+      delivery: 'Stanje dostave',
       deliveryStatus: {
-        delivered: '已投递',
-        failed: '投递失败',
-        not_delivered: '未投递',
-        pending: '待投递',
-        success: '投递成功',
+        delivered: 'Dostavljeno',
+        failed: 'Dostava ni uspela',
+        not_delivered: 'Ni dostavljeno',
+        pending: 'Na čakanju za dostavo',
+        success: 'Uspešno dostavljeno',
       },
-      detailErrorReason: '失败原因',
-      detailLoadFailed: '加载运行明细失败',
-      detailLoadFailedDescription: '未能获取这次运行的对话明细，请检查 OpenClaw 运行状态后重试。',
-      detailLoadFailedReason: '请确认 OpenClaw Gateway 已启动，并稍后重试。',
-      detailLoading: '正在加载对话明细...',
-      duration: '耗时',
-      empty: '暂无运行历史',
-      error: '错误信息',
-      model: '模型',
-      provider: '提供商',
-      retryLoadDetail: '重试加载',
-      runAt: '运行时间',
-      selectRun: '请选择一次运行记录',
-      summary: '运行摘要',
-      title: '运行历史',
-      waitingTriggeredRun: '任务已触发，正在等待 OpenClaw 写入新的运行记录...',
+      detailErrorReason: 'Razlog za napako',
+      detailLoadFailed: 'Nalaganje podrobnosti izvajanja ni uspelo',
+      detailLoadFailedDescription: 'Ni bilo mogoče pridobiti podrobnosti klepeta za to izvajanje, prosimo preverite stanje delovanja OpenClaw in poskusite znova.',
+      detailLoadFailedReason: 'Prosimo potrdite, da je OpenClaw Gateway zagnan, in poskusite znova pozneje.',
+      detailLoading: 'Nalagam podrobnosti klepeta...',
+      duration: 'Trajanje',
+      empty: 'Trenutno ni zgodovine izvajanja',
+      error: 'Informacije o napaki',
+      model: 'Model',
+      provider: 'Ponudnik',
+      retryLoadDetail: 'Poskusi znova naložiti',
+      runAt: 'Čas izvajanja',
+      selectRun: 'Prosimo izberite en zapis izvajanja',
+      summary: 'Povzetek izvajanja',
+      title: 'Zgodovina izvajanja',
+      waitingTriggeredRun: 'Naloga je bila sprožena, čakam na OpenClaw, da zapiše nov zapis izvajanja...',
     },
-    runNowQueued: '任务已开始执行，请稍后在历史中查看结果',
+    runNowQueued: 'Naloga je začela izvajati se, prosimo pozneje preverite rezultate v zgodovini',
     schedule: {
-      atPrefix: '指定时间',
-      daily: '每天 {time}',
-      everyPrefix: '每隔',
-      monthly: '每月 {day} 号 {time}',
+      atPrefix: 'Določen čas',
+      daily: 'Vsak dan ob {time}',
+      everyPrefix: 'Vsakih',
+      monthly: '{day}. dan vsakega meseca ob {time}',
       weekdays: {
-        friday: '周五',
-        monday: '周一',
-        saturday: '周六',
-        sunday: '周日',
-        thursday: '周四',
-        tuesday: '周二',
-        wednesday: '周三',
+        friday: 'Petek',
+        monday: 'Ponedeljek',
+        saturday: 'Sobota',
+        sunday: 'Nedelja',
+        thursday: 'Četrtek',
+        tuesday: 'Torek',
+        wednesday: 'Sreda',
       },
-      weekly: '每周 {weekday} {time}',
+      weekly: 'Vsak {weekday} ob {time}',
     },
   },
 }

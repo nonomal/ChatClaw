@@ -91,6 +91,7 @@ export function isOpenClawRuntimeMutatingPhase(phase: string | undefined): boole
 function mapToVisual(status: RuntimeStatus, _gw: GatewayConnectionState): GatewayVisualStatus {
   const phase = status.phase || 'idle'
   if (phase === 'error') return GatewayVisualStatus.Error
+  if (phase === 'not_installed') return GatewayVisualStatus.Stop
   if (phase === 'upgrading') return GatewayVisualStatus.Upgrading
   if (phase === 'starting' || phase === 'connecting' || phase === 'restarting') {
     return GatewayVisualStatus.Starting
