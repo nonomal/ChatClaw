@@ -111,6 +111,20 @@ const upgradeOutputLines = computed(() => {
   return out.split('\n').filter((l) => l.trim() !== '')
 })
 
+// 启动步骤行（从后端 upgradeOutput 解析，后端在启动期间写入步骤）
+// 升级期间 upgradeOutput 包含的是 npm install 输出，不需要在此展示。
+const startStepLines = computed(() => {
+  // Only show during starting/connecting phase, not during upgrading.
+  if (gatewayStore.visualStatus !== GatewayVisualStatus.Starting) return []
+  const out = gatewayStore.upgradeOutput || ''
+  return out.split('\n').filter((l) => l.trim() !== '')
+})
+
+// 是否正在启动（用于控制启动步骤面板显示）
+const isStartInProgress = computed(() => {
+  return startStepLines.value.length > 0
+})
+
 const badgeText = computed(() => {
   const v = gatewayStore.visualStatus
   return t(`settings.openclawRuntime.statusBadge.${v}`)
@@ -486,6 +500,39 @@ onUnmounted(() => {
               <Loader2 v-else class="mr-1.5 size-3.5 animate-spin" />
               {{ t('settings.openclawRuntime.restart') }}
             </Button>
+          </div>
+        </div>
+
+        <!-- 启动步骤进度（仅启动中显示） -->
+        <div
+          v-if="isStartInProgress"
+          class="flex flex-col gap-1.5 border-b border-border p-4"
+        >
+          <span class="text-xs font-medium text-muted-foreground">
+            {{ t('settings.openclawRuntime.starting') }}
+          </span>
+          <div class="flex flex-col gap-1">
+            <div
+              v-for="(line, index) in startStepLines"
+              :key="index"
+              class="flex items-center gap-2 text-xs"
+            >
+              <span
+                v-if="index < startStepLines.length - 1"
+                class="inline-flex size-4 shrink-0 items-center justify-center rounded-sm bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400"
+              >
+                <Loader2 class="size-2.5 animate-spin" />
+              </span>
+              <span
+                v-else
+                class="inline-flex size-4 shrink-0 items-center justify-center rounded-sm bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400"
+              >
+                <svg class="size-2.5" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M2 6l3 3 5-5" />
+                </svg>
+              </span>
+              <span class="text-muted-foreground">{{ line }}</span>
+            </div>
           </div>
         </div>
 

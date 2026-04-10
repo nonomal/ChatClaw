@@ -359,6 +359,19 @@ export default {
       startFailed: '网关启动失败',
       startSuccess: '网关已启动',
       starting: '启动中...',
+      startSteps: {
+        resolvedRuntime: 'रनटाइम मिला: {path}',
+        hotfixApplied: '{count} हॉटफिक्स फ़ाइल(ें) लागू की गईं',
+        stoppedExisting: 'मौजूदा प्रक्रिया रोकी गई',
+        verifiedInstall: 'इंस्टॉल संस्करण {version} सत्यापित',
+        ensuredStateDir: 'रनटाइम स्थिति निर्देशिका प्रारंभिक',
+        adoptingExisting: 'मौजूदा गेटवे अपनाया गया (PID: {pid})',
+        startedProcess: 'गेटवे प्रक्रिया प्रारंभ हो रही है (पोर्ट: {port})',
+        existingProcessReused: 'मौजूदा प्रक्रिया पुन: उपयोग (PID: {pid})',
+        connecting: 'वेबसॉकेट कनेक्ट हो रहा है (पोर्ट: {port})',
+        autoApproved: 'डिवाइस पेयरिंग स्वीकृत',
+        connected: 'गेटवे कनेक्टेड',
+      },
       upgradeCancelFailed: '取消升级失败',
       upgradeCancelled: '升级已取消',
       upgradeDetails: '详情',
@@ -759,7 +772,7 @@ export default {
         footer: "ChatWiki, ChatClaw क्लाइंट का क्लाउड संस्करण है",
         loginNow: "अभी लॉग इन करें",
         loginLater: "बाद में",
-      },
+      },
     },
     tools: {
       tray: {

@@ -743,6 +743,30 @@ func (m *Manager) reconcileLocked(restart bool) error {
 		ready := m.client != nil
 		m.mu.RUnlock()
 		if ready {
+			// Status may never have received runtime metadata (e.g. AutoStart off: only poll/reconnect
+			// established WS). Fill path/source/version from the resolved bundle when missing.
+			if b, err := resolveBundledRuntime(); err == nil {
+				m.mu.RLock()
+				pid := m.processPID
+				needMeta := m.status.RuntimePath == "" || m.status.RuntimeSource == ""
+				m.mu.RUnlock()
+				if needMeta {
+					ver := strings.TrimSpace(b.Manifest.OpenClawVersion)
+					if v, err := verifyInstalled(b); err == nil {
+						ver = v
+					}
+					cfg := m.store.Get()
+					m.broadcastStatus(RuntimeStatus{
+						Phase:            PhaseConnected,
+						Message:          "OpenClaw Gateway connected",
+						InstalledVersion: ver,
+						RuntimeSource:    b.Source,
+						RuntimePath:      b.Root,
+						GatewayPID:       pid,
+						GatewayURL:       gatewayURL(cfg.GatewayPort),
+					})
+				}
+			}
 			return nil
 		}
 	}
@@ -775,15 +799,19 @@ func (m *Manager) reconcileLocked(restart bool) error {
 		return nil
 	}
 
+	m.appendStartStep("1. resolve_runtime", bundle.Root)
+
 	if patched, err := applyBundledRuntimeHotfixes(bundle); err != nil {
 		m.app.Logger.Warn("openclaw: runtime hotfix apply failed",
 			"runtimePath", bundle.Root, "error", err)
 	} else if patched > 0 {
 		m.app.Logger.Info("openclaw: runtime hotfix applied",
 			"runtimePath", bundle.Root, "patchedFiles", patched)
+		m.appendStartStep("2. apply_hotfix", fmt.Sprintf("patched %d file(s)", patched))
 	}
 
 	if restart {
+		m.appendStartStep("3. stop_process", "")
 		m.closeClient()
 		m.stopProcess()
 	}
@@ -792,6 +820,8 @@ func (m *Manager) reconcileLocked(restart bool) error {
 	if err != nil {
 		return fail("verifyInstalled", err, "", 0)
 	}
+
+	m.appendStartStep("4. verify_installed", version)
 
 	m.broadcastStatus(RuntimeStatus{
 		Phase:            PhaseStarting,
@@ -811,6 +841,8 @@ func (m *Manager) reconcileLocked(restart bool) error {
 	}
 	ensureSandboxConfigured(bundle)
 
+	m.appendStartStep("5. ensure_state_dir", bundle.StateDir)
+
 	// Start process if needed
 	m.mu.RLock()
 	needProcess := m.process == nil
@@ -824,7 +856,9 @@ func (m *Manager) reconcileLocked(restart bool) error {
 			pid = getOccupyingProcessPID(cfg.GatewayPort)
 			m.app.Logger.Info("openclaw: adopting existing gateway on port (skip spawn)",
 				"port", cfg.GatewayPort, "pid", pid)
+			m.appendStartStep("6. adopt_existing", fmt.Sprintf("pid=%d", pid))
 		} else {
+			m.appendStartStep("6. start_process", fmt.Sprintf("port=%d", cfg.GatewayPort))
 			if err := m.startProcess(cfg, bundle, version, restart); err != nil {
 				return fail("startProcess", err, version, 0)
 			}
@@ -832,6 +866,8 @@ func (m *Manager) reconcileLocked(restart bool) error {
 			pid = m.processPID
 			m.mu.RUnlock()
 		}
+	} else {
+		m.appendStartStep("6. process_exists", fmt.Sprintf("pid=%d", pid))
 	}
 
 	// Connect client if needed
@@ -840,6 +876,7 @@ func (m *Manager) reconcileLocked(restart bool) error {
 	m.mu.RUnlock()
 
 	if needClient {
+		m.appendStartStep("7. connect_websocket", fmt.Sprintf("port=%d", cfg.GatewayPort))
 		m.broadcastStatus(RuntimeStatus{
 			Phase:            PhaseConnecting,
 			Message:          "Connecting to OpenClaw Gateway",
@@ -855,6 +892,7 @@ func (m *Manager) reconcileLocked(restart bool) error {
 			if errors.As(err, &gerr) && strings.EqualFold(strings.TrimSpace(gerr.Code), "NOT_PAIRED") {
 				// Same as reconnectClient: HTTP approve then retry WS once (initial reconcile used to skip this).
 				m.app.Logger.Info("openclaw: NOT_PAIRED on first connect, auto-approving then retrying WS")
+				m.appendStartStep("8. auto_approve_pairing", "")
 				m.approvePendingDevices()
 				err = m.connectClient(cfg, bundle)
 			}
@@ -887,6 +925,7 @@ func (m *Manager) reconcileLocked(restart bool) error {
 	m.readyAt = time.Now()
 	m.mu.Unlock()
 
+	m.appendStartStep("9. connected", version)
 	m.broadcastStatus(RuntimeStatus{
 		Phase:            PhaseConnected,
 		Message:          "OpenClaw Gateway connected",
@@ -1454,18 +1493,20 @@ connected:
 	m.consecutiveFailures = 0
 	m.doctorTriggered = false
 
+	version := strings.TrimSpace(bundle.Manifest.OpenClawVersion)
+	if v, err := verifyInstalled(bundle); err == nil {
+		version = v
+	}
+
 	m.mu.RLock()
 	pid := m.processPID
-	version := m.status.InstalledVersion
-	runtimeSource := m.status.RuntimeSource
-	runtimePath := m.status.RuntimePath
 	m.mu.RUnlock()
 	m.broadcastStatus(RuntimeStatus{
 		Phase:            PhaseConnected,
 		Message:          "OpenClaw Gateway connected",
 		InstalledVersion: version,
-		RuntimeSource:    runtimeSource,
-		RuntimePath:      runtimePath,
+		RuntimeSource:    bundle.Source,
+		RuntimePath:      bundle.Root,
 		GatewayPID:       pid,
 		GatewayURL:       gatewayURL(cfg.GatewayPort),
 	})
@@ -2525,6 +2566,41 @@ func (m *Manager) appendUpgradeOutput(line string) {
 		m.upgradeOutputBuf.Reset()
 		m.upgradeOutputBuf.WriteString(strings.Join(lines[len(lines)-(maxLines+1):], "\n"))
 	}
+}
+
+// appendStartStep appends a step entry to the startup output buffer.
+// The buffer is shared with upgrade output; it is cleared on the first start step
+// so that start and upgrade outputs do not mix. Broadcasts the updated output.
+func (m *Manager) appendStartStep(stepKey string, detail string) {
+	m.mu.Lock()
+	// Clear buffer on first step of a new start sequence.
+	if m.upgradeOutputBuf.Len() == 0 {
+		m.upgradeOutputBuf.Reset()
+	}
+	if detail != "" {
+		m.upgradeOutputBuf.WriteString(fmt.Sprintf("[%s] %s", stepKey, detail))
+	} else {
+		m.upgradeOutputBuf.WriteString(stepKey)
+	}
+	m.upgradeOutputBuf.WriteString("\n")
+	// Keep only the last 200 lines.
+	const maxLines = 200
+	content := m.upgradeOutputBuf.String()
+	lines := strings.Split(content, "\n")
+	if len(lines) > maxLines+1 {
+		m.upgradeOutputBuf.Reset()
+		m.upgradeOutputBuf.WriteString(strings.Join(lines[len(lines)-(maxLines+1):], "\n"))
+	}
+	bufLen := m.upgradeOutputBuf.Len()
+	m.mu.Unlock()
+
+	cfg := m.store.Get()
+	m.broadcastStatus(RuntimeStatus{
+		Phase:         PhaseStarting,
+		Message:       "Starting OpenClaw Gateway",
+		UpgradeOutput: content[:bufLen],
+		GatewayURL:    gatewayURL(cfg.GatewayPort),
+	})
 }
 
 // cleanErrorMessage strips Go stack traces and redundant path noise from error strings

@@ -274,6 +274,19 @@ export default {
       starting: '起動中...',
       startSuccess: 'ゲートウェイが起動しました',
       startFailed: 'ゲートウェイの起動に失敗しました',
+      startSteps: {
+        resolvedRuntime: 'ランタイムを検出: {path}',
+        hotfixApplied: 'ホットフィックス {count} ファイルを適用',
+        stoppedExisting: '既存のプロセスを停止しました',
+        verifiedInstall: 'インストール済みバージョン {version} を検証',
+        ensuredStateDir: 'ランタイム状態ディレクトリを初期化しました',
+        adoptingExisting: '既存のゲートウェイを引き続き使用 (PID: {pid})',
+        startedProcess: 'ゲートウェイプロセスを起動中 (ポート: {port})',
+        existingProcessReused: '既存のプロセスを再利用 (PID: {pid})',
+        connecting: 'WebSocketに接続中 (ポート: {port})',
+        autoApproved: 'デバイスペアリングを自動承認しました',
+        connected: 'ゲートウェイに接続しました',
+      },
       phase: {
         idle: '待機中',
         starting: '起動中',
@@ -759,7 +772,7 @@ export default {
         footer: "ChatWiki は ChatClaw クライアントのクラウド版です",
         loginNow: "今すぐログイン",
         loginLater: "あとで",
-      },
+      },
     },
     tools: {
       tray: {

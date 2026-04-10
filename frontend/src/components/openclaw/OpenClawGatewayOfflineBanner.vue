@@ -15,9 +15,11 @@ const gatewayStore = useOpenClawGatewayStore()
 const { visualStatus, runtimePhase } = storeToRefs(gatewayStore)
 
 onMounted(() => {
-  if (appStore.currentSystem === 'openclaw') {
-    void gatewayStore.poll()
-  }
+  // Ensure event subscriptions are active so this banner responds to backend
+  // status changes (e.g. gateway starting) even when startHeartbeat() was not
+  // yet triggered. Calling startHeartbeat() is idempotent — it will be a no-op
+  // if already running; if not, it registers event listeners + starts polling.
+  gatewayStore.startHeartbeat()
 })
 
 const show = computed(
