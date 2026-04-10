@@ -18,7 +18,7 @@ import {
   GatewayConnectionState,
   RuntimeUpgradeResult,
 } from '@bindings/chatclaw/internal/openclaw/runtime/models'
-import { toast } from '@/components/ui/toast'
+import { toast, TOAST_DURATION_HINT } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
 import SettingsCard from './SettingsCard.vue'
 import OpenClawDoctorConsole from '@/components/openclaw/OpenClawDoctorConsole.vue'
@@ -195,6 +195,9 @@ const handleStart = async () => {
 
     if (status.value.phase === 'error') {
       toast.error(status.value.message || t('settings.openclawRuntime.startFailed'))
+    } else if (status.value.phase === 'not_installed') {
+      // Backend succeeds with phase=not_installed; show a visible hint so the click does not feel dead.
+      toast.default(t('openclawGateway.banner.notInstalled'), TOAST_DURATION_HINT)
     } else {
       toast.success(t('settings.openclawRuntime.startSuccess'))
     }

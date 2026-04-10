@@ -632,6 +632,9 @@ func (m *Manager) RestartGateway() (RuntimeStatus, error) {
 // Unlike RestartGateway, this does not restart an already running gateway.
 func (m *Manager) StartGateway() (RuntimeStatus, error) {
 	err := m.reconcile(false)
+	// When there is no runtime, reconcile returns nil so the caller does not
+	// show a raw error toast; the status already carries PhaseNotInstalled so
+	// the UI can show a user-friendly "请前往设置安装" banner instead.
 	return m.GetStatus(), err
 }
 
@@ -721,17 +724,16 @@ func (m *Manager) reconcileLocked(restart bool) error {
 
 	cfg := m.store.Get()
 
-	fail := func(msg string, err error, version string, pid int) error {
-		m.app.Logger.Warn("openclaw: "+msg, "error", err)
+	fail := func(phase string, err error, version string, pid int) error {
+		m.app.Logger.Warn("openclaw: "+phase, "error", err)
+		msg := cleanErrorMessage(err.Error())
 		m.broadcastStatus(RuntimeStatus{
-			Phase:            PhaseError,
-			Message:          err.Error(),
+			Phase:            phase,
+			Message:          msg,
 			InstalledVersion: version,
 			GatewayPID:       pid,
 			GatewayURL:       gatewayURL(cfg.GatewayPort),
 		})
-		// Do NOT set Reconnecting: false — heartbeat polling will retry WS connection
-		// once OpenClaw recovers. Failures are surfaced to the user as error messages.
 		return err
 	}
 
@@ -760,7 +762,9 @@ func (m *Manager) reconcileLocked(restart bool) error {
 			// Some candidate exists but was invalid — treat as a real error.
 			return fail("resolveBundledRuntime", err, "", 0)
 		}
-		// No runtime at all — guide user to install rather than auto-installing.
+		// No runtime at all — emit PhaseNotInstalled so the UI prompts to install.
+		// Return nil so the caller (StartGateway in the frontend) does not show an
+		// error toast with a raw technical error message.
 		m.app.Logger.Info("openclaw: no openclaw runtime found, prompting user to install",
 			"error", err)
 		m.broadcastStatus(RuntimeStatus{
@@ -768,7 +772,7 @@ func (m *Manager) reconcileLocked(restart bool) error {
 			Message:    "OpenClaw runtime not installed",
 			GatewayURL: gatewayURL(cfg.GatewayPort),
 		})
-		return fmt.Errorf("openclaw runtime not found: %w", err)
+		return nil
 	}
 
 	if patched, err := applyBundledRuntimeHotfixes(bundle); err != nil {
@@ -2521,4 +2525,36 @@ func (m *Manager) appendUpgradeOutput(line string) {
 		m.upgradeOutputBuf.Reset()
 		m.upgradeOutputBuf.WriteString(strings.Join(lines[len(lines)-(maxLines+1):], "\n"))
 	}
+}
+
+// cleanErrorMessage strips Go stack traces and redundant path noise from error strings
+// so the UI shows a concise, user-friendly message instead of a raw technical dump.
+func cleanErrorMessage(raw string) string {
+	lines := strings.Split(raw, "\n")
+	var out []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		// Stop at the first line that looks like a Go stack frame.
+		if strings.HasPrefix(trimmed, "chatclaw/") ||
+			strings.HasPrefix(trimmed, "github.com/") ||
+			strings.HasPrefix(trimmed, "goroutine ") ||
+			strings.HasPrefix(trimmed, "created by ") {
+			break
+		}
+		out = append(out, trimmed)
+	}
+	result := strings.Join(out, " ")
+	result = strings.TrimSpace(result)
+	if result == "" {
+		return "An error occurred while starting the gateway"
+	}
+	// Truncate very long messages (e.g. long path listings) to a reasonable length.
+	const maxLen = 120
+	if len(result) > maxLen {
+		result = result[:maxLen] + "…"
+	}
+	return result
 }
