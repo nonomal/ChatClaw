@@ -745,6 +745,7 @@ export default {
         cn: 'Trung Quốc',
         global: 'Toàn cầu',
       },
+
       libraryEnabledHint: 'Đồng bộ thư viện ChatWiki, sau khi bật có thể hiển thị trong thư viện kiến thức nhóm khi đặt câu hỏi',
       modelBoundHint: 'Danh sách cấu hình mô hình khả dụng của tài khoản ChatWiki hiện tại được hiển thị ở đây.',
       modelLoginHint: 'Vui lòng đăng nhập và liên kết tài khoản ChatWiki trước, sau đó danh sách dịch vụ mô hình mới nhất sẽ được hiển thị ở đây.',
@@ -752,6 +753,15 @@ export default {
       modelUnboundHint: 'Sau khi đăng nhập, danh sách mô hình khả dụng sẽ được tải theo tài khoản liên kết hiện tại.',
       notLoggedInDesc: 'Sau khi đăng nhập có thể đồng bộ danh sách mô hình và thông tin điểm tích lũy của ChatWiki Cloud.',
       unbindConfirmDesc: 'Sau khi hủy liên kết, sẽ không thể sử dụng ứng dụng và thư viện kiến thức do ChatWiki cung cấp. Bạn có chắc chắn muốn tiếp tục không?',
+
+
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "Liên kết tài khoản ChatWiki — nhận tín dụng để trải nghiệm nhanh",
+        footer: "ChatWiki là phiên bản đám mây của ứng dụng ChatClaw",
+        loginNow: "Đăng nhập ngay",
+        loginLater: "Để sau",
+      },
     },
     tools: {
       tray: {

@@ -742,6 +742,7 @@ export default {
         cn: '中国',
         global: 'グローバル',
       },
+
       authExpiredPleaseReauth: '账号未获取登录信息，请重新授权',
       libraryEnabledHint: '同步ChatWiki知识库，开启后提问时可在团队知识库中显示',
       modelBoundHint: '这里展示 ChatWiki 当前账号可用的模型配置列表。',
@@ -750,6 +751,15 @@ export default {
       modelUnboundHint: '登录后会根据当前绑定账号加载可用模型列表。',
       notLoggedInDesc: '登录后即可同步 ChatWiki Cloud 的模型列表与积分信息。',
       unbindConfirmDesc: '解除绑定后，将无法使用 ChatWiki 提供的应用和知识库。确定要继续吗？',
+
+
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "ChatWiki アカウントを連携すると、クレジットを付与してすぐに体験できます",
+        footer: "ChatWiki は ChatClaw クライアントのクラウド版です",
+        loginNow: "今すぐログイン",
+        loginLater: "あとで",
+      },
     },
     tools: {
       tray: {

@@ -750,6 +750,13 @@ export default {
       modelUnboundHint: 'Giriş yaptıktan sonra mevcut bağlı hesaba göre kullanılabilir model listesi yüklenecektir.',
       notLoggedInDesc: 'Giriş yaptıktan sonra ChatWiki Cloud"un model listesi ve puan bilgilerini senkronize edebilirsiniz.',
       unbindConfirmDesc: 'Bağlantıyı kaldırdıktan sonra ChatWiki"nin sağladığı uygulamaları ve bilgi tabanını kullanamayacaksınız. Devam etmek istediğinizden emin misiniz?',
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "ChatWiki hesabınızı bağlayın — hızlıca denemek için kredi alın",
+        footer: "ChatWiki, ChatClaw istemcisinin bulut sürümüdür",
+        loginNow: "Şimdi giriş yap",
+        loginLater: "Sonra",
+      },
     },
     tools: {
       tray: {

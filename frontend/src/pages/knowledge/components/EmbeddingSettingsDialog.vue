@@ -35,9 +35,11 @@ import {
   formatProviderDisplayLabel,
   getChatwikiAvailabilityStatus,
   getFirstSelectableModelKey,
+  hasSelectableModelsForGroup,
   isModelSelectionDisabled,
   isSelectionAvailable,
 } from '@/lib/chatwikiModelAvailability'
+import { openChatwikiLoginReminder } from '@/composables/useChatwikiLoginReminderDialog'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
@@ -116,17 +118,38 @@ async function goToChatwikiLogin() {
   navigationStore.navigateToModule('settings')
 }
 
+const embeddingProvidersLike = computed(() =>
+  embeddingGroups.value.map((group) => ({
+    provider: group.provider,
+    model_groups: [{ type: 'embedding', models: group.models }],
+  }))
+)
+
 const isEmbeddingSelectionAvailable = computed(() => {
   return isSelectionAvailable(
-    embeddingGroups.value.map((group) => ({
-      provider: group.provider,
-      model_groups: [{ type: 'embedding', models: group.models }],
-    })),
+    embeddingProvidersLike.value,
     embeddingSelectedKey.value,
     'embedding',
     chatwikiAvailability.value
   )
 })
+
+const hasSelectableEmbeddingModels = computed(() =>
+  hasSelectableModelsForGroup(
+    embeddingProvidersLike.value,
+    'embedding',
+    chatwikiAvailability.value
+  )
+)
+
+function onEmbeddingSelectOpenChange(next: boolean) {
+  if (next && !loading.value && !saving.value && !hasSelectableEmbeddingModels.value) {
+    openChatwikiLoginReminder()
+    embeddingSelectOpen.value = false
+    return
+  }
+  embeddingSelectOpen.value = next
+}
 
 const loadGroups = async () => {
   loading.value = true
@@ -299,8 +322,9 @@ const handleSave = async () => {
           />
           <Select
             v-model="embeddingSelectedKey"
-            v-model:open="embeddingSelectOpen"
+            :open="embeddingSelectOpen"
             :disabled="loading || saving"
+            @update:open="onEmbeddingSelectOpenChange"
           >
             <SelectTrigger class="w-full">
               <SelectValue :placeholder="t('knowledge.create.selectPlaceholder')">

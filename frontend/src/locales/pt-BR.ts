@@ -750,6 +750,13 @@ export default {
       modelUnboundHint: 'Após login a lista de modelos disponíveis será carregada de acordo com a conta vinculada atual.',
       notLoggedInDesc: 'Após login você pode sincronizar lista de modelos e informações de pontos do ChatWiki Cloud.',
       unbindConfirmDesc: 'Após desvincular você não poderá usar os aplicativos e base de conhecimento fornecidos pelo ChatWiki. Tem certeza de que deseja continuar?',
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "Vincule sua conta ChatWiki — ganhe créditos para testar rapidamente",
+        footer: "ChatWiki é a edição em nuvem do cliente ChatClaw",
+        loginNow: "Entrar agora",
+        loginLater: "Depois",
+      },
     },
     tools: {
       tray: {

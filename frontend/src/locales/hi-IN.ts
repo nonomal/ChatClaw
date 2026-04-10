@@ -746,10 +746,20 @@ export default {
         cn: 'चीन',
         global: 'ग्लोबल',
       },
+
       modelLoginHint: '请先登录并绑定 ChatWiki 账号，随后这里会展示最新的模型服务列表。',
       modelServiceDesc: '绑定 ChatWiki 后可直接在模型服务中查看可用模型与积分情况',
       notLoggedInDesc: '登录后即可同步 ChatWiki Cloud 的模型列表与积分信息。',
       unbindConfirmDesc: '解除绑定后，将无法使用 ChatWiki 提供的应用和知识库。确定要继续吗？',
+
+
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "ChatWiki खाता लिंक करें — जल्दी आज़माने के लिए क्रेडिट पाएँ",
+        footer: "ChatWiki, ChatClaw क्लाइंट का क्लाउड संस्करण है",
+        loginNow: "अभी लॉग इन करें",
+        loginLater: "बाद में",
+      },
     },
     tools: {
       tray: {

@@ -743,13 +743,20 @@ export default {
         cn: 'Chine',
         global: 'Global',
       },
-      description: '授权绑定ChatWiki，获取机器人和对应的知识库',
+description: '授权绑定ChatWiki，获取机器人和对应的知识库',
       libraryEnabledHint: '同步ChatWiki知识库，开启后提问时可在团队知识库中显示',
       modelBoundHint: '这里展示 ChatWiki 当前账号可用的模型配置列表。',
       modelLoginHint: '请先登录并绑定 ChatWiki 账号，随后这里会展示最新的模型服务列表。',
       modelServiceDesc: '绑定 ChatWiki 后可直接在模型服务中查看可用模型与积分情况',
       modelUnboundHint: '登录后会根据当前绑定账号加载可用模型列表。',
       notLoggedInDesc: '登录后即可同步 ChatWiki Cloud 的模型列表与积分信息。',
+loginReminder: {
+        title: "Chat Claw",
+        subtitle: "Liez votre compte ChatWiki — obtenez des crédits pour essayer rapidement",
+        footer: "ChatWiki est l’édition cloud du client ChatClaw",
+        loginNow: "Se connecter",
+        loginLater: "Plus tard",
+      },
     },
     tools: {
       tray: {

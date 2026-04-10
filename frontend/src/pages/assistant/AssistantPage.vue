@@ -121,6 +121,7 @@ const {
   providersWithModels,
   selectedModelKey,
   hasModels,
+  hasSelectableLlmModels,
   selectedModelInfo,
   loadModels,
   selectDefaultModel,
@@ -2017,6 +2018,7 @@ onUnmounted(() => {
             :selected-model-info="selectedModelInfo"
             :providers-with-models="providersWithModels"
             :has-models="hasModels"
+            :has-selectable-llm-models="hasSelectableLlmModels"
             :enable-thinking="enableThinking"
             :selected-library-ids="selectedLibraryIds"
             :libraries="libraries"
@@ -2089,6 +2091,7 @@ onUnmounted(() => {
         :selected-model-info="selectedModelInfo"
         :providers-with-models="providersWithModels"
         :has-models="hasModels"
+        :has-selectable-llm-models="hasSelectableLlmModels"
         :enable-thinking="enableThinking"
         :selected-library-ids="selectedLibraryIds"
         :libraries="libraries"

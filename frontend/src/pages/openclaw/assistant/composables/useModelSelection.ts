@@ -5,7 +5,16 @@ import { getErrorMessage } from '@/composables/useErrorMessage'
 import {
   ProvidersService,
   type ProviderWithModels,
+  type Model,
 } from '@bindings/chatclaw/internal/services/providers'
+import { getBinding as getChatwikiBinding } from '@/lib/chatwikiCache'
+import {
+  formatModelDisplayLabel,
+  getChatwikiAvailabilityStatus,
+  getFirstSelectableModelKey,
+  hasSelectableModelsForGroup,
+  isSelectionAvailable,
+} from '@/lib/chatwikiModelAvailability'
 import {
   ConversationsService,
   type Conversation,
@@ -18,12 +27,24 @@ export function useModelSelection() {
 
   const providersWithModels = ref<ProviderWithModels[]>([])
   const selectedModelKey = ref('')
+  const chatwikiAvailability = ref<'available' | 'unbound' | 'non_cloud'>('available')
+
+  const getDisplayModelName = (providerId: string, model: Model) =>
+    formatModelDisplayLabel(
+      providerId,
+      model.name?.trim() || model.model_id?.trim() || '-',
+      chatwikiAvailability.value
+    )
 
   const hasModels = computed(() => {
     return providersWithModels.value.some((pw) =>
       pw.model_groups.some((g) => g.type === 'llm' && g.models.length > 0)
     )
   })
+
+  const hasSelectableLlmModels = computed(() =>
+    hasSelectableModelsForGroup(providersWithModels.value, 'llm', chatwikiAvailability.value)
+  )
 
   const selectedModelInfo = computed(() => {
     if (!selectedModelKey.value) return null
@@ -38,7 +59,7 @@ export function useModelSelection() {
           return {
             providerId,
             modelId,
-            modelName: model.name,
+            modelName: getDisplayModelName(providerId, model),
             capabilities: model.capabilities,
           }
         }
@@ -49,7 +70,11 @@ export function useModelSelection() {
 
   const loadModels = async () => {
     try {
-      const providers = await ProvidersService.ListProviders()
+      const [providers, binding] = await Promise.all([
+        ProvidersService.ListProviders(),
+        getChatwikiBinding().catch(() => null),
+      ])
+      chatwikiAvailability.value = getChatwikiAvailabilityStatus(binding)
       const enabled = providers.filter((p) => p.enabled)
       // Load provider models in parallel; allow partial failures.
       const settled = await Promise.allSettled(
@@ -94,56 +119,35 @@ export function useModelSelection() {
       return
     }
 
-    // Prefer the active conversation's model if available.
     {
       const conv = activeConversation
       if (conv?.llm_provider_id && conv?.llm_model_id) {
         const key = `${conv.llm_provider_id}::${conv.llm_model_id}`
-        // Verify the model still exists
-        for (const pw of providersWithModels.value) {
-          if (pw.provider.provider_id !== conv.llm_provider_id) continue
-          for (const group of pw.model_groups) {
-            if (group.type !== 'llm') continue
-            const found = group.models.find((m) => m.model_id === conv.llm_model_id)
-            if (found) {
-              selectedModelKey.value = key
-              return
-            }
-          }
+        if (
+          isSelectionAvailable(providersWithModels.value, key, 'llm', chatwikiAvailability.value)
+        ) {
+          selectedModelKey.value = key
+          return
         }
       }
     }
 
-    // Check if agent has a default model configured
     const agentProviderId = activeAgent.default_llm_provider_id
     const agentModelId = activeAgent.default_llm_model_id
 
     if (agentProviderId && agentModelId) {
-      // Verify the model still exists
-      for (const pw of providersWithModels.value) {
-        if (pw.provider.provider_id !== agentProviderId) continue
-        for (const group of pw.model_groups) {
-          if (group.type !== 'llm') continue
-          const found = group.models.find((m) => m.model_id === agentModelId)
-          if (found) {
-            selectedModelKey.value = `${agentProviderId}::${agentModelId}`
-            return
-          }
-        }
-      }
-    }
-
-    // Fall back to first available LLM model
-    for (const pw of providersWithModels.value) {
-      for (const group of pw.model_groups) {
-        if (group.type !== 'llm' || group.models.length === 0) continue
-        const firstModel = group.models[0]
-        selectedModelKey.value = `${pw.provider.provider_id}::${firstModel.model_id}`
+      const key = `${agentProviderId}::${agentModelId}`
+      if (isSelectionAvailable(providersWithModels.value, key, 'llm', chatwikiAvailability.value)) {
+        selectedModelKey.value = key
         return
       }
     }
 
-    selectedModelKey.value = ''
+    selectedModelKey.value = getFirstSelectableModelKey(
+      providersWithModels.value,
+      'llm',
+      chatwikiAvailability.value
+    )
   }
 
   const parseSelectedModelKey = (key: string): { providerId: string; modelId: string } | null => {
@@ -198,6 +202,7 @@ export function useModelSelection() {
     providersWithModels,
     selectedModelKey,
     hasModels,
+    hasSelectableLlmModels,
     selectedModelInfo,
     loadModels,
     selectDefaultModel,

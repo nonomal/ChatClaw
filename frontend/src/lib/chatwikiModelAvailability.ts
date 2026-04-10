@@ -140,3 +140,11 @@ export function getFirstSelectableModelKey<TModel extends ModelLike>(
 
   return ''
 }
+
+export function hasSelectableModelsForGroup<TModel extends ModelLike>(
+  providersWithModels: Array<ProviderWithModelsLike<TModel>>,
+  groupType: string,
+  statusOrBinding: ChatwikiAvailabilityStatus | boolean | ChatwikiBindingLike
+): boolean {
+  return getFirstSelectableModelKey(providersWithModels, groupType, statusOrBinding) !== ''
+}

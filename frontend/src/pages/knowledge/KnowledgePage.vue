@@ -152,6 +152,12 @@ const hasModels = computed(() =>
     : chatClawModelsState.hasModels.value
 )
 
+const hasSelectableLlmModels = computed(() =>
+  knowledgePageEffectiveSystem.value === 'openclaw'
+    ? openClawModelsState.hasSelectableLlmModels.value
+    : chatClawModelsState.hasSelectableLlmModels.value
+)
+
 const selectedModelInfo = computed(() =>
   knowledgePageEffectiveSystem.value === 'openclaw'
     ? openClawModelsState.selectedModelInfo.value
@@ -2101,6 +2107,7 @@ const handleRemoveImage = (id: string) => {
           v-bind="knowledgePageChatInputAssistantOnlyProps"
           :providers-with-models="providersWithModels"
           :has-models="hasModels"
+          :has-selectable-llm-models="hasSelectableLlmModels"
           :selected-model-info="selectedModelInfo"
           :selected-library-ids="
             isPersonalTab ? (selectedLibraryId ? [selectedLibraryId] : []) : []

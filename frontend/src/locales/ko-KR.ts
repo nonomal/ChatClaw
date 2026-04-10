@@ -779,6 +779,13 @@ export default {
         cn: '중국',
         global: '글로벌',
       },
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "ChatWiki 계정을 연동하면 크레딧을 받아 빠르게 체험할 수 있습니다",
+        footer: "ChatWiki는 ChatClaw 클라이언트의 클라우드 버전입니다",
+        loginNow: "지금 로그인",
+        loginLater: "나중에",
+      },
       chat: '채팅 로봇',
       normal: '일반 지식베이스',
       qa: 'Q&A 지식베이스',

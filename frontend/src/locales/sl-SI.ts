@@ -752,6 +752,13 @@ export default {
       modelUnboundHint: 'Po prijavi se bo glede na trenutni povezani račun naložil seznam razpoložljivih modelov.',
       notLoggedInDesc: 'Po prijavi lahko sinhronizirate seznam modelov in podatke o točkah storitve ChatWiki Cloud.',
       unbindConfirmDesc: 'Po razvezavi ne boste mogli uporabljati aplikacij in knjižnice znanj, ki jih ponuja ChatWiki. Ali ste prepričani, da želite nadaljevati?',
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "Povežite račun ChatWiki — pridobite kredite za hiter preizkus",
+        footer: "ChatWiki je oblakovna izdaja odjemalca ChatClaw",
+        loginNow: "Prijavi se zdaj",
+        loginLater: "Kasneje",
+      },
     },
     tools: {
       tray: {
