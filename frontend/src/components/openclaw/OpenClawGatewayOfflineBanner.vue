@@ -12,7 +12,7 @@ const props = defineProps<{
 const { t } = useI18n()
 const appStore = useAppStore()
 const gatewayStore = useOpenClawGatewayStore()
-const { visualStatus } = storeToRefs(gatewayStore)
+const { visualStatus, runtimePhase } = storeToRefs(gatewayStore)
 
 onMounted(() => {
   if (appStore.currentSystem === 'openclaw') {
@@ -24,12 +24,17 @@ const show = computed(
   () => appStore.currentSystem === 'openclaw' && visualStatus.value !== GatewayVisualStatus.Running
 )
 
+const isNotInstalled = computed(() => runtimePhase.value === 'not_installed')
+
 const message = computed(() => {
   if (visualStatus.value === GatewayVisualStatus.Starting) {
     return t('openclawGateway.banner.starting')
   }
   if (visualStatus.value === GatewayVisualStatus.Upgrading) {
     return t('openclawGateway.banner.upgrading')
+  }
+  if (isNotInstalled.value) {
+    return t('openclawGateway.banner.notInstalled')
   }
   if (props.variant === 'channels') {
     return t('openclawGateway.banner.channels')

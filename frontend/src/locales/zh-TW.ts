@@ -331,6 +331,7 @@ export default {
         success: '执行成功',
         title: 'OpenClaw Doctor 诊断',
         workingDir: '工作目录',
+        autoTriggered: 'OpenClaw 连接失败超过 3 次，正在自动运行诊断修复…',
       },
       logs: '日志',
       logsHint: '网关日志位于运行目录下的 logs 文件夹（openclaw-gateway.log）。',
@@ -338,12 +339,30 @@ export default {
       restartFailed: '网关重启失败',
       restartSuccess: '网关已重启',
       statusBadge: {
-        error: 'error',
-        running: 'running',
-        starting: 'starting',
-        stop: 'stop',
+        error: '錯誤',
+        running: '執行中',
+        starting: '啟動中',
+        stop: '停止',
         upgrading: '升级中',
       },
+      autoStartDisabled: 'OpenClaw 网关已关闭',
+      autoStartEnabled: 'OpenClaw 网关已开启',
+      autoStartFailed: '切换网关状态失败',
+      autoStartLabel: '网关运行开关',
+      autoStartTooltip: '点击开启或关闭 OpenClaw 网关自动启动，开启后应用启动时将自动启动网关',
+      cancelUpgrade: '取消升级',
+      continueOrRestartDesc: '发现 {version} 版本的下载缓存，请选择继续升级（从 npm install 开始）或重新下载。',
+      continueOrRestartTitle: '检测到已有升级缓存',
+      continueUpgrade: '继续升级',
+      portOccupied: '端口被占用',
+      portOccupiedHint: '端口 {port} 被进程 {process} (PID: {pid}) 占用，请先停止该进程后再试。',
+      portStillOccupiedAfterStop: '停止网关后端口 {port} 仍未释放',
+      portStillOccupiedAfterStopHint: '请手动终止占用端口的进程 (PID: {pid})。',
+      restartUpgrade: '重新升级',
+      upgradeCancelFailed: '取消升级失败',
+      upgradeCancelled: '升级已取消',
+      upgradeDetails: '详情',
+      upgradeOutputWaiting: '等待输出...',
     },
     general: {
       title: '一般設定',
@@ -397,8 +416,6 @@ export default {
         },
         openclaw: {
           name: 'OpenClaw 執行環境',
-          description:
-            'OpenClaw Agent 的 Node.js 執行階段環境，包含 openclaw CLI 和網關。從 OSS 下載後安裝到 ~/.chatclaw/openclaw/runtime/',
         },
         newVersionHint: '新版本 {version}',
         update: '更新',
@@ -486,8 +503,6 @@ export default {
       listSubheading: '瀏覽和管理 AI 能力',
       refreshCta: '重新整理',
       addSkillCta: '新增技能',
-      pageDesc:
-        '優先透過已連線的 OpenClaw 網關呼叫 skills.status；離線時依 OpenClaw 文件說明掃描狀態目錄（managed / workspace / bundled / extraDirs）。',
       filterAll: '全部',
       filterBuiltin: '內建',
       filterInstalled: '已安裝',
@@ -501,16 +516,12 @@ export default {
       locationCount: '{count} 處安裝',
       searchPlaceholder: '請輸入搜尋技能',
       noSkills: '未發現 OpenClaw 技能',
-      noSkillsHint:
-        '請確認網關已連線；離線時請依 OpenClaw 文件說明放置技能（狀態目錄下 skills、各 workspace-*/skills、bundled 包、openclaw.json 的 skills.load.extraDirs）。',
       openSharedDir: '開啟主工作區技能目錄',
       openMainWorkspaceSkillsDir: '開啟主工作區技能目錄 (workspace-main/skills)',
       openManagedSkillsDir: '開啟託管技能目錄 (openclaw/skills)',
       permissionLabel: '權限',
       scopeLabel: '範圍',
       agentBinding: '所屬代理',
-      gatewayOfflineHint:
-        '網關未連線時改為掃描 OpenClaw 約定目錄；連線後將優先使用 skills.status。',
       backToList: '返回清單',
       loadFailed: '載入 OpenClaw 技能失敗',
       dataSourceLabel: '來源',
@@ -524,16 +535,12 @@ export default {
       eligibleNo: '否',
       eligibleUnknown: '未知',
       gateHintLabel: '網關提示',
-      previewNoLocalPath:
-        '目前項目僅來自網關，本機無對應目錄時無法預覽檔案；連線正常且磁碟存在同名技能包時可自動關聯路徑。',
       add: {
         title: '新增',
         createViaChatTitle: '透過對話建立',
         createViaChatDesc: '描述你的需求，由 AI 協助產生 OpenClaw 技能',
         choosePackageTitle: '選擇技能包',
         choosePackageDesc: '開啟技能目錄，並將技能包放到對應位置',
-        createViaChatPrompt:
-          '請幫我建立一個 OpenClaw skill。先問我需要什麼功能，然後根據需求給出 SKILL.md（含 frontmatter）和必要的檔案結構與示例代碼。最後告訴我把技能目錄放到 workspace-main/skills 下即可生效。',
       },
     },
     mcp: {
@@ -1007,9 +1014,9 @@ export default {
       addBotHint: '一個機器人只能被一個AI助手綁定，僅顯示未綁定的機器人',
       noUnboundBot: '暫無未綁定的機器人',
       selectBot: '請選擇要綁定的機器人',
-      statusOnline: "已連接",
-      statusError: "錯誤",
-      statusOffline: "未連接",
+      statusOnline: '已連接',
+      statusError: '錯誤',
+      statusOffline: '未連接',
     },
     conversation: {
       empty: '暫無聊天記錄',
@@ -1118,7 +1125,7 @@ export default {
         sandbox_all: '所有助手啟用',
         sandboxModeHint: '沙箱可隔離命令執行環境，防止助手直接操作宿主系統',
         groupChatMentionPatterns: '群聊提及模式',
-        groupChatMentionPatternsPlaceholder: "{'@'}assistant, {'@'}bot",
+        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
         groupChatInsertPreset: '插入預設',
         groupChatMentionPatternsHint: '匹配訊息中的提及模式以觸發助手回應，多個用逗號分隔',
         tools: '工具設定',
@@ -1129,8 +1136,6 @@ export default {
         toolsProfile_messaging: 'Messaging — 訊息/會話',
         toolsProfile_full: 'Full — 不限制',
         builtinTools: '內建工具',
-        builtinToolsHint:
-          '這裡可直接選擇 OpenClaw 內建工具；外掛工具或自訂工具仍可在下方手動輸入。',
         builtinToolsLoading: '正在載入 OpenClaw 內建工具…',
         builtinToolsUnavailable: '暫時無法讀取 OpenClaw 內建工具目錄，你仍然可以手動輸入工具名稱。',
         toolModeAllow: '允許',
@@ -1189,12 +1194,11 @@ export default {
       name: '知識庫名稱，用於區分不同的知識庫（最多30個字符）。',
       chunkSize: '分片大小（字符數，500~5000）。分片越大，上下文越完整，但召回粒度更粗。',
       chunkOverlap: '相鄰分片的重疊大小（字符數，0~1000），用於減少跨分片斷句導致的資訊丟失。',
-      batchMaxDocuments:
-        '例如設為 3 時，一次上傳 10 個文件會按每批 3 個依序處理，共分 4 批執行。取值範圍 1~5。',
       batchMaxChunks: '學習嵌入階段，每次向量化請求中最多包含的分段數量。取值範圍 1~20。',
       matchThreshold: '相似度低於該閾值的結果將被過濾（0~1）。',
       embeddingModel: '用於將文字轉換為向量的嵌入模型。',
       embeddingDimension: '嵌入向量維度需與所選模型的輸出一致。',
+      raptorLLMModel: '用于生成分层级摘要的语言模型；不选择即不启用该能力。',
     },
     tabs: {
       personal: '個人',
@@ -1414,8 +1418,6 @@ export default {
       deleteCancel: '取消',
       deleteConfirm: '刪除',
       deleteSuccess: '刪除成功',
-      deleteDescBatch:
-        '將刪除 {count} 個資料夾，其下檔案將移動到「未分類」。此作業無法復原。',
       deleteSuccessBatch: '已刪除 {count} 個資料夾',
       move: {
         title: '移動資料夾',
@@ -1577,8 +1579,6 @@ export default {
       success: '頻道建立成功',
       failed: '頻道建立失敗',
       dingtalkPluginInstalling: '釘釘外掛安裝中',
-      dingtalkPluginInstallingDesc:
-        '釘釘連線器外掛正在後台安裝，可稍後檢視連線狀態，現在可繼續綁定助手',
       avatarHint: '點擊替換，建議尺寸為100*100px，大小不超過100kb',
       feishuTipPrefix: '登入',
       feishuTipMiddle: '建立機器人，按照',
@@ -1617,7 +1617,7 @@ export default {
     },
     meta: {
       feishu: {
-        name: 'Feishu / Lark',
+        name: '飛書 / Lark',
         botName: '飛書',
       },
       telegram: {
@@ -1658,8 +1658,6 @@ export default {
     comingSoon: '即將上線',
     agentFallback: 'AI助手',
     unbindConfirmTitle: '確認解除綁定',
-    unbindConfirmDesc:
-      '確定要解除頻道「{name}」與助手的綁定嗎？解除後需重新綁定才能由助手處理訊息。',
     unbindSuccess: '已解綁助手',
     bindSuccess: '綁定助手成功',
     provisioning: {
@@ -1705,7 +1703,7 @@ export default {
       online: '已連線',
       error: '錯誤',
       offline: '未連線',
-      provisioning: "連線中",
+      provisioning: '連線中',
     },
     bindAgent: {
       title: '選擇助手',
@@ -1740,8 +1738,6 @@ export default {
       qrExpiredHint: 'QR Code 已失效或等待逾時，請點擊下方「重新整理」重新取得。',
       loginSuccess: '微信連線成功！',
       assistantPromptTitle: '關聯助手',
-      assistantPromptDesc:
-        '目前已預設關聯主助手（main），訊息會由主助手處理。若需要使用其他助手，可綁定既有助手，或建立新助手並自動綁定到此微信頻道。',
       useMainAssistant: '完成（使用主助手）',
       bindExistingAssistant: '綁定既有助手',
       createAssistantManually: '建立助手',
@@ -1750,8 +1746,6 @@ export default {
       missingChannelIdHint: '未取得頻道 ID，請關閉此視窗後在頻道清單中手動綁定助手。',
       channelNotFound: '找不到對應頻道，請重新整理後再試。',
       pluginInstallTryLater: '官方微信外掛正在背景安裝或啟用中，請稍後再試。',
-      editNotSupported:
-        '微信透過掃描 QR Code 連線，不支援在此處編輯。如需更換帳號，請在頻道頁刪除此頻道後重新掃描 QR Code新增。',
     },
     whatsapp: {
       emptyTitle: '尚未新增 WhatsApp',
@@ -1773,8 +1767,28 @@ export default {
       loginSuccess: 'WhatsApp 已連線',
       pluginInstallTryLater: 'WhatsApp 通道正在啟用或尚未就緒，請稍後再試。',
       channelNotFound: '找不到對應頻道，請重新整理後再試。',
-      editNotSupported:
-        'WhatsApp 透過掃碼連線，不支援在此處編輯。如需更換帳號，請刪除該頻道後重新新增。',
+    },
+    backToOverview: '返回频道概览',
+    panel: {
+      add: '添加',
+    },
+    platformBlurbs: {
+      default: '接入该平台以接收与发送消息。',
+      dingtalk: '接入钉钉企业内部机器人，通过 Stream 模式实现稳定的群聊与私信交互。',
+      feishu: '接入飞书企业内部应用，实现自动化群聊与私信交互。',
+      qq: '接入 QQ 官方机器人，覆盖群聊、频道与私信全场景互动。',
+      wechat: '扫码连接微信，微信直接连接机器人聊天。',
+      wecom: '使用 Bot ID 和 Secret 连接企业微信官方机器人。',
+      whatsapp: '扫码即连 WhatsApp，快速开展全球业务沟通。',
+    },
+    platformCard: {
+      connect: '连接',
+    },
+    row: {
+      boundToAgent: '已绑定 {name}',
+    },
+    supported: {
+      title: '支持的频道',
     },
   },
   scheduledTasks: {
@@ -1787,8 +1801,6 @@ export default {
     refresh: '重新整理',
     edit: '編輯任務',
     empty: '暫無定時任務',
-    emptyDescription:
-      '建立定時任務以自動化 AI 工作流程。任務可以在指定時間傳送訊息、執行查詢或執行操作。',
     errorReason: '檢視錯誤原因',
     actionsMenu: '開啟操作選單',
     total: '任務總數',
@@ -1980,8 +1992,8 @@ export default {
       today: '今天',
       clear: '清空',
       calendarTitle: '{year}年 {month}月',
-      yearOption: '{year} 年',
-      monthOption: '{month} 月',
+      yearOption: '{year}年',
+      monthOption: '{month}月',
     },
   },
   openclawGateway: {
@@ -1990,6 +2002,7 @@ export default {
       scheduledTasks: '網關未運行，未啟用網關時無法管理定時任務',
       starting: '網關正在啟動，請稍後再試',
       upgrading: 'OpenClaw 運行包正在升級，請稍後再試',
+      notInstalled: '未偵測到 OpenClaw 執行環境，請前往「設定 → 的一般設定」或「OpenClaw 管家」安裝',
     },
   },
   openclawCron: {
@@ -2081,8 +2094,6 @@ export default {
       deliveryTargetId: '目標 ID',
       deliveryTargetIdPlaceholder: '請輸入目標會話或用戶 ID',
       deliveryTargetHintTitle: '預設目標',
-      deliveryTargetFixedHint:
-        '預設會帶出該助手在當前頻道類型下最近一次投遞的目標 ID，可繼續手動調整。',
       deliveryTargetModes: {
         lastActive: '最後一次活躍對象',
         targetId: '手動輸入目標 ID',

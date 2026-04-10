@@ -179,8 +179,7 @@ export default {
     subtitle: 'Acceso rapido a herramientas destacadas',
     smartSidebar: {
       title: 'Barra lateral inteligente',
-      description:
-        'Acoplate junto a WeCom, QQ y otras apps de chat para consultas de IA en tiempo real',
+      description: '吸附在企微、QQ等聊天侧边栏，实时查询AI',
     },
     selectionSearch: {
       title: 'Búsqueda por selección',
@@ -321,6 +320,7 @@ export default {
         success: '执行成功',
         title: 'OpenClaw Doctor 诊断',
         workingDir: '工作目录',
+        autoTriggered: 'OpenClaw 连接失败超过 3 次，正在自动运行诊断修复…',
       },
       gatewayStatusLabel: '网关状态',
       logs: '日志',
@@ -341,6 +341,28 @@ export default {
       stop: '停止',
       stopFailed: '网关停止失败',
       stopSuccess: '网关已停止',
+      autoStartDisabled: 'OpenClaw 网关已关闭',
+      autoStartEnabled: 'OpenClaw 网关已开启',
+      autoStartFailed: '切换网关状态失败',
+      autoStartLabel: '网关运行开关',
+      autoStartTooltip: '点击开启或关闭 OpenClaw 网关自动启动，开启后应用启动时将自动启动网关',
+      cancelUpgrade: '取消升级',
+      continueOrRestartDesc: '发现 {version} 版本的下载缓存，请选择继续升级（从 npm install 开始）或重新下载。',
+      continueOrRestartTitle: '检测到已有升级缓存',
+      continueUpgrade: '继续升级',
+      portOccupied: '端口被占用',
+      portOccupiedHint: '端口 {port} 被进程 {process} (PID: {pid}) 占用，请先停止该进程后再试。',
+      portStillOccupiedAfterStop: '停止网关后端口 {port} 仍未释放',
+      portStillOccupiedAfterStopHint: '请手动终止占用端口的进程 (PID: {pid})。',
+      restartUpgrade: '重新升级',
+      start: '启动',
+      startFailed: '网关启动失败',
+      startSuccess: '网关已启动',
+      starting: '启动中...',
+      upgradeCancelFailed: '取消升级失败',
+      upgradeCancelled: '升级已取消',
+      upgradeDetails: '详情',
+      upgradeOutputWaiting: '等待输出...',
     },
     general: {
       title: 'Configuración general',
@@ -380,13 +402,11 @@ export default {
         },
         uv: {
           name: 'Entorno de ejecución Python',
-          description:
-            'Permite al asistente de IA escribir y ejecutar scripts de Python para completar tareas complejas.',
+          description: '让 AI 助手能够编写和运行 Python 脚本来完成复杂任务。',
         },
         bun: {
           name: 'Entorno de ejecución JavaScript',
-          description:
-            'Permite al asistente de IA escribir y ejecutar scripts de JavaScript para completar tareas complejas.',
+          description: '让 AI 助手能够编写和运行 JavaScript 脚本来完成复杂任务。',
         },
         codex: {
           name: 'Sandbox de seguridad',
@@ -394,8 +414,6 @@ export default {
         },
         openclaw: {
           name: 'Runtime de OpenClaw',
-          description:
-            'Entorno de ejecucion Node.js del agente OpenClaw, que incluye openclaw CLI y Gateway. Se descarga desde OSS y se instala en ~/.chatclaw/openclaw/runtime/.',
         },
         newVersionHint: '新版本 {version}',
         openPathFailed: '无法打开该路径',
@@ -407,36 +425,27 @@ export default {
     memory: {
       title: 'Memoria a largo plazo',
       enable: 'Habilitar memoria a largo plazo',
-      enableHint:
-        'Cuando esta activado, la IA extraera y recordara automaticamente tus preferencias, habitos y hechos importantes en las conversaciones.',
       extractModel: 'Modelo de extracción de memoria',
-      extractModelHint:
-        'Se usa para resumir y extraer informacion de memoria valiosa despues de cada conversacion.',
       embeddingModel: 'Modelo de embedding de memoria',
-      embeddingModelHint:
-        'Se usa para convertir el texto de memoria en vectores para la recuperacion semantica durante las conversaciones.',
       embeddingDimension: 'Dimensión de embedding',
-      embeddingDimensionHint:
-        'La dimension del vector de embedding debe coincidir con la salida del modelo seleccionado.',
       save: 'Guardar configuración',
       saved: 'Configuración guardada',
       saveFailed: 'Error al guardar configuración',
-      rebuildWarning:
-        'Despues de cambiar el modelo vectorial o la dimension, todos los datos vectoriales de memoria existentes se reconstruiran de forma asincrona.',
       rebuilding: 'Reconstruyendo vectores de memoria...',
       rebuildSuccess: 'Vectores de memoria reconstruidos exitosamente',
       rebuildFailed: 'Error al reconstruir vectores de memoria',
       confirmRebuildTitle: 'Confirmar reconstrucción de vectores de memoria',
+      embeddingDimensionHint: '嵌入向量维度需与所选模型的输出一致。',
+      embeddingModelHint: '用于将记忆文本转换为向量，以便在对话中进行语义检索。',
+      enableHint: '开启后，AI 将在对话中自动提取并记住您的偏好、习惯和重要事实。',
+      extractModelHint: '用于在每次对话后总结并提取有价值的记忆信息。',
+      rebuildWarning: '修改向量模型或维度后，所有已有记忆的向量数据将被异步重建。',
     },
     skills: {
       title: 'Habilidades',
       enable: 'Habilitar habilidades',
-      enableHint:
-        'Cuando esta activado, el asistente de IA cargara y usara automaticamente las habilidades instaladas durante las conversaciones.',
       pageDesc: 'Explorar y gestionar capacidades de IA',
       directory: 'Directorio de carga de habilidades',
-      directoryHint:
-        'Coloca las carpetas de habilidades descargadas en este directorio. Se detectaran y cargaran automaticamente durante las conversaciones con IA.',
       tabInstalled: 'Instaladas',
       tabMarket: 'Mercado',
       filterAll: 'Todas',
@@ -476,8 +485,6 @@ export default {
       changelog: 'Registro de cambios',
       noDetailContent: 'Sin contenido detallado disponible',
       delete: 'Eliminar',
-      deleteConfirm:
-        'Seguro que quieres eliminar esta habilidad? Se eliminaran los archivos locales.',
       deleteSuccess: 'Eliminado exitosamente',
       deleteFailed: 'Error al eliminar',
       author: 'Autor',
@@ -486,6 +493,9 @@ export default {
       binaryFile: 'Archivo binario, no se puede previsualizar',
       rateLimited: 'Demasiadas solicitudes, por favor intenta más tarde',
       loadFailed: 'Error al cargar, por favor intenta más tarde',
+      deleteConfirm: '确定要删除此技能吗？删除后将移除本地文件。',
+      directoryHint: '将下载好的技能文件夹放入该目录，AI 对话时会自动识别并加载。',
+      enableHint: '开启后，AI 助手在对话时会自动加载并使用已安装的技能。',
     },
     openclawSkills: {
       title: 'Habilidades de OpenClaw',
@@ -493,14 +503,10 @@ export default {
       listSubheading: 'Explora y administra capacidades de IA',
       refreshCta: 'Actualizar',
       addSkillCta: 'Anadir habilidad',
-      pageDesc:
-        'Cuando esta conectado usa OpenClaw Gateway skills.status; de lo contrario, explora la misma estructura en disco que OpenClaw (managed, workspace, bundled, extraDirs).',
       filterAll: 'Todo',
       filterBuiltin: 'Integradas',
       filterInstalled: 'Instalado',
       builtinCannotDelete: 'Las habilidades integradas no se pueden eliminar',
-      openSkillFolderToRemove:
-        'Abre la carpeta en tu gestor de archivos para eliminar esta habilidad',
       filterShared: 'Compartido',
       filterWorkspace: 'Espacio de trabajo',
       locationShared: 'Compartido',
@@ -509,17 +515,11 @@ export default {
       locationCount: '{count} copias',
       searchPlaceholder: 'Search skills, paths, agent, or permissions…',
       noSkills: 'No se encontraron habilidades de OpenClaw',
-      noSkillsHint:
-        'Conecta el Gateway para ver la lista en vivo; sin conexion, sigue la documentacion de OpenClaw (state dir skills/, workspace-*/skills/, bundled package, skills.load.extraDirs).',
       openSharedDir: 'Abrir carpeta principal de habilidades del workspace',
-      openMainWorkspaceSkillsDir:
-        'Abrir habilidades del workspace principal (workspace-main/skills)',
       openManagedSkillsDir: 'Abrir carpeta de habilidades administradas (openclaw/skills)',
       permissionLabel: 'Permiso',
       scopeLabel: 'Alcance',
       agentBinding: 'Asistente',
-      gatewayOfflineHint:
-        'Gateway sin conexion: la lista se construye desde la estructura en disco de OpenClaw. Cuando esta conectado, se prefiere skills.status.',
       backToList: 'Volver a la lista',
       loadFailed: 'No se pudieron cargar las habilidades de OpenClaw',
       dataSourceLabel: 'Fuente',
@@ -533,26 +533,20 @@ export default {
       eligibleNo: 'No',
       eligibleUnknown: 'Desconocido',
       gateHintLabel: 'Nota del gateway',
-      previewNoLocalPath:
-        'Esta fila proviene solo del Gateway; no hay una carpeta local para explorar. Aparecera una ruta cuando exista una habilidad coincidente en disco.',
       add: {
         title: 'Anadir',
         createViaChatTitle: 'Crear por chat',
         createViaChatDesc: 'Describe what you need and let AI scaffold an OpenClaw skill',
         choosePackageTitle: 'Elegir paquete de habilidad',
         choosePackageDesc: 'Open the skills folder and place the skill package there',
-        createViaChatPrompt:
-          'Ayudame a crear una habilidad de OpenClaw. Primero pregunta que funcionalidad necesito, luego genera un SKILL.md (con frontmatter), la estructura de carpetas necesaria y codigo de ejemplo. Finalmente, indicame que coloque la carpeta de la habilidad en workspace-main/skills para activarla.',
       },
+      openMainWorkspaceSkillsDir: '打开主工作区技能目录 (workspace-main/skills)',
+      openSkillFolderToRemove: '在文件管理器中打开技能文件夹后可手动移除',
     },
     mcp: {
       title: 'MCP',
       enable: 'Habilitar MCP',
-      enableHint:
-        'Cuando está habilitado, el asistente de IA se conectará y usará automáticamente los servidores MCPconfigurados.',
       directory: 'Directorio de configuración de MCP',
-      directoryHint:
-        'Coloca los archivos de configuración del servidor MCPen este directorio. Se detectarán y conectarán automáticamente.',
       tabServers: 'MCP',
       tabSettings: 'Configuración',
       tabInstalled: 'Instaladas',
@@ -561,8 +555,6 @@ export default {
       addServer: 'Agregar',
       validateAll: 'Validar todos los servidores MCPhabilitados',
       validateAllPassed: 'Todos los servidores MCPhabilitados pasaron la validación',
-      validateDisabled:
-        '{count} servidor(es) MCPno disponible(s) han sido deshabilitados automáticamente',
       editServer: 'Editar servidor MCP',
       addServerTitle: 'Agregar servidor MCP',
       serverName: 'Nombre',
@@ -629,13 +621,15 @@ export default {
       assistantMcpEdit: 'Editar',
       assistantMcpDelete: 'Eliminar',
       assistantMcpLinkAgentsTitle: 'Vincular asistentes',
-      assistantMcpLinkAgentsDesc:
-        'Selecciona asistentes de IA que se usarán como herramientas para este MCP',
       assistantMcpNoAgents: 'No hay asistentes de IA disponibles',
       assistantMcpToolCount: '{count} herramienta(s)',
       assistantMcpToolName: 'Nombre de la herramienta',
       assistantMcpToolNamePlaceholder: 'Introduce un nombre de función válido',
       assistantMcpToolDesc: 'Descripción de la herramienta',
+      assistantMcpLinkAgentsDesc: '选择要作为此 MCP工具的 AI 助手',
+      directoryHint: '将 MCP服务配置文件放入该目录，AI 对话时会自动识别并连接。',
+      enableHint: '开启后，AI 助手在对话时会自动连接并使用已配置的 MCP服务。',
+      validateDisabled: '已自动关闭 {count} 个不可用的 MCP服务',
     },
     snap: {
       title: 'Configuración',
@@ -662,8 +656,6 @@ export default {
         hint: 'Píxeles para localizar cuadro de entrada',
       },
       noClickMode: 'Modo de selección manual (usuario selecciona manualmente el cuadro de entrada)',
-      clickMode:
-        'Modo de seleccion automatica (clic automatico para seleccionar el cuadro de entrada)',
       customAppsTitle: 'Apps de snap personalizadas',
       addCustomApp: 'Agregar personalizada',
       customAppsEmpty: 'Sin apps personalizadas',
@@ -679,6 +671,7 @@ export default {
       deleteCustomConfirmDesc: '¿Eliminar configuración de snap para ',
       confirmDeleteCustomApp: 'Eliminar',
       cancel: 'Cancelar',
+      clickMode: '自动选择应用编辑框模式（自动点击设置位置选择输入消息框）',
     },
     chatwiki: {
       title: 'ChatWiki',
@@ -689,8 +682,6 @@ export default {
       reauthBind: 'Reautorizar',
       unbind: 'Desvincular',
       unbindConfirmTitle: 'Confirmar desvínculo',
-      unbindConfirmDesc:
-        'Despues de desvincular, ya no podras usar las aplicaciones ni las bases de conocimiento de ChatWiki. Continuar?',
       addBinding: 'Agregar vínculo',
       applications: 'Aplicaciones',
       knowledgeBases: 'Bases de conocimiento',
@@ -711,8 +702,6 @@ export default {
         wechat: 'Base de conocimiento de cuenta oficial',
       },
       enabledHint: 'Se muestra en Pregunta múltiple cuando está habilitado',
-      libraryEnabledHint:
-        'Sincroniza la base de conocimiento de ChatWiki. Cuando esta activada, aparecera en la base de conocimiento del equipo al hacer preguntas.',
       emptyRobots: 'Sin aplicaciones',
       emptyLibraries: 'Sin bases de conocimiento',
       loginCloud: 'Iniciar sesión en ChatWiki Cloud',
@@ -734,11 +723,7 @@ export default {
       startUsingHint: 'Haz clic en ',
       startUsing: 'Comenzar a usar',
       freeVersion: 'Gratis',
-      modelServiceDesc:
-        'Después de vincular ChatWiki, puedes ver directamente los modelos disponibles y los créditos en el servicio de modelos.',
       notLoggedInTitle: 'No has iniciado sesión en ChatWiki',
-      notLoggedInDesc:
-        'Inicia sesión para sincronizar la lista de modelos y el saldo de créditos de ChatWiki Cloud.',
       loginNow: 'Iniciar sesión ahora',
       accountIdPrefix: 'ID de cuenta: ',
       buyCredits: 'Comprar créditos',
@@ -749,12 +734,6 @@ export default {
       pricePerKToken: '{price} créditos / 1K tokens',
       modelLoadFailed: 'No se pudo cargar la lista de modelos',
       openBillingFailed: 'No se pudo abrir la página de facturación',
-      modelBoundHint:
-        'Esta lista muestra los modelos disponibles actualmente para la cuenta vinculada de ChatWiki.',
-      modelUnboundHint:
-        'Inicia sesión primero para cargar la lista de modelos disponibles para la vinculación actual.',
-      modelLoginHint:
-        'Primero inicia sesión y vincula tu cuenta de ChatWiki. Después aparecerá aquí la lista más reciente de modelos.',
       providerStatus: {
         unbound: '{label} (Sin iniciar sesión)',
         nonCloud: '{label} (Sin iniciar sesión)',
@@ -764,6 +743,13 @@ export default {
         cn: 'China',
         global: 'Global',
       },
+      libraryEnabledHint: '同步ChatWiki知识库，开启后提问时可在团队知识库中显示',
+      modelBoundHint: '这里展示 ChatWiki 当前账号可用的模型配置列表。',
+      modelLoginHint: '请先登录并绑定 ChatWiki 账号，随后这里会展示最新的模型服务列表。',
+      modelServiceDesc: '绑定 ChatWiki 后可直接在模型服务中查看可用模型与积分情况',
+      modelUnboundHint: '登录后会根据当前绑定账号加载可用模型列表。',
+      notLoggedInDesc: '登录后即可同步 ChatWiki Cloud 的模型列表与积分信息。',
+      unbindConfirmDesc: '解除绑定后，将无法使用 ChatWiki 提供的应用和知识库。确定要继续吗？',
       loginReminder: {
         title: "Chat Claw",
         subtitle: "Vincula tu cuenta ChatWiki: obtén créditos para probar rápido",
@@ -916,10 +902,9 @@ export default {
       noAgentSelected: 'Selecciona un asistente',
       createAgentFirst: 'Crea un asistente primero',
       selectModelFirst: 'Selecciona un modelo primero',
-      chatComingSoon:
-        'El contenido del chat se mostrara aqui (la lista de temas aun no esta implementada).',
       inputPlaceholder: 'Haz una pregunta...',
       enterToSend: 'Por favor ingresa contenido',
+      chatComingSoon: '这里将展示助手对应的聊天内容（话题列表暂未实现）。',
     },
     sidebar: {
       collapse: 'Contraer',
@@ -939,8 +924,6 @@ export default {
       goToChatwikiLogin: 'Iniciar sesión',
       noModel: 'Sin modelo disponible',
       selectKnowledge: 'Seleccionar base de conocimientos',
-      openclawTeamKnowledgeDisabled:
-        'Las bases de conocimiento de equipo aún no están disponibles en OpenClaw',
       knowledgeChipRemoveNotSupported: 'No se puede quitar en este modo',
       selectImages: 'Seleccionar imágenes',
       selectImagesDisabled: 'Selecciona un modelo que soporte entrada de imágenes',
@@ -990,6 +973,7 @@ export default {
       uploadFile: 'Subir archivo',
       selectFiles: 'Seleccionar archivos',
       fileMessage: 'Mensaje de archivo',
+      openclawTeamKnowledgeDisabled: 'OpenClaw 暂不支持团队知识库',
     },
     menu: {
       settings: 'Configuración del asistente',
@@ -1010,8 +994,6 @@ export default {
       unknownAgent: 'Asistente desconocido',
       noPlatforms: 'Sin canales disponibles',
       createTitle: 'Agregar bot de {platform}',
-      createDesc:
-        'Sigue el flujo de anadido en la pagina del canal. Despues de crearlo, se vinculara automaticamente al asistente actual.',
       addChannel: 'Agregar canal',
       addAndBind: 'Agregar y vincular',
       showExisting: 'Ver canales agregados',
@@ -1028,13 +1010,13 @@ export default {
       bindSuccess: 'Vinculado exitosamente',
       unbindSuccess: 'Desvinculado exitosamente',
       addBot: 'Agregar bot',
-      addBotHint:
-        'Cada bot solo puede vincularse a un asistente de IA. Solo se muestran los bots no vinculados.',
       noUnboundBot: 'Sin bots no vinculados disponibles',
       selectBot: 'Por favor selecciona un bot para vincular',
-      statusOnline: "Conectado",
-      statusError: "Error",
-      statusOffline: "Desconectado",
+      statusOnline: 'Conectado',
+      statusError: 'Error',
+      statusOffline: 'Desconectado',
+      addBotHint: '一个机器人只能被一个AI助手绑定，仅显示未绑定的机器人',
+      createDesc: '复制频道页的添加流程，创建后会自动绑定到当前助手。',
     },
     conversation: {
       empty: 'Sin historial de chat',
@@ -1055,8 +1037,6 @@ export default {
     errors: {
       loadFailed: 'Error al cargar asistentes',
       loadModelsFailed: 'Error al cargar modelos',
-      loadModelsPartialFailed:
-        'Algunas listas de modelos no se pudieron cargar; se muestran los modelos disponibles.',
       createFailed: 'Error al crear asistente',
       updateFailed: 'Error al actualizar asistente',
       deleteFailed: 'Error al eliminar asistente',
@@ -1075,15 +1055,14 @@ export default {
       teamImageNotSupported: 'Envío de imágenes aún no soportado en modo equipo',
       selectTeamRobotFirst: 'Por favor selecciona un robot de equipo primero',
       teamRobotMissingKey: 'El robot actual carece de robot_key, por favor sincroniza de nuevo',
-      modelNotSupportVision:
-        'El modelo actual no admite reconocimiento de imagenes. Cambia a un modelo multimodal con capacidad visual.',
-      modelNotSupportVisionHint:
-        'Modelos como GPT-4o, Claude y Gemini admiten reconocimiento de imagenes.',
       fileTooLarge: 'El tamaño del archivo excede el límite (máx {max})',
       tooManyFiles: 'Máximo {max} archivos para subir',
       invalidFileType: 'Tipo de archivo no compatible',
       fileReadFailed: 'Error al leer el archivo',
       fileOpenFailed: 'Error al abrir el archivo',
+      loadModelsPartialFailed: '部分模型列表加载失败，已显示可用模型',
+      modelNotSupportVision: '当前模型不支持图片识别，请切换到支持视觉的多模态模型',
+      modelNotSupportVisionHint: '例如 GPT-4o、Claude、Gemini 等模型支持图片识别',
     },
     toasts: {
       created: 'Asistente creado',
@@ -1105,15 +1084,13 @@ export default {
         sandboxMode: 'Modo de ejecución',
         modeCodex: 'Sandbox Codex',
         modeNative: 'Ejecución nativa',
-        nativeDesc:
-          'Ejecuta comandos directamente en la maquina local sin aislamiento de sandbox. Los comandos tienen todos los permisos del usuario actual.',
         networkAccess: 'Permitir acceso a red',
         workDir: 'Directorio de trabajo',
-        workDirHint:
-          'Estructura: {basePath}{sep}sessions{sep}<agent_hash>{sep}<conversation_hash>{sep}',
         changeDir: 'Cambiar',
         resetDir: 'Restablecer a predeterminado',
         selectDir: 'Seleccionar directorio de trabajo',
+        nativeDesc: '直接在本机执行命令，无沙箱隔离。命令拥有当前用户的完整权限。',
+        workDirHint: '结构：{basePath}{sep}sessions{sep}<agent_hash>{sep}<conversation_hash>{sep}',
       },
       model: {
         defaultModel: 'Modelo predeterminado',
@@ -1146,13 +1123,9 @@ export default {
         sandboxMode: 'Modo sandbox',
         sandbox_off: 'Desactivado',
         sandbox_all: 'Todos los agentes',
-        sandboxModeHint:
-          'El sandbox aísla la ejecución de comandos para evitar que los agentes modifiquen directamente el sistema anfitrión',
         groupChatMentionPatterns: 'Patrones de mención en grupo',
-        groupChatMentionPatternsPlaceholder: "{'@'}assistant, {'@'}bot",
+        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
         groupChatInsertPreset: 'Insertar plantilla',
-        groupChatMentionPatternsHint:
-          'Patrones para activar la respuesta del agente, separados por comas',
         tools: 'Configuración de herramientas',
         toolsProfile: 'Perfil de herramientas',
         toolsProfile_default: 'No configurado (heredar global)',
@@ -1161,19 +1134,13 @@ export default {
         toolsProfile_messaging: 'Messaging — mensajería/sesiones',
         toolsProfile_full: 'Full — sin restricción',
         builtinTools: 'Herramientas integradas',
-        builtinToolsHint:
-          'Selecciona aquí las herramientas integradas de OpenClaw. Las herramientas personalizadas o de plugins aún se pueden introducir manualmente abajo.',
         builtinToolsLoading: 'Cargando herramientas integradas de OpenClaw…',
-        builtinToolsUnavailable:
-          'No se pudo cargar el catálogo de herramientas integradas de OpenClaw. Aún puedes introducir nombres de herramientas manualmente.',
         toolModeAllow: 'Permitir',
         toolModeDeny: 'Denegar',
         toolsAllow: 'Herramientas permitidas',
         toolsAllowPlaceholder: 'ej. browser, file_search',
         toolsDeny: 'Herramientas denegadas',
         toolsDenyPlaceholder: 'ej. canvas',
-        toolsHint:
-          'Denegar tiene prioridad sobre permitir. Las herramientas personalizadas o de plugins se pueden seguir añadiendo manualmente y confirmar con Enter.',
         heartbeat: 'Intervalo de heartbeat',
         heartbeat_off: 'Desactivado',
         heartbeat_custom: 'Personalizado',
@@ -1186,6 +1153,10 @@ export default {
         paramsMaxTokens: 'Tokens máximos',
         paramsMaxTokensPlaceholder: 'Vacío para valor predeterminado',
         paramsHint: 'Sobrescribir parámetros agents.defaults.models para este agente',
+        builtinToolsUnavailable: '暂时无法读取 OpenClaw 内置工具目录，你仍然可以手动输入工具名。',
+        groupChatMentionPatternsHint: '匹配消息中的提及模式以触发助手响应，多个用逗号分隔',
+        sandboxModeHint: '沙箱可隔离命令执行环境，防止助手直接操作宿主系统',
+        toolsHint: '禁止优先级高于允许。插件工具或自定义工具可继续手动输入，输入后按 Enter 确认。',
       },
     },
     workspaceDrawer: {
@@ -1208,8 +1179,6 @@ export default {
       mcpAddFromGlobal: 'Agregar desde lista global de MCP',
       mcpEmptyHint: 'Haz clic en + para agregar desde lista global de MCP',
       mcpPickerHint: 'Alterna para agregar o eliminar servidores MCPpara este asistente',
-      mcpNoAvailableToAdd:
-        'No hay servidores MCP disponibles para anadir. Habilita primero algunos en Configuracion.',
       mcpSearchPlaceholder: 'Buscar servidores MCP',
       mcpNoSearchResults: 'Sin resultados coincidentes',
       mcpSelectAll: 'Seleccionar todo',
@@ -1217,23 +1186,19 @@ export default {
       mcpGlobalDisabled: 'MCPestá globalmente deshabilitado. Habilítalo en Configuración.',
       mcpGoToSettings: 'Agregar nuevo MCP',
       mcpGoToSettingsHint: 'Ve a la página de configuración para agregar un nuevo servidor MCP',
+      mcpNoAvailableToAdd: '暂无可添加的 MCP服务，请先在设置中启用',
     },
   },
   knowledge: {
     help: {
       name: 'Un nombre para distinguir diferentes bases de conocimientos (máx 30 caracteres).',
-      chunkSize:
-        'Tamano del fragmento (en caracteres, 500~5000). Los fragmentos mas grandes ofrecen un contexto mas completo pero una granularidad de recuperacion mas gruesa.',
-      chunkOverlap:
-        'Tamano de solapamiento entre fragmentos adyacentes (en caracteres, 0~1000) para reducir la perdida de informacion por cortes entre fragmentos.',
-      batchMaxDocuments:
-        'For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.',
-      batchMaxChunks:
-        'Maximum number of segments per embedding request during learning. Range: 1~20.',
       matchThreshold: 'Los resultados con similitud menor a este umbral se filtrarán (0~1).',
       embeddingModel: 'Modelo de embedding usado para convertir texto en vectores.',
-      embeddingDimension:
-        'La dimension del vector de embedding debe coincidir con la salida del modelo seleccionado.',
+      batchMaxChunks: '学习嵌入阶段，每次向量化请求中最多包含的分段数量。取值范围 1~20。',
+      chunkOverlap: '相邻分片的重叠大小（字符数，0~1000），用于减少跨分片断句导致的信息丢失。',
+      chunkSize: '分片大小（字符数，500~5000）。分片越大，上下文越完整，但召回粒度更粗。',
+      embeddingDimension: '嵌入向量维度需与所选模型的输出一致。',
+      raptorLLMModel: '用于生成分层级摘要的语言模型；不选择即不启用该能力。',
     },
     tabs: {
       personal: 'Personal',
@@ -1338,15 +1303,13 @@ export default {
     },
     embeddingSettings: {
       title: 'Configuración de modelo de embedding',
-      warning:
-        'Despues de cambiar el modelo de embedding, todas las bases de conocimiento deben volver a aprenderse.',
       embeddingModel: 'Modelo de embedding',
       embeddingDimension: 'Dimensión de embedding',
-      required:
-        'Selecciona primero un modelo de embedding en la configuracion de modelos de embedding.',
       save: 'Guardar',
       saved: 'Guardado',
       saveFailed: 'Error al guardar',
+      required: '请先在嵌入模型设置中选择嵌入模型',
+      warning: '修改嵌入模型后，全部知识库需重新学习。',
     },
     chat: {
       selectAgent: 'Seleccionar asistente',
@@ -1450,8 +1413,6 @@ export default {
       deleteCancel: 'Cancelar',
       deleteConfirm: 'Eliminar',
       deleteSuccess: 'Eliminado',
-      deleteDescBatch:
-        'Al eliminar {count} carpetas, los documentos debajo se moverán a "Sin categoría". Esta acción no se puede deshacer.',
       deleteSuccessBatch: 'Se eliminaron {count} carpetas',
       move: {
         title: 'Mover carpeta',
@@ -1469,9 +1430,8 @@ export default {
       nameDuplicate: 'El nombre de carpeta ya existe',
       nameHelp: 'Nombre de carpeta (máx 50 caracteres).',
       parentFolder: 'Carpeta padre',
-      parentFolderHelp:
-        'Selecciona una carpeta padre para crear carpetas anidadas. Dejala vacia para crear en la raiz.',
       rootFolder: 'Raíz (sin padre)',
+      parentFolderHelp: '选择父文件夹以创建嵌套文件夹。留空则在根目录创建。',
     },
     detail: {
       title: 'Detalles del documento',
@@ -1507,11 +1467,10 @@ export default {
       close: 'Cerrar',
       openExternally: 'Abrir externamente',
       loadFailed: 'Error al cargar documento',
-      contentNotAvailable:
-        'El contenido no esta disponible para visualizarse. Abrelo externamente.',
       unsupported: 'Tipo de archivo ',
       localFileNote: 'Este archivo necesita abrirse con una aplicación externa.',
       loadFailedUseExternal: 'Error al cargar. Por favor abre externamente',
+      contentNotAvailable: '内容无法查看，请使用外部应用打开。',
     },
   },
   memory: {
@@ -1541,11 +1500,7 @@ export default {
     conversationLog: 'Registro de conversación',
     conversationLogDesc: 'Hechos de conversación cronológicos',
     conversationLogEmpty: 'Sin registros de conversación aún',
-    deleteEventStreamConfirm:
-      'Are you sure you want to delete this conversation log? This action cannot be undone.',
     deleteFailed: 'Error al eliminar',
-    deleteThematicFactConfirm:
-      'Are you sure you want to delete this topic summary? This action cannot be undone.',
     editCoreProfile: 'Editar información básica',
     editEventStream: 'Editar registro de conversación',
     editThematicFact: 'Editar resumen de tema',
@@ -1591,8 +1546,6 @@ export default {
       howTitle: 'Cómo conectar',
       tipsIntro: 'Conecta WeCom escaneando con el plugin oficial Tencent OpenClaw',
       stepsLabel: 'Pasos:',
-      step1:
-        'Pulsa Generar codigo QR para instalar y habilitar el plugin oficial de WeCom en OpenClaw',
       step2: 'Escanea el codigo QR de abajo con WeCom y confirma en tu telefono',
       scanHint: 'Escanea el codigo QR de abajo con WeCom y confirma en tu telefono',
       manualEntry: 'Ya tengo un bot',
@@ -1608,6 +1561,7 @@ export default {
       openScanAdd: 'Anadir mediante QR',
       qrExpired: 'El codigo QR ha caducado (valido durante 5 minutos)',
       qrExpiredHint: 'Pulsa Actualizar para generar un nuevo codigo QR y volver a escanearlo.',
+      step1: '点击生成二维码，会在 OpenClaw 中安装并启用官方企微插件',
     },
     platforms: {
       dingtalk: 'DingTalk',
@@ -1640,8 +1594,6 @@ export default {
       success: 'Canal creado exitosamente',
       failed: 'Error al crear canal',
       dingtalkPluginInstalling: 'Instalando plugin de DingTalk',
-      dingtalkPluginInstallingDesc:
-        'El plugin de DingTalk Connector se está instalando en segundo plano. Puede continuar vinculando un asistente ahora y verificar el estado de conexión más tarde.',
       avatarHint: 'Haz clic para reemplazar, recomendado 100*100px, máx 100KB',
       feishuTipPrefix: 'Inicia sesión en',
       feishuTipMiddle: 'para crear un bot, sigue',
@@ -1722,8 +1674,6 @@ export default {
     comingSoon: 'Próximamente',
     agentFallback: 'Asistente de IA',
     unbindConfirmTitle: 'Confirmar desvínculo',
-    unbindConfirmDesc:
-      '¿Desvincular el asistente del canal "{name}"? Los mensajes no se procesarán hasta volver a vincular.',
     unbindSuccess: 'Asistente desvinculado',
     bindSuccess: 'Asistente vinculado exitosamente',
     card: {
@@ -1753,21 +1703,18 @@ export default {
     },
     toggle: {
       enableSuccess: 'Habilitado exitosamente',
-      dingtalkPluginNotReady:
-        'El complemento del conector DingTalk aún se está instalando o no está listo. Inténtelo de nuevo más tarde.',
       disableSuccess: 'Deshabilitado exitosamente',
       enableTitle: '¿Habilitar este canal?',
       disableTitle: '¿Deshabilitar este canal?',
-      enableDesc:
-        'Cuando esta activado, el sistema intentara conectarse a este canal para recibir y procesar mensajes.',
-      disableDesc:
-        'Cuando esta desactivado, la conexion con este canal se desconectara y el sistema dejara de recibir mensajes de el.',
+      dingtalkPluginNotReady: '钉钉连接器插件仍在安装或未就绪，请稍后再试。',
+      disableDesc: '关闭后，将断开与该频道的连接，系统不再接收其消息。',
+      enableDesc: '开启后，系统将尝试连接该频道以接收并处理消息。',
     },
     status: {
       online: 'Conectado',
       error: 'Error',
       offline: 'Desconectado',
-      provisioning: "Conectando…",
+      provisioning: 'Conectando…',
     },
     bindAgent: {
       title: 'Seleccionar asistente',
@@ -1781,27 +1728,20 @@ export default {
     },
     provisioning: {
       toastTitle: 'Procesando en segundo plano',
-      toastDescription:
-        'El canal y la pasarela todavía se están creando o sincronizando. El estado de la conexión se actualizará automáticamente. Espera un momento.',
-      toastDescriptionWithAgent:
-        'El canal, el asistente o la pasarela todavía se están creando o sincronizando. Espera un momento.',
+      toastDescription: '渠道与网关正在创建或同步中，连接状态将自动更新，请稍候。',
+      toastDescriptionWithAgent: '渠道、助手或网关正在创建或同步中，请稍候。',
     },
     wecom: {
       emptyTitle: 'Aún no has agregado WeCom',
-      emptyDesc:
-        'Conecta WeCom escaneando un código QR con el plugin oficial de Tencent OpenClaw o integra un bot existente.',
+      emptyDesc: '通过腾讯官方 OpenClaw 插件扫码连接企业微信，同时支持接入已有机器人。',
     },
     wechat: {
       emptyTitle: 'Aún no has agregado WeChat',
-      emptyDesc:
-        'Conecta tu WeChat personal escaneando un código QR con el plugin oficial de Tencent OpenClaw y empieza a recibir y procesar mensajes de WeChat.',
       addNow: 'Agregar ahora',
       configTitle: 'Configurar WeChat',
       howToConnect: 'Cómo conectar',
       tipsIntro: 'Conecta tu WeChat personal escaneando con el plugin oficial de Tencent OpenClaw',
       stepsLabel: 'Pasos',
-      step1:
-        'Haz clic en Generar código QR para instalar y activar el plugin oficial de WeChat en OpenClaw',
       step2: 'Escanea el código QR de abajo con WeChat y confirma la conexión en tu teléfono',
       generateQRCode: 'Generar código QR',
       generating: 'Generando…',
@@ -1811,38 +1751,23 @@ export default {
       qrExpired: 'Caducado',
       loginSuccess: 'WeChat conectado con éxito',
       assistantPromptTitle: 'Vincular asistente',
-      assistantPromptDesc:
-        'Este canal está vinculado por defecto al asistente principal (main), y los mensajes serán gestionados por ese asistente. Si quieres usar otro asistente, puedes vincular uno existente o crear uno nuevo y vincularlo automáticamente a este canal de WeChat.',
       useMainAssistant: 'Listo (usar asistente principal)',
       bindExistingAssistant: 'Vincular asistente existente',
       createAssistantManually: 'Crear asistente',
-      createAssistantHint:
-        'Al crear un nuevo asistente deberás completar manualmente el nombre y otros datos. Cuando se cree, se vinculará automáticamente y se actualizará la conexión.',
-      missingChannelId:
-        'No se obtuvo la información del canal. Cierra esta ventana, actualiza la lista de canales y vuelve a intentarlo.',
-      missingChannelIdHint:
-        'No se obtuvo el ID del canal. Cierra esta ventana y vincula el asistente manualmente desde la lista de canales.',
       channelNotFound: 'No se encontró el canal correspondiente. Actualiza y vuelve a intentarlo.',
-      pluginInstallTryLater:
-        'El plugin oficial de WeChat se está instalando o habilitando en segundo plano. Inténtalo de nuevo más tarde.',
-      editNotSupported:
-        'WeChat se conecta mediante escaneo de código QR y no se puede editar aquí. Si quieres cambiar de cuenta, elimina este canal en la página de canales y vuelve a agregarlo escaneando otra vez.',
-      qrExpiredHint:
-        'El código QR ya no es válido o se agotó la espera. Pulsa Actualizar abajo para obtener uno nuevo.',
+      createAssistantHint: '新建助手时需手动填写名称等信息；创建成功后将自动绑定并刷新连接。',
+      emptyDesc: '通过腾讯官方 OpenClaw 插件扫码连接个人微信，开始接收并处理微信消息。',
+      missingChannelId: '未获取到频道信息，请关闭后刷新频道列表再试。',
+      missingChannelIdHint: '未获取到频道 ID，请关闭此窗口后在频道列表中手动绑定助手。',
+      pluginInstallTryLater: '官方微信插件正在后台安装或启用，请稍后再试。',
+      qrExpiredHint: '二维码已失效或等待超时，请点击下方「刷新」重新获取。',
+      step1: '点击生成二维码，会在 OpenClaw 中安装并启用官方微信插件',
     },
     whatsapp: {
       emptyTitle: 'Aún no hay WhatsApp añadido',
-      emptyDesc:
-        'Conecta WhatsApp mediante el canal integrado de OpenClaw escaneando el código QR (WhatsApp Web).',
       addNow: 'Añadir ahora',
       configTitle: 'Configurar WhatsApp',
       howToConnect: 'Cómo conectar',
-      step1:
-        'Al pulsar el botón inferior, la app activa el canal integrado de WhatsApp en OpenClaw si hace falta.',
-      step2:
-        'A continuación se ejecuta el inicio de sesión por QR en segundo plano; escanéalo con WhatsApp en el móvil.',
-      step3:
-        'Tras vincular, enlaza un asistente en esta página. Al eliminar el canal se cierra sesión y se limpian los enlaces.',
       configStepsLink: 'Documentación oficial',
       generateQRCode: 'Generar código QR',
       generating: 'Generando…',
@@ -1850,14 +1775,36 @@ export default {
       waitingForScan: 'Esperando escaneo…',
       refresh: 'Actualizar',
       qrExpired: 'Código QR caducado',
-      qrExpiredHint:
-        'El código QR ha caducado o se ha agotado el tiempo de espera. Pulsa Actualizar abajo para obtener uno nuevo.',
       loginSuccess: 'WhatsApp conectado',
-      pluginInstallTryLater:
-        'El canal de WhatsApp se está activando o aún no está listo. Inténtalo de nuevo más tarde.',
       channelNotFound: 'No se encontró el canal correspondiente. Actualiza e inténtalo de nuevo.',
-      editNotSupported:
-        'WhatsApp se conecta escaneando un código QR y no se puede editar aquí. Para cambiar de cuenta, elimina este canal y vuelve a añadirlo.',
+      emptyDesc: '通过 OpenClaw 内置 WhatsApp 通道扫码连接 WhatsApp（WhatsApp Web）。',
+      pluginInstallTryLater: 'WhatsApp 通道正在启用或尚未就绪，请稍后再试。',
+      qrExpiredHint: '二维码已失效或等待超时，请点击下方「刷新」重新获取。',
+      step1: '点击下方按钮后，应用会先在 OpenClaw 中启用内置 WhatsApp 通道（如尚未启用）。',
+      step2: '随后应用会在后台运行扫码登录流程；请用手机 WhatsApp 扫描二维码。',
+      step3: '登录成功后可在本页绑定助手并管理连接状态；删除频道将执行登出并清理绑定。',
+    },
+    backToOverview: '返回频道概览',
+    panel: {
+      add: '添加',
+    },
+    platformBlurbs: {
+      default: '接入该平台以接收与发送消息。',
+      dingtalk: '接入钉钉企业内部机器人，通过 Stream 模式实现稳定的群聊与私信交互。',
+      feishu: '接入飞书企业内部应用，实现自动化群聊与私信交互。',
+      qq: '接入 QQ 官方机器人，覆盖群聊、频道与私信全场景互动。',
+      wechat: '扫码连接微信，微信直接连接机器人聊天。',
+      wecom: '使用 Bot ID 和 Secret 连接企业微信官方机器人。',
+      whatsapp: '扫码即连 WhatsApp，快速开展全球业务沟通。',
+    },
+    platformCard: {
+      connect: '连接',
+    },
+    row: {
+      boundToAgent: '已绑定 {name}',
+    },
+    supported: {
+      title: '支持的频道',
     },
   },
   scheduledTasks: {
@@ -1870,8 +1817,6 @@ export default {
     refresh: 'Actualizar',
     edit: 'Editar tarea',
     empty: 'Sin tareas programadas aún',
-    emptyDescription:
-      'Crea tareas programadas para automatizar flujos de trabajo de IA. Las tareas pueden enviar mensajes, ejecutar consultas o realizar acciones a horas específicas.',
     errorReason: 'Ver razón del error',
     actionsMenu: 'Abrir menú de acciones',
     total: 'Total de tareas',
@@ -1915,8 +1860,6 @@ export default {
       nameLabel: 'Nombre de la tarea',
       namePlaceholder: 'Por ejemplo: Resumen matutino',
       promptLabel: 'Prompt',
-      promptPlaceholder:
-        '¿Qué debe hacer la IA? Por ejemplo: Dame un resumen de las noticias y el clima de hoy.',
       agentLabel: 'Asistente de IA vinculado',
       selectAgent: 'Selecciona un asistente',
       scheduleTitle: 'Configurar el horario',
@@ -1940,6 +1883,7 @@ export default {
       enableNowTitle: 'Activar ahora',
       enableNowHint: 'Iniciar esta tarea inmediatamente después de crearla',
       submitting: 'Enviando...',
+      promptPlaceholder: 'AI 应该做什么？例如：给我一份今天的新闻和天气摘要',
     },
     operationLog: {
       title: 'Registro de operaciones',
@@ -1989,11 +1933,9 @@ export default {
       selectTypeFirst: 'Selecciona primero un tipo de notificacion',
       selectChannel: 'Selecciona canales',
       emptyChannels: 'No hay canales disponibles para el tipo de notificacion actual',
-      hintSelected:
-        'Puedes seleccionar varios canales. Los resultados se enviaran alli cuando la tarea termine.',
-      hintUnselected:
-        'Primero elige un tipo de notificacion y luego selecciona uno o mas canales de esa plataforma.',
       channelFallback: 'Canal {id}',
+      hintSelected: '可多选，任务完成后会通过这些频道发送结果。',
+      hintUnselected: '先选择通知类型，再从对应平台频道中多选具体频道。',
     },
     presets: {
       everyMinute: 'Cada minuto',
@@ -2041,8 +1983,6 @@ export default {
       thinking: 'Pensamiento',
       enabled: 'Habilitar tarea',
       expiresAt: 'Fecha de vencimiento',
-      expiredHint:
-        'Esta tarea ha caducado y no volvera a ejecutarse. Para reanudarla, mueve la fecha de vencimiento a una fecha futura.',
       scheduleType: 'Tipo de programación',
       schedulePreset: 'Preestablecido',
       scheduleCustom: 'Tiempo personalizado',
@@ -2069,14 +2009,16 @@ export default {
       calendarTitle: '{year} / {month}',
       yearOption: '{year}',
       monthOption: '{month}',
+      expiredHint: '该任务已过期，不会再执行。如需恢复执行，请将到期时间修改到未来。',
     },
   },
   openclawGateway: {
     banner: {
       starting: 'The gateway is starting. Please try again in a moment.',
       upgrading: 'OpenClaw runtime is upgrading. Please try again in a moment.',
-      channels: '网关未运行，未启用网关时无法管理消息频道',
-      scheduledTasks: '网关未运行，未启用网关时无法管理定时任务',
+      channels: 'La pasarela no está en ejecución, no se pueden gestionar canales de mensajes cuando la pasarela no está habilitada',
+      scheduledTasks: 'La pasarela no está en ejecución, no se pueden gestionar tareas programadas cuando la pasarela no está habilitada',
+      notInstalled: 'Runtime de OpenClaw no detectado. Instálalo en「Configuración → General」o「Gestor de OpenClaw」.',
     },
   },
   openclawCron: {
@@ -2090,8 +2032,6 @@ export default {
     confirmDelete: 'Confirmar eliminación',
     refresh: 'Actualizar',
     empty: 'No hay tareas programadas',
-    emptyDescription:
-      'Despues de crearla, la tarea se ejecutara automaticamente en la hora configurada.',
     enabled: 'Habilitado',
     disabled: 'Pausado',
     runNow: 'Ejecutar ahora',
@@ -2144,8 +2084,6 @@ export default {
       timezone: 'Zona horaria',
       systemTimezone: 'Predeterminado del sistema',
       exact: 'Ejecucion exacta',
-      exactHint:
-        'Activa el modo exacto de OpenClaw para ajustarse lo maximo posible al momento configurado.',
       enableNowTitle: 'Activar ahora',
       enableNowHint: 'Iniciar esta tarea inmediatamente después de crearla',
       message: 'Mensaje',
@@ -2170,8 +2108,6 @@ export default {
       deliveryTargetId: 'ID de destino',
       deliveryTargetIdPlaceholder: 'Introduce un ID de conversacion o de usuario',
       deliveryTargetHintTitle: 'Destino predeterminado',
-      deliveryTargetFixedHint:
-        'El ultimo ID de destino entregado para el asistente y tipo de canal seleccionados se rellena automaticamente, y aun puedes ajustarlo manualmente.',
       deliveryTargetModes: {
         lastActive: 'Ultimo destino activo',
         targetId: 'Introducir ID de destino',
@@ -2188,6 +2124,7 @@ export default {
       deleteAfterRun: 'Eliminar despues de ejecutar',
       keepAfterRun: 'Mantener despues de ejecutar',
       enabled: 'Habilitar tarea',
+      exactHint: '启用 OpenClaw exact 模式，尽量按设定时刻触发',
     },
     history: {
       conversationPreparing: '正在准备历史会话，请稍后...',
@@ -2233,5 +2170,6 @@ export default {
       },
       weekly: '每周 {weekday} {time}',
     },
+    emptyDescription: '创建后，系统会按设定时间自动执行任务。',
   },
 }

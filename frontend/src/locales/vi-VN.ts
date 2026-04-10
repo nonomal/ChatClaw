@@ -296,40 +296,41 @@ export default {
       alreadyLatest: 'Đã là phiên bản mới nhất',
       upgradeSuccess: 'OpenClaw đã được nâng cấp lên {version}',
       upgradeFailed: 'Nâng cấp OpenClaw thất bại',
-      upgradeProgress: '升级进度',
+      upgradeProgress: 'Tiến trình nâng cấp',
       composer: {
-        gatewayDisabledHint: '网关未启用',
-        gatewayTagError: '网关异常',
-        gatewayTagStarting: '网关启动中',
+        gatewayDisabledHint: 'Gateway chưa bật',
+        gatewayTagError: 'Gateway bất thường',
+        gatewayTagStarting: 'Gateway đang khởi động',
         gatewayTagUpgrading: 'Runtime upgrading',
-        gatewayTagStop: '网关未运行',
+        gatewayTagStop: 'Gateway không chạy',
       },
       doctor: {
-        command: '命令',
-        duration: '耗时',
-        exitCode: '退出码',
-        failed: '执行失败',
-        fixed: '已修复',
-        noErrors: '暂无错误',
-        noOutput: '暂无输出',
-        run: '运行',
-        runAndFix: '运行并修复',
-        running: '运行中…',
-        stderr: '标准错误',
-        stdout: '标准输出',
-        success: '执行成功',
-        title: 'OpenClaw Doctor 诊断',
-        workingDir: '工作目录',
+        command: 'Lệnh',
+        duration: 'Thời gian',
+        exitCode: 'Mã thoát',
+        failed: 'Thực thi thất bại',
+        fixed: 'Đã sửa',
+        noErrors: 'Chưa có lỗi',
+        noOutput: 'Chưa có đầu ra',
+        run: 'Chạy',
+        runAndFix: 'Chạy và sửa',
+        running: 'Đang chạy...',
+        stderr: 'Lỗi tiêu chuẩn',
+        stdout: 'Đầu ra tiêu chuẩn',
+        success: 'Thực thi thành công',
+        title: 'Chẩn đoán OpenClaw Doctor',
+        workingDir: 'Thư mục làm việc',
+        autoTriggered: 'OpenClaw kết nối thất bại hơn 3 lần, đang tự động chạy chẩn đoán sửa chữa...',
       },
-      gatewayStatusLabel: '网关状态',
-      logs: '日志',
-      logsHint: '网关日志位于运行目录下的 logs 文件夹（openclaw-gateway.log）。',
-      pageSubtitle: '配置网关等基础设置信息',
-      restart: '重启',
-      restartFailed: '网关重启失败',
-      restartSuccess: '网关已重启',
+      gatewayStatusLabel: 'Trạng thái gateway',
+      logs: 'Nhật ký',
+      logsHint: 'Nhật ký gateway nằm trong thư mục logs dưới thư mục chạy (openclaw-gateway.log).',
+      pageSubtitle: 'Cấu hình cài đặt cơ bản như gateway',
+      restart: 'Khởi động lại',
+      restartFailed: 'Khởi động lại gateway thất bại',
+      restartSuccess: 'Gateway đã khởi động lại',
       sidebarGatewayLabelSeparator: '：',
-      sidebarGatewayPrefix: '网关',
+      sidebarGatewayPrefix: 'Gateway',
       statusBadge: {
         error: 'error',
         running: 'running',
@@ -337,9 +338,31 @@ export default {
         stop: 'stop',
         upgrading: 'upgrading',
       },
-      stop: '停止',
-      stopFailed: '网关停止失败',
-      stopSuccess: '网关已停止',
+      stop: 'Dừng',
+      stopFailed: 'Dừng gateway thất bại',
+      stopSuccess: 'Gateway đã dừng',
+      autoStartDisabled: 'OpenClaw Gateway đã tắt',
+      autoStartEnabled: 'OpenClaw Gateway đã bật',
+      autoStartFailed: 'Chuyển đổi trạng thái gateway thất bại',
+      autoStartLabel: 'Công tắc chạy gateway',
+      autoStartTooltip: 'Nhấp để bật hoặc tắt tự động khởi động gateway OpenClaw, sau khi bật gateway sẽ tự động khởi động khi ứng dụng khởi động',
+      cancelUpgrade: 'Hủy nâng cấp',
+      continueOrRestartDesc: 'Phát hiện bộ đệm tải xuống phiên bản {version}, vui lòng chọn tiếp tục nâng cấp (từ npm install) hoặc tải lại.',
+      continueOrRestartTitle: 'Phát hiện bộ đệm nâng cấp đã có',
+      continueUpgrade: 'Tiếp tục nâng cấp',
+      portOccupied: 'Cổng bị chiếm',
+      portOccupiedHint: 'Cổng {port} bị tiến trình {process} (PID: {pid}) chiếm, vui lòng dừng tiến trình đó trước rồi thử lại.',
+      portStillOccupiedAfterStop: 'Cổng {port} vẫn chưa được giải phóng sau khi dừng gateway',
+      portStillOccupiedAfterStopHint: 'Vui lòng chấm dứt thủ công tiến trình chiếm cổng (PID: {pid}).',
+      restartUpgrade: 'Nâng cấp lại',
+      start: 'Khởi động',
+      startFailed: 'Khởi động gateway thất bại',
+      startSuccess: 'Gateway đã khởi động',
+      starting: 'Đang khởi động...',
+      upgradeCancelFailed: 'Hủy nâng cấp thất bại',
+      upgradeCancelled: 'Nâng cấp đã hủy',
+      upgradeDetails: 'Chi tiết',
+      upgradeOutputWaiting: 'Đang chờ đầu ra...',
     },
     general: {
       title: 'Cài đặt chung',
@@ -379,13 +402,11 @@ export default {
         },
         uv: {
           name: 'Môi trường chạy Python',
-          description:
-            'Cho phép trợ lý AI viết và chạy script Python để hoàn thành các tác vụ phức tạp.',
+          description: 'Cho phép trợ lý AI viết và chạy script Python để hoàn thành các tác vụ phức tạp.',
         },
         bun: {
           name: 'Môi trường chạy JavaScript',
-          description:
-            'Cho phép trợ lý AI viết và chạy script JavaScript để hoàn thành các tác vụ phức tạp.',
+          description: 'Cho phép trợ lý AI viết và chạy script JavaScript để hoàn thành các tác vụ phức tạp.',
         },
         codex: {
           name: 'Sandbox bảo mật',
@@ -393,49 +414,38 @@ export default {
         },
         openclaw: {
           name: 'Runtime OpenClaw',
-          description:
-            'Môi trường runtime Node.js của OpenClaw Agent, bao gồm openclaw CLI và gateway. Được tải từ OSS và cài vào ~/.chatclaw/openclaw/runtime/',
         },
-        newVersionHint: '新版本 {version}',
-        openPathFailed: '无法打开该路径',
-        openPathHint: '在文件管理器中打开所在目录',
-        update: '更新',
-        updatesAvailableToast: '检测到扩展组件有新版本，可以到「设置 → 常规设置」中手动更新。',
+        newVersionHint: 'Phiên bản mới {version}',
+        openPathFailed: 'Không thể mở đường dẫn này',
+        openPathHint: 'Mở thư mục chứa trong trình quản lý tệp',
+        update: 'Cập nhật',
+        updatesAvailableToast: 'Phát hiện phiên bản mới của thành phần mở rộng, có thể thủ công cập nhật trong "Cài đặt > Cài đặt chung".',
       },
     },
     memory: {
       title: 'Bộ nhớ dài hạn',
       enable: 'Bật bộ nhớ dài hạn',
-      enableHint:
-        'Khi bật, AI sẽ tự động trích xuất và ghi nhớ sở thích, thói quen và những thông tin quan trọng trong cuộc trò chuyện.',
       extractModel: 'Mô hình trích xuất bộ nhớ',
-      extractModelHint:
-        'Dùng để tóm tắt và trích xuất các thông tin bộ nhớ có giá trị sau mỗi cuộc trò chuyện.',
       embeddingModel: 'Mô hình embedding bộ nhớ',
-      embeddingModelHint:
-        'Dùng để chuyển văn bản bộ nhớ thành vector phục vụ truy xuất ngữ nghĩa trong cuộc trò chuyện.',
       embeddingDimension: 'Kích thước embedding',
-      embeddingDimensionHint:
-        'Kích thước vector embedding phải khớp với đầu ra của mô hình đã chọn.',
       save: 'Lưu cài đặt',
       saved: 'Đã lưu cài đặt',
       saveFailed: 'Lưu cài đặt thất bại',
-      rebuildWarning:
-        'Sau khi thay đổi mô hình vector hoặc số chiều, toàn bộ dữ liệu vector bộ nhớ hiện có sẽ được xây dựng lại bất đồng bộ.',
       rebuilding: 'Đang xây dựng lại vector bộ nhớ...',
       rebuildSuccess: 'Vector bộ nhớ đã được xây dựng lại thành công',
       rebuildFailed: 'Xây dựng lại vector bộ nhớ thất bại',
       confirmRebuildTitle: 'Xác nhận xây dựng lại vector bộ nhớ',
+      embeddingDimensionHint: 'Kích thước vector embedding cần phù hợp với đầu ra của mô hình đã chọn.',
+      embeddingModelHint: 'Dùng để chuyển văn bản ký ức thành vector, để thực hiện truy xuất ngữ nghĩa trong cuộc trò chuyện.',
+      enableHint: 'Sau khi bật, AI sẽ tự động trích xuất và ghi nhớ sở thích, thói quen và sự kiện quan trọng của bạn trong cuộc trò chuyện.',
+      extractModelHint: 'Dùng để tóm tắt và trích xuất thông tin ký ức có giá trị sau mỗi cuộc trò chuyện.',
+      rebuildWarning: 'Sau khi sửa mô hình vector hoặc kích thước, tất cả dữ liệu vector của ký ức hiện có sẽ được xây dựng lại không đồng bộ.',
     },
     skills: {
       title: 'Kỹ năng',
       enable: 'Bật kỹ năng',
-      enableHint:
-        'Khi bật, trợ lý AI sẽ tự động tải và sử dụng các kỹ năng đã cài trong lúc trò chuyện.',
       pageDesc: 'Khám phá và quản lý khả năng AI',
       directory: 'Thư mục tải kỹ năng',
-      directoryHint:
-        'Đặt các thư mục kỹ năng đã tải vào thư mục này. Chúng sẽ được tự động phát hiện và tải trong các cuộc trò chuyện AI.',
       tabInstalled: 'Đã cài đặt',
       tabMarket: 'Thị trường',
       filterAll: 'Tất cả',
@@ -486,6 +496,8 @@ export default {
       loadFailed: 'Tải thất bại, vui lòng thử lại sau',
       addLocalSkillHint: 'Tạo thư mục trong thư mục kỹ năng, thêm SKILL.md theo đặc tả',
       noLocalSkillsHint: 'Tạo thư mục trong thư mục kỹ năng, thêm SKILL.md theo đặc tả',
+      directoryHint: 'Đặt thư mục kỹ năng đã tải xuống vào thư mục này, trợ lý AI sẽ tự động nhận diện và tải khi trò chuyện.',
+      enableHint: 'Sau khi bật, trợ lý AI sẽ tự động tải và sử dụng kỹ năng đã cài đặt khi trò chuyện.',
     },
     openclawSkills: {
       title: 'Kỹ năng OpenClaw',
@@ -493,8 +505,6 @@ export default {
       listSubheading: 'Khám phá và quản lý khả năng AI',
       refreshCta: 'Làm mới',
       addSkillCta: 'Thêm kỹ năng',
-      pageDesc:
-        'Khi đã kết nối sẽ dùng skills.status của OpenClaw Gateway; nếu không sẽ quét cùng bố cục trên đĩa như OpenClaw (managed, workspace, bundled, extraDirs).',
       filterAll: 'Tất cả',
       filterBuiltin: 'Tích hợp sẵn',
       filterInstalled: 'Đã cài đặt',
@@ -508,17 +518,11 @@ export default {
       locationCount: '{count} bản sao',
       searchPlaceholder: 'Tìm kỹ năng, đường dẫn, trợ lý hoặc quyền…',
       noSkills: 'Không tìm thấy kỹ năng OpenClaw nào',
-      noSkillsHint:
-        'Hãy kết nối gateway để xem danh sách trực tiếp; khi ngoại tuyến, hãy theo tài liệu OpenClaw (state dir skills/, workspace-*/skills/, bundled package, skills.load.extraDirs).',
       openSharedDir: 'Mở thư mục kỹ năng của không gian làm việc chính',
-      openMainWorkspaceSkillsDir:
-        'Mở kỹ năng của không gian làm việc chính (workspace-main/skills)',
       openManagedSkillsDir: 'Mở thư mục kỹ năng được quản lý (openclaw/skills)',
       permissionLabel: 'Quyền',
       scopeLabel: 'Phạm vi',
       agentBinding: 'Trợ lý',
-      gatewayOfflineHint:
-        'Gateway đang ngoại tuyến: danh sách được dựng từ bố cục OpenClaw trên đĩa. Khi kết nối, skills.status sẽ được ưu tiên.',
       backToList: 'Quay lại danh sách',
       loadFailed: 'Tải kỹ năng OpenClaw thất bại',
       dataSourceLabel: 'Nguồn',
@@ -532,26 +536,19 @@ export default {
       eligibleNo: 'Không',
       eligibleUnknown: 'Không rõ',
       gateHintLabel: 'Ghi chú gateway',
-      previewNoLocalPath:
-        'Dòng này chỉ đến từ gateway — không có thư mục cục bộ để mở. Đường dẫn sẽ xuất hiện khi có kỹ năng tương ứng trên đĩa.',
       add: {
         title: 'Thêm',
         createViaChatTitle: 'Tạo qua trò chuyện',
         createViaChatDesc: 'Mô tả nhu cầu của bạn và để AI dựng khung kỹ năng OpenClaw',
         choosePackageTitle: 'Chọn gói kỹ năng',
         choosePackageDesc: 'Mở thư mục kỹ năng và đặt gói kỹ năng vào đó',
-        createViaChatPrompt:
-          'Hãy giúp tôi tạo một kỹ năng OpenClaw. Trước tiên hãy hỏi tôi cần chức năng gì, sau đó tạo SKILL.md (có frontmatter), cấu trúc thư mục cần thiết và mã mẫu. Cuối cùng hãy nhắc tôi đặt thư mục kỹ năng vào workspace-main/skills để kích hoạt.',
       },
+      openMainWorkspaceSkillsDir: 'Mở thư mục kỹ năng không gian làm việc chính (workspace-main/skills)',
     },
     mcp: {
       title: 'MCP',
       enable: 'Bật MCP',
-      enableHint:
-        'Khi được bật, trợ lý AI sẽ tự động kết nối và sử dụng các máy chủ MCPđã cấu hình.',
       directory: 'Thư mục cấu hình MCP',
-      directoryHint:
-        'Đặt các tệp cấu hình máy chủ MCPvào thư mục này. Chúng sẽ được tự động phát hiện và kết nối.',
       tabServers: 'MCP',
       tabSettings: 'Cài đặt',
       tabInstalled: 'Đã cài đặt',
@@ -633,6 +630,8 @@ export default {
       assistantMcpToolName: 'Tên công cụ',
       assistantMcpToolNamePlaceholder: 'Nhập một tên hàm hợp lệ',
       assistantMcpToolDesc: 'Mô tả công cụ',
+      directoryHint: 'Đặt tệp cấu hình dịch vụ MCP vào thư mục này, trợ lý AI sẽ tự động nhận diện và kết nối khi trò chuyện.',
+      enableHint: 'Sau khi bật, trợ lý AI sẽ tự động kết nối và sử dụng dịch vụ MCP đã cấu hình khi trò chuyện.',
     },
     snap: {
       title: 'Cài đặt',
@@ -685,8 +684,6 @@ export default {
       reauthBind: 'Xác thực lại',
       unbind: 'Hủy liên kết',
       unbindConfirmTitle: 'Xác nhận hủy liên kết',
-      unbindConfirmDesc:
-        'Sau khi hủy liên kết, bạn sẽ không thể tiếp tục dùng ứng dụng và cơ sở tri thức của ChatWiki. Bạn có muốn tiếp tục không?',
       addBinding: 'Thêm liên kết',
       applications: 'Ứng dụng',
       knowledgeBases: 'Cơ sở tri thức',
@@ -707,8 +704,6 @@ export default {
         wechat: 'Cơ sở tri thức Tài khoản chính thức',
       },
       enabledHint: 'Hiển thị trong Hỏi nhiều khi được bật',
-      libraryEnabledHint:
-        'Đồng bộ cơ sở tri thức ChatWiki. Khi bật, nó sẽ xuất hiện trong cơ sở tri thức nhóm khi đặt câu hỏi.',
       emptyRobots: 'Không có ứng dụng',
       emptyLibraries: 'Không có Cơ sở tri thức',
       loginCloud: 'Đăng nhập ChatWiki Cloud',
@@ -730,11 +725,7 @@ export default {
       startUsingHint: 'Nhấp vào ',
       startUsing: 'Bắt đầu sử dụng',
       freeVersion: 'Miễn phí',
-      modelServiceDesc:
-        'Sau khi liên kết ChatWiki, bạn có thể xem trực tiếp các mô hình khả dụng và số tín dụng trong Dịch vụ Mô hình.',
       notLoggedInTitle: 'Chưa đăng nhập vào ChatWiki',
-      notLoggedInDesc:
-        'Đăng nhập để đồng bộ danh sách mô hình và số dư tín dụng của ChatWiki Cloud.',
       loginNow: 'Đăng nhập ngay',
       accountIdPrefix: 'ID tài khoản: ',
       buyCredits: 'Mua tín dụng',
@@ -745,12 +736,6 @@ export default {
       pricePerKToken: '{price} tín dụng / 1K token',
       modelLoadFailed: 'Không thể tải danh sách mô hình',
       openBillingFailed: 'Không thể mở trang thanh toán',
-      modelBoundHint:
-        'Danh sách này hiển thị các mô hình hiện khả dụng cho tài khoản ChatWiki đã liên kết.',
-      modelUnboundHint:
-        'Hãy đăng nhập trước để tải danh sách mô hình khả dụng cho liên kết hiện tại.',
-      modelLoginHint:
-        'Vui lòng đăng nhập và liên kết tài khoản ChatWiki trước. Sau đó danh sách mô hình mới nhất sẽ xuất hiện tại đây.',
       providerStatus: {
         unbound: '{label} (Chưa đăng nhập)',
         nonCloud: '{label} (Chưa đăng nhập)',
@@ -760,13 +745,23 @@ export default {
         cn: 'Trung Quốc',
         global: 'Toàn cầu',
       },
+
+      libraryEnabledHint: 'Đồng bộ thư viện ChatWiki, sau khi bật có thể hiển thị trong thư viện kiến thức nhóm khi đặt câu hỏi',
+      modelBoundHint: 'Danh sách cấu hình mô hình khả dụng của tài khoản ChatWiki hiện tại được hiển thị ở đây.',
+      modelLoginHint: 'Vui lòng đăng nhập và liên kết tài khoản ChatWiki trước, sau đó danh sách dịch vụ mô hình mới nhất sẽ được hiển thị ở đây.',
+      modelServiceDesc: 'Sau khi liên kết ChatWiki, có thể xem mô hình khả dụng và tình trạng điểm tích lũy trực tiếp trong dịch vụ mô hình',
+      modelUnboundHint: 'Sau khi đăng nhập, danh sách mô hình khả dụng sẽ được tải theo tài khoản liên kết hiện tại.',
+      notLoggedInDesc: 'Sau khi đăng nhập có thể đồng bộ danh sách mô hình và thông tin điểm tích lũy của ChatWiki Cloud.',
+      unbindConfirmDesc: 'Sau khi hủy liên kết, sẽ không thể sử dụng ứng dụng và thư viện kiến thức do ChatWiki cung cấp. Bạn có chắc chắn muốn tiếp tục không?',
+
+
       loginReminder: {
         title: "Chat Claw",
         subtitle: "Liên kết tài khoản ChatWiki — nhận tín dụng để trải nghiệm nhanh",
         footer: "ChatWiki là phiên bản đám mây của ứng dụng ChatClaw",
         loginNow: "Đăng nhập ngay",
         loginLater: "Để sau",
-      },
+      },
     },
     tools: {
       tray: {
@@ -912,10 +907,9 @@ export default {
       noAgentSelected: 'Vui lòng chọn một trợ lý',
       createAgentFirst: 'Tạo trợ lý trước',
       selectModelFirst: 'Chọn mô hình trước',
-      chatComingSoon:
-        'Nội dung trò chuyện sẽ hiển thị ở đây (danh sách chủ đề vẫn chưa được triển khai).',
       inputPlaceholder: 'Nhập câu hỏi...',
       enterToSend: 'Vui lòng nhập nội dung',
+      chatComingSoon: 'Nội dung trò chuyện tương ứng với trợ lý sẽ được hiển thị ở đây (danh sách chủ đề chưa được triển khai).',
     },
     sidebar: {
       collapse: 'Thu gọn',
@@ -1022,13 +1016,12 @@ export default {
       bindSuccess: 'Liên kết thành công',
       unbindSuccess: 'Hủy liên kết thành công',
       addBot: 'Thêm bot',
-      addBotHint:
-        'Mỗi bot chỉ có thể liên kết với một trợ lý AI. Chỉ các bot chưa liên kết mới được hiển thị.',
       noUnboundBot: 'Không có bot khả dụng để liên kết',
       selectBot: 'Vui lòng chọn bot để liên kết',
-      statusOnline: "Đã kết nối",
-      statusError: "Lỗi",
-      statusOffline: "Chưa kết nối",
+      statusOnline: 'Đã kết nối',
+      statusError: 'Lỗi',
+      statusOffline: 'Chưa kết nối',
+      addBotHint: 'Một bot chỉ có thể được liên kết với một trợ lý AI, chỉ hiển thị bot chưa được liên kết',
     },
     conversation: {
       empty: 'Không có lịch sử chat',
@@ -1068,14 +1061,13 @@ export default {
       teamImageNotSupported: 'Gửi hình ảnh trong chế độ nhóm chưa được hỗ trợ',
       selectTeamRobotFirst: 'Vui lòng chọn robot nhóm trước',
       teamRobotMissingKey: 'Robot hiện tại không có robot_key, vui lòng đồng bộ lại',
-      modelNotSupportVision:
-        'Mô hình hiện tại không hỗ trợ nhận dạng hình ảnh. Vui lòng chuyển sang mô hình đa phương thức có hỗ trợ thị giác.',
       modelNotSupportVisionHint: 'Các mô hình như GPT-4o, Claude, Gemini hỗ trợ nhận dạng hình ảnh',
       fileTooLarge: 'Kích thước tệp vượt quá giới hạn (tối đa {max})',
       tooManyFiles: 'Tối đa {max} tệp được tải lên',
       invalidFileType: 'Loại tệp không được hỗ trợ',
       fileReadFailed: 'Không thể đọc tệp',
       fileOpenFailed: 'Không thể mở tệp',
+      modelNotSupportVision: 'Mô hình hiện tại không hỗ trợ nhận diện hình ảnh, vui lòng chuyển sang mô hình đa phương thức hỗ trợ thị giác',
     },
     toasts: {
       created: 'Đã tạo trợ lý',
@@ -1097,15 +1089,13 @@ export default {
         sandboxMode: 'Chế độ thực thi',
         modeCodex: 'Sandbox Codex',
         modeNative: 'Thực thi native',
-        nativeDesc:
-          'Thực thi lệnh trực tiếp trên máy cục bộ mà không có lớp cô lập sandbox. Các lệnh sẽ có toàn bộ quyền của người dùng hiện tại.',
         networkAccess: 'Cho phép truy cập mạng',
         workDir: 'Thư mục làm việc',
-        workDirHint:
-          'Cấu trúc: {basePath}{sep}sessions{sep}<agent_hash>{sep}<conversation_hash>{sep}',
         changeDir: 'Thay đổi',
         resetDir: 'Đặt lại về mặc định',
         selectDir: 'Chọn thư mục làm việc',
+        nativeDesc: 'Thực thi lệnh trực tiếp trên máy, không có cách ly sandbox. Lệnh có toàn quyền của người dùng hiện tại.',
+        workDirHint: 'Cấu trúc: {basePath}{sep}sessions{sep}<agent_hash>{sep}<conversation_hash>{sep}',
       },
       model: {
         defaultModel: 'Mô hình mặc định',
@@ -1138,13 +1128,9 @@ export default {
         sandboxMode: 'Chế độ sandbox',
         sandbox_off: 'Vô hiệu hóa',
         sandbox_all: 'Tất cả trợ lý',
-        sandboxModeHint:
-          'Sandbox cách ly việc thực thi lệnh, ngăn trợ lý sửa đổi trực tiếp hệ thống máy chủ',
         groupChatMentionPatterns: 'Mẫu nhắc trong nhóm',
-        groupChatMentionPatternsPlaceholder: "{'@'}assistant, {'@'}bot",
+        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
         groupChatInsertPreset: 'Chèn mẫu',
-        groupChatMentionPatternsHint:
-          'Mẫu để kích hoạt phản hồi của trợ lý, phân cách bằng dấu phẩy',
         tools: 'Cấu hình công cụ',
         toolsProfile: 'Hồ sơ công cụ',
         toolsProfile_default: 'Chưa đặt (kế thừa toàn cục)',
@@ -1153,25 +1139,17 @@ export default {
         toolsProfile_messaging: 'Messaging — nhắn tin/phiên',
         toolsProfile_full: 'Full — không hạn chế',
         builtinTools: 'Công cụ tích hợp',
-        builtinToolsHint:
-          'Bạn có thể chọn trực tiếp các công cụ tích hợp của OpenClaw tại đây. Công cụ plugin hoặc công cụ tùy chỉnh vẫn có thể nhập thủ công ở bên dưới.',
         builtinToolsLoading: 'Đang tải công cụ tích hợp của OpenClaw…',
-        builtinToolsUnavailable:
-          'Hiện chưa thể tải danh mục công cụ tích hợp của OpenClaw. Bạn vẫn có thể nhập tên công cụ thủ công.',
         toolModeAllow: 'Cho phép',
         toolModeDeny: 'Cấm',
         toolsAllow: 'Công cụ được phép',
         toolsAllowPlaceholder: 'vd. browser, file_search',
         toolsDeny: 'Công cụ bị từ chối',
         toolsDenyPlaceholder: 'vd. canvas',
-        toolsHint:
-          'Cấm có ưu tiên cao hơn cho phép. Công cụ plugin hoặc công cụ tùy chỉnh vẫn có thể nhập thủ công rồi nhấn Enter để xác nhận.',
         heartbeat: 'Khoảng thời gian heartbeat',
         heartbeat_off: 'Tắt',
         heartbeat_custom: 'Tùy chỉnh',
         heartbeatPlaceholder: 'vd. 10m',
-        heartbeatFormatError:
-          'Định dạng không hợp lệ. Nhập số + đơn vị, ví dụ: 10m, 1h, 30s, 500ms',
         heartbeatHint: 'Khoảng thời gian kiểm tra heartbeat định kỳ (ms/s/m/h)',
         params: 'Ghi đè tham số mô hình',
         paramsTemperature: 'Nhiệt độ',
@@ -1179,6 +1157,11 @@ export default {
         paramsMaxTokens: 'Số token tối đa',
         paramsMaxTokensPlaceholder: 'Để trống sử dụng mặc định',
         paramsHint: 'Ghi đè tham số agents.defaults.models cho trợ lý này',
+        builtinToolsUnavailable: 'Hiện không thể đọc thư mục công cụ tích hợp của OpenClaw, bạn vẫn có thể nhập tên công cụ thủ công.',
+        groupChatMentionPatternsHint: 'Khớp mẫu đề cập trong tin nhắn để kích hoạt phản hồi từ trợ lý, nhiều mẫu phân cách bằng dấu phẩy',
+        heartbeatFormatError: 'Định dạng không đúng, vui lòng nhập số + đơn vị, ví dụ: 10m, 1h, 30s, 500ms',
+        sandboxModeHint: 'Sandbox có thể cô lập môi trường thực thi lệnh, ngăn trợ lý thao tác trực tiếp trên hệ thống máy chủ',
+        toolsHint: 'Ưu tiên cấm cao hơn cho phép. Công cụ plugin hoặc công cụ tùy chỉnh có thể tiếp tục nhập thủ công, nhấn Enter để xác nhận sau khi nhập.',
       },
     },
     workspaceDrawer: {
@@ -1201,8 +1184,6 @@ export default {
       mcpAddFromGlobal: 'Thêm từ danh sách MCPtoàn cục',
       mcpEmptyHint: 'Nhấp vào + để thêm từ danh sách MCPtoàn cục',
       mcpPickerHint: 'Bật để thêm hoặc xóa máy chủ MCPcho trợ lý này',
-      mcpNoAvailableToAdd:
-        'Không có máy chủ MCP nào để thêm. Hãy bật một vài máy chủ trong phần Cài đặt trước.',
       mcpSearchPlaceholder: 'Tìm kiếm máy chủ MCP',
       mcpNoSearchResults: 'Không có kết quả phù hợp',
       mcpSelectAll: 'Chọn tất cả',
@@ -1210,22 +1191,19 @@ export default {
       mcpGlobalDisabled: 'Công tắc toàn cục MCPđã tắt. Vui lòng bật trong Cài đặt.',
       mcpGoToSettings: 'Thêm MCPmới',
       mcpGoToSettingsHint: 'Đi đến trang cài đặt để thêm máy chủ MCPmới',
+      mcpNoAvailableToAdd: 'Không có dịch vụ MCP nào có thể thêm, vui lòng bật trong cài đặt trước',
     },
   },
   knowledge: {
     help: {
       name: 'Tên để phân biệt các Cơ sở tri thức khác nhau (tối đa 30 ký tự).',
-      chunkSize:
-        'Kích thước đoạn (tính theo ký tự, 500~5000). Đoạn lớn hơn cho ngữ cảnh đầy đủ hơn nhưng mức độ truy xuất sẽ thô hơn.',
-      chunkOverlap:
-        'Kích thước chồng lấp giữa các đoạn liền kề (tính theo ký tự, 0~1000) để giảm mất mát thông tin do câu bị cắt giữa các đoạn.',
-      batchMaxDocuments:
-        'For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.',
-      batchMaxChunks:
-        'Maximum number of segments per embedding request during learning. Range: 1~20.',
       matchThreshold: 'Các kết quả có độ tương tự thấp hơn ngưỡng này sẽ được lọc (0~1).',
       embeddingModel: 'Mô hình embedding được sử dụng để chuyển văn bản thành vector.',
       embeddingDimension: 'Kích thước vector embedding phải khớp với đầu ra của mô hình đã chọn.',
+      batchMaxChunks: 'Giai đoạn học embedding, số đoạn tối đa trong mỗi yêu cầu vector hóa. Phạm vi giá trị: 1~20.',
+      chunkOverlap: 'Kích thước chồng chéo của các đoạn liền kề (số ký tự, 0~1000), dùng để giảm tình trạng mất thông tin do ngắt câu xuyên đoạn.',
+      chunkSize: 'Kích thước đoạn (số ký tự, 500~5000). Đoạn càng lớn, ngữ cảnh càng đầy đủ nhưng độ mịn của việc recall càng thô.',
+      raptorLLMModel: 'Mô hình ngôn ngữ dùng để tạo tóm tắt phân cấp; không chọn nghĩa là không kích hoạt khả năng này.',
     },
     tabs: {
       personal: 'Cá nhân',
@@ -1322,12 +1300,11 @@ export default {
       batchMaxDocuments: 'Max documents per batch',
       batchMaxChunks: 'Max segments per embedding batch',
       matchThreshold: 'Ngưỡng khớp',
-      advancedWarning:
-        'Các thay đổi về kích thước đoạn và độ chồng lấp chỉ áp dụng cho nội dung mới được thêm vào',
       cancel: 'Hủy',
       confirm: 'Tạo',
       success: 'Đã tạo Cơ sở tri thức',
       failed: 'Tạo Cơ sở tri thức thất bại',
+      advancedWarning: 'Việc sửa đổi kích thước đoạn và kích thước chồng chéo chỉ có hiệu lực đối với nội dung mới thêm',
     },
     embeddingSettings: {
       title: 'Cài đặt mô hình embedding',
@@ -1441,8 +1418,6 @@ export default {
       deleteCancel: 'Hủy',
       deleteConfirm: 'Xóa',
       deleteSuccess: 'Xóa thành công',
-      deleteDescBatch:
-        'Xóa {count} thư mục sẽ chuyển tài liệu bên trong sang "Chưa phân loại". Không thể hoàn tác.',
       deleteSuccessBatch: 'Đã xóa {count} thư mục',
       move: {
         title: 'Di chuyển thư mục',
@@ -1626,8 +1601,6 @@ export default {
       success: 'Tạo kênh thành công',
       failed: 'Tạo kênh thất bại',
       dingtalkPluginInstalling: 'Đang cài đặt plugin DingTalk',
-      dingtalkPluginInstallingDesc:
-        'Plugin DingTalk Connector đang được cài đặt nền. Bạn có thể tiếp tục liên kết trợ lý ngay bây giờ và kiểm tra trạng thái kết nối sau.',
       avatarHint: 'Nhấp để thay thế, khuyến nghị 100*100px, tối đa 100KB',
       feishuTipPrefix: 'Đăng nhập vào',
       feishuTipMiddle: 'để tạo bot, làm theo',
@@ -1708,8 +1681,6 @@ export default {
     comingSoon: 'Sắp ra mắt',
     agentFallback: 'Trợ lý AI',
     unbindConfirmTitle: 'Xác nhận hủy liên kết',
-    unbindConfirmDesc:
-      'Hủy liên kết trợ lý khỏi kênh "{name}"? Kênh sẽ không xử lý tin nhắn cho đến khi liên kết lại.',
     unbindSuccess: 'Đã hủy liên kết trợ lý',
     bindSuccess: 'Liên kết trợ lý thành công',
     card: {
@@ -1739,20 +1710,18 @@ export default {
     },
     toggle: {
       enableSuccess: 'Bật thành công',
-      dingtalkPluginNotReady:
-        'Plugin kết nối DingTalk vẫn đang cài đặt hoặc chưa sẵn sàng. Vui lòng thử lại sau.',
       disableSuccess: 'Tắt thành công',
       enableTitle: 'Bật kênh này?',
       disableTitle: 'Tắt kênh này?',
       enableDesc: 'Khi được bật, hệ thống sẽ cố gắng kết nối và nhận tin nhắn từ kênh này.',
-      disableDesc:
-        'Khi tắt, kết nối đến kênh này sẽ bị ngắt và hệ thống sẽ không còn nhận tin nhắn từ kênh đó nữa.',
+      dingtalkPluginNotReady: 'Plugin kết nối DingTalk vẫn đang cài đặt hoặc chưa sẵn sàng, vui lòng thử lại sau.',
+      disableDesc: 'Sau khi tắt, kết nối với kênh này sẽ bị ngắt, hệ thống sẽ không còn nhận tin nhắn của nó.',
     },
     status: {
       online: 'Đã kết nối',
       error: 'Lỗi',
       offline: 'Đã ngắt kết nối',
-      provisioning: "Đang kết nối…",
+      provisioning: 'Đang kết nối…',
     },
     bindAgent: {
       title: 'Chọn trợ lý',
@@ -1766,25 +1735,18 @@ export default {
     },
     provisioning: {
       toastTitle: 'Đang xử lý trong nền',
-      toastDescription:
-        'Kênh và gateway vẫn đang được tạo hoặc đồng bộ. Trạng thái kết nối sẽ tự động cập nhật. Vui lòng chờ.',
-      toastDescriptionWithAgent:
-        'Kênh, trợ lý hoặc gateway vẫn đang được tạo hoặc đồng bộ. Vui lòng chờ.',
+      toastDescription: 'Kênh và gateway đang được tạo hoặc đồng bộ, trạng thái kết nối sẽ tự động cập nhật, vui lòng chờ.',
+      toastDescriptionWithAgent: 'Kênh, trợ lý hoặc gateway đang được tạo hoặc đồng bộ, vui lòng chờ.',
     },
     wecom: {
       emptyTitle: 'Chưa thêm WeCom',
-      emptyDesc:
-        'Kết nối WeCom bằng cách quét mã QR với plugin OpenClaw chính thức của Tencent hoặc tích hợp bot có sẵn.',
+      emptyDesc: 'Quét mã để kết nối WeCom qua plugin chính thức OpenClaw của Tencent, đồng thời hỗ trợ kết nối bot đã có.',
     },
     wechat: {
       emptyTitle: 'Chưa thêm WeChat',
-      emptyDesc:
-        'Kết nối WeChat cá nhân bằng cách quét mã QR với plugin OpenClaw chính thức của Tencent và bắt đầu nhận, xử lý tin nhắn WeChat.',
       addNow: 'Thêm ngay',
       configTitle: 'Cấu hình WeChat',
       howToConnect: 'Cách kết nối',
-      tipsIntro:
-        'Kết nối WeChat cá nhân bằng cách quét mã với plugin OpenClaw chính thức của Tencent',
       stepsLabel: 'Các bước',
       step1: 'Nhấn Tạo mã QR để cài đặt và bật plugin WeChat chính thức trong OpenClaw',
       step2: 'Dùng WeChat quét mã QR bên dưới và xác nhận kết nối trên điện thoại',
@@ -1796,24 +1758,17 @@ export default {
       qrExpired: 'Đã hết hạn',
       loginSuccess: 'Kết nối WeChat thành công',
       assistantPromptTitle: 'Liên kết trợ lý',
-      assistantPromptDesc:
-        'Kênh này hiện được liên kết mặc định với trợ lý chính (main), và tin nhắn sẽ do trợ lý chính xử lý. Nếu muốn dùng trợ lý khác, bạn có thể liên kết một trợ lý hiện có hoặc tạo trợ lý mới và tự động liên kết với kênh WeChat này.',
       useMainAssistant: 'Hoàn tất (dùng trợ lý chính)',
       bindExistingAssistant: 'Liên kết trợ lý hiện có',
       createAssistantManually: 'Tạo trợ lý',
-      createAssistantHint:
-        'Khi tạo trợ lý mới, bạn cần tự điền tên và các thông tin khác. Sau khi tạo xong, trợ lý sẽ được liên kết tự động và kết nối sẽ được làm mới.',
-      missingChannelId:
-        'Không lấy được thông tin kênh. Hãy đóng cửa sổ này, làm mới danh sách kênh và thử lại.',
-      missingChannelIdHint:
-        'Không lấy được ID kênh. Hãy đóng cửa sổ này và liên kết trợ lý thủ công từ danh sách kênh.',
       channelNotFound: 'Không tìm thấy kênh tương ứng. Hãy làm mới rồi thử lại.',
-      pluginInstallTryLater:
-        'Plugin WeChat chính thức đang được cài đặt hoặc kích hoạt trong nền. Vui lòng thử lại sau.',
-      editNotSupported:
-        'WeChat được kết nối bằng cách quét mã QR nên không hỗ trợ chỉnh sửa tại đây. Nếu muốn đổi tài khoản, hãy xóa kênh này trên trang kênh rồi quét mã để thêm lại.',
-      qrExpiredHint:
-        'Mã QR không còn hiệu lực hoặc hết thời gian chờ. Nhấn Làm mới bên dưới để lấy mã mới.',
+      createAssistantHint: 'Khi tạo trợ lý mới cần nhập thủ công tên và thông tin khác; sau khi tạo thành công sẽ tự động liên kết và làm mới kết nối.',
+      emptyDesc: 'Quét mã qua plugin chính thức OpenClaw của Tencent để kết nối WeChat cá nhân, bắt đầu nhận và xử lý tin nhắn WeChat.',
+      missingChannelId: 'Không lấy được thông tin kênh, vui lòng đóng và làm mới danh sách kênh rồi thử lại.',
+      missingChannelIdHint: 'Không lấy được ID kênh, vui lòng đóng cửa sổ này và liên kết trợ lý thủ công trong danh sách kênh.',
+      pluginInstallTryLater: 'Plugin WeChat chính thức đang được cài đặt hoặc kích hoạt ở chế độ nền, vui lòng thử lại sau.',
+      qrExpiredHint: 'Mã QR đã hết hạn hoặc hết thời gian chờ, vui lòng nhấp "Làm mới" bên dưới để lấy lại.',
+      tipsIntro: 'Quét mã để kết nối WeChat cá nhân qua plugin chính thức OpenClaw của Tencent',
     },
     whatsapp: {
       emptyTitle: 'Chưa thêm WhatsApp',
@@ -1821,10 +1776,6 @@ export default {
       addNow: 'Thêm ngay',
       configTitle: 'Cấu hình WhatsApp',
       howToConnect: 'Cách kết nối',
-      step1:
-        'Sau khi nhấn nút bên dưới, ứng dụng sẽ bật kênh WhatsApp tích hợp trong OpenClaw nếu cần.',
-      step2:
-        'Ứng dụng chạy quy trình đăng nhập QR ở nền; hãy dùng WhatsApp trên điện thoại để quét mã.',
       step3: 'Sau khi liên kết, gắn trợ lý tại trang này. Xóa kênh sẽ đăng xuất và gỡ ràng buộc.',
       configStepsLink: 'Tài liệu chính thức',
       generateQRCode: 'Tạo mã QR',
@@ -1833,14 +1784,34 @@ export default {
       waitingForScan: 'Đang chờ quét…',
       refresh: 'Làm mới',
       qrExpired: 'Mã QR đã hết hạn',
-      qrExpiredHint:
-        'Mã QR đã hết hạn hoặc hết thời gian chờ. Nhấn Làm mới bên dưới để lấy mã mới.',
       loginSuccess: 'Đã kết nối WhatsApp',
-      pluginInstallTryLater:
-        'Kênh WhatsApp đang được bật hoặc chưa sẵn sàng. Vui lòng thử lại sau.',
       channelNotFound: 'Không tìm thấy kênh tương ứng. Hãy làm mới và thử lại.',
-      editNotSupported:
-        'WhatsApp kết nối bằng quét mã QR nên không chỉnh sửa tại đây. Để đổi tài khoản, hãy xóa kênh này rồi thêm lại.',
+      pluginInstallTryLater: 'Kênh WhatsApp đang được kích hoạt hoặc chưa sẵn sàng, vui lòng thử lại sau.',
+      qrExpiredHint: 'Mã QR đã hết hạn hoặc hết thời gian chờ, vui lòng nhấp "Làm mới" bên dưới để lấy lại.',
+      step1: 'Sau khi nhấp nút bên dưới, ứng dụng sẽ kích hoạt kênh WhatsApp tích hợp trong OpenClaw trước (nếu chưa được kích hoạt).',
+      step2: 'Sau đó ứng dụng sẽ chạy quy trình đăng nhập quét mã ở chế độ nền; vui lòng quét mã QR bằng WhatsApp trên điện thoại.',
+    },
+    backToOverview: 'Quay lại tổng quan kênh',
+    panel: {
+      add: 'Thêm',
+    },
+    platformBlurbs: {
+      default: 'Kết nối nền tảng này để nhận và gửi tin nhắn.',
+      dingtalk: 'Kết nối bot doanh nghiệp DingTalk, đạt được tương tác nhóm và tin nhắn riêng ổn định thông qua chế độ Stream.',
+      feishu: 'Kết nối ứng dụng doanh nghiệp Feishu, thực hiện tương tác nhóm và tin nhắn riêng tự động.',
+      qq: 'Kết nối bot chính thức QQ, bao phủ tất cả kịch bản tương tác nhóm, kênh và tin nhắn riêng.',
+      wechat: 'Quét mã để kết nối WeChat, WeChat kết nối trực tiếp với bot để trò chuyện.',
+      wecom: 'Sử dụng Bot ID và Secret để kết nối bot chính thức WeCom.',
+      whatsapp: 'Quét mã để kết nối WhatsApp, nhanh chóng triển khai giao tiếp kinh doanh toàn cầu.',
+    },
+    platformCard: {
+      connect: 'Kết nối',
+    },
+    row: {
+      boundToAgent: 'Đã liên kết với {name}',
+    },
+    supported: {
+      title: 'Kênh được hỗ trợ',
     },
   },
   scheduledTasks: {
@@ -1853,8 +1824,6 @@ export default {
     refresh: 'Làm mới',
     edit: 'Chỉnh sửa tác vụ',
     empty: 'Chưa có tác vụ định giờ',
-    emptyDescription:
-      'Tạo tác vụ đã lên lịch để tự động hóa quy trình AI. Tác vụ có thể gửi tin nhắn, chạy truy vấn hoặc thực hiện hành động vào thời điểm chỉ định.',
     errorReason: 'Xem lý do lỗi',
     actionsMenu: 'Mở menu thao tác',
     total: 'Tổng tác vụ',
@@ -1898,8 +1867,6 @@ export default {
       nameLabel: 'Tên tác vụ',
       namePlaceholder: 'Ví dụ: Bản tin buổi sáng',
       promptLabel: 'Lời nhắc',
-      promptPlaceholder:
-        'AI nên làm gì? Ví dụ: Hãy cho tôi bản tóm tắt tin tức và thời tiết hôm nay.',
       agentLabel: 'Trợ lý AI liên kết',
       selectAgent: 'Chọn một trợ lý',
       scheduleTitle: 'Thiết lập lịch chạy',
@@ -1923,6 +1890,7 @@ export default {
       enableNowTitle: 'Bật ngay',
       enableNowHint: 'Bắt đầu chạy tác vụ này ngay sau khi tạo',
       submitting: 'Đang gửi...',
+      promptPlaceholder: 'AI nên làm gì? Ví dụ: Gửi cho tôi bản tóm tắt tin tức và thời tiết hôm nay',
     },
     operationLog: {
       title: 'Nhật ký thao tác',
@@ -1972,10 +1940,9 @@ export default {
       selectTypeFirst: 'Vui lòng chọn loại thông báo trước',
       selectChannel: 'Vui lòng chọn kênh',
       emptyChannels: 'Không có kênh nào khả dụng cho loại thông báo hiện tại',
-      hintSelected:
-        'Bạn có thể chọn nhiều kênh. Kết quả sẽ được gửi đến đó sau khi tác vụ hoàn tất.',
       hintUnselected: 'Hãy chọn loại thông báo trước, rồi chọn một hoặc nhiều kênh từ nền tảng đó.',
       channelFallback: 'Kênh {id}',
+      hintSelected: 'Có thể chọn nhiều, sau khi tác vụ hoàn thành sẽ gửi kết quả qua các kênh này.',
     },
     presets: {
       everyMinute: 'Mỗi phút',
@@ -2023,8 +1990,6 @@ export default {
       thinking: 'Suy nghĩ',
       enabled: 'Bật tác vụ',
       expiresAt: 'Ngày hết hạn',
-      expiredHint:
-        'Tác vụ này đã hết hạn và sẽ không chạy lại nữa. Để tiếp tục, hãy chuyển thời điểm hết hạn sang một ngày trong tương lai.',
       scheduleType: 'Loại lịch trình',
       schedulePreset: 'Cài đặt sẵn',
       scheduleCustom: 'Thời gian tùy chỉnh',
@@ -2051,14 +2016,16 @@ export default {
       calendarTitle: '{year} / {month}',
       yearOption: '{year}',
       monthOption: '{month}',
+      expiredHint: 'Tác vụ này đã hết hạn và sẽ không còn được thực thi. Để khôi phục thực thi, vui lòng sửa thời gian hết hạn sang tương lai.',
     },
   },
   openclawGateway: {
     banner: {
       starting: 'The gateway is starting. Please try again in a moment.',
       upgrading: 'OpenClaw runtime is upgrading. Please try again in a moment.',
-      channels: '网关未运行，未启用网关时无法管理消息频道',
-      scheduledTasks: '网关未运行，未启用网关时无法管理定时任务',
+      channels: 'Không phát hiện gateway đang chạy, không thể quản lý kênh tin nhắn khi gateway chưa được bật',
+      scheduledTasks: 'Không phát hiện gateway đang chạy, không thể quản lý tác vụ định giờ khi gateway chưa được bật',
+      notInstalled: 'Không phát hiện OpenClaw runtime. Vui lòng cài đặt runtime tại「Cài đặt → Chung」hoặc「OpenClaw Manager」.',
     },
   },
   openclawCron: {
@@ -2133,8 +2100,6 @@ export default {
       systemEvent: 'Sự kiện hệ thống',
       systemEventPlaceholder: 'Payload sự kiện hệ thống tùy chọn',
       advanced: 'Cài đặt nâng cao',
-      advancedHint:
-        'Tùy chọn bổ sung cho mô hình, gửi kết quả, phiên, thời gian chờ và nhiều hơn nữa',
       model: 'Mô hình',
       modelPlaceholder: 'Ví dụ: provider/model hoặc alias',
       thinking: 'Suy nghĩ',
@@ -2151,8 +2116,6 @@ export default {
       deliveryTargetId: 'ID đích',
       deliveryTargetIdPlaceholder: 'Nhập ID cuộc trò chuyện hoặc người dùng',
       deliveryTargetHintTitle: 'Đích mặc định',
-      deliveryTargetFixedHint:
-        'ID đích được gửi gần nhất cho trợ lý và loại kênh đã chọn sẽ được điền sẵn, và bạn vẫn có thể chỉnh thủ công.',
       deliveryTargetModes: {
         lastActive: 'Đích hoạt động gần nhất',
         targetId: 'Nhập ID đích',
@@ -2165,55 +2128,55 @@ export default {
       expectFinal: 'Chờ kết quả cuối cùng',
       lightContext: 'Ngữ cảnh nhẹ',
       bestEffortDeliver: 'Gửi theo khả năng tốt nhất',
-      bestEffortDeliverHint:
-        'Không làm toàn bộ tác vụ thất bại nếu việc gửi kết quả không thành công',
       deleteAfterRun: 'Xóa sau khi chạy',
       keepAfterRun: 'Giữ lại sau khi chạy',
       enabled: 'Bật tác vụ',
+      advancedHint: 'Cấu hình bổ sung như mô hình, giao nhận, phiên, timeout',
+      bestEffortDeliverHint: 'Khi giao nhận thất bại, không để toàn bộ tác vụ thất bại',
     },
     history: {
-      conversationPreparing: '正在准备历史会话，请稍后...',
-      delivery: '投递状态',
+      conversationPreparing: 'Đang chuẩn bị lịch sử phiên, vui lòng chờ...',
+      delivery: 'Trạng thái giao nhận',
       deliveryStatus: {
-        delivered: '已投递',
-        failed: '投递失败',
-        not_delivered: '未投递',
-        pending: '待投递',
-        success: '投递成功',
+        delivered: 'Đã giao',
+        failed: 'Giao thất bại',
+        not_delivered: 'Chưa giao',
+        pending: 'Chờ giao',
+        success: 'Giao thành công',
       },
-      detailErrorReason: '失败原因',
-      detailLoadFailed: '加载运行明细失败',
-      detailLoadFailedDescription: '未能获取这次运行的对话明细，请检查 OpenClaw 运行状态后重试。',
-      detailLoadFailedReason: '请确认 OpenClaw Gateway 已启动，并稍后重试。',
-      detailLoading: '正在加载对话明细...',
-      duration: '耗时',
-      empty: '暂无运行历史',
-      error: '错误信息',
-      model: '模型',
-      provider: '提供商',
-      retryLoadDetail: '重试加载',
-      runAt: '运行时间',
-      selectRun: '请选择一次运行记录',
-      summary: '运行摘要',
-      title: '运行历史',
-      waitingTriggeredRun: '任务已触发，正在等待 OpenClaw 写入新的运行记录...',
+      detailErrorReason: 'Lý do thất bại',
+      detailLoadFailed: 'Tải chi tiết vận hành thất bại',
+      detailLoadFailedDescription: 'Không thể lấy chi tiết cuộc trò chuyện của lần chạy này, vui lòng kiểm tra trạng thái OpenClaw rồi thử lại.',
+      detailLoadFailedReason: 'Vui lòng xác nhận OpenClaw Gateway đã khởi động và thử lại sau.',
+      detailLoading: 'Đang tải chi tiết cuộc trò chuyện...',
+      duration: 'Thời gian',
+      empty: 'Chưa có lịch sử vận hành',
+      error: 'Thông tin lỗi',
+      model: 'Mô hình',
+      provider: 'Nhà cung cấp',
+      retryLoadDetail: 'Thử tải lại',
+      runAt: 'Thời gian chạy',
+      selectRun: 'Vui lòng chọn một bản ghi vận hành',
+      summary: 'Tóm tắt vận hành',
+      title: 'Lịch sử vận hành',
+      waitingTriggeredRun: 'Tác vụ đã được kích hoạt, đang chờ OpenClaw ghi bản ghi vận hành mới...',
     },
-    runNowQueued: '任务已开始执行，请稍后在历史中查看结果',
+    runNowQueued: 'Tác vụ đã bắt đầu thực thi, vui lòng xem kết quả trong lịch sử sau',
     schedule: {
-      atPrefix: '指定时间',
-      daily: '每天 {time}',
-      everyPrefix: '每隔',
-      monthly: '每月 {day} 号 {time}',
+      atPrefix: 'Thời gian cụ thể',
+      daily: 'Mỗi ngày lúc {time}',
+      everyPrefix: 'Mỗi',
+      monthly: 'Ngày {day} hàng tháng lúc {time}',
       weekdays: {
-        friday: '周五',
-        monday: '周一',
-        saturday: '周六',
-        sunday: '周日',
-        thursday: '周四',
-        tuesday: '周二',
-        wednesday: '周三',
+        friday: 'Thứ Sáu',
+        monday: 'Thứ Hai',
+        saturday: 'Thứ Bảy',
+        sunday: 'Chủ Nhật',
+        thursday: 'Thứ Năm',
+        tuesday: 'Thứ Ba',
+        wednesday: 'Thứ Tư',
       },
-      weekly: '每周 {weekday} {time}',
+      weekly: 'Mỗi {weekday} lúc {time}',
     },
   },
 }

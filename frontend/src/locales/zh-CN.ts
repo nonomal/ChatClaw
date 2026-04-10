@@ -347,22 +347,22 @@ export default {
         gatewayDisabledHint: '网关未启用',
       },
       doctor: {
-        title: "OpenClaw Doctor 诊断",
-        run: "运行",
-        runAndFix: "运行并修复",
-        autoTriggered: "OpenClaw 连接失败超过 3 次，正在自动运行诊断修复…",
-        command: "命令",
-        workingDir: "工作目录",
-        stdout: "标准输出",
-        stderr: "标准错误",
-        noOutput: "暂无输出",
-        noErrors: "暂无错误",
-        exitCode: "退出码",
-        duration: "耗时",
-        running: "运行中…",
-        success: "执行成功",
-        failed: "执行失败",
-        fixed: "已修复",
+        title: 'OpenClaw Doctor 诊断',
+        run: '运行',
+        runAndFix: '运行并修复',
+        autoTriggered: 'OpenClaw 连接失败超过 3 次，正在自动运行诊断修复…',
+        command: '命令',
+        workingDir: '工作目录',
+        stdout: '标准输出',
+        stderr: '标准错误',
+        noOutput: '暂无输出',
+        noErrors: '暂无错误',
+        exitCode: '退出码',
+        duration: '耗时',
+        running: '运行中…',
+        success: '执行成功',
+        failed: '执行失败',
+        fixed: '已修复',
       },
     },
     runtimeEnvironment: {
@@ -1029,9 +1029,9 @@ export default {
       addBotHint: '一个机器人只能被一个AI助手绑定，仅显示未绑定的机器人',
       noUnboundBot: '暂无未绑定的机器人',
       selectBot: '请选择要绑定的机器人',
-      statusOnline: "已连接",
-      statusError: "错误",
-      statusOffline: "未连接",
+      statusOnline: '已连接',
+      statusError: '错误',
+      statusOffline: '未连接',
     },
     conversation: {
       empty: '暂无聊天记录',
@@ -1140,7 +1140,7 @@ export default {
         sandbox_all: '所有助手启用',
         sandboxModeHint: '沙箱可隔离命令执行环境，防止助手直接操作宿主系统',
         groupChatMentionPatterns: '群聊提及模式',
-        groupChatMentionPatternsPlaceholder: "{'@'}assistant, {'@'}bot",
+        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
         groupChatInsertPreset: '插入预设',
         groupChatMentionPatternsHint: '匹配消息中的提及模式以触发助手响应，多个用逗号分隔',
         tools: '工具配置',
@@ -1151,8 +1151,6 @@ export default {
         toolsProfile_messaging: 'Messaging — 消息/会话',
         toolsProfile_full: 'Full — 不限制',
         builtinTools: '内置工具',
-        builtinToolsHint:
-          '这里可直接选择 OpenClaw 内置工具；插件工具或自定义工具仍可在下方手动输入。',
         builtinToolsLoading: '正在加载 OpenClaw 内置工具…',
         builtinToolsUnavailable: '暂时无法读取 OpenClaw 内置工具目录，你仍然可以手动输入工具名。',
         toolModeAllow: '允许',
@@ -1211,14 +1209,10 @@ export default {
       name: '知识库名称，用于区分不同的知识库（最多30个字符）。',
       chunkSize: '分片大小（字符数，500~5000）。分片越大，上下文越完整，但召回粒度更粗。',
       chunkOverlap: '相邻分片的重叠大小（字符数，0~1000），用于减少跨分片断句导致的信息丢失。',
-      batchMaxDocuments:
-        '例如设为 3 时，一次上传 10 个文档会按每批 3 个依次处理，共分 4 批执行。取值范围 1~5。',
       batchMaxChunks: '学习嵌入阶段，每次向量化请求中最多包含的分段数量。取值范围 1~20。',
       matchThreshold: '相似度低于该阈值的结果将被过滤（0~1）。',
       embeddingModel: '用于将文本转换为向量的嵌入模型。',
       embeddingDimension: '嵌入向量维度需与所选模型的输出一致。',
-      semanticSegmentation:
-        '开启后，文档在学习前会按语义切分，更适合长文与结构复杂的内容。',
       raptorLLMModel: '用于生成分层级摘要的语言模型；不选择即不启用该能力。',
     },
     tabs: {
@@ -1431,8 +1425,6 @@ export default {
       renameFailed: '重命名失败',
       deleteTitle: '确认删除',
       deleteDesc: '删除文件夹「{name}」后，其下的文档将移动到「未分组」。此操作无法撤销。',
-      deleteDescBatch:
-        '将删除 {count} 个文件夹，其下文档将移动到「未分组」。此操作无法撤销。',
       deleteCancel: '取消',
       deleteConfirm: '删除',
       deleteSuccess: '删除成功',
@@ -1743,7 +1735,7 @@ export default {
       online: '已连接',
       error: '错误',
       offline: '未连接',
-      provisioning: "连接中",
+      provisioning: '连接中',
     },
     bindAgent: {
       title: '选择助手',
@@ -1807,8 +1799,6 @@ export default {
       loginSuccess: 'WhatsApp 已连接',
       pluginInstallTryLater: 'WhatsApp 通道正在启用或尚未就绪，请稍后再试。',
       channelNotFound: '未找到对应频道，请刷新后重试。',
-      editNotSupported:
-        'WhatsApp 通过扫码连接，不支持在此处编辑。如需更换账号，请删除该频道后重新添加。',
     },
   },
   scheduledTasks: {
@@ -2015,8 +2005,6 @@ export default {
       yearOption: '{year} 年',
       monthOption: '{month} 月',
     },
-    emptyDescription:
-      '创建定时任务以自动化 AI 工作流。任务可在指定时间发送消息、运行查询或执行操作。',
   },
   openclawGateway: {
     banner: {
@@ -2024,6 +2012,7 @@ export default {
       scheduledTasks: '网关未运行，未启用网关时无法管理定时任务',
       starting: '网关正在启动，请稍后再试',
       upgrading: 'OpenClaw 运行包正在升级，请稍后再试',
+      notInstalled: '未检测到 OpenClaw 运行环境，请前往「设置 → 常规设置」或「OpenClaw 管家」安装',
     },
   },
   openclawCron: {
