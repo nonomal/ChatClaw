@@ -13,6 +13,8 @@ export type NavModule =
   | 'assistant'
   | 'openclaw'
   | 'openclaw-runtime'
+  /** Full-page gate when OpenClaw runtime is missing; separate from Settings activeMenu */
+  | 'openclaw-runtime-environment'
   | 'openclaw-cron'
   | 'openclaw-dashboard'
   | 'knowledge'
@@ -100,6 +102,7 @@ const moduleLabels: Record<NavModule, string> = {
   assistant: 'nav.assistant',
   openclaw: 'nav.openclaw',
   'openclaw-runtime': 'settings.menu.openclawRuntime',
+  'openclaw-runtime-environment': 'settings.menu.runtimeEnvironment',
   'openclaw-cron': 'nav.scheduledTasks',
   'openclaw-dashboard': 'nav.openclawDashboard',
   knowledge: 'nav.knowledge',
@@ -122,6 +125,7 @@ const moduleLabels: Record<NavModule, string> = {
 const singleTabModules: NavModule[] = [
   'openclaw',
   'openclaw-runtime',
+  'openclaw-runtime-environment',
   'openclaw-cron',
   'openclaw-dashboard',
   'knowledge',

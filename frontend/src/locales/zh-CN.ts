@@ -249,6 +249,7 @@ export default {
     menu: {
       modelService: '模型服务',
       generalSettings: '常规设置',
+      runtimeEnvironment: "运行环境",
       skills: '技能设置',
       mcp: 'MCP设置',
       snapSettings: '吸附设置',
@@ -363,6 +364,18 @@ export default {
         failed: "执行失败",
         fixed: "已修复",
       },
+    },
+    runtimeEnvironment: {
+      title: "运行环境安装",
+      subtitle: "使用 openclaw 前，请先安装 openclaw 运行环境",
+      installNow: "安装",
+      later: "暂等",
+      pause: "暂停",
+      startUsing: "开始使用",
+      notInstalledHint: "openclaw 运行环境尚未安装，请先完成安装。",
+      installedHint: "openclaw 运行环境已安装，若暂不使用，可点左键停用，稍后可到",
+      managerText: "openclaw 管家",
+      managerSuffix: "中停用",
     },
     general: {
       title: '常规设置',

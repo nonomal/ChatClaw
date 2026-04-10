@@ -35,6 +35,9 @@ const OpenClawPage = defineAsyncComponent(
 const OpenClawRuntimePage = defineAsyncComponent(
   () => import('@/pages/openclaw/OpenClawRuntimePage.vue')
 )
+const OpenClawRuntimeEnvironmentPage = defineAsyncComponent(
+  () => import('@/pages/openclaw/OpenClawRuntimeEnvironmentPage.vue')
+)
 const OpenClawDashboardPage = defineAsyncComponent(
   () => import('@/pages/openclaw/OpenClawDashboardPage.vue')
 )
@@ -161,6 +164,7 @@ const moduleComponents: Record<NavModule, unknown> = {
   assistant: AssistantPage,
   openclaw: OpenClawPage,
   'openclaw-runtime': OpenClawRuntimePage,
+  'openclaw-runtime-environment': OpenClawRuntimeEnvironmentPage,
   'openclaw-cron': OpenClawCronPage,
   'openclaw-dashboard': OpenClawDashboardPage,
   knowledge: KnowledgePage,

@@ -16,6 +16,7 @@ defineProps<{
 }>()
 import SettingsSidebar from './components/SettingsSidebar.vue'
 import GeneralSettings from './components/GeneralSettings.vue'
+import RuntimeEnvironmentSettings from './components/RuntimeEnvironmentSettings.vue'
 import ChatwikiSettings from './components/ChatwikiSettings.vue'
 import ModelServiceSettings from './components/ModelServiceSettings.vue'
 import SkillsSettings from './components/SkillsSettings.vue'
@@ -50,6 +51,7 @@ watch(
 const menuLabelKeys: Record<SettingsMenuItem, string> = {
   modelService: 'settings.menu.modelService',
   generalSettings: 'settings.menu.generalSettings',
+  runtimeEnvironment: 'settings.menu.runtimeEnvironment',
   openclawRuntime: 'settings.menu.openclawRuntime',
   skills: 'settings.menu.skills',
   mcp: 'settings.menu.mcp',
@@ -63,6 +65,7 @@ const menuLabelKeys: Record<SettingsMenuItem, string> = {
 const menuComponents: Record<SettingsMenuItem, Component | null> = {
   modelService: ModelServiceSettings,
   generalSettings: GeneralSettings,
+  runtimeEnvironment: RuntimeEnvironmentSettings,
   openclawRuntime: OpenClawRuntimeSettings,
   skills: SkillsSettings,
   mcp: MCPSettings,
@@ -82,12 +85,13 @@ const activeMenuLabel = computed(() => t(menuLabelKeys[settingsStore.activeMenu]
 
 // 获取当前菜单对应的内容组件
 const currentComponent = computed(() => menuComponents[settingsStore.activeMenu])
+const showSidebar = computed(() => settingsStore.activeMenu !== 'runtimeEnvironment')
 </script>
 
 <template>
   <div class="flex h-full w-full bg-background text-foreground">
     <!-- 侧边栏导航 -->
-    <SettingsSidebar />
+    <SettingsSidebar v-if="showSidebar" />
 
     <!-- 内容区域 -->
     <main

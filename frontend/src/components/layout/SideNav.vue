@@ -24,6 +24,7 @@ import {
   type NavModule,
   type SystemOwner,
 } from '@/stores'
+import * as ToolchainService from '@bindings/chatclaw/internal/services/toolchain/toolchainservice'
 import { cn } from '@/lib/utils'
 import IconAssistant from '@/assets/icons/assistant.svg'
 import IconKnowledge from '@/assets/icons/knowledge.svg'
@@ -255,12 +256,38 @@ const isActive = (item: NavItem): boolean => {
   return navigationStore.activeModule === mod
 }
 
-const handleNavClick = (item: NavItem) => {
+const openClawRuntimeRequiredAllowedModules = new Set<NavModule>([
+  'openclaw-runtime',
+  'settings',
+  'tools',
+  'knowledge',
+  'multiask',
+])
+
+const shouldRedirectToRuntimeEnvironment = async (targetModule: NavModule): Promise<boolean> => {
+  if (appStore.currentSystem !== 'openclaw') return false
+  if (openClawRuntimeRequiredAllowedModules.has(targetModule)) return false
+  try {
+    const status = await ToolchainService.GetOpenClawRuntimeStatus()
+    return !status?.installed
+  } catch {
+    // Treat unknown status as not installed to keep behavior safe and explicit.
+    return true
+  }
+}
+
+const handleNavClick = async (item: NavItem) => {
   if (item.action) {
     item.action()
     return
   }
   const mod = resolveModule(item)
+  if (await shouldRedirectToRuntimeEnvironment(mod)) {
+    navigationStore.navigateToModule('openclaw-runtime-environment', appStore.currentSystem)
+    // Keep sidebar highlight on the item the user clicked; tab is the dedicated runtime gate page.
+    navigationStore.activeModule = mod
+    return
+  }
   navigationStore.navigateToModule(mod, appStore.currentSystem)
 }
 

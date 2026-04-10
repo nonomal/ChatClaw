@@ -249,6 +249,7 @@ export default {
     menu: {
       modelService: 'Model Service',
       generalSettings: 'General Settings',
+      runtimeEnvironment: "Runtime Environment",
       skills: 'Skills Settings',
       mcp: 'MCPSettings',
       snapSettings: 'Snap Settings',
@@ -367,6 +368,18 @@ export default {
         failed: "Finished with errors",
         fixed: "Fixed",
       },
+    },
+    runtimeEnvironment: {
+      title: "Runtime Environment Setup",
+      subtitle: "Before using OpenClaw, please install the OpenClaw runtime environment.",
+      installNow: "Install",
+      later: "Later",
+      pause: "Pause",
+      startUsing: "Start Using",
+      notInstalledHint: "OpenClaw runtime is not installed yet. Install it first.",
+      installedHint: "OpenClaw runtime is installed. If you do not need it now, you can pause it and later manage it in ",
+      managerText: "OpenClaw Manager",
+      managerSuffix: ".",
     },
     general: {
       title: 'General Settings',
