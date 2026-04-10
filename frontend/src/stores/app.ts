@@ -14,7 +14,7 @@ function getInitialSystemOwner(): SystemOwner {
   if (stored === 'chatclaw' || stored === 'openclaw') {
     return stored
   }
-  return 'openclaw'
+  return 'chatclaw'
 }
 
 export const useAppStore = defineStore('app', () => {
