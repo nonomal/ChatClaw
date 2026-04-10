@@ -375,6 +375,8 @@ export default {
       installNow: "Install",
       later: "Later",
       pause: "Pause",
+      paused: "Download paused",
+      pauseFailed: "Failed to pause",
       startUsing: "Start Using",
       notInstalledHint: "OpenClaw runtime is not installed yet. Install it first.",
       installedHint: "OpenClaw runtime is installed. If you do not need it now, you can pause it and later manage it in ",

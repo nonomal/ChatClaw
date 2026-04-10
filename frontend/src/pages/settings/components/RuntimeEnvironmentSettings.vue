@@ -137,6 +137,20 @@ const handleInstallOpenClaw = async () => {
   }
 }
 
+const handlePauseOpenClawInstall = async () => {
+  try {
+    await ToolchainService.AbortDownload('openclaw')
+    if (openclawStatus.value) {
+      openclawStatus.value = { ...openclawStatus.value, installing: false }
+    }
+    delete downloadProgress['openclaw']
+    toast.default(t('settings.runtimeEnvironment.paused'))
+  } catch (e) {
+    console.error('Failed to pause openclaw runtime install:', e)
+    toast.error(getErrorMessage(e) || t('settings.runtimeEnvironment.pauseFailed'))
+  }
+}
+
 const handleInstall = async (toolId: string) => {
   installErrors[toolId] = false
   const existing = toolStatuses[toolId]
@@ -269,7 +283,7 @@ onUnmounted(() => {
           variant="secondary"
           class="min-w-32"
           :disabled="!openclawExtensionRuntimeBusy"
-          @click="toast.default(t('common.close'))"
+          @click="handlePauseOpenClawInstall"
         >
           {{ t('settings.runtimeEnvironment.pause') }}
         </Button>

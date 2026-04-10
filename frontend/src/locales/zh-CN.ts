@@ -371,6 +371,8 @@ export default {
       installNow: "安装",
       later: "暂等",
       pause: "暂停",
+      paused: "已暂停下载",
+      pauseFailed: "暂停失败",
       startUsing: "开始使用",
       notInstalledHint: "openclaw 运行环境尚未安装，请先完成安装。",
       installedHint: "openclaw 运行环境已安装，若暂不使用，可点左键停用，稍后可到",

@@ -127,8 +127,25 @@ const selectSystem = (system: SystemOwner) => {
     return
   }
   appStore.setCurrentSystem(system)
-  const assistantModule: NavModule = system === 'openclaw' ? 'openclaw' : 'assistant'
-  navigationStore.resetToSingleTab(assistantModule, system)
+  const switchToSystem = async () => {
+    if (system === 'openclaw') {
+      try {
+        const status = await ToolchainService.GetOpenClawRuntimeStatus()
+        if (!status?.installed) {
+          navigationStore.resetToSingleTab('openclaw-runtime-environment', system)
+          return
+        }
+      } catch {
+        // Treat unknown status as not installed to keep behavior safe and explicit.
+        navigationStore.resetToSingleTab('openclaw-runtime-environment', system)
+        return
+      }
+      navigationStore.resetToSingleTab('openclaw', system)
+      return
+    }
+    navigationStore.resetToSingleTab('assistant', system)
+  }
+  void switchToSystem()
   switcherOpen.value = false
 }
 
