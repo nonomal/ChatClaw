@@ -822,6 +822,26 @@ func (s *OpenClawChannelService) syncChannelRoutingBinding(channelID int64, agen
 	if err := s.agentsSvc.EnsureAgentSyncedWithGateway(*agent); err != nil {
 		return err
 	}
+	// Routing touches openclaw.json; require the platform plugin to be present first (same idea as
+	// DingTalk's local plugin gate). Otherwise BindAgent could write orphan routes when connect/install failed.
+	switch platform {
+	case channels.PlatformQQ:
+		installed, plugErr := s.isOpenClawQQPluginInstalled(ctx)
+		if plugErr != nil {
+			return fmt.Errorf("openclaw channel bind: list plugins (qq): %w", plugErr)
+		}
+		if !installed {
+			return errs.New("error.qq_plugin_not_ready")
+		}
+	case channels.PlatformWeCom:
+		installed, plugErr := s.isOpenClawWeComPluginInstalled(ctx)
+		if plugErr != nil {
+			return fmt.Errorf("openclaw channel bind: list plugins (wecom): %w", plugErr)
+		}
+		if !installed {
+			return errs.New("error.wecom_plugin_not_ready")
+		}
+	}
 	accountID := openClawManagedAccountID(platform, channelID, m.ExtraConfig)
 	if err := s.upsertManagedRouteBinding(openClawManagedRouteChannel(platform), accountID, openclawAgentKey); err != nil {
 		return err
@@ -1418,9 +1438,20 @@ func (s *OpenClawChannelService) setOpenClawFeishuAccount(ctx context.Context, a
 	return nil
 }
 
-func (s *OpenClawChannelService) ensureOpenClawWeComPluginInstalled(ctx context.Context) error {
+func (s *OpenClawChannelService) isOpenClawWeComPluginInstalled(ctx context.Context) (bool, error) {
 	out, err := s.execOpenClawPluginCLI(ctx, "plugins", "list")
-	if err == nil && containsWeComPluginMarker(string(out)) {
+	if err != nil {
+		return false, err
+	}
+	return containsWeComPluginMarker(string(out)), nil
+}
+
+func (s *OpenClawChannelService) ensureOpenClawWeComPluginInstalled(ctx context.Context) error {
+	installed, err := s.isOpenClawWeComPluginInstalled(ctx)
+	if err != nil {
+		return err
+	}
+	if installed {
 		return nil
 	}
 	if _, installErr := s.execOpenClawPluginCLI(ctx, "plugins", "install", wecomPluginPackage); installErr != nil {

@@ -43,6 +43,8 @@ const ToolsPage = defineAsyncComponent(() => import('@/pages/tools/ToolsPage.vue
 import { SnapService } from '@bindings/chatclaw/internal/services/windows'
 import { TextSelectionService } from '@bindings/chatclaw/internal/services/textselection'
 import UpdateDialog from '@/pages/settings/components/UpdateDialog.vue'
+import ChatwikiLoginReminderDialog from '@/components/chatwiki/ChatwikiLoginReminderDialog.vue'
+import { maybeShowFirstLaunchChatwikiLoginReminder } from '@/composables/useChatwikiLoginReminderDialog'
 import { useToast } from '@/components/ui/toast'
 import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
@@ -249,6 +251,18 @@ onMounted(async () => {
   } catch {
     // Ignore — no pending update
   }
+
+  const scheduleFirstLaunchChatwikiReminder = () => {
+    const tryShow = () => {
+      if (updateDialogOpen.value) {
+        window.setTimeout(tryShow, 500)
+        return
+      }
+      void maybeShowFirstLaunchChatwikiLoginReminder()
+    }
+    window.setTimeout(tryShow, 600)
+  }
+  scheduleFirstLaunchChatwikiReminder()
 
   // Listen for backend auto-check event (ServiceStartup emits after 3s).
   // Always mark the badge so the user sees a dot on "Check for Update".
@@ -561,6 +575,7 @@ onUnmounted(() => {
     :release-notes="updateDialogNotes"
     @update:open="updateDialogOpen = $event"
   />
+  <ChatwikiLoginReminderDialog />
   <MainLayout>
     <!--
       标签页状态保留架构：

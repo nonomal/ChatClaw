@@ -754,6 +754,13 @@ export default {
         cn: 'চীন',
         global: 'গ্লোবাল',
       },
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "Link your ChatWiki account — get credits to try quickly",
+        footer: "ChatWiki is the cloud edition of the ChatClaw client",
+        loginNow: "Log in now",
+        loginLater: "Later",
+      },
     },
     tools: {
       tray: {

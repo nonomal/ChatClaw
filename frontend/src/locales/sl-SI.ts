@@ -761,6 +761,13 @@ export default {
         cn: 'Kitajska',
         global: 'Globalno',
       },
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "Povežite račun ChatWiki — pridobite kredite za hiter preizkus",
+        footer: "ChatWiki je oblakovna izdaja odjemalca ChatClaw",
+        loginNow: "Prijavi se zdaj",
+        loginLater: "Kasneje",
+      },
     },
     tools: {
       tray: {

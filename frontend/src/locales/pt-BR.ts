@@ -764,6 +764,13 @@ export default {
         cn: 'China',
         global: 'Global',
       },
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "Vincule sua conta ChatWiki — ganhe créditos para testar rapidamente",
+        footer: "ChatWiki é a edição em nuvem do cliente ChatClaw",
+        loginNow: "Entrar agora",
+        loginLater: "Depois",
+      },
     },
     tools: {
       tray: {

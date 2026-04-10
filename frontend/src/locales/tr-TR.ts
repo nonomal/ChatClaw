@@ -758,6 +758,13 @@ export default {
         cn: 'Çin',
         global: 'Küresel',
       },
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "ChatWiki hesabınızı bağlayın — hızlıca denemek için kredi alın",
+        footer: "ChatWiki, ChatClaw istemcisinin bulut sürümüdür",
+        loginNow: "Şimdi giriş yap",
+        loginLater: "Sonra",
+      },
     },
     tools: {
       tray: {

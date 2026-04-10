@@ -18,6 +18,7 @@ import {
   formatModelDisplayLabel,
   getChatwikiAvailabilityStatus,
   getFirstSelectableModelKey,
+  hasSelectableModelsForGroup,
   isSelectionAvailable,
 } from '@/lib/chatwikiModelAvailability'
 
@@ -40,6 +41,10 @@ export function useModelSelection() {
       pw.model_groups.some((g) => g.type === 'llm' && g.models.length > 0)
     )
   })
+
+  const hasSelectableLlmModels = computed(() =>
+    hasSelectableModelsForGroup(providersWithModels.value, 'llm', chatwikiAvailability.value)
+  )
 
   const selectedModelInfo = computed(() => {
     if (!selectedModelKey.value) return null
@@ -231,6 +236,7 @@ export function useModelSelection() {
     providersWithModels,
     selectedModelKey,
     hasModels,
+    hasSelectableLlmModels,
     selectedModelInfo,
     loadModels,
     selectDefaultModel,

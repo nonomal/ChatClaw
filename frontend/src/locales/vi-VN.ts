@@ -760,6 +760,13 @@ export default {
         cn: 'Trung Quốc',
         global: 'Toàn cầu',
       },
+      loginReminder: {
+        title: "Chat Claw",
+        subtitle: "Liên kết tài khoản ChatWiki — nhận tín dụng để trải nghiệm nhanh",
+        footer: "ChatWiki là phiên bản đám mây của ứng dụng ChatClaw",
+        loginNow: "Đăng nhập ngay",
+        loginLater: "Để sau",
+      },
     },
     tools: {
       tray: {
