@@ -2,6 +2,8 @@ import { ref, computed } from 'vue'
 
 export const TOAST_DURATION_DEFAULT = 2000
 export const TOAST_DURATION_ERROR = 4000
+/** Long informational hints (e.g. multi-sentence install guidance). */
+export const TOAST_DURATION_HINT = 8000
 const TOAST_LIMIT = 5
 // 备份计时器的额外延迟（给 reka-ui 足够的时间正常处理）
 const FALLBACK_EXTRA_DELAY = 500
@@ -87,6 +89,10 @@ export const toast = {
     addToast({ title: message, variant: 'success', duration: TOAST_DURATION_DEFAULT }),
   error: (message: string) =>
     addToast({ title: message, variant: 'error', duration: TOAST_DURATION_ERROR }),
-  default: (message: string) =>
-    addToast({ title: message, variant: 'default', duration: TOAST_DURATION_DEFAULT }),
+  default: (message: string, duration?: number) =>
+    addToast({
+      title: message,
+      variant: 'default',
+      duration: duration ?? TOAST_DURATION_DEFAULT,
+    }),
 }
