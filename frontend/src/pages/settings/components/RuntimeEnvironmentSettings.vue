@@ -14,10 +14,9 @@ import * as OpenClawRuntimeService from '@bindings/chatclaw/internal/openclaw/ru
 import { BrowserService } from '@bindings/chatclaw/internal/services/browser'
 import { RuntimeStatus } from '@bindings/chatclaw/internal/openclaw/runtime/models'
 import { ToolStatus } from '@bindings/chatclaw/internal/services/toolchain/models'
-import { Download, Check, Loader2, Package, FolderOpen } from 'lucide-vue-next'
 import { toast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
-import SettingsCard from './SettingsCard.vue'
+import ToolchainSettingsCard from './ToolchainSettingsCard.vue'
 
 interface ToolDef {
   id: string
@@ -178,7 +177,7 @@ const handlePauseGateway = async () => {
 }
 
 const handleStartUsing = () => {
-  navigationStore.navigateToModule('openclaw-dashboard')
+  navigationStore.navigateToModule('assistant')
 }
 
 const handleOpenExtensionPath = async (pathStr: string | undefined) => {
@@ -190,30 +189,6 @@ const handleOpenExtensionPath = async (pathStr: string | undefined) => {
     console.error('Failed to open path in file manager:', e)
     toast.error(getErrorMessage(e) || t('settings.general.toolchain.openPathFailed'))
   }
-}
-
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-}
-
-const formatSpeed = (kbPerSec: number): string => {
-  if (kbPerSec >= 1024) {
-    return (kbPerSec / 1024).toFixed(1) + ' MB/s'
-  }
-  return kbPerSec.toFixed(1) + ' KB/s'
-}
-
-const formatRemaining = (ms: number): string => {
-  if (ms <= 0) return ''
-  const seconds = Math.floor(ms / 1000)
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${minutes}m ${secs}s`
 }
 
 let unsubscribeToolchain: (() => void) | null = null
@@ -306,199 +281,18 @@ onUnmounted(() => {
       </p>
     </section>
 
-    <SettingsCard>
-      <div class="flex items-start gap-4 border-b border-border p-4 dark:border-white/10">
-        <div
-          class="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/50 text-muted-foreground dark:border-white/10 dark:bg-white/5"
-        >
-          <Package class="size-4" />
-        </div>
-        <div class="min-w-0 flex-1 pt-0.5">
-          <span class="text-sm font-medium text-foreground">{{
-            t('settings.general.toolchain.openclaw.name')
-          }}</span>
-          <p class="text-xs text-muted-foreground truncate">
-            {{ t('settings.general.toolchain.openclaw.description') }}
-          </p>
-          <button
-            v-if="openclawStatus?.runtime_path"
-            type="button"
-            class="mt-1 flex min-w-0 max-w-full items-center gap-1 rounded-sm text-left text-xs text-muted-foreground/70 truncate hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            :title="t('settings.general.toolchain.openPathHint')"
-            @click="handleOpenExtensionPath(openclawStatus.runtime_path)"
-          >
-            <FolderOpen class="size-3 shrink-0 text-muted-foreground" />
-            <span class="truncate">{{ openclawStatus.runtime_path }}</span>
-          </button>
-          <p
-            v-if="openclawStatus?.installed && openclawStatus?.installed_version"
-            class="mt-0.5 text-xs text-muted-foreground/60"
-            :title="openclawStatus.installed_version"
-          >
-            {{ t('settings.general.toolchain.testInstall.version') }}:
-            {{ openclawStatus.installed_version }}
-          </p>
-          <div
-            v-if="downloadProgress['openclaw'] && openclawStatus?.installing"
-            class="mt-2 flex flex-col gap-1"
-          >
-            <div class="flex items-center justify-between text-xs">
-              <span class="text-muted-foreground"
-                >{{ downloadProgress['openclaw'].percent.toFixed(1) }}%</span
-              >
-              <span class="text-muted-foreground">{{
-                formatSpeed(downloadProgress['openclaw'].speed)
-              }}</span>
-            </div>
-            <div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                class="h-full bg-primary transition-all duration-300"
-                :style="{ width: `${downloadProgress['openclaw'].percent}%` }"
-              />
-            </div>
-            <div class="flex items-center justify-between text-xs text-muted-foreground">
-              <span
-                >{{ formatFileSize(downloadProgress['openclaw'].downloaded) }} /
-                {{ formatFileSize(downloadProgress['openclaw'].totalSize) }}</span
-              >
-              <span v-if="downloadProgress['openclaw'].remaining > 0">{{
-                formatRemaining(downloadProgress['openclaw'].remaining)
-              }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex shrink-0 flex-col items-end gap-2 pt-0.5">
-          <template v-if="openclawStatus?.installed && !openclawExtensionRuntimeBusy">
-            <span
-              class="inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border dark:ring-white/10"
-            >
-              <Check class="size-3 shrink-0" />
-              {{ t('settings.general.toolchain.installed') }}
-            </span>
-          </template>
-          <span
-            v-else-if="openclawExtensionRuntimeBusy"
-            class="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground"
-          >
-            <Loader2 class="size-3 animate-spin" />
-            {{
-              openclawStatus?.installing
-                ? t('settings.general.toolchain.installing')
-                : t('settings.openclawRuntime.upgrading')
-            }}
-          </span>
-          <template v-else>
-            <span v-if="openclawInstallError" class="text-xs text-destructive">{{
-              t('settings.general.toolchain.installFailed')
-            }}</span>
-            <Button size="sm" variant="outline" @click="handleInstallOpenClaw">
-              <Download class="size-3.5" />
-              {{ t('settings.general.toolchain.install') }}
-            </Button>
-          </template>
-        </div>
-      </div>
-
-      <div
-        v-for="(tool, index) in toolDefs"
-        :key="tool.id"
-        class="flex items-start gap-4 p-4"
-        :class="index < toolDefs.length - 1 && 'border-b border-border dark:border-white/10'"
-      >
-        <div
-          class="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/50 text-muted-foreground dark:border-white/10 dark:bg-white/5"
-        >
-          <Package class="size-4" />
-        </div>
-        <div class="min-w-0 flex-1 pt-0.5">
-          <span class="text-sm font-medium text-foreground">{{ t(tool.nameKey) }}</span>
-          <p class="text-xs text-muted-foreground truncate">{{ t(tool.descKey) }}</p>
-          <button
-            v-if="toolStatuses[tool.id]?.bin_path"
-            type="button"
-            class="mt-1 flex min-w-0 max-w-full items-center gap-1 rounded-sm text-left text-xs text-muted-foreground/70 truncate hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            :title="t('settings.general.toolchain.openPathHint')"
-            @click="handleOpenExtensionPath(toolStatuses[tool.id]?.bin_path)"
-          >
-            <FolderOpen class="size-3 shrink-0 text-muted-foreground" />
-            <span class="truncate">{{ toolStatuses[tool.id]?.bin_path }}</span>
-          </button>
-          <div
-            v-if="downloadProgress[tool.id] && toolStatuses[tool.id]?.installing"
-            class="mt-2 flex flex-col gap-1"
-          >
-            <div class="flex items-center justify-between text-xs">
-              <span class="text-muted-foreground">
-                {{ downloadProgress[tool.id].percent.toFixed(1) }}%
-              </span>
-              <span class="text-muted-foreground">
-                {{ formatSpeed(downloadProgress[tool.id].speed) }}
-              </span>
-            </div>
-            <div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                class="h-full bg-primary transition-all duration-300"
-                :style="{ width: `${downloadProgress[tool.id].percent}%` }"
-              />
-            </div>
-            <div class="flex items-center justify-between text-xs text-muted-foreground">
-              <span>
-                {{ formatFileSize(downloadProgress[tool.id].downloaded) }} /
-                {{ formatFileSize(downloadProgress[tool.id].totalSize) }}
-              </span>
-              <span v-if="downloadProgress[tool.id].remaining > 0">
-                {{ formatRemaining(downloadProgress[tool.id].remaining) }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex shrink-0 flex-col items-end gap-2 pt-0.5 sm:flex-row sm:items-center">
-          <template v-if="toolStatuses[tool.id]?.installed && !toolStatuses[tool.id]?.installing">
-            <div class="flex flex-col items-end gap-2">
-              <span
-                class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border dark:ring-white/10"
-              >
-                <Check class="size-3" />
-                {{ t('settings.general.toolchain.installed') }}
-              </span>
-              <template v-if="toolStatuses[tool.id]?.has_update">
-                <p
-                  v-if="toolStatuses[tool.id]?.latest_version"
-                  class="max-w-[200px] text-right text-xs text-muted-foreground"
-                >
-                  {{
-                    t('settings.general.toolchain.newVersionHint', {
-                      version: toolStatuses[tool.id]?.latest_version,
-                    })
-                  }}
-                </p>
-                <Button size="sm" variant="outline" @click="handleInstall(tool.id)">
-                  <Download class="size-3.5" />
-                  {{ t('settings.general.toolchain.update') }}
-                </Button>
-              </template>
-            </div>
-          </template>
-          <span
-            v-else-if="toolStatuses[tool.id]?.installing"
-            class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
-          >
-            <Loader2 class="size-3 animate-spin" />
-            {{ t('settings.general.toolchain.installing') }}
-          </span>
-          <template v-else>
-            <span v-if="installErrors[tool.id]" class="text-xs text-destructive">
-              {{ t('settings.general.toolchain.installFailed') }}
-            </span>
-            <Button size="sm" variant="outline" @click="handleInstall(tool.id)">
-              <Download class="size-3.5" />
-              {{ t('settings.general.toolchain.install') }}
-            </Button>
-          </template>
-        </div>
-      </div>
-    </SettingsCard>
+    <ToolchainSettingsCard
+      :tool-defs="toolDefs"
+      :tool-statuses="toolStatuses"
+      :install-errors="installErrors"
+      :download-progress="downloadProgress"
+      :openclaw-status="openclawStatus"
+      :openclaw-install-error="openclawInstallError"
+      :openclaw-extension-runtime-busy="openclawExtensionRuntimeBusy"
+      :show-title="false"
+      :on-open-extension-path="handleOpenExtensionPath"
+      :on-install-open-claw="handleInstallOpenClaw"
+      :on-install-tool="handleInstall"
+    />
   </div>
 </template>
