@@ -10,13 +10,14 @@ const (
 )
 
 const (
-	PhaseIdle       = "idle"
-	PhaseStarting   = "starting"
-	PhaseConnecting = "connecting"
-	PhaseConnected  = "connected"
-	PhaseRestarting = "restarting"
-	PhaseUpgrading  = "upgrading"
-	PhaseError      = "error"
+	PhaseIdle          = "idle"
+	PhaseStarting      = "starting"
+	PhaseConnecting    = "connecting"
+	PhaseConnected     = "connected"
+	PhaseRestarting    = "restarting"
+	PhaseUpgrading     = "upgrading"
+	PhaseError         = "error"
+	PhaseNotInstalled  = "not_installed"
 )
 
 type RuntimeStatus struct {

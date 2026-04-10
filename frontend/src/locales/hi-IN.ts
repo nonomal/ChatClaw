@@ -320,6 +320,7 @@ export default {
         success: '执行成功',
         title: 'OpenClaw Doctor 诊断',
         workingDir: '工作目录',
+        autoTriggered: 'OpenClaw 连接失败超过 3 次，正在自动运行诊断修复…',
       },
       gatewayStatusLabel: '网关状态',
       logs: '日志',
@@ -340,6 +341,28 @@ export default {
       stop: '停止',
       stopFailed: '网关停止失败',
       stopSuccess: '网关已停止',
+      autoStartDisabled: 'OpenClaw 网关已关闭',
+      autoStartEnabled: 'OpenClaw 网关已开启',
+      autoStartFailed: '切换网关状态失败',
+      autoStartLabel: '网关运行开关',
+      autoStartTooltip: '点击开启或关闭 OpenClaw 网关自动启动，开启后应用启动时将自动启动网关',
+      cancelUpgrade: '取消升级',
+      continueOrRestartDesc: '发现 {version} 版本的下载缓存，请选择继续升级（从 npm install 开始）或重新下载。',
+      continueOrRestartTitle: '检测到已有升级缓存',
+      continueUpgrade: '继续升级',
+      portOccupied: '端口被占用',
+      portOccupiedHint: '端口 {port} 被进程 {process} (PID: {pid}) 占用，请先停止该进程后再试。',
+      portStillOccupiedAfterStop: '停止网关后端口 {port} 仍未释放',
+      portStillOccupiedAfterStopHint: '请手动终止占用端口的进程 (PID: {pid})。',
+      restartUpgrade: '重新升级',
+      start: '启动',
+      startFailed: '网关启动失败',
+      startSuccess: '网关已启动',
+      starting: '启动中...',
+      upgradeCancelFailed: '取消升级失败',
+      upgradeCancelled: '升级已取消',
+      upgradeDetails: '详情',
+      upgradeOutputWaiting: '等待输出...',
     },
     general: {
       title: 'सामान्य सेटिंग्स',
@@ -379,23 +402,18 @@ export default {
         },
         uv: {
           name: 'Python रनटाइम',
-          description:
-            'AI सहायक को जटिल कार्य पूरे करने के लिए Python स्क्रिप्ट लिखने और चलाने देता है।',
+          description: '让 AI 助手能够编写和运行 Python 脚本来完成复杂任务。',
         },
         bun: {
           name: 'JavaScript रनटाइम',
-          description:
-            'AI सहायक को जटिल कार्य पूरे करने के लिए JavaScript स्क्रिप्ट लिखने और चलाने देता है।',
+          description: '让 AI 助手能够编写和运行 JavaScript 脚本来完成复杂任务。',
         },
         codex: {
           name: 'सिक्योरिटी सैंडबॉक्स',
-          description:
-            'सिस्टम सुरक्षा के लिए अलग वातावरण में कमांड चलाता है और अनजाने बदलावों को लोकल फाइलों पर असर डालने से रोकता है।',
+          description: '在隔离环境中执行命令，保护系统安全，防止误操作影响本机文件。',
         },
         openclaw: {
           name: 'OpenClaw रनटाइम',
-          description:
-            'OpenClaw Agent का Node.js रनटाइम वातावरण, जिसमें openclaw CLI और Gateway शामिल हैं। यह OSS से डाउनलोड होकर ~/.chatclaw/openclaw/runtime/ में इंस्टॉल होता है।',
         },
         newVersionHint: '新版本 {version}',
         openPathFailed: '无法打开该路径',
@@ -407,35 +425,27 @@ export default {
     memory: {
       title: 'दीर्घकालिक मेमोरी',
       enable: 'दीर्घकालिक मेमोरी सक्षम करें',
-      enableHint:
-        'सक्षम होने पर, AI बातचीत में आपकी पसंद, आदतें और महत्वपूर्ण तथ्यों को अपने आप निकालकर याद रखेगा।',
       extractModel: 'मेमोरी एक्सट्रैक्शन मॉडल',
-      extractModelHint:
-        'हर बातचीत के बाद मूल्यवान मेमोरी जानकारी का सार निकालने और उसे संकलित करने के लिए उपयोग होता है।',
       embeddingModel: 'मेमोरी एम्बेडिंग मॉडल',
-      embeddingModelHint:
-        'बातचीत के दौरान सिमैंटिक खोज के लिए मेमोरी टेक्स्ट को वेक्टर में बदलने हेतु उपयोग होता है।',
       embeddingDimension: 'एम्बेडिंग डाइमेंशन',
       embeddingDimensionHint: 'एम्बेडिंग वेक्टर डाइमेंशन चुने गए मॉडल आउटपुट से मेल खाना चाहिए।',
       save: 'सेटिंग्स सहेजें',
       saved: 'सेटिंग्स सहेजी गईं',
       saveFailed: 'सेटिंग्स सहेजने में विफल',
-      rebuildWarning:
-        'वेक्टर मॉडल या डाइमेंशन बदलने के बाद, सभी मौजूदा मेमोरी वेक्टर डेटा को असिंक्रोनस रूप से फिर से बनाया जाएगा।',
       rebuilding: 'मेमोरी वेक्टर रीबिल्ड हो रहे हैं...',
       rebuildSuccess: 'मेमोरी वेक्टर सफलतापूर्वक रीबिल्ड हुए',
       rebuildFailed: 'मेमोरी वेक्टर रीबिल्ड करने में विफल',
       confirmRebuildTitle: 'मेमोरी वेक्टर रीबिल्ड की पुष्टि करें',
+      embeddingModelHint: '用于将记忆文本转换为向量，以便在对话中进行语义检索。',
+      enableHint: '开启后，AI 将在对话中自动提取并记住您的偏好、习惯和重要事实。',
+      extractModelHint: '用于在每次对话后总结并提取有价值的记忆信息。',
+      rebuildWarning: '修改向量模型或维度后，所有已有记忆的向量数据将被异步重建。',
     },
     skills: {
       title: 'स्किल्स',
       enable: 'स्किल्स सक्षम करें',
-      enableHint:
-        'सक्षम होने पर, AI सहायक बातचीत के दौरान इंस्टॉल किए गए स्किल्स को अपने आप लोड और उपयोग करेगा।',
       pageDesc: 'AI क्षमताओं को ब्राउज़ और प्रबंधित करें',
       directory: 'स्किल लोड डायरेक्टरी',
-      directoryHint:
-        'डाउनलोड किए गए स्किल फोल्डर इस डायरेक्टरी में रखें। AI बातचीत के दौरान इन्हें अपने आप पहचान कर लोड किया जाएगा।',
       tabInstalled: 'इंस्टॉल',
       tabMarket: 'मार्केट',
       filterAll: 'सभी',
@@ -484,6 +494,8 @@ export default {
       binaryFile: 'बाइनरी फाइल, प्रीव्यू नहीं हो सकता',
       rateLimited: 'बहुत सारे अनुरोध, कृपया बाद में पुनः प्रयास करें',
       loadFailed: 'लोड विफल, कृपया बाद में पुनः प्रयास करें',
+      directoryHint: '将下载好的技能文件夹放入该目录，AI 对话时会自动识别并加载。',
+      enableHint: '开启后，AI 助手在对话时会自动加载并使用已安装的技能。',
     },
     openclawSkills: {
       title: 'OpenClaw स्किल्स',
@@ -491,8 +503,6 @@ export default {
       listSubheading: 'AI क्षमताओं को ब्राउज़ करें और प्रबंधित करें',
       refreshCta: 'रीफ्रेश',
       addSkillCta: 'स्किल जोड़ें',
-      pageDesc:
-        'कनेक्ट होने पर OpenClaw Gateway के skills.status का उपयोग करता है; अन्यथा OpenClaw की वही ऑन-डिस्क संरचना (managed, workspace, bundled, extraDirs) स्कैन करता है।',
       filterAll: 'सभी',
       filterBuiltin: 'बिल्ट-इन',
       filterInstalled: 'इंस्टॉल किया गया',
@@ -506,16 +516,12 @@ export default {
       locationCount: '{count} प्रतियां',
       searchPlaceholder: 'Search skills, paths, agent, or permissions…',
       noSkills: 'कोई OpenClaw स्किल नहीं मिली',
-      noSkillsHint:
-        'लाइव सूची के लिए Gateway से कनेक्ट करें; ऑफलाइन होने पर OpenClaw दस्तावेज़ों का पालन करें (state dir skills/, workspace-*/skills/, bundled package, skills.load.extraDirs)।',
       openSharedDir: 'मुख्य वर्कस्पेस स्किल फोल्डर खोलें',
       openMainWorkspaceSkillsDir: 'मुख्य वर्कस्पेस स्किल्स खोलें (workspace-main/skills)',
       openManagedSkillsDir: 'प्रबंधित स्किल फोल्डर खोलें (openclaw/skills)',
       permissionLabel: 'अनुमति',
       scopeLabel: 'स्कोप',
       agentBinding: 'एजेंट',
-      gatewayOfflineHint:
-        'Gateway ऑफलाइन है: सूची OpenClaw की ऑन-डिस्क संरचना से बनाई जाती है। कनेक्ट होने पर skills.status को प्राथमिकता दी जाती है।',
       backToList: 'सूची पर वापस जाएं',
       loadFailed: 'OpenClaw स्किल्स लोड करने में विफल',
       dataSourceLabel: 'स्रोत',
@@ -529,26 +535,18 @@ export default {
       eligibleNo: 'नहीं',
       eligibleUnknown: 'अज्ञात',
       gateHintLabel: 'गेटवे नोट',
-      previewNoLocalPath:
-        'यह पंक्ति केवल Gateway से आई है; देखने के लिए कोई लोकल फोल्डर नहीं है। डिस्क पर मेल खाती स्किल होने पर पाथ दिखाई देगा।',
       add: {
         title: 'जोड़ें',
         createViaChatTitle: 'चैट के माध्यम से बनाएं',
         createViaChatDesc: 'Describe what you need and let AI scaffold an OpenClaw skill',
         choosePackageTitle: 'स्किल पैकेज चुनें',
         choosePackageDesc: 'Open the skills folder and place the skill package there',
-        createViaChatPrompt:
-          'मुझे एक OpenClaw स्किल बनाने में मदद करें। पहले मुझसे पूछें कि मुझे किस प्रकार की कार्यक्षमता चाहिए, फिर एक SKILL.md (frontmatter सहित), आवश्यक फोल्डर संरचना और नमूना कोड तैयार करें। अंत में बताएं कि स्किल फोल्डर को workspace-main/skills के अंतर्गत रखकर इसे सक्रिय किया जा सकता है।',
       },
     },
     mcp: {
       title: 'MCP',
       enable: 'MCP सक्षम करें',
-      enableHint:
-        'सक्षम होने पर, AI सहायक बातचीत के दौरान कॉन्फ़िगर किए गए MCP सर्वरों से अपने आप कनेक्ट होकर उनका उपयोग करेगा।',
       directory: 'MCP कॉन्फ़िग डायरेक्टरी',
-      directoryHint:
-        'MCP सर्वर कॉन्फ़िगरेशन फाइलें इस डायरेक्टरी में रखें। AI बातचीत के दौरान इन्हें अपने आप पहचाना और कनेक्ट किया जाएगा।',
       tabServers: 'MCP',
       tabSettings: 'सेटिंग्स',
       tabInstalled: 'इंस्टॉल',
@@ -630,6 +628,8 @@ export default {
       assistantMcpToolName: 'टूल नाम',
       assistantMcpToolNamePlaceholder: 'एक वैध फ़ंक्शन नाम दर्ज करें',
       assistantMcpToolDesc: 'टूल विवरण',
+      directoryHint: '将 MCP服务配置文件放入该目录，AI 对话时会自动识别并连接。',
+      enableHint: '开启后，AI 助手在对话时会自动连接并使用已配置的 MCP服务。',
     },
     snap: {
       title: 'सेटिंग्स',
@@ -682,8 +682,6 @@ export default {
       reauthBind: 'पुनः प्राधिकृत करें',
       unbind: 'अनबाइंड करें',
       unbindConfirmTitle: 'अनबाइंड की पुष्टि करें',
-      unbindConfirmDesc:
-        'अनबाइंड करने के बाद आप ChatWiki एप्लिकेशन और नॉलेज बेस का उपयोग नहीं कर पाएंगे। क्या जारी रखना है?',
       addBinding: 'बाइंडिंग जोड़ें',
       applications: 'ऐप्लिकेशन्स',
       knowledgeBases: 'नॉलेज बेस',
@@ -726,11 +724,7 @@ export default {
       startUsingHint: 'ChatClaw Desktop का उपयोग जारी रखने के लिए नीचे ',
       startUsing: 'उपयोग शुरू करें',
       freeVersion: 'मुफ्त',
-      modelServiceDesc:
-        'ChatWiki को bind करने के बाद, आप Model Service में उपलब्ध मॉडल और क्रेडिट सीधे देख सकते हैं।',
       notLoggedInTitle: 'ChatWiki में लॉग इन नहीं है',
-      notLoggedInDesc:
-        'ChatWiki Cloud की मॉडल सूची और क्रेडिट बैलेंस सिंक करने के लिए साइन इन करें।',
       loginNow: 'अभी लॉग इन करें',
       accountIdPrefix: 'खाता आईडी: ',
       buyCredits: 'क्रेडिट खरीदें',
@@ -743,8 +737,6 @@ export default {
       openBillingFailed: 'बिलिंग पेज नहीं खोला जा सका',
       modelBoundHint: 'यह सूची वर्तमान में बंधे ChatWiki खाते के लिए उपलब्ध मॉडल दिखाती है।',
       modelUnboundHint: 'वर्तमान binding के लिए उपलब्ध मॉडल सूची लोड करने हेतु पहले साइन इन करें।',
-      modelLoginHint:
-        'कृपया पहले अपने ChatWiki खाते में साइन इन करें और उसे bind करें। उसके बाद यहाँ नवीनतम मॉडल सूची दिखाई देगी।',
       providerStatus: {
         unbound: '{label} (लॉग इन नहीं)',
         nonCloud: '{label} (लॉग इन नहीं)',
@@ -754,6 +746,10 @@ export default {
         cn: 'चीन',
         global: 'ग्लोबल',
       },
+      modelLoginHint: '请先登录并绑定 ChatWiki 账号，随后这里会展示最新的模型服务列表。',
+      modelServiceDesc: '绑定 ChatWiki 后可直接在模型服务中查看可用模型与积分情况',
+      notLoggedInDesc: '登录后即可同步 ChatWiki Cloud 的模型列表与积分信息。',
+      unbindConfirmDesc: '解除绑定后，将无法使用 ChatWiki 提供的应用和知识库。确定要继续吗？',
     },
     tools: {
       tray: {
@@ -777,10 +773,6 @@ export default {
     },
     modelService: {
       enabled: 'सक्षम',
-      disableBlockedByAgent:
-        'यह प्रोवाइडर सहायक "{name}" के डिफ़ॉल्ट के रूप में उपयोग हो रहा है। अक्षम करने से पहले कृपया पहले सहायक की सेटिंग्स बदलें।',
-      deleteBlockedByAgent:
-        'यह मॉडल सहायक "{name}" के डिफ़ॉल्ट के रूप में उपयोग हो रहा है। हटाने से पहले कृपया पहले सहायक की सेटिंग्स बदलें।',
       apiKey: 'API कुंजी',
       apiKeyPlaceholder: 'API कुंजी दर्ज करें',
       apiKeyRequired: 'कृपया पहले API कुंजी दर्ज करें',
@@ -827,6 +819,8 @@ export default {
       capabilityAudio: 'ऑडियो',
       capabilityVideo: 'वीडियो',
       capabilityFile: 'फाइल',
+      deleteBlockedByAgent: '该模型正在被助手「{name}」用作默认模型，请先修改助手设置后再删除',
+      disableBlockedByAgent: '该供应商正在被助手「{name}」用作默认模型，请先修改助手设置后再关闭',
     },
     about: {
       title: 'हमारे बारे में',
@@ -1012,8 +1006,6 @@ export default {
       unknownAgent: 'अज्ञात एजेंट',
       noPlatforms: 'कोई चैनल उपलब्ध नहीं',
       createTitle: '{platform} बॉट जोड़ें',
-      createDesc:
-        'चैनल पेज का add flow पूरा करें। बन जाने के बाद यह अपने आप वर्तमान सहायक से बंध जाएगा।',
       addChannel: 'चैनल जोड़ें',
       addAndBind: 'जोड़ें और बाइंड करें',
       showExisting: 'जोड़े गए चैनल देखें',
@@ -1030,13 +1022,13 @@ export default {
       bindSuccess: 'बाइंड सफल',
       unbindSuccess: 'अनबाइंड सफल',
       addBot: 'बॉट जोड़ें',
-      addBotHint:
-        'प्रत्येक बॉट केवल एक AI सहायक से बंध सकता है। केवल अनबाइंड बॉट ही दिखाए जाते हैं।',
       noUnboundBot: 'कोई अनबाइंड बॉट उपलब्ध नहीं',
       selectBot: 'कृपया बाइंड करने के लिए एक बॉट चुनें',
-      statusOnline: "कनेक्टेड",
-      statusError: "त्रुटि",
-      statusOffline: "डिस्कनेक्टेड",
+      statusOnline: 'कनेक्टेड',
+      statusError: 'त्रुटि',
+      statusOffline: 'डिस्कनेक्टेड',
+      addBotHint: '一个机器人只能被一个AI助手绑定，仅显示未绑定的机器人',
+      createDesc: '复制频道页的添加流程，创建后会自动绑定到当前助手。',
     },
     conversation: {
       empty: 'कोई चैट इतिहास नहीं',
@@ -1076,14 +1068,13 @@ export default {
       teamImageNotSupported: 'टीम मोड में इमेज भेजना अभी तक सपोर्ट नहीं है',
       selectTeamRobotFirst: 'कृपया पहले एक टीम रोबोट चुनें',
       teamRobotMissingKey: 'वर्तमान रोबोट में robot_key गायब है, कृपया फिर से सिंक करें',
-      modelNotSupportVision:
-        'वर्तमान मॉडल इमेज पहचान को सपोर्ट नहीं करता। कृपया विज़न-समर्थित मल्टीमॉडल मॉडल पर स्विच करें।',
       modelNotSupportVisionHint: 'GPT-4o, Claude, Gemini जैसे मॉडल इमेज रिकग्निशन सपोर्ट करते हैं',
       fileTooLarge: 'फ़ाइल का आकार सीमा से अधिक है (अधिकतम {max})',
       tooManyFiles: 'अधिकतम {max} फ़ाइलें अपलोड की जा सकती हैं',
       invalidFileType: 'असमर्थित फ़ाइल प्रकार',
       fileReadFailed: 'फ़ाइल पढ़ने में विफल',
       fileOpenFailed: 'फ़ाइल खोलने में विफल',
+      modelNotSupportVision: '当前模型不支持图片识别，请切换到支持视觉的多模态模型',
     },
     toasts: {
       created: 'एजेंट बनाया गया',
@@ -1105,15 +1096,13 @@ export default {
         sandboxMode: 'एक्जीक्यूशन मोड',
         modeCodex: 'Codex सैंडबॉक्स',
         modeNative: 'नेटिव एक्जीक्यूशन',
-        nativeDesc:
-          'सैंडबॉक्स अलगाव के बिना सीधे लोकल मशीन पर कमांड चलाएं। कमांड्स को वर्तमान उपयोगकर्ता की पूरी अनुमति मिलेगी।',
         networkAccess: 'नेटवर्क एक्सेस की अनुमति दें',
         workDir: 'वर्किंग डायरेक्टरी',
-        workDirHint:
-          'संरचना: {basePath}{sep}sessions{sep}<agent_hash>{sep}<conversation_hash>{sep}',
         changeDir: 'बदलें',
         resetDir: 'डिफ़ॉल्ट पर रीसेट करें',
         selectDir: 'वर्किंग डायरेक्टरी चुनें',
+        nativeDesc: '直接在本机执行命令，无沙箱隔离。命令拥有当前用户的完整权限。',
+        workDirHint: '结构：{basePath}{sep}sessions{sep}<agent_hash>{sep}<conversation_hash>{sep}',
       },
       model: {
         defaultModel: 'डिफ़ॉल्ट मॉडल',
@@ -1146,13 +1135,9 @@ export default {
         sandboxMode: 'सैंडबॉक्स मोड',
         sandbox_off: 'अक्षम',
         sandbox_all: 'सभी एजेंट',
-        sandboxModeHint:
-          'सैंडबॉक्स कमांड निष्पादन को अलग करता है, एजेंटों को सीधे होस्ट सिस्टम को संशोधित करने से रोकता है',
         groupChatMentionPatterns: 'समूह चैट मेंशन पैटर्न',
-        groupChatMentionPatternsPlaceholder: "{'@'}assistant, {'@'}bot",
+        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
         groupChatInsertPreset: 'प्रीसेट डालें',
-        groupChatMentionPatternsHint:
-          'एजेंट प्रतिक्रिया ट्रिगर करने के लिए मेंशन पैटर्न, अल्पविराम से अलग',
         tools: 'टूल कॉन्फ़िगरेशन',
         toolsProfile: 'टूल प्रोफ़ाइल',
         toolsProfile_default: 'सेट नहीं (ग्लोबल इनहेरिट)',
@@ -1161,19 +1146,13 @@ export default {
         toolsProfile_messaging: 'Messaging — मैसेजिंग/सत्र',
         toolsProfile_full: 'Full — अप्रतिबंधित',
         builtinTools: 'अंतर्निहित टूल',
-        builtinToolsHint:
-          'यहां OpenClaw के अंतर्निहित टूल सीधे चुन सकते हैं। प्लगइन या कस्टम टूल नीचे अभी भी मैन्युअली दर्ज किए जा सकते हैं।',
         builtinToolsLoading: 'OpenClaw के अंतर्निहित टूल लोड हो रहे हैं…',
-        builtinToolsUnavailable:
-          'OpenClaw की अंतर्निहित टूल सूची अभी लोड नहीं हो सकी। आप अभी भी टूल नाम मैन्युअली दर्ज कर सकते हैं।',
         toolModeAllow: 'अनुमति दें',
         toolModeDeny: 'प्रतिबंधित करें',
         toolsAllow: 'अनुमत टूल',
         toolsAllowPlaceholder: 'उदा. browser, file_search',
         toolsDeny: 'अस्वीकृत टूल',
         toolsDenyPlaceholder: 'उदा. canvas',
-        toolsHint:
-          'प्रतिबंध को अनुमति पर प्राथमिकता मिलेगी। प्लगइन या कस्टम टूल मैन्युअली जोड़ने के बाद Enter दबाकर पुष्टि करें।',
         heartbeat: 'हार्टबीट अंतराल',
         heartbeat_off: 'बंद',
         heartbeat_custom: 'कस्टम',
@@ -1186,6 +1165,10 @@ export default {
         paramsMaxTokens: 'अधिकतम टोकन',
         paramsMaxTokensPlaceholder: 'वैश्विक डिफ़ॉल्ट के लिए खाली छोड़ें',
         paramsHint: 'इस एजेंट के लिए agents.defaults.models पैरामीटर ओवरराइड करें',
+        builtinToolsUnavailable: '暂时无法读取 OpenClaw 内置工具目录，你仍然可以手动输入工具名。',
+        groupChatMentionPatternsHint: '匹配消息中的提及模式以触发助手响应，多个用逗号分隔',
+        sandboxModeHint: '沙箱可隔离命令执行环境，防止助手直接操作宿主系统',
+        toolsHint: '禁止优先级高于允许。插件工具或自定义工具可继续手动输入，输入后按 Enter 确认。',
       },
     },
     workspaceDrawer: {
@@ -1208,8 +1191,6 @@ export default {
       mcpAddFromGlobal: 'ग्लोबल MCPलिस्ट से जोड़ें',
       mcpEmptyHint: 'ग्लोबल MCPलिस्ट से जोड़ने के लिए + क्लिक करें',
       mcpPickerHint: 'इस एजेंट के लिए MCPसर्वर जोड़ने या हटाने के लिए टॉगल करें',
-      mcpNoAvailableToAdd:
-        'जोड़ने के लिए कोई MCP सर्वर उपलब्ध नहीं है। पहले सेटिंग्स में कुछ सक्षम करें।',
       mcpSearchPlaceholder: 'MCPसर्वर खोजें',
       mcpNoSearchResults: 'कोई मैचिंग परिणाम नहीं',
       mcpSelectAll: 'सभी चुनें',
@@ -1217,21 +1198,19 @@ export default {
       mcpGlobalDisabled: 'MCPग्लोबल अक्षम है। सेटिंग्स में सक्षम करें।',
       mcpGoToSettings: 'नया MCPजोड़ें',
       mcpGoToSettingsHint: 'नया MCPसर्वर जोड़ने के लिए सेटिंग्स पर जाएं',
+      mcpNoAvailableToAdd: '暂无可添加的 MCP服务，请先在设置中启用',
     },
   },
   knowledge: {
     help: {
       name: 'विभिन्न नॉलेज बेस को अलग करने के लिए नाम (अधिकतम 30 अक्षर)।',
-      chunkSize:
-        'चंक आकार (अक्षरों में, 500~5000)। बड़े चंक अधिक पूरा संदर्भ देते हैं, लेकिन खोज की सूक्ष्मता कम कर देते हैं।',
       chunkOverlap: 'सूचना हानि कम करने के लिए आसन्न चंक के बीच ओवरलैप साइज (अक्षरों में, 0~1000)।',
-      batchMaxDocuments:
-        'For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.',
-      batchMaxChunks:
-        'Maximum number of segments per embedding request during learning. Range: 1~20.',
       matchThreshold: 'इस थ्रेशोल्ड से कम समानता वाले परिणाम फ़िल्टर किए जाएंगे (0~1)।',
       embeddingModel: 'टेक्स्ट को वेक्टर में बदलने के लिए उपयोग किया जाने वाला एम्बेडिंग मॉडल।',
       embeddingDimension: 'एम्बेडिंग वेक्टर डाइमेंशन चुने गए मॉडल आउटपुट से मेल खाना चाहिए।',
+      batchMaxChunks: '学习嵌入阶段，每次向量化请求中最多包含的分段数量。取值范围 1~20。',
+      chunkSize: '分片大小（字符数，500~5000）。分片越大，上下文越完整，但召回粒度更粗。',
+      raptorLLMModel: '用于生成分层级摘要的语言模型；不选择即不启用该能力。',
     },
     tabs: {
       personal: 'व्यक्तिगत',
@@ -1446,8 +1425,6 @@ export default {
       deleteCancel: 'रद्द करें',
       deleteConfirm: 'हटाएं',
       deleteSuccess: 'हटाया गया',
-      deleteDescBatch:
-        '{count} फोल्डर हटाने पर उनके अंतर्गत दस्तावेज़ "अवर्गीकृत" में चले जाएंगे। यह पूर्ववत नहीं किया जा सकता।',
       deleteSuccessBatch: '{count} फोल्डर हटाए गए',
       move: {
         title: 'फोल्डर ले जाएं',
@@ -1465,9 +1442,8 @@ export default {
       nameDuplicate: 'फोल्डर का नाम पहले से मौजूद है',
       nameHelp: 'फोल्डर का नाम (अधिकतम 50 अक्षर)।',
       parentFolder: 'पैरेंट फोल्डर',
-      parentFolderHelp:
-        'नेस्टेड फोल्डर बनाने के लिए एक पैरेंट फोल्डर चुनें। रूट में बनाने के लिए इसे खाली छोड़ दें।',
       rootFolder: 'रूट (कोई पैरेंट नहीं)',
+      parentFolderHelp: '选择父文件夹以创建嵌套文件夹。留空则在根目录创建。',
     },
     detail: {
       title: 'डॉक्यूमेंट विवरण',
@@ -1536,11 +1512,7 @@ export default {
     conversationLog: 'बातचीत लॉग',
     conversationLogDesc: 'कालानुक्रमिक बातचीत तथ्य',
     conversationLogEmpty: 'अभी तक कोई बातचीत लॉग नहीं',
-    deleteEventStreamConfirm:
-      'Are you sure you want to delete this conversation log? This action cannot be undone.',
     deleteFailed: 'हटाने में विफल',
-    deleteThematicFactConfirm:
-      'Are you sure you want to delete this topic summary? This action cannot be undone.',
     editCoreProfile: 'बुनियादी जानकारी संपादित करें',
     editEventStream: 'बातचीत लॉग संपादित करें',
     editThematicFact: 'विषय सारांश संपादित करें',
@@ -1586,8 +1558,6 @@ export default {
       howTitle: 'कैसे कनेक्ट करें',
       tipsIntro: 'Tencent के आधिकारिक OpenClaw प्लगइन से स्कैन करके WeCom कनेक्ट करें।',
       stepsLabel: 'चरण:',
-      step1:
-        'OpenClaw में आधिकारिक WeCom प्लगइन इंस्टॉल और सक्षम करने के लिए "QR कोड जनरेट करें" दबाएं।',
       step2: 'नीचे दिया गया QR कोड WeCom से स्कैन करें और अपने फोन पर पुष्टि करें।',
       scanHint: 'नीचे दिया गया QR कोड WeCom से स्कैन करें और अपने फोन पर पुष्टि करें।',
       manualEntry: 'मेरे पास पहले से एक बॉट है',
@@ -1603,6 +1573,7 @@ export default {
       openScanAdd: 'QR स्कैन से जोड़ें',
       qrExpired: 'QR कोड की अवधि समाप्त हो गई (5 मिनट तक मान्य)',
       qrExpiredHint: 'नया QR कोड जनरेट करने के लिए "रीफ्रेश" दबाएं और फिर से स्कैन करें।',
+      step1: '点击生成二维码，会在 OpenClaw 中安装并启用官方企微插件',
     },
     platforms: {
       dingtalk: 'DingTalk',
@@ -1635,8 +1606,6 @@ export default {
       success: 'चैनल सफलतापूर्वक बनाया गया',
       failed: 'चैनल बनाने में विफल',
       dingtalkPluginInstalling: 'DingTalk प्लगइन इंस्टॉल हो रहा है',
-      dingtalkPluginInstallingDesc:
-        'DingTalk कनेक्टर प्लगइन पृष्ठभूमि में इंस्टॉल हो रहा है। आप अभी सहायक को बाइंड करना जारी रख सकते हैं और बाद में कनेक्शन स्थिति जांच सकते हैं।',
       avatarHint: 'बदलने के लिए क्लिक करें, अनुशंसित आकार 100*100px, अधिकतम 100kb',
       feishuTipPrefix: 'लॉगिन करें',
       feishuTipMiddle: 'बॉट बनाने के लिए, अनुसरण करें',
@@ -1717,8 +1686,6 @@ export default {
     comingSoon: 'जल्द आ रहा है',
     agentFallback: 'AI असिस्टेंट',
     unbindConfirmTitle: 'अनबाइंड की पुष्टि',
-    unbindConfirmDesc:
-      'चैनल "{name}" से असिस्टेंट अनबाइंड करें? फिर से बाइंड किए बिना संदेश संसाधित नहीं होंगे।',
     unbindSuccess: 'असिस्टेंट अनबाइंड',
     bindSuccess: 'असिस्टेंट सफलतापूर्वक बाइंड',
     card: {
@@ -1748,20 +1715,18 @@ export default {
     },
     toggle: {
       enableSuccess: 'सफलतापूर्वक सक्षम किया गया',
-      dingtalkPluginNotReady:
-        'DingTalk कनेक्टर प्लगइन अभी स्थापित हो रहा है या तैयार नहीं है। कृपया बाद में पुनः प्रयास करें।',
       disableSuccess: 'सफलतापूर्वक अक्षम किया गया',
       enableTitle: 'इस चैनल को सक्षम करें?',
       disableTitle: 'इस चैनल को अक्षम करें?',
-      enableDesc:
-        'सक्षम होने पर, सिस्टम इस चैनल से कनेक्ट होकर संदेश प्राप्त और संसाधित करने का प्रयास करेगा।',
       disableDesc: 'अक्षम होने पर, कनेक्शन बंद हो जाएगा और इस चैनल के मैसेज अब प्राप्त नहीं होंगे।',
+      dingtalkPluginNotReady: '钉钉连接器插件仍在安装或未就绪，请稍后再试。',
+      enableDesc: '开启后，系统将尝试连接该频道以接收并处理消息。',
     },
     status: {
       online: 'कनेक्टेड',
       error: 'त्रुटि',
       offline: 'डिस्कनेक्टेड',
-      provisioning: "कनेक्ट हो रहा है…",
+      provisioning: 'कनेक्ट हो रहा है…',
     },
     bindAgent: {
       title: 'असिस्टेंट चुनें',
@@ -1775,28 +1740,19 @@ export default {
     },
     provisioning: {
       toastTitle: 'पृष्ठभूमि में प्रक्रिया चल रही है',
-      toastDescription:
-        'चैनल और गेटवे अभी बनाए या सिंक किए जा रहे हैं। कनेक्शन की स्थिति अपने आप अपडेट हो जाएगी। कृपया प्रतीक्षा करें।',
-      toastDescriptionWithAgent:
-        'चैनल, सहायक या गेटवे अभी बनाए या सिंक किए जा रहे हैं। कृपया प्रतीक्षा करें।',
+      toastDescription: '渠道与网关正在创建或同步中，连接状态将自动更新，请稍候。',
+      toastDescriptionWithAgent: '渠道、助手或网关正在创建或同步中，请稍候。',
     },
     wecom: {
       emptyTitle: 'अभी तक WeCom नहीं जोड़ा गया',
-      emptyDesc:
-        'Tencent के आधिकारिक OpenClaw प्लगइन से QR कोड स्कैन करके WeCom कनेक्ट करें या मौजूदा बॉट को एकीकृत करें।',
+      emptyDesc: '通过腾讯官方 OpenClaw 插件扫码连接企业微信，同时支持接入已有机器人。',
     },
     wechat: {
       emptyTitle: 'अभी तक WeChat नहीं जोड़ा गया',
-      emptyDesc:
-        'Tencent के आधिकारिक OpenClaw प्लगइन से QR कोड स्कैन करके अपना व्यक्तिगत WeChat कनेक्ट करें और WeChat संदेश प्राप्त व संसाधित करना शुरू करें।',
       addNow: 'अभी जोड़ें',
       configTitle: 'WeChat कॉन्फ़िगर करें',
       howToConnect: 'कैसे कनेक्ट करें',
-      tipsIntro:
-        'Tencent के आधिकारिक OpenClaw प्लगइन से QR कोड स्कैन करके अपना व्यक्तिगत WeChat कनेक्ट करें',
       stepsLabel: 'चरण',
-      step1:
-        'QR कोड जनरेट करें पर क्लिक करें; OpenClaw में आधिकारिक WeChat प्लगइन इंस्टॉल और सक्षम होगा',
       step2: 'नीचे दिया गया QR कोड WeChat से स्कैन करें और अपने फोन पर कनेक्शन की पुष्टि करें',
       generateQRCode: 'QR कोड जनरेट करें',
       generating: 'जनरेट हो रहा है…',
@@ -1806,37 +1762,25 @@ export default {
       qrExpired: 'समाप्त',
       loginSuccess: 'WeChat सफलतापूर्वक कनेक्ट हो गया',
       assistantPromptTitle: 'सहायक लिंक करें',
-      assistantPromptDesc:
-        'यह चैनल डिफ़ॉल्ट रूप से मुख्य सहायक (main) से जुड़ा है और संदेश मुख्य सहायक द्वारा संभाले जाएंगे। यदि आप किसी दूसरे सहायक का उपयोग करना चाहते हैं, तो किसी मौजूदा सहायक को लिंक कर सकते हैं या नया सहायक बनाकर उसे इस WeChat चैनल से स्वतः जोड़ सकते हैं।',
       useMainAssistant: 'पूर्ण करें (मुख्य सहायक का उपयोग करें)',
       bindExistingAssistant: 'मौजूदा सहायक लिंक करें',
       createAssistantManually: 'नया सहायक बनाएं',
-      createAssistantHint:
-        'नया सहायक बनाते समय आपको नाम और अन्य जानकारी हाथ से भरनी होगी। बनने के बाद यह स्वतः लिंक होगा और कनेक्शन रिफ्रेश हो जाएगा।',
-      missingChannelId:
-        'चैनल की जानकारी प्राप्त नहीं हुई। यह विंडो बंद करें, चैनल सूची रिफ्रेश करें और फिर से कोशिश करें।',
-      missingChannelIdHint:
-        'चैनल ID प्राप्त नहीं हुई। यह विंडो बंद करें और चैनल सूची से सहायक को हाथ से लिंक करें।',
       channelNotFound: 'संबंधित चैनल नहीं मिला। रिफ्रेश करके फिर से कोशिश करें।',
-      pluginInstallTryLater:
-        'आधिकारिक WeChat प्लगइन पृष्ठभूमि में इंस्टॉल या सक्षम किया जा रहा है। कृपया थोड़ी देर बाद फिर कोशिश करें।',
-      editNotSupported:
-        'WeChat QR कोड स्कैन से कनेक्ट होता है, इसलिए इसे यहां संपादित नहीं किया जा सकता। खाता बदलने के लिए चैनल पेज पर इस चैनल को हटाएं और फिर दोबारा स्कैन करके जोड़ें।',
-      qrExpiredHint:
-        'QR कोड अब मान्य नहीं है या प्रतीक्षा समय समाप्त हो गया। नया प्राप्त करने के लिए नीचे "रीफ़्रेश" दबाएँ।',
+      createAssistantHint: '新建助手时需手动填写名称等信息；创建成功后将自动绑定并刷新连接。',
+      emptyDesc: '通过腾讯官方 OpenClaw 插件扫码连接个人微信，开始接收并处理微信消息。',
+      missingChannelId: '未获取到频道信息，请关闭后刷新频道列表再试。',
+      missingChannelIdHint: '未获取到频道 ID，请关闭此窗口后在频道列表中手动绑定助手。',
+      pluginInstallTryLater: '官方微信插件正在后台安装或启用，请稍后再试。',
+      qrExpiredHint: '二维码已失效或等待超时，请点击下方「刷新」重新获取。',
+      step1: '点击生成二维码，会在 OpenClaw 中安装并启用官方微信插件',
+      tipsIntro: '通过腾讯官方 OpenClaw 插件扫码连接个人微信',
     },
     whatsapp: {
       emptyTitle: 'WhatsApp अभी जोड़ा नहीं गया',
-      emptyDesc:
-        'OpenClaw के अंतर्निहित WhatsApp चैनल से QR स्कैन करके WhatsApp (WhatsApp Web) कनेक्ट करें।',
       addNow: 'अभी जोड़ें',
       configTitle: 'WhatsApp कॉन्फ़िगर करें',
       howToConnect: 'कनेक्ट कैसे करें',
-      step1:
-        'नीचे बटन दबाने के बाद ऐप ज़रूरत होने पर OpenClaw में अंतर्निहित WhatsApp चैनल सक्षम करता है।',
       step2: 'फिर ऐप पृष्ठभूमि में QR लॉगिन चलाता है; अपने फ़ोन पर WhatsApp से QR कोड स्कैन करें।',
-      step3:
-        'लॉगिन के बाद इस पेज पर असिस्टेंट बाइंड करें। चैनल हटाने पर लॉगआउट होगा और बाइंडिंग हट जाएगी।',
       configStepsLink: 'आधिकारिक दस्तावेज़',
       generateQRCode: 'QR कोड बनाएं',
       generating: 'बन रहा है…',
@@ -1844,14 +1788,35 @@ export default {
       waitingForScan: 'स्कैन की प्रतीक्षा…',
       refresh: 'रीफ़्रेश',
       qrExpired: 'QR कोड समाप्त',
-      qrExpiredHint:
-        'QR कोड समाप्त हो गया या प्रतीक्षा समय समाप्त हो गया। नया प्राप्त करने के लिए नीचे "रीफ़्रेश" दबाएँ।',
       loginSuccess: 'WhatsApp कनेक्ट हो गया',
-      pluginInstallTryLater:
-        'WhatsApp चैनल अभी सक्षम हो रहा है या तैयार नहीं है। कृपया बाद में पुनः प्रयास करें।',
       channelNotFound: 'संबंधित चैनल नहीं मिला। रीफ़्रेश करके फिर कोशिश करें।',
-      editNotSupported:
-        'WhatsApp QR स्कैन से कनेक्ट होता है, यहाँ संपादित नहीं किया जा सकता। खाता बदलने के लिए इस चैनल को हटाकर फिर जोड़ें।',
+      emptyDesc: '通过 OpenClaw 内置 WhatsApp 通道扫码连接 WhatsApp（WhatsApp Web）。',
+      pluginInstallTryLater: 'WhatsApp 通道正在启用或尚未就绪，请稍后再试。',
+      qrExpiredHint: '二维码已失效或等待超时，请点击下方「刷新」重新获取。',
+      step1: '点击下方按钮后，应用会先在 OpenClaw 中启用内置 WhatsApp 通道（如尚未启用）。',
+      step3: '登录成功后可在本页绑定助手并管理连接状态；删除频道将执行登出并清理绑定。',
+    },
+    backToOverview: '返回频道概览',
+    panel: {
+      add: '添加',
+    },
+    platformBlurbs: {
+      default: '接入该平台以接收与发送消息。',
+      dingtalk: '接入钉钉企业内部机器人，通过 Stream 模式实现稳定的群聊与私信交互。',
+      feishu: '接入飞书企业内部应用，实现自动化群聊与私信交互。',
+      qq: '接入 QQ 官方机器人，覆盖群聊、频道与私信全场景互动。',
+      wechat: '扫码连接微信，微信直接连接机器人聊天。',
+      wecom: '使用 Bot ID 和 Secret 连接企业微信官方机器人。',
+      whatsapp: '扫码即连 WhatsApp，快速开展全球业务沟通。',
+    },
+    platformCard: {
+      connect: '连接',
+    },
+    row: {
+      boundToAgent: '已绑定 {name}',
+    },
+    supported: {
+      title: '支持的频道',
     },
   },
   scheduledTasks: {
@@ -1864,8 +1829,6 @@ export default {
     refresh: 'रीफ्रेश',
     edit: 'टास्क संपादित करें',
     empty: 'अभी तक कोई शेड्यूल्ड टास्क नहीं',
-    emptyDescription:
-      'AI वर्कफ़्लो को स्वचालित करने के लिए शेड्यूल्ड टास्क बनाएं। टास्क तय समय पर संदेश भेज सकते हैं, क्वेरी चला सकते हैं या कार्रवाइयाँ कर सकते हैं।',
     errorReason: 'त्रुटि कारण देखें',
     actionsMenu: 'कार्रवाई मेनू खोलें',
     total: 'कुल टास्क',
@@ -1878,8 +1841,6 @@ export default {
     copy: 'कॉपी करें',
     delete: 'हटाएं',
     deleteConfirmTitle: 'हटाने की पुष्टि',
-    deleteConfirmDescription:
-      'क्या आप वाकई टास्क "{name}" हटाना चाहते हैं? यह क्रिया पूर्ववत नहीं की जा सकती।',
     confirmDelete: 'हटाएं',
     enabled: 'सक्षम',
     disabled: 'रुका हुआ',
@@ -2033,8 +1994,6 @@ export default {
       thinking: 'सोच',
       enabled: 'टास्क सक्षम करें',
       expiresAt: 'समाप्ति तिथि',
-      expiredHint:
-        'इस टास्क की अवधि समाप्त हो गई है और यह फिर नहीं चलेगा। इसे फिर से चालू करने के लिए समाप्ति समय को भविष्य की किसी तिथि पर ले जाएं।',
       scheduleType: 'शेड्यूल प्रकार',
       schedulePreset: 'प्रीसेट',
       scheduleCustom: 'कस्टम समय',
@@ -2061,14 +2020,17 @@ export default {
       calendarTitle: '{year} / {month}',
       yearOption: '{year}',
       monthOption: '{month}',
+      expiredHint: '该任务已过期，不会再执行。如需恢复执行，请将到期时间修改到未来。',
     },
+    deleteConfirmDescription: '确定要删除任务“{name}”吗？此操作无法撤销。',
   },
   openclawGateway: {
     banner: {
       starting: 'The gateway is starting. Please try again in a moment.',
       upgrading: 'OpenClaw runtime is upgrading. Please try again in a moment.',
-      channels: '网关未运行，未启用网关时无法管理消息频道',
-      scheduledTasks: '网关未运行，未启用网关时无法管理定时任务',
+      channels: 'गेटवे नहीं चल रहा है, गेटवे सक्षम नहीं होने पर मैसेज चैनल प्रबंधित नहीं कर सकते',
+      scheduledTasks: 'गेटवे नहीं चल रहा है, गेटवे सक्षम नहीं होने पर शेड्यूल्ड टास्क प्रबंधित नहीं कर सकते',
+      notInstalled: 'OpenClaw runtime का पता नहीं चला।「सेटिंग्स → सामान्य」या「OpenClaw प्रबंधक」से runtime इंस्टॉल करें।',
     },
   },
   openclawCron: {
@@ -2160,8 +2122,6 @@ export default {
       deliveryTargetId: 'लक्ष्य ID',
       deliveryTargetIdPlaceholder: 'एक बातचीत या उपयोगकर्ता ID दर्ज करें',
       deliveryTargetHintTitle: 'डिफ़ॉल्ट लक्ष्य',
-      deliveryTargetFixedHint:
-        'चुने गए सहायक और चैनल प्रकार के लिए हाल का प्रेषित लक्ष्य ID पहले से भर दिया जाएगा, और आप चाहें तो इसे मैन्युअली बदल सकते हैं।',
       deliveryTargetModes: {
         lastActive: 'अंतिम सक्रिय लक्ष्य',
         targetId: 'लक्ष्य ID दर्ज करें',

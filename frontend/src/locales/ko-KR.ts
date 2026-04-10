@@ -1,6 +1,6 @@
 export default {
   app: {
-    title: 'ChatClaw',
+    title: '채팅클로',
     theme: '테마',
   },
   common: {
@@ -123,7 +123,7 @@ export default {
     },
   },
   winsnap: {
-    title: 'ChatClaw',
+    title: '채팅클로',
     assistantName: '소울 키친 어시스턴트',
     cancelSnap: '스냅 취소',
     snapApp: '앱에 스냅',
@@ -183,7 +183,7 @@ export default {
     tools: '도구',
     settings: '설정',
     document: '문서',
-    systemChatClaw: 'ChatClaw',
+    systemChatClaw: '채팅클로',
     systemOpenClaw: 'OpenClaw 어시스턴트',
   },
   toolsPage: {
@@ -335,6 +335,7 @@ export default {
         success: '执行成功',
         title: 'OpenClaw Doctor 诊断',
         workingDir: '工作目录',
+        autoTriggered: 'OpenClaw 连接失败超过 3 次，正在自动运行诊断修复…',
       },
       gatewayStatusLabel: '网关状态',
       logs: '日志',
@@ -346,15 +347,33 @@ export default {
       sidebarGatewayLabelSeparator: '：',
       sidebarGatewayPrefix: '网关',
       statusBadge: {
-        error: 'error',
-        running: 'running',
-        starting: 'starting',
-        stop: 'stop',
+        error: '오류',
+        running: '실행 중',
+        starting: '시작 중',
+        stop: '중지',
         upgrading: '업그레이드 중',
       },
       stop: '停止',
       stopFailed: '网关停止失败',
       stopSuccess: '网关已停止',
+      autoStartDisabled: 'OpenClaw 网关已关闭',
+      autoStartEnabled: 'OpenClaw 网关已开启',
+      autoStartFailed: '切换网关状态失败',
+      autoStartLabel: '网关运行开关',
+      autoStartTooltip: '点击开启或关闭 OpenClaw 网关自动启动，开启后应用启动时将自动启动网关',
+      cancelUpgrade: '取消升级',
+      continueOrRestartDesc: '发现 {version} 版本的下载缓存，请选择继续升级（从 npm install 开始）或重新下载。',
+      continueOrRestartTitle: '检测到已有升级缓存',
+      continueUpgrade: '继续升级',
+      portOccupied: '端口被占用',
+      portOccupiedHint: '端口 {port} 被进程 {process} (PID: {pid}) 占用，请先停止该进程后再试。',
+      portStillOccupiedAfterStop: '停止网关后端口 {port} 仍未释放',
+      portStillOccupiedAfterStopHint: '请手动终止占用端口的进程 (PID: {pid})。',
+      restartUpgrade: '重新升级',
+      upgradeCancelFailed: '取消升级失败',
+      upgradeCancelled: '升级已取消',
+      upgradeDetails: '详情',
+      upgradeOutputWaiting: '等待输出...',
     },
     general: {
       title: '확장',
@@ -394,23 +413,18 @@ export default {
         },
         uv: {
           name: 'Python 실행 환경',
-          description:
-            'AI 어시스턴트가 복잡한 작업을 완료할 수 있도록 Python 스크립트를 작성하고 실행하게 합니다',
+          description: '让 AI 助手能够编写和运行 Python 脚本来完成复杂任务。',
         },
         bun: {
           name: 'JavaScript 실행 환경',
-          description:
-            'AI 어시스턴트가 복잡한 작업을 완료할 수 있도록 JavaScript 스크립트를 작성하고 실행하게 합니다',
+          description: '让 AI 助手能够编写和运行 JavaScript 脚本来完成复杂任务。',
         },
         codex: {
           name: '보안 샌드박스',
-          description:
-            '시스템 보안을 보호하고 실수로 로컬 파일에 영향을 주는 일을 막기 위해 격리된 환경에서 명령을 실행합니다',
+          description: '在隔离环境中执行命令，保护系统安全，防止误操作影响本机文件。',
         },
         openclaw: {
           name: 'OpenClaw 런타임',
-          description:
-            'openclaw CLI와 Gateway를 포함한 OpenClaw Agent의 Node.js 런타임 환경입니다. OSS에서 다운로드되어 ~/.chatclaw/openclaw/runtime/에 설치됩니다',
         },
         newVersionHint: '新版本 {version}',
         openPathFailed: '无法打开该路径',
@@ -433,19 +447,17 @@ export default {
       extractModel: '메모리 추출 모델',
       extractModelHint: '각 대화 후 값진 메모리 정보를 요약하고 추출하는 데 사용됩니다.',
       embeddingModel: '메모리 임베딩 모델',
-      embeddingModelHint:
-        '대화 중 의미 기반 검색을 위해 메모리 텍스트를 벡터로 변환하는 데 사용됩니다',
       embeddingDimension: '임베딩 차원',
       embeddingDimensionHint: '임베딩 벡터 차원은 선택한 모델의 출력과 일치해야 합니다.',
       save: '설정 저장',
       saved: '설정이 저장되었습니다',
       saveFailed: '설정 저장 실패',
-      rebuildWarning:
-        '벡터 모델이나 차원을 변경하면 기존 메모리 벡터 데이터가 모두 비동기적으로 재구축됩니다',
       rebuilding: '메모리 벡터 재구축 중...',
       rebuildSuccess: '메모리 벡터가 성공적으로 재구축되었습니다',
       rebuildFailed: '메모리 벡터 재구축 실패',
       confirmRebuildTitle: '메모리 벡터 재구축 확인',
+      embeddingModelHint: '用于将记忆文本转换为向量，以便在对话中进行语义检索。',
+      rebuildWarning: '修改向量模型或维度后，所有已有记忆的向量数据将被异步重建。',
     },
     skills: {
       title: '스킬',
@@ -511,8 +523,6 @@ export default {
       listSubheading: 'AI 기능을 둘러보고 관리합니다',
       refreshCta: '새로고침',
       addSkillCta: '스킬 추가',
-      pageDesc:
-        '연결되면 OpenClaw Gateway의 skills.status를 사용하고, 그렇지 않으면 OpenClaw와 동일한 디스크 구조(managed, workspace, bundled, extraDirs)를 스캔합니다',
       filterAll: '전체',
       filterBuiltin: '기본 제공',
       filterInstalled: '설치됨',
@@ -526,16 +536,12 @@ export default {
       locationCount: '{count}개 복사본',
       searchPlaceholder: '스킬, 경로, 에이전트 또는 권한 검색…',
       noSkills: 'OpenClaw 스킬을 찾을 수 없습니다',
-      noSkillsHint:
-        '실시간 목록을 보려면 Gateway에 연결하세요. 오프라인에서는 OpenClaw 문서(state dir skills/, workspace-*/skills/, bundled package, skills.load.extraDirs)를 참고하세요',
       openSharedDir: '메인 워크스페이스 스킬 폴더 열기',
       openMainWorkspaceSkillsDir: '메인 워크스페이스 스킬 열기 (workspace-main/skills)',
       openManagedSkillsDir: '관리 스킬 폴더 열기 (openclaw/skills)',
       permissionLabel: '권한',
       scopeLabel: '범위',
       agentBinding: '에이전트',
-      gatewayOfflineHint:
-        'Gateway가 오프라인 상태이므로 목록은 OpenClaw 디스크 구조를 기준으로 생성됩니다. 연결 시에는 skills.status가 우선됩니다',
       backToList: '목록으로 돌아가기',
       loadFailed: 'OpenClaw 스킬을 불러오지 못했습니다',
       dataSourceLabel: '소스',
@@ -549,16 +555,12 @@ export default {
       eligibleNo: '아니오',
       eligibleUnknown: '알 수 없음',
       gateHintLabel: 'Gateway 참고',
-      previewNoLocalPath:
-        '이 항목은 Gateway에서만 온 정보로, 둘러볼 수 있는 로컬 폴더가 없습니다. 디스크에 일치하는 스킬이 있을 때만 경로가 표시됩니다',
       add: {
         title: '추가',
         createViaChatTitle: '채팅으로 만들기',
         createViaChatDesc: '필요한 기능을 설명하면 AI가 OpenClaw 스킬 골격을 만들어 줍니다',
         choosePackageTitle: '스킬 패키지 선택',
         choosePackageDesc: '스킬 폴더를 열고 그 안에 스킬 패키지를 넣습니다',
-        createViaChatPrompt:
-          'OpenClaw 스킬을 만드는 데 도움을 주세요. 먼저 어떤 기능이 필요한지 물어보고, 그런 다음 frontmatter가 포함된 SKILL.md와 필요한 폴더 구조, 샘플 코드를 생성해 주세요. 마지막으로 스킬 폴더를 workspace-main/skills 아래에 두면 활성화된다고 알려 주세요',
       },
     },
     mcp: {
@@ -704,7 +706,7 @@ export default {
       wecom: 'WeCom',
     },
     chatwiki: {
-      title: 'ChatWiki',
+      title: '채트위키',
       description: 'ChatWiki를 연결하여 해당 로봇 및 지식베이스 가져오기',
       notBound: '연결되지 않음',
       bound: '연결됨',
@@ -712,8 +714,6 @@ export default {
       reauthBind: '재인증',
       unbind: '연결 해제',
       unbindConfirmTitle: '연결 해제 확인',
-      unbindConfirmDesc:
-        '연결을 해제하면 ChatWiki 애플리케이션과 지식베이스를 더 이상 사용할 수 없습니다. 계속하시겠습니까?',
       addBinding: '연결 추가',
       applications: '앱',
       knowledgeBases: '지식베이스',
@@ -756,8 +756,6 @@ export default {
       startUsingHint: '아래 ',
       startUsing: '지금 시작',
       freeVersion: '무료',
-      modelServiceDesc:
-        'ChatWiki를 연동하면 모델 서비스에서 사용 가능한 모델과 크레딧을 바로 확인할 수 있습니다.',
       notLoggedInTitle: 'ChatWiki에 로그인되지 않음',
       notLoggedInDesc: 'ChatWiki Cloud 모델 목록과 크레딧 잔액을 동기화하려면 로그인하세요.',
       loginNow: '지금 로그인',
@@ -772,8 +770,6 @@ export default {
       openBillingFailed: '결제 페이지를 열지 못했습니다',
       modelBoundHint: '이 목록에는 현재 연동된 ChatWiki 계정에서 사용할 수 있는 모델이 표시됩니다.',
       modelUnboundHint: '현재 연동에 사용할 수 있는 모델 목록을 불러오려면 먼저 로그인하세요.',
-      modelLoginHint:
-        '먼저 ChatWiki 계정에 로그인하고 연동하세요. 그러면 여기에서 최신 모델 목록을 볼 수 있습니다.',
       providerStatus: {
         unbound: '{label} (로그인 안 됨)',
         nonCloud: '{label} (로그인 안 됨)',
@@ -788,6 +784,9 @@ export default {
       qa: 'Q&A 지식베이스',
       wechat: '공식 계정 지식베이스',
       workflow: '워크플로',
+      modelLoginHint: '请先登录并绑定 ChatWiki 账号，随后这里会展示最新的模型服务列表。',
+      modelServiceDesc: '绑定 ChatWiki 后可直接在模型服务中查看可用模型与积分情况',
+      unbindConfirmDesc: '解除绑定后，将无法使用 ChatWiki 提供的应用和知识库。确定要继续吗？',
     },
     tools: {
       tray: {
@@ -869,7 +868,7 @@ export default {
     },
     about: {
       title: '정보',
-      appName: 'ChatClaw',
+      appName: '채팅클로',
       copyright: '© 2026 ChatClaw Sesame Network Technology All Rights Reserved',
       officialWebsite: '공식 웹사이트',
       view: '보기',
@@ -971,7 +970,7 @@ export default {
       selectedCount: '{count}개의 지식베이스 선택됨',
       noKnowledge: '사용 가능한 지식베이스 없음',
       personalKnowledgeSection: '개인',
-      chatwikiSection: 'ChatWiki',
+      chatwikiSection: '채트위키',
       send: '전송',
       stop: '중지',
       copy: '복사',
@@ -1033,8 +1032,6 @@ export default {
       unknownAgent: '알 수 없는 어시스턴트',
       noPlatforms: '사용 가능한 채널 없음',
       createTitle: '{platform} 봇 추가',
-      createDesc:
-        '채널 페이지의 추가 흐름을 따르면 됩니다. 생성 후 현재 어시스턴트에 자동으로 연결됩니다',
       addChannel: '채널 추가',
       addAndBind: '추가 및 연결',
       showExisting: '추가된 채널 보기',
@@ -1051,13 +1048,13 @@ export default {
       bindSuccess: '연결 성공',
       unbindSuccess: '연결 해제 성공',
       addBot: '봇 추가',
-      addBotHint:
-        '각 봇은 하나의 AI 어시스턴트에만 연결할 수 있습니다. 연결되지 않은 봇만 표시됩니다',
       noUnboundBot: '연결 가능한 봇 없음',
       selectBot: '연결할 봇을 선택하세요',
-      statusOnline: "연결됨",
-      statusError: "오류",
-      statusOffline: "연결 안 됨",
+      statusOnline: '연결됨',
+      statusError: '오류',
+      statusOffline: '연결 안 됨',
+      addBotHint: '一个机器人只能被一个AI助手绑定，仅显示未绑定的机器人',
+      createDesc: '复制频道页的添加流程，创建后会自动绑定到当前助手。',
     },
     conversation: {
       empty: '채팅 기록 없음',
@@ -1103,14 +1100,13 @@ export default {
       teamImageNotSupported: '팀 모드에서 이미지 전송은 아직 지원되지 않습니다',
       selectTeamRobotFirst: '먼저 팀 로봇을 선택하세요',
       teamRobotMissingKey: '현재 로봇에 robot_key가 없습니다. 다시 동기화하세요',
-      modelNotSupportVision:
-        '현재 모델은 이미지 인식을 지원하지 않습니다. 비전 기능이 있는 멀티모달 모델로 전환하세요',
       modelNotSupportVisionHint: 'GPT-4o, Claude, Gemini 같은 모델이 이미지 인식을 지원합니다',
       fileTooLarge: '파일 크기가 제한을 초과합니다 (최대 {max})',
       tooManyFiles: '최대 {max}개의 파일을 업로드할 수 있습니다',
       invalidFileType: '지원되지 않는 파일 유형',
       fileReadFailed: '파일을 읽지 못했습니다',
       fileOpenFailed: '파일을 열지 못했습니다',
+      modelNotSupportVision: '当前模型不支持图片识别，请切换到支持视觉的多模态模型',
     },
     toasts: {
       created: '어시스턴트 생성됨',
@@ -1132,14 +1128,13 @@ export default {
         sandboxMode: '실행 모드',
         modeCodex: 'Codex 샌드박스',
         modeNative: '네이티브 실행',
-        nativeDesc:
-          '샌드박스 격리 없이 로컬 머신에서 직접 명령을 실행합니다. 명령은 현재 사용자와 동일한 전체 권한을 가집니다',
         networkAccess: '네트워크 액세스 허용',
         workDir: '작업 디렉토리',
         workDirHint: '구조: {basePath}{sep}sessions{sep}<agent_hash>{sep}<conversation_hash>{sep}',
         changeDir: '변경',
         resetDir: '기본으로 재설정',
         selectDir: '작업 디렉토리 선택',
+        nativeDesc: '直接在本机执行命令，无沙箱隔离。命令拥有当前用户的完整权限。',
       },
       model: {
         defaultModel: '기본 모델',
@@ -1172,13 +1167,9 @@ export default {
         sandboxMode: '샌드박스 모드',
         sandbox_off: '비활성화',
         sandbox_all: '모든 에이전트',
-        sandboxModeHint:
-          '샌드박스는 명령 실행을 격리하여 에이전트가 호스트 시스템을 직접 수정하는 것을 방지합니다',
         groupChatMentionPatterns: '그룹 채팅 멘션 패턴',
-        groupChatMentionPatternsPlaceholder: "{'@'}assistant, {'@'}bot",
+        groupChatMentionPatternsPlaceholder: '{"@"}어시스턴트, {"@"}봇',
         groupChatInsertPreset: '프리셋 삽입',
-        groupChatMentionPatternsHint:
-          '메시지에서 멘션 패턴을 매칭하여 에이전트 응답 트리거, 쉼표로 구분',
         tools: '도구 설정',
         toolsProfile: '도구 프리셋',
         toolsProfile_default: '미설정 (글로벌 상속)',
@@ -1187,25 +1178,17 @@ export default {
         toolsProfile_messaging: 'Messaging — 메시징/세션',
         toolsProfile_full: 'Full — 무제한',
         builtinTools: '내장 도구',
-        builtinToolsHint:
-          '여기에서 OpenClaw 내장 도구를 바로 선택할 수 있습니다. 플러그인 도구나 사용자 정의 도구는 아래에서 계속 수동 입력할 수 있습니다.',
         builtinToolsLoading: 'OpenClaw 내장 도구를 불러오는 중…',
-        builtinToolsUnavailable:
-          'OpenClaw 내장 도구 목록을 불러오지 못했습니다. 도구 이름은 계속 수동으로 입력할 수 있습니다.',
         toolModeAllow: '허용',
         toolModeDeny: '금지',
         toolsAllow: '허용된 도구',
         toolsAllowPlaceholder: '예: browser, file_search',
         toolsDeny: '금지된 도구',
         toolsDenyPlaceholder: '예: canvas',
-        toolsHint:
-          '금지는 허용보다 우선합니다. 플러그인 도구나 사용자 정의 도구는 계속 수동으로 입력한 뒤 Enter로 확정할 수 있습니다.',
         heartbeat: '하트비트 간격',
         heartbeat_off: '끄기',
         heartbeat_custom: '사용자 정의',
         heartbeatPlaceholder: '예: 10m',
-        heartbeatFormatError:
-          '형식이 올바르지 않습니다. 숫자+단위를 입력하세요 (예: 10m, 1h, 30s, 500ms)',
         heartbeatHint: '정기 하트비트 확인 간격 (ms/s/m/h 지원)',
         params: '모델 파라미터 재정의',
         paramsTemperature: '온도',
@@ -1213,6 +1196,11 @@ export default {
         paramsMaxTokens: '최대 토큰 수',
         paramsMaxTokensPlaceholder: '비워두면 글로벌 기본값 사용',
         paramsHint: '이 에이전트의 agents.defaults.models 파라미터를 재정의',
+        builtinToolsUnavailable: '暂时无法读取 OpenClaw 内置工具目录，你仍然可以手动输入工具名。',
+        groupChatMentionPatternsHint: '匹配消息中的提及模式以触发助手响应，多个用逗号分隔',
+        heartbeatFormatError: '格式不正确，请输入数字+单位，如 10m、1h、30s、500ms',
+        sandboxModeHint: '沙箱可隔离命令执行环境，防止助手直接操作宿主系统',
+        toolsHint: '禁止优先级高于允许。插件工具或自定义工具可继续手动输入，输入后按 Enter 确认。',
       },
     },
     workspaceDrawer: {
@@ -1248,16 +1236,13 @@ export default {
   knowledge: {
     help: {
       name: '서로 다른 지식베이스를 구분하는 이름 (최대 30자).',
-      chunkSize:
-        '청크 크기(문자 수, 500~5000)입니다. 더 큰 청크는 더 완전한 문맥을 제공하지만 검색 세분성은 떨어집니다',
       chunkOverlap: '인접 청크 간 중첩 크기 (문자 수, 0~1000) 정보 손실을 줄이기 위함.',
-      batchMaxDocuments:
-        '예: 3으로 설정하면 문서 10개를 업로드할 때 한 번에 3개씩, 총 4번에 나누어 처리합니다. 허용 범위: 1~5.',
-      batchMaxChunks:
-        '학습 임베딩 단계에서 한 번의 요청에 포함할 수 있는 최대 분할(세그먼트) 수입니다. 허용 범위: 1~20.',
       matchThreshold: '이 임계값보다 낮은 유사도의 결과는 필터링됩니다 (0~1).',
       embeddingModel: '텍스트를 벡터로 변환하는 데 사용되는 임베딩 모델.',
       embeddingDimension: '임베딩 벡터 차원은 선택한 모델의 출력과 일치해야 합니다.',
+      batchMaxChunks: '学习嵌入阶段，每次向量化请求中最多包含的分段数量。取值范围 1~20。',
+      chunkSize: '分片大小（字符数，500~5000）。分片越大，上下文越完整，但召回粒度更粗。',
+      raptorLLMModel: '用于生成分层级摘要的语言模型；不选择即不启用该能力。',
     },
     tabs: {
       personal: '개인',
@@ -1520,13 +1505,9 @@ export default {
       renameSuccess: '이름 변경 성공',
       renameFailed: '이름 변경 실패',
       deleteTitle: '삭제 확인',
-      deleteDesc:
-        '폴더 "{name}"를 삭제하면 그 안의 문서는 "미분류"로 이동합니다. 이 작업은 취소할 수 없습니다.',
       deleteCancel: '취소',
       deleteConfirm: '삭제',
       deleteSuccess: '삭제 성공',
-      deleteDescBatch:
-        '{count}개의 폴더를 삭제하면 그 안의 문서는 "미분류"로 이동합니다. 이 작업은 취소할 수 없습니다.',
       deleteSuccessBatch: '{count}개의 폴더를 삭제했습니다',
       move: {
         title: '폴더 이동',
@@ -1546,6 +1527,7 @@ export default {
       parentFolder: '상위 폴더',
       parentFolderHelp: '중첩 폴더를 만들 상위 폴더를 선택하세요. 비워두면 루트에 생성됩니다.',
       rootFolder: '루트 (상위 없음)',
+      deleteDesc: '删除文件夹「{name}」后，其下的文档将移动到「未分组」。此操作无法撤销。',
     },
     detail: {
       title: '문서 상세',
@@ -1698,7 +1680,7 @@ export default {
       feishu: 'Feishu',
       wecom: 'WeCom',
       wechat: 'WeChat',
-      whatsapp: 'WhatsApp',
+      whatsapp: '왓츠앱',
       qq: 'QQ',
     },
     config: {
@@ -1724,8 +1706,6 @@ export default {
       success: '채널이 성공적으로 생성되었습니다',
       failed: '채널 생성 실패',
       dingtalkPluginInstalling: 'DingTalk 플러그인 설치 중',
-      dingtalkPluginInstallingDesc:
-        'DingTalk 커넥터 플러그인이 백그라운드에서 설치 중입니다. 지금 어시스턴트 연결을 계속 진행하고 나중에 연결 상태를 확인할 수 있습니다.',
       avatarHint: '클릭하여 교체, 권장 100*100px, 최대 100KB',
       feishuTipPrefix: '로그인',
       feishuTipMiddle: '봇을 생성하려면',
@@ -1764,22 +1744,22 @@ export default {
     },
     meta: {
       feishu: {
-        name: 'Feishu / Lark',
+        name: '핀슈 / 라크',
         botName: 'Feishu',
       },
       telegram: {
-        name: 'Telegram',
-        botName: 'Telegram',
+        name: '텔레그램',
+        botName: '텔레그램',
         description: 'Bot API를 통한 Telegram 봇',
       },
       discord: {
-        name: 'Discord',
-        botName: 'Discord',
+        name: '디스코드',
+        botName: '디스코드',
         description: 'Gateway를 통한 Discord 봇',
       },
       whatsapp: {
-        name: 'WhatsApp',
-        botName: 'WhatsApp',
+        name: '왓츠앱',
+        botName: '왓츠앱',
         description: 'WhatsApp 비즈니스 API',
       },
       dingtalk: {
@@ -1820,16 +1800,12 @@ export default {
     comingSoon: '출시 예정',
     agentFallback: 'AI 어시스턴트',
     unbindConfirmTitle: '연결 해제 확인',
-    unbindConfirmDesc:
-      '채널 "{name}"에서 어시스턴트 연결을 해제할까요? 다시 연결해야 메시지를 처리합니다.',
     unbindSuccess: '어시스턴트 연결이 해제되었습니다',
     bindSuccess: '어시스턴트 연결 성공',
     provisioning: {
       toastTitle: '백그라운드에서 처리 중',
-      toastDescription:
-        '채널과 Gateway가 아직 생성되거나 동기화되고 있습니다. 연결 상태는 자동으로 업데이트됩니다. 잠시만 기다려 주세요.',
-      toastDescriptionWithAgent:
-        '채널, 도우미 또는 Gateway가 아직 생성되거나 동기화되고 있습니다. 잠시만 기다려 주세요.',
+      toastDescription: '渠道与网关正在创建或同步中，连接状态将自动更新，请稍候。',
+      toastDescriptionWithAgent: '渠道、助手或网关正在创建或同步中，请稍候。',
     },
     card: {
       appId: '앱 ID',
@@ -1858,19 +1834,18 @@ export default {
     },
     toggle: {
       enableSuccess: '활성화 성공',
-      dingtalkPluginNotReady:
-        '딩톡 커넥터 플러그인이 아직 설치 중이거나 준비되지 않았습니다. 잠시 후 다시 시도하세요.',
       disableSuccess: '비활성화 성공',
       enableTitle: '이 채널을 활성화하시겠습니까?',
       disableTitle: '이 채널을 비활성화하시겠습니까?',
       enableDesc: '활성화되면 시스템이 연결을 시도하고 해당 채널의 메시지를 수신합니다.',
       disableDesc: '비활성화되면 연결이 닫히고 해당 채널의 메시지를 더 이상 수신하지 않습니다.',
+      dingtalkPluginNotReady: '钉钉连接器插件仍在安装或未就绪，请稍后再试。',
     },
     status: {
       online: '연결됨',
       error: '오류',
       offline: '연결 끊김',
-      provisioning: "연결 중",
+      provisioning: '연결 중',
     },
     bindAgent: {
       title: '어시스턴트 선택',
@@ -1884,13 +1859,10 @@ export default {
     },
     wecom: {
       emptyTitle: '아직 WeCom(기업 위챗)이 추가되지 않았습니다',
-      emptyDesc:
-        'Tencent 공식 OpenClaw 플러그인으로 QR 코드를 스캔해 기업 위챗을 연결하거나 기존 봇을 연동할 수 있습니다.',
+      emptyDesc: '通过腾讯官方 OpenClaw 插件扫码连接企业微信，同时支持接入已有机器人。',
     },
     wechat: {
       emptyTitle: '아직 WeChat이 추가되지 않았습니다',
-      emptyDesc:
-        'Tencent 공식 OpenClaw 플러그인으로 QR 코드를 스캔해 개인 WeChat을 연결하고 WeChat 메시지 수신 및 처리를 시작하세요.',
       addNow: '지금 추가',
       configTitle: 'WeChat 설정',
       howToConnect: '연결 방법',
@@ -1906,37 +1878,23 @@ export default {
       qrExpired: '만료됨',
       loginSuccess: 'WeChat 연결 성공',
       assistantPromptTitle: '도우미 연결',
-      assistantPromptDesc:
-        '이 채널은 현재 기본적으로 메인 도우미(main)에 연결되어 있으며, 메시지는 메인 도우미가 처리합니다. 다른 도우미를 사용하려면 기존 도우미를 연결하거나 새 도우미를 만들어 이 WeChat 채널에 자동으로 연결할 수 있습니다.',
       useMainAssistant: '완료 (메인 도우미 사용)',
       bindExistingAssistant: '기존 도우미 연결',
       createAssistantManually: '새 도우미 만들기',
-      createAssistantHint:
-        '새 도우미를 만들 때는 이름 등의 정보를 직접 입력해야 합니다. 생성이 완료되면 자동으로 연결되고 연결 상태가 새로고침됩니다.',
-      missingChannelId:
-        '채널 정보를 가져오지 못했습니다. 이 창을 닫고 채널 목록을 새로고친 후 다시 시도하세요.',
-      missingChannelIdHint:
-        '채널 ID를 가져오지 못했습니다. 이 창을 닫고 채널 목록에서 도우미를 수동으로 연결하세요.',
       channelNotFound: '해당 채널을 찾을 수 없습니다. 새로고침 후 다시 시도하세요.',
-      pluginInstallTryLater:
-        '공식 WeChat 플러그인이 백그라운드에서 설치되거나 활성화되는 중입니다. 잠시 후 다시 시도하세요.',
-      editNotSupported:
-        'WeChat은 QR 코드 스캔으로 연결되므로 여기서 편집할 수 없습니다. 계정을 바꾸려면 채널 페이지에서 이 채널을 삭제한 뒤 다시 스캔해서 추가하세요.',
-      qrExpiredHint:
-        'QR 코드가 더 이상 유효하지 않거나 대기 시간이 초과되었습니다. 아래 "새로고침"을 눌러 다시 받으세요.',
+      createAssistantHint: '新建助手时需手动填写名称等信息；创建成功后将自动绑定并刷新连接。',
+      emptyDesc: '通过腾讯官方 OpenClaw 插件扫码连接个人微信，开始接收并处理微信消息。',
+      missingChannelId: '未获取到频道信息，请关闭后刷新频道列表再试。',
+      missingChannelIdHint: '未获取到频道 ID，请关闭此窗口后在频道列表中手动绑定助手。',
+      pluginInstallTryLater: '官方微信插件正在后台安装或启用，请稍后再试。',
+      qrExpiredHint: '二维码已失效或等待超时，请点击下方「刷新」重新获取。',
     },
     whatsapp: {
       emptyTitle: '아직 WhatsApp이 추가되지 않았습니다',
-      emptyDesc:
-        'OpenClaw 내장 WhatsApp 채널로 QR 코드를 스캔해 WhatsApp(WhatsApp Web)에 연결합니다.',
       addNow: '지금 추가',
       configTitle: 'WhatsApp 설정',
       howToConnect: '연결 방법',
       step1: '아래 버튼을 누르면 필요 시 OpenClaw에서 내장 WhatsApp 채널을 활성화합니다.',
-      step2:
-        '이어서 앱이 백그라운드에서 QR 로그인을 진행합니다. 휴대폰의 WhatsApp으로 QR 코드를 스캔하세요.',
-      step3:
-        '로그인 후 이 페이지에서 도우미를 연결하고 상태를 관리할 수 있습니다. 채널을 삭제하면 로그아웃되고 바인딩이 해제됩니다.',
       configStepsLink: '공식 문서',
       generateQRCode: 'QR 코드 생성',
       generating: '생성 중…',
@@ -1944,14 +1902,35 @@ export default {
       waitingForScan: '스캔 대기 중…',
       refresh: '새로고침',
       qrExpired: 'QR 코드 만료',
-      qrExpiredHint:
-        'QR 코드가 만료되었거나 대기 시간이 초과되었습니다. 아래의 "새로고침"을 눌러 다시 받으세요.',
       loginSuccess: 'WhatsApp 연결됨',
-      pluginInstallTryLater:
-        'WhatsApp 채널이 아직 활성화 중이거나 준비되지 않았습니다. 잠시 후 다시 시도하세요.',
       channelNotFound: '해당 채널을 찾을 수 없습니다. 새로고침 후 다시 시도하세요.',
-      editNotSupported:
-        'WhatsApp은 QR 스캔으로 연결되므로 여기서 편집할 수 없습니다. 계정을 바꾸려면 이 채널을 삭제한 뒤 다시 추가하세요.',
+      emptyDesc: '通过 OpenClaw 内置 WhatsApp 通道扫码连接 WhatsApp（WhatsApp Web）。',
+      pluginInstallTryLater: 'WhatsApp 通道正在启用或尚未就绪，请稍后再试。',
+      qrExpiredHint: '二维码已失效或等待超时，请点击下方「刷新」重新获取。',
+      step2: '随后应用会在后台运行扫码登录流程；请用手机 WhatsApp 扫描二维码。',
+      step3: '登录成功后可在本页绑定助手并管理连接状态；删除频道将执行登出并清理绑定。',
+    },
+    backToOverview: '返回频道概览',
+    panel: {
+      add: '添加',
+    },
+    platformBlurbs: {
+      default: '接入该平台以接收与发送消息。',
+      dingtalk: '接入钉钉企业内部机器人，通过 Stream 模式实现稳定的群聊与私信交互。',
+      feishu: '接入飞书企业内部应用，实现自动化群聊与私信交互。',
+      qq: '接入 QQ 官方机器人，覆盖群聊、频道与私信全场景互动。',
+      wechat: '扫码连接微信，微信直接连接机器人聊天。',
+      wecom: '使用 Bot ID 和 Secret 连接企业微信官方机器人。',
+      whatsapp: '扫码即连 WhatsApp，快速开展全球业务沟通。',
+    },
+    platformCard: {
+      connect: '连接',
+    },
+    row: {
+      boundToAgent: '已绑定 {name}',
+    },
+    supported: {
+      title: '支持的频道',
     },
   },
   scheduledTasks: {
@@ -1964,8 +1943,6 @@ export default {
     refresh: '새로고침',
     edit: '작업 편집',
     empty: '예약된 작업 없음',
-    emptyDescription:
-      '예약 작업을 만들어 AI 워크플로를 자동화합니다. 작업은 지정된 시간에 메시지를 보내고, 쿼리를 실행하고, 작업을 수행할 수 있습니다.',
     errorReason: '오류 이유 보기',
     actionsMenu: '작업 메뉴 열기',
     total: '총 작업',
@@ -2132,8 +2109,6 @@ export default {
       thinking: '사고',
       enabled: '작업 활성화',
       expiresAt: '만료일',
-      expiredHint:
-        '이 작업은 이미 만료되어 다시 실행되지 않습니다. 다시 시작하려면 만료 시간을 미래 시점으로 변경하세요.',
       scheduleType: '예약 유형',
       schedulePreset: '프리셋',
       scheduleCustom: '사용자 지정 시간',
@@ -2157,9 +2132,10 @@ export default {
       selectExpirationDate: '만료일 선택',
       today: '오늘',
       clear: '지우기',
-      calendarTitle: '{year} / {month}',
-      yearOption: '{year}',
-      monthOption: '{month}',
+      calendarTitle: '{year}년 {month}월',
+      yearOption: '{year}년',
+      monthOption: '{month}월',
+      expiredHint: '该任务已过期，不会再执行。如需恢复执行，请将到期时间修改到未来。',
     },
     actions: '작업',
     agent: '어시스턴트',
@@ -2197,8 +2173,9 @@ export default {
     banner: {
       starting: '게이트웨이를 시작하는 중입니다. 잠시 후 다시 시도하세요.',
       upgrading: 'OpenClaw 런타임이 업그레이드 중입니다. 잠시 후 다시 시도해 주세요.',
-      channels: '网关未运行，未启用网关时无法管理消息频道',
-      scheduledTasks: '网关未运行，未启用网关时无法管理定时任务',
+      channels: '게이트웨이가 실행되고 있지 않아 메시지 채널을 관리할 수 없습니다',
+      scheduledTasks: '게이트웨이가 실행되고 있지 않아 예약 작업을 관리할 수 없습니다',
+      notInstalled: 'OpenClaw 런타임이 감지되지 않았습니다.「설정 → 일반」또는「OpenClaw 관리자」에서 런타임을 설치하세요.',
     },
   },
   openclawCron: {
@@ -2290,8 +2267,6 @@ export default {
       deliveryTargetId: '대상 ID',
       deliveryTargetIdPlaceholder: '대화 또는 사용자 ID를 입력하세요',
       deliveryTargetHintTitle: '기본 대상',
-      deliveryTargetFixedHint:
-        '선택한 어시스턴트와 채널 유형에서 가장 최근에 전달된 대상 ID가 기본으로 채워지며, 필요하면 직접 수정할 수 있습니다.',
       deliveryTargetModes: {
         lastActive: '마지막 활성 대상',
         targetId: '대상 ID 입력',

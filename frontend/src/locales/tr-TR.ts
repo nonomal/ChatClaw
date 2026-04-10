@@ -148,7 +148,7 @@ export default {
     },
   },
   selection: {
-    aiChat: "ChatClaw AI'ya sor",
+    aiChat: 'ChatClaw AI"ya sor',
     disableSelectionSearch: 'Kapat',
   },
   floatingball: {
@@ -179,8 +179,7 @@ export default {
     subtitle: 'One cikan araclara hizli erisim',
     smartSidebar: {
       title: 'Akilli kenar cubugu',
-      description:
-        'Canli AI sorgulari icin WeCom, QQ ve diger sohbet uygulamalarinin yanina yerlestir',
+      description: 'WeCom, QQ ve diğer sohbet kenar çubuklarına yapışarak AI"yı gerçek zamanlı sorgulayın',
     },
     selectionSearch: {
       title: 'Secim aramasi',
@@ -266,8 +265,8 @@ export default {
       version: 'Kurulu surum',
       runtimeSource: 'Runtime kaynagi',
       runtimePath: 'Runtime yolu',
-      upgradeButton: "OpenClaw'i guncelle",
-      upgradeButtonDisabledWhenActive: "Ağ geçidini yükseltmeden önce durdurun",
+      upgradeButton: 'OpenClaw"i guncelle',
+      upgradeButtonDisabledWhenActive: 'Ağ geçidini yükseltmeden önce durdurun',
       restartButton: 'Hizmeti yeniden baslat',
       upgrading: 'Guncelleniyor...',
       restarting: 'Yeniden baslatiliyor...',
@@ -297,40 +296,41 @@ export default {
       alreadyLatest: 'Zaten en son surumde',
       upgradeSuccess: 'OpenClaw {version} surumune guncellendi',
       upgradeFailed: 'OpenClaw guncellenemedi',
-      upgradeProgress: '升级进度',
+      upgradeProgress: 'Yükseltme ilerlemesi',
       composer: {
-        gatewayDisabledHint: '网关未启用',
-        gatewayTagError: '网关异常',
-        gatewayTagStarting: '网关启动中',
+        gatewayDisabledHint: 'Gateway etkinleştirilmedi',
+        gatewayTagError: 'Gateway anormal',
+        gatewayTagStarting: 'Gateway başlatılıyor',
         gatewayTagUpgrading: 'Runtime upgrading',
-        gatewayTagStop: '网关未运行',
+        gatewayTagStop: 'Gateway çalışmıyor',
       },
       doctor: {
-        command: '命令',
-        duration: '耗时',
-        exitCode: '退出码',
-        failed: '执行失败',
-        fixed: '已修复',
-        noErrors: '暂无错误',
-        noOutput: '暂无输出',
-        run: '运行',
-        runAndFix: '运行并修复',
-        running: '运行中…',
-        stderr: '标准错误',
-        stdout: '标准输出',
-        success: '执行成功',
-        title: 'OpenClaw Doctor 诊断',
-        workingDir: '工作目录',
+        command: 'Komut',
+        duration: 'Süre',
+        exitCode: 'Çıkış kodu',
+        failed: 'Yürütme başarısız',
+        fixed: 'Düzeltildi',
+        noErrors: 'Henüz hata yok',
+        noOutput: 'Henüz çıktı yok',
+        run: 'Çalıştır',
+        runAndFix: 'Çalıştır ve düzelt',
+        running: 'Çalışıyor…',
+        stderr: 'Standart hata',
+        stdout: 'Standart çıktı',
+        success: 'Yürütme başarılı',
+        title: 'OpenClaw Doctor Tanısı',
+        workingDir: 'Çalışma dizini',
+        autoTriggered: 'OpenClaw bağlantısı 3"ten fazla başarısız oldu, otomatik tanı onarım çalışıyor…',
       },
-      gatewayStatusLabel: '网关状态',
-      logs: '日志',
-      logsHint: '网关日志位于运行目录下的 logs 文件夹（openclaw-gateway.log）。',
-      pageSubtitle: '配置网关等基础设置信息',
-      restart: '重启',
-      restartFailed: '网关重启失败',
-      restartSuccess: '网关已重启',
+      gatewayStatusLabel: 'Gateway durumu',
+      logs: 'Günlükler',
+      logsHint: 'Gateway günlükleri çalıştırma dizini altındaki logs klasöründedir (openclaw-gateway.log).',
+      pageSubtitle: 'Gateway ve diğer temel ayar bilgilerini yapılandırın',
+      restart: 'Yeniden başlat',
+      restartFailed: 'Gateway yeniden başlatma başarısız',
+      restartSuccess: 'Gateway yeniden başlatıldı',
       sidebarGatewayLabelSeparator: '：',
-      sidebarGatewayPrefix: '网关',
+      sidebarGatewayPrefix: 'Gateway',
       statusBadge: {
         error: 'error',
         running: 'running',
@@ -338,9 +338,31 @@ export default {
         stop: 'stop',
         upgrading: 'upgrading',
       },
-      stop: '停止',
-      stopFailed: '网关停止失败',
-      stopSuccess: '网关已停止',
+      stop: 'Durdur',
+      stopFailed: 'Gateway durdurma başarısız',
+      stopSuccess: 'Gateway durduruldu',
+      autoStartDisabled: 'OpenClaw Gateway kapatıldı',
+      autoStartEnabled: 'OpenClaw Gateway açıldı',
+      autoStartFailed: 'Gateway durumu değiştirme başarısız',
+      autoStartLabel: 'Gateway çalışma anahtarı',
+      autoStartTooltip: 'OpenClaw gateway otomatik başlatmayı açmak veya kapatmak için tıklayın, açıldıktan sonra gateway uygulama başlatıldığında otomatik olarak başlayacaktır',
+      cancelUpgrade: 'Yükseltmeyi iptal et',
+      continueOrRestartDesc: '{version} sürümünün indirme önbelleği bulundu, yükseltmeye devam etmeyi (npm install"ten başlayarak) veya yeniden indirmeyi seçin.',
+      continueOrRestartTitle: 'Mevcut yükseltme önbelleği algılandı',
+      continueUpgrade: 'Yükseltmeye devam et',
+      portOccupied: 'Bağlantı noktası meşgul',
+      portOccupiedHint: '{port} bağlantı noktası {process} (PID: {pid}) işlemi tarafından meşgul, lütfen önce bu işlemi durdurun ve tekrar deneyin.',
+      portStillOccupiedAfterStop: 'Gateway durdurulduktan sonra {port} bağlantı noktası hala serbest bırakılmadı',
+      portStillOccupiedAfterStopHint: 'Lütfen bağlantı noktasını kullanan işlemi (PID: {pid}) manuel olarak sonlandırın.',
+      restartUpgrade: 'Yükseltmeyi yeniden başlat',
+      start: 'Başlat',
+      startFailed: 'Gateway başlatma başarısız',
+      startSuccess: 'Gateway başlatıldı',
+      starting: 'Başlatılıyor...',
+      upgradeCancelFailed: 'Yükseltme iptali başarısız',
+      upgradeCancelled: 'Yükseltme iptal edildi',
+      upgradeDetails: 'Ayrıntılar',
+      upgradeOutputWaiting: 'Çıktı bekleniyor...',
     },
     general: {
       title: 'Genel ayarlar',
@@ -364,7 +386,7 @@ export default {
           oss: 'API/OSS yedekleme',
           selectProxy: 'Proxy seç',
           custom: 'Özel',
-          customProxyURL: "Özel proxy URL'si",
+          customProxyURL: 'Özel proxy URL"si',
           customProxyPlaceholder: 'https://your-proxy.com/',
           start: 'Testi başlat',
           abort: 'Durdur',
@@ -380,13 +402,11 @@ export default {
         },
         uv: {
           name: 'Python çalışma zamanı',
-          description:
-            'AI asistaninin karmasik gorevleri tamamlamak icin Python betikleri yazmasina ve calistirmasina izin verir.',
+          description: 'AI asistanının karmaşık görevleri tamamlamak için Python betikleri yazmasına ve çalıştırmasına olanak tanır.',
         },
         bun: {
           name: 'JavaScript çalışma zamanı',
-          description:
-            'AI asistaninin karmasik gorevleri tamamlamak icin JavaScript betikleri yazmasina ve calistirmasina izin verir.',
+          description: 'AI asistanının karmaşık görevleri tamamlamak için JavaScript betikleri yazmasına ve çalıştırmasına olanak tanır.',
         },
         codex: {
           name: 'Güvenli koruma alanı',
@@ -394,48 +414,38 @@ export default {
         },
         openclaw: {
           name: 'OpenClaw Runtime',
-          description:
-            "OpenClaw Agent'in Node.js calisma ortami; openclaw CLI'yi ve Gateway'i icerir. OSS'den indirilir ve ~/.chatclaw/openclaw/runtime/ konumuna kurulur.",
         },
-        newVersionHint: '新版本 {version}',
-        openPathFailed: '无法打开该路径',
-        openPathHint: '在文件管理器中打开所在目录',
-        update: '更新',
-        updatesAvailableToast: '检测到扩展组件有新版本，可以到「设置 → 常规设置」中手动更新。',
+        newVersionHint: 'Yeni sürüm {version}',
+        openPathFailed: 'Bu yol açılamıyor',
+        openPathHint: 'Dosya yöneticisinde içeren dizini aç',
+        update: 'Güncelle',
+        updatesAvailableToast: 'Uzantı bileşenlerinde yeni sürüm algılandı, "Ayarlar > Genel Ayarlar" içinde manuel olarak güncelleyebilirsiniz.',
       },
     },
     memory: {
       title: 'Uzun vadeli bellek',
       enable: 'Uzun vadeli belleği etkinleştir',
-      enableHint:
-        'Etkinlestirildiginde AI tercihlerinizi, aliskanliklarinizi ve onemli gercekleri konusmalardan otomatik olarak cikarip hatirlar.',
       extractModel: 'Bellek çıkarma modeli',
-      extractModelHint:
-        'Her konusmadan sonra degerli bellek bilgilerini ozetlemek ve cikarmak icin kullanilir.',
       embeddingModel: 'Bellek gömme modeli',
-      embeddingModelHint:
-        'Bellek metnini konusmalar sirasinda anlamsal geri getirme icin vektorlere donusturmekte kullanilir.',
       embeddingDimension: 'Gömme boyutu',
       embeddingDimensionHint: 'Gömme vektör boyutu, seçilen modelin çıktısıyla eşleşmelidir.',
       save: 'Ayarları kaydet',
       saved: 'Ayarlar kaydedildi',
       saveFailed: 'Ayarları kaydetme başarısız',
-      rebuildWarning:
-        'Vektor modeli veya boyutu degistirildikten sonra mevcut tum bellek vektor verileri eszamansiz olarak yeniden olusturulur.',
       rebuilding: 'Bellek vektörleri yeniden oluşturuluyor...',
       rebuildSuccess: 'Bellek vektörleri başarıyla yeniden oluşturuldu',
       rebuildFailed: 'Bellek vektörlerini yeniden oluşturma başarısız',
       confirmRebuildTitle: 'Bellek vektörlerini yeniden oluşturmayı onayla',
+      embeddingModelHint: 'Hafıza metnini vektörlere dönüştürmek için kullanılır, sohbet sırasında anlamsal retrieval için.',
+      enableHint: 'Açıldıktan sonra AI, sohbet sırasında tercihlerinizi, alışkanlıklarınızı ve önemli gerçeklerinizi otomatik olarak çıkaracak ve hatırlayacaktır.',
+      extractModelHint: 'Her sohbetten sonra değerli hafıza bilgilerini özetlemek ve çıkarmak için kullanılır.',
+      rebuildWarning: 'Vektör modeli veya boyutu değiştirildikten sonra tüm mevcut hafıza vektör verileri eşzamansız olarak yeniden oluşturulacaktır.',
     },
     skills: {
       title: 'Beceriler',
       enable: 'Becerileri etkinleştir',
-      enableHint:
-        'Etkinlestirildiginde AI asistani konusmalar sirasinda yuklu becerileri otomatik olarak yukler ve kullanir.',
       pageDesc: 'AI yeteneklerini keşfet ve yönet',
       directory: 'Beceri yükleme dizini',
-      directoryHint:
-        'Indirilen beceri klasorlerini bu dizine koyun. AI konusmalari sirasinda otomatik olarak algilanip yukleneceklerdir.',
       tabInstalled: 'Yüklü',
       tabMarket: 'Pazar',
       filterAll: 'Tümü',
@@ -484,6 +494,8 @@ export default {
       binaryFile: 'İkili dosya, önizleme yapılamaz',
       rateLimited: 'Çok fazla istek, lütfen daha sonra tekrar deneyin',
       loadFailed: 'Yükleme başarısız, lütfen daha sonra tekrar deneyin',
+      directoryHint: 'İndirilen beceri klasörlerini bu dizine koyun, AI sohbet sırasında otomatik olarak tanıyacak ve yükleyecektir.',
+      enableHint: 'Açıldıktan sonra AI asistanı sohbet sırasında yüklü becerileri otomatik olarak yükleyecek ve kullanacaktır.',
     },
     openclawSkills: {
       title: 'OpenClaw Becerileri',
@@ -491,8 +503,6 @@ export default {
       listSubheading: 'AI yeteneklerine goz atin ve yonetin',
       refreshCta: 'Yenile',
       addSkillCta: 'Beceri ekle',
-      pageDesc:
-        'Bagliyken OpenClaw Gateway skills.status kullanir; aksi halde OpenClaw ile ayni disk duzenini tarar (managed, workspace, bundled, extraDirs).',
       filterAll: 'Tümü',
       filterBuiltin: 'Yerleşik',
       filterInstalled: 'Yüklü',
@@ -506,16 +516,12 @@ export default {
       locationCount: '{count} kopya',
       searchPlaceholder: 'Search skills, paths, agent, or permissions…',
       noSkills: 'OpenClaw becerisi bulunamadi',
-      noSkillsHint:
-        "Canli liste icin Gateway'e baglanin; cevrimdisiyken OpenClaw belgelerini izleyin (state dir skills/, workspace-*/skills/, bundled package, skills.load.extraDirs).",
       openSharedDir: 'Ana workspace beceri klasorunu ac',
       openMainWorkspaceSkillsDir: 'Ana workspace becerilerini ac (workspace-main/skills)',
       openManagedSkillsDir: 'Yonetilen beceri klasorunu ac (openclaw/skills)',
       permissionLabel: 'Izin',
       scopeLabel: 'Kapsam',
       agentBinding: 'Asistan',
-      gatewayOfflineHint:
-        "Gateway cevrimdisi: liste, OpenClaw'in disk duzeninden olusturulur. Bagliyken skills.status tercih edilir.",
       backToList: 'Listeye don',
       loadFailed: 'OpenClaw becerileri yuklenemedi',
       dataSourceLabel: 'Kaynak',
@@ -529,26 +535,18 @@ export default {
       eligibleNo: 'No',
       eligibleUnknown: 'Bilinmiyor',
       gateHintLabel: 'Gateway notu',
-      previewNoLocalPath:
-        "Bu satir yalnizca Gateway'den gelir; gezilecek yerel bir klasor yoktur. Diskte eslesen bir beceri oldugunda bir yol gorunur.",
       add: {
         title: 'Ekle',
         createViaChatTitle: 'Sohbetle olustur',
         createViaChatDesc: 'Describe what you need and let AI scaffold an OpenClaw skill',
         choosePackageTitle: 'Beceri paketini sec',
         choosePackageDesc: 'Open the skills folder and place the skill package there',
-        createViaChatPrompt:
-          'Bir OpenClaw becerisi olusturmama yardim et. Once hangi islevsellige ihtiyacim oldugunu sor, sonra bir SKILL.md (frontmatter ile), gerekli klasor yapisini ve ornek kodu olustur. Son olarak beceri klasorunu etkinlestirmek icin workspace-main/skills altina koymami soyle.',
       },
     },
     mcp: {
       title: 'MCP',
       enable: 'MCP',
-      enableHint:
-        'Etkinlestirildiginde AI asistani konusmalar sirasinda yapilandirilmis MCP sunucularina otomatik olarak baglanir ve onlari kullanir.',
       directory: 'MCP yapilandirma dizini',
-      directoryHint:
-        'MCP sunucusu yapilandirma dosyalarini bu dizine koyun. AI konusmalari sirasinda otomatik olarak algilanip baglanacaklardir.',
       tabServers: 'MCP',
       tabSettings: 'Ayarlar',
       tabInstalled: 'Yüklü',
@@ -602,7 +600,7 @@ export default {
       tabAssistantMcp: 'Assistant MCP',
       assistantMcpAdd: 'Ekle',
       assistantMcpAddTitle: 'Assistant MCP ekle',
-      assistantMcpEditTitle: "Assistant MCP'yi düzenle",
+      assistantMcpEditTitle: 'Assistant MCP"yi düzenle',
       assistantMcpName: 'MCP eklenti adı',
       assistantMcpNamePlaceholder: 'MCP eklenti adını girin, en fazla 20 karakter',
       assistantMcpDescription: 'Açıklama',
@@ -617,20 +615,21 @@ export default {
       assistantMcpCreateFailed: 'Ekleme başarısız',
       assistantMcpUpdateSuccess: 'Başarıyla güncellendi',
       assistantMcpUpdateFailed: 'Güncelleme başarısız',
-      assistantMcpDeleteConfirm: "Bu Assistant MCP'yi silmek istediğinizden emin misiniz?",
+      assistantMcpDeleteConfirm: 'Bu Assistant MCP"yi silmek istediğinizden emin misiniz?',
       assistantMcpDeleteSuccess: 'Başarıyla silindi',
       assistantMcpDeleteFailed: 'Silme başarısız',
       assistantMcpAddTool: 'Araç ekle',
       assistantMcpEdit: 'Düzenle',
       assistantMcpDelete: 'Sil',
       assistantMcpLinkAgentsTitle: 'Asistanları bağla',
-      assistantMcpLinkAgentsDesc:
-        'Bu MCP için araç olarak kullanılacak yapay zekâ asistanlarını seçin',
       assistantMcpNoAgents: 'Kullanılabilir yapay zekâ asistanı yok',
       assistantMcpToolCount: '{count} araç',
       assistantMcpToolName: 'Araç adı',
       assistantMcpToolNamePlaceholder: 'Geçerli bir fonksiyon adı girin',
       assistantMcpToolDesc: 'Araç açıklaması',
+      assistantMcpLinkAgentsDesc: 'Bu MCP aracının AI asistanı olarak kullanılacak olanı seçin',
+      directoryHint: 'MCP hizmeti yapılandırma dosyalarını bu dizine koyun, AI sohbet sırasında otomatik olarak tanıyacak ve bağlanacaktır.',
+      enableHint: 'Açıldıktan sonra AI asistanı sohbet sırasında yapılandırılmış MCP hizmetlerine otomatik olarak bağlanacak ve kullanacaktır.',
     },
     snap: {
       title: 'Ayarlar',
@@ -683,8 +682,6 @@ export default {
       reauthBind: 'Yeniden yetkilendir',
       unbind: 'Bağlantıyı kaldır',
       unbindConfirmTitle: 'Bağlantıyı kaldırmayı onayla',
-      unbindConfirmDesc:
-        'Baglantiyi kaldirdiktan sonra ChatWiki uygulamalarini ve bilgi tabanlarini artik kullanamayacaksiniz. Devam edilsin mi?',
       addBinding: 'Bağlantı ekle',
       applications: 'Uygulamalar',
       knowledgeBases: 'Bilgi tabanları',
@@ -705,8 +702,6 @@ export default {
         wechat: 'Resmi hesap bilgi tabanı',
       },
       enabledHint: 'Etkinlestirildiginde Coklu soru icinde gosterilir',
-      libraryEnabledHint:
-        'ChatWiki bilgi tabanini senkronize eder. Etkinlestirildiginde soru sorarken ekip bilgi tabaninda gorunur.',
       emptyRobots: 'Uygulama yok',
       emptyLibraries: 'Bilgi tabanı yok',
       loginCloud: 'ChatWiki Cloud hesabina giris yap',
@@ -728,11 +723,7 @@ export default {
       startUsingHint: 'ChatClaw Desktop',
       startUsing: 'Şimdi kullanmaya başla',
       freeVersion: 'Ücretsiz',
-      modelServiceDesc:
-        'ChatWiki bağlandıktan sonra Model Service içinde kullanılabilir modelleri ve kredileri doğrudan görebilirsiniz.',
       notLoggedInTitle: 'ChatWiki oturumu açık değil',
-      notLoggedInDesc:
-        'Model listesini ve kredi bakiyesini senkronize etmek icin once ChatWiki Cloud hesabinda oturum acin.',
       loginNow: 'Şimdi giriş yap',
       accountIdPrefix: 'Hesap Kimliği: ',
       buyCredits: 'Kredi satın al',
@@ -743,12 +734,6 @@ export default {
       pricePerKToken: '{price} kredi / 1K token',
       modelLoadFailed: 'Model listesi yüklenemedi',
       openBillingFailed: 'Faturalandırma sayfası açılamadı',
-      modelBoundHint:
-        'Bu liste, bağlı ChatWiki hesabı için şu anda kullanılabilen modelleri gösterir.',
-      modelUnboundHint:
-        'Mevcut bağlantı için kullanılabilir model listesini yüklemek üzere önce oturum açın.',
-      modelLoginHint:
-        'Önce ChatWiki hesabınızla oturum açıp bağlantıyı kurun. Ardından en güncel model listesi burada görünecektir.',
       providerStatus: {
         unbound: '{label} (Oturum açık değil)',
         nonCloud: '{label} (Oturum açık değil)',
@@ -758,6 +743,13 @@ export default {
         cn: 'Çin',
         global: 'Küresel',
       },
+      libraryEnabledHint: 'ChatWiki bilgi tabanını senkronize edin, açıldıktan sonra soru sorulduğunda ekip bilgi tabanında görüntülenebilir',
+      modelBoundHint: 'ChatWiki"nin mevcut hesabı için kullanılabilir model yapılandırma listesi burada gösterilmektedir.',
+      modelLoginHint: 'Lütfen önce giriş yapın ve ChatWiki hesabını bağlayın, ardından en güncel model hizmetleri listesi burada gösterilecektir.',
+      modelServiceDesc: 'ChatWiki"yi bağladıktan sonra model hizmetlerinde kullanılabilir modelleri ve puan durumunu doğrudan görüntüleyebilirsiniz',
+      modelUnboundHint: 'Giriş yaptıktan sonra mevcut bağlı hesaba göre kullanılabilir model listesi yüklenecektir.',
+      notLoggedInDesc: 'Giriş yaptıktan sonra ChatWiki Cloud"un model listesi ve puan bilgilerini senkronize edebilirsiniz.',
+      unbindConfirmDesc: 'Bağlantıyı kaldırdıktan sonra ChatWiki"nin sağladığı uygulamaları ve bilgi tabanını kullanamayacaksınız. Devam etmek istediğinizden emin misiniz?',
     },
     tools: {
       tray: {
@@ -995,8 +987,6 @@ export default {
       unknownAgent: 'Bilinmeyen asistan',
       noPlatforms: 'Kanal mevcut değil',
       createTitle: '{platform} bot ekle',
-      createDesc:
-        'Kanal sayfasindaki ekleme akisina uyun. Olusturulduktan sonra mevcut asistana otomatik olarak baglanir.',
       addChannel: 'Kanal ekle',
       addAndBind: 'Ekle ve bağla',
       showExisting: 'Eklenen kanalları görüntüle',
@@ -1013,13 +1003,13 @@ export default {
       bindSuccess: 'Başarıyla bağlandı',
       unbindSuccess: 'Başarıyla bağlantısı kaldırıldı',
       addBot: 'Bot ekle',
-      addBotHint:
-        'Her bot yalnizca bir AI asistanina baglanabilir. Yalnizca baglanmamis botlar gosterilir.',
       noUnboundBot: 'Bağlanabilecek bot yok',
       selectBot: 'Bağlanacak botu seçin',
-      statusOnline: "Bağlı",
-      statusError: "Hata",
-      statusOffline: "Bağlı değil",
+      statusOnline: 'Bağlı',
+      statusError: 'Hata',
+      statusOffline: 'Bağlı değil',
+      addBotHint: 'Bir bot yalnızca bir AI asistanına bağlanabilir, yalnızca bağlı olmayan botlar gösterilir',
+      createDesc: 'Kanal sayfasındaki ekleme akışını kopyalayın, oluşturulduktan sonra otomatik olarak mevcut asistanınıza bağlanır.',
     },
     conversation: {
       empty: 'Sohbet geçmişi yok',
@@ -1059,14 +1049,13 @@ export default {
       teamImageNotSupported: 'Ekip modunda resim gönderme henüz desteklenmiyor',
       selectTeamRobotFirst: 'Lütfen önce bir ekip robotu seçin',
       teamRobotMissingKey: 'Mevcut robotta robot_key eksik, lutfen yeniden senkronize edin',
-      modelNotSupportVision:
-        'Mevcut model goruntu tanimayi desteklemiyor. Lutfen gorus ozellikli bir cok modlu modele gecin.',
       modelNotSupportVisionHint: 'GPT-4o, Claude, Gemini gibi modeller görüntü tanımayı destekler',
       fileTooLarge: 'Dosya boyutu sınırı aşıyor (maks {max})',
       tooManyFiles: 'En fazla {max} dosya yüklenebilir',
       invalidFileType: 'Desteklenmeyen dosya türü',
       fileReadFailed: 'Dosya okunamadı',
       fileOpenFailed: 'Dosya açılamadı',
+      modelNotSupportVision: 'Mevcut model görüntü tanıma desteklemiyor, lütfen görsel çok modlu bir modele geçin',
     },
     toasts: {
       created: 'Asistan oluşturuldu',
@@ -1088,14 +1077,13 @@ export default {
         sandboxMode: 'Çalıştırma modu',
         modeCodex: 'Codex koruma alanı',
         modeNative: 'Yerel çalıştırma',
-        nativeDesc:
-          'Komutlari sandbox yalitimi olmadan dogrudan yerel makinede calistirir. Komutlar mevcut kullanicinin tum izinlerine sahiptir.',
         networkAccess: 'Ağ erişimine izin ver',
         workDir: 'Çalışma dizini',
         workDirHint: 'Yapı: {basePath}{sep}sessions{sep}<agent_hash>{sep}<conversation_hash>{sep}',
         changeDir: 'Değiştir',
         resetDir: 'Varsayılana sıfırla',
         selectDir: 'Çalışma dizini seç',
+        nativeDesc: 'Komutları doğrudan yerel makinede çalıştırır, sandbox izolasyonu yoktur. Komutlar mevcut kullanıcının tam yetkisine sahiptir.',
       },
       model: {
         defaultModel: 'Varsayılan model',
@@ -1128,13 +1116,9 @@ export default {
         sandboxMode: 'Sandbox Modu',
         sandbox_off: 'Devre dışı',
         sandbox_all: 'Tüm ajanlar',
-        sandboxModeHint:
-          'Sandbox, komut yürütmeyi izole ederek ajanların ana sistemi doğrudan değiştirmesini önler',
         groupChatMentionPatterns: 'Grup Sohbet Bahsetme Kalıpları',
-        groupChatMentionPatternsPlaceholder: "{'@'}assistant, {'@'}bot",
+        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
         groupChatInsertPreset: 'Şablon ekle',
-        groupChatMentionPatternsHint:
-          'Ajan yanıtını tetiklemek için bahsetme kalıpları, virgülle ayrılmış',
         tools: 'Araç Yapılandırması',
         toolsProfile: 'Araç Profili',
         toolsProfile_default: 'Ayarlanmadı (global miras)',
@@ -1143,19 +1127,13 @@ export default {
         toolsProfile_messaging: 'Messaging — mesajlaşma/oturumlar',
         toolsProfile_full: 'Full — sınırsız',
         builtinTools: 'Yerleşik Araçlar',
-        builtinToolsHint:
-          'OpenClaw yerleşik araçlarını burada doğrudan seçebilirsiniz. Eklenti araçları veya özel araçlar aşağıdan yine elle girilebilir.',
         builtinToolsLoading: 'OpenClaw yerleşik araçları yükleniyor…',
-        builtinToolsUnavailable:
-          'OpenClaw yerleşik araç kataloğu yüklenemedi. Araç adlarını yine elle girebilirsiniz.',
         toolModeAllow: 'İzin Ver',
         toolModeDeny: 'Yasakla',
         toolsAllow: 'İzin Verilen Araçlar',
         toolsAllowPlaceholder: 'örn. browser, file_search',
         toolsDeny: 'Engellenen Araçlar',
         toolsDenyPlaceholder: 'örn. canvas',
-        toolsHint:
-          'Yasaklama, izin vermeden önceliklidir. Eklenti araçları veya özel araçlar yine elle girilip Enter ile onaylanabilir.',
         heartbeat: 'Heartbeat Aralığı',
         heartbeat_off: 'Kapalı',
         heartbeat_custom: 'Özel',
@@ -1168,6 +1146,10 @@ export default {
         paramsMaxTokens: 'Maksimum Token',
         paramsMaxTokensPlaceholder: 'Global varsayılan için boş bırakın',
         paramsHint: 'Bu ajan için agents.defaults.models parametrelerini geçersiz kıl',
+        builtinToolsUnavailable: 'OpenClaw yerleşik araç dizini şu anda okunamıyor, yine de araç adını manuel olarak girebilirsiniz.',
+        groupChatMentionPatternsHint: 'Asistan yanıtını tetiklemek için mesajlardaki bahsetme kalıplarını eşleştirin, birden fazla ise virgülle ayırın',
+        sandboxModeHint: 'Sandbox komut yürütme ortamını izole ederek asistanın ana sistemi doğrudan işletmesini önleyebilir',
+        toolsHint: 'Yasaklama önceliği izin vermeden yüksektir. Eklenti araçları veya özel araçlar manuel olarak girmeye devam edebilir, girişten sonra onaylamak için Enter tuşuna basın.',
       },
     },
     workspaceDrawer: {
@@ -1203,17 +1185,13 @@ export default {
   knowledge: {
     help: {
       name: 'Farklı bilgi tabanlarını ayırt etmek için bir isim (maks 30 karakter).',
-      chunkSize:
-        'Parca boyutu (karakter cinsinden, 500~5000). Daha buyuk parcalar daha tam baglam saglar ancak geri getirme ayrintisi daha kabadir.',
-      chunkOverlap:
-        'Bitisik parcalar arasindaki ortusme boyutu (karakter cinsinden, 0~1000), parcalar arasi cumle bolunmelerinden kaynaklanan bilgi kaybini azaltir.',
-      batchMaxDocuments:
-        'For example, if set to 3 and you upload 10 documents, they are processed 3 at a time across 4 batches. Range: 1~5.',
-      batchMaxChunks:
-        'Maximum number of segments per embedding request during learning. Range: 1~20.',
       matchThreshold: 'Bu eşik değerinin altındaki benzerlik sonuçları filtrelenecektir (0~1).',
       embeddingModel: 'Metni vektörlere dönüştürmek için kullanılan gömme modeli.',
       embeddingDimension: 'Gömme vektör boyutu seçilen modelin çıktısıyla eşleşmelidir.',
+      batchMaxChunks: 'Öğrenme gömme aşamasında, her vektörleştirme isteğinde bulunan maksimum parça sayısı. Değer aralığı 1~20.',
+      chunkOverlap: 'Bitişik parçaların örtüşme boyutu (karakter sayısı, 0~1000), parçalar arası cümle kesme nedeniyle bilgi kaybını azaltmak için kullanılır.',
+      chunkSize: 'Parça boyutu (karakter sayısı, 500~5000). Parça ne kadar büyük olursa bağlam o kadar eksiksiz olur, ancak geri çağırma granülerliği daha kaba olur.',
+      raptorLLMModel: 'Hiyerarşik özetler oluşturmak için kullanılan dil modeli; seçilmezse bu yetenek etkinleştirilmez.',
     },
     tabs: {
       personal: 'Kişisel',
@@ -1310,23 +1288,21 @@ export default {
       batchMaxDocuments: 'Max documents per batch',
       batchMaxChunks: 'Max segments per embedding batch',
       matchThreshold: 'Eşik değeri',
-      advancedWarning:
-        'Parca boyutu ve ortusme degisiklikleri yalnizca yeni eklenen icerige uygulanir',
       cancel: 'İptal',
       confirm: 'Oluştur',
       success: 'Bilgi tabanı oluşturuldu',
       failed: 'Bilgi tabanı oluşturma başarısız',
+      advancedWarning: 'Parça boyutu ve örtüşme boyutu değişiklikleri yalnızca yeni eklenen içerikler için geçerlidir',
     },
     embeddingSettings: {
       title: 'Gömme modeli ayarları',
-      warning:
-        'Embedding modeli degistirildikten sonra tum bilgi tabanlari yeniden ogrenilmelidir.',
       embeddingModel: 'Gömme modeli',
       embeddingDimension: 'Gömme boyutu',
       required: 'Lütfen önce gömme modeli ayarlarında bir gömme modeli seçin',
       save: 'Kaydet',
       saved: 'Kaydedildi',
       saveFailed: 'Kaydetme başarısız',
+      warning: 'Gömme modeli değiştirildikten sonra tüm bilgi tabanlarının yeniden öğrenilmesi gerekir.',
     },
     chat: {
       selectAgent: 'Asistan seç',
@@ -1430,8 +1406,6 @@ export default {
       deleteCancel: 'İptal',
       deleteConfirm: 'Sil',
       deleteSuccess: 'Silindi',
-      deleteDescBatch:
-        '{count} klasör silindiğinde altındaki belgeler "Kategorize edilmemiş"e taşınır. Bu işlem geri alınamaz.',
       deleteSuccessBatch: '{count} klasör silindi',
       move: {
         title: 'Klasörü taşı',
@@ -1449,9 +1423,8 @@ export default {
       nameDuplicate: 'Klasör adı zaten mevcut',
       nameHelp: 'Klasör adı (maks 50 karakter).',
       parentFolder: 'Üst klasör',
-      parentFolderHelp:
-        'Ic ice klasorler olusturmak icin bir ust klasor secin. Kokte olusturmak icin bos birakin.',
       rootFolder: 'Kök (üst klasör yok)',
+      parentFolderHelp: 'İç içe klasör oluşturmak için üst klasör seçin. Boş bırakırsanız kök dizinde oluşturulur.',
     },
     detail: {
       title: 'Belge ayrıntıları',
@@ -1496,7 +1469,7 @@ export default {
   memory: {
     title: 'Bellek',
     selectAgent: 'Belleğini görüntülemek için bir asistan seçin',
-    noWorkspace: "Bu ajan icin bir OpenClaw workspace'i yapilandirilmamis",
+    noWorkspace: 'Bu ajan icin bir OpenClaw workspace"i yapilandirilmamis',
     files: 'Dosyalar',
     selectFile: 'Icerigini goruntulemek icin bir dosya secin',
     noFiles: 'Henüz bellek dosyasi yok',
@@ -1520,11 +1493,7 @@ export default {
     conversationLog: 'Sohbet günlüğü',
     conversationLogDesc: 'Kronolojik sohbet gerçekleri',
     conversationLogEmpty: 'Henüz sohbet günlüğü yok',
-    deleteEventStreamConfirm:
-      'Are you sure you want to delete this conversation log? This action cannot be undone.',
     deleteFailed: 'Silme başarısız',
-    deleteThematicFactConfirm:
-      'Are you sure you want to delete this topic summary? This action cannot be undone.',
     editCoreProfile: 'Temel bilgileri düzenle',
     editEventStream: 'Sohbet günlüğünü düzenle',
     editThematicFact: 'Konu özetini düzenle',
@@ -1565,13 +1534,11 @@ export default {
       desc: 'Yapılandırılacak kanal türünü seçin',
     },
     wecomAdd: {
-      title: "WeCom'u yapilandir",
-      subtitle: "Resmi Tencent OpenClaw eklentisiyle tarayarak WeCom'u baglayin",
+      title: 'WeCom"u yapilandir',
+      subtitle: 'Resmi Tencent OpenClaw eklentisiyle tarayarak WeCom"u baglayin',
       howTitle: 'Nasıl bağlanır',
-      tipsIntro: "Resmi Tencent OpenClaw eklentisiyle tarayarak WeCom'u baglayin",
+      tipsIntro: 'Resmi Tencent OpenClaw eklentisiyle tarayarak WeCom"u baglayin',
       stepsLabel: 'Adimlar:',
-      step1:
-        "OpenClaw icinde resmi WeCom eklentisini kurup etkinlestirmek icin QR kodu olustur'a dokunun",
       step2: 'Asagidaki QR kodunu WeCom ile tarayin ve telefonunuzda onaylayin',
       scanHint: 'Asagidaki QR kodunu WeCom ile tarayin ve telefonunuzda onaylayin',
       manualEntry: 'Zaten bir botum var',
@@ -1586,7 +1553,8 @@ export default {
       defaultName: 'WeCom Botu',
       openScanAdd: 'QR taramayla ekle',
       qrExpired: 'QR kodunun suresi doldu (5 dakika gecerli)',
-      qrExpiredHint: "Yeni bir QR kodu olusturup yeniden taramak icin Yenile'ye dokunun.",
+      qrExpiredHint: 'Yeni bir QR kodu olusturup yeniden taramak icin Yenile"ye dokunun.',
+      step1: 'QR kodu oluşturmak için tıklayın, resmi WeCom eklentisi OpenClaw"da yüklenecek ve etkinleştirilecek',
     },
     platforms: {
       dingtalk: 'DingTalk',
@@ -1619,8 +1587,6 @@ export default {
       success: 'Kanal başarıyla oluşturuldu',
       failed: 'Kanal oluşturma başarısız',
       dingtalkPluginInstalling: 'DingTalk eklentisi yükleniyor',
-      dingtalkPluginInstallingDesc:
-        'DingTalk Connector eklentisi arka planda yükleniyor. Şimdi bir asistan bağlamaya devam edebilir, bağlantı durumunu daha sonra kontrol edebilirsiniz.',
       avatarHint: 'Değiştirmek için tıklayın, önerilen 100*100px, maks 100KB',
       feishuTipPrefix: 'Giriş yapın',
       feishuTipMiddle: 'bot oluşturmak için, takip edin',
@@ -1701,8 +1667,6 @@ export default {
     comingSoon: 'Yakında',
     agentFallback: 'AI asistanı',
     unbindConfirmTitle: 'Bağlantıyı kaldırmayı onayla',
-    unbindConfirmDesc:
-      '"{name}" kanalından asistanın bağlantısını kaldır? Yeniden bağlanana kadar mesajlar işlenmez.',
     unbindSuccess: 'Asistanın bağlantısı kaldırıldı',
     bindSuccess: 'Asistan başarıyla bağlandı',
     card: {
@@ -1732,21 +1696,18 @@ export default {
     },
     toggle: {
       enableSuccess: 'Başarıyla etkinleştirildi',
-      dingtalkPluginNotReady:
-        'DingTalk bağlayıcı eklentisi hâlâ kuruluyor veya hazır değil. Lütfen daha sonra tekrar deneyin.',
       disableSuccess: 'Başarıyla devre dışı bırakıldı',
       enableTitle: 'Bu kanalı etkinleştirmek istiyor musunuz?',
       disableTitle: 'Bu kanalı devre dışı bırakmak istiyor musunuz?',
-      enableDesc:
-        'Etkinlestirildiginde sistem bu kanala baglanip mesajlari almaya ve islemeye calisir.',
-      disableDesc:
-        'Devre disi birakildiginda bu kanalin baglantisi kesilir ve sistem artik ondan mesaj almaz.',
+      dingtalkPluginNotReady: 'DingTalk bağlayıcı eklentisi hala yükleniyor veya hazır değil, lütfen daha sonra tekrar deneyin.',
+      disableDesc: 'Kapatıldıktan sonra bu kanalın bağlantısı kesilecek, sistem mesajlarını artık almayacak.',
+      enableDesc: 'Açıldıktan sonra sistem bu kanala bağlanmayı ve mesajları işlemeyi deneyecek.',
     },
     status: {
       online: 'Bağlı',
       error: 'Hata',
       offline: 'Bağlantısız',
-      provisioning: "Bağlanıyor…",
+      provisioning: 'Bağlanıyor…',
     },
     bindAgent: {
       title: 'Asistan seç',
@@ -1760,28 +1721,19 @@ export default {
     },
     provisioning: {
       toastTitle: 'Arka planda işleniyor',
-      toastDescription:
-        'Kanal ve ağ geçidi hala oluşturuluyor veya senkronize ediliyor. Bağlantı durumu otomatik olarak güncellenecek. Lütfen bekleyin.',
-      toastDescriptionWithAgent:
-        'Kanal, yardımcı veya ağ geçidi hala oluşturuluyor ya da senkronize ediliyor. Lütfen bekleyin.',
+      toastDescription: 'Kanal ve gateway oluşturuluyor veya senkronize ediliyor, bağlantı durumu otomatik olarak güncellenecek, lütfen bekleyin.',
+      toastDescriptionWithAgent: 'Kanal, asistan veya gateway oluşturuluyor veya senkronize ediliyor, lütfen bekleyin.',
     },
     wecom: {
       emptyTitle: 'Henüz WeCom eklenmedi',
-      emptyDesc:
-        'Tencent resmi OpenClaw eklentisi ile QR kodunu tarayarak WeCom bağlayın veya mevcut bir botu entegre edin.',
+      emptyDesc: 'Tencent"in resmi OpenClaw eklentisiyle QR kod tarayarak WeCom"a bağlanın, mevcut botları da bağlamayı destekler.',
     },
     wechat: {
       emptyTitle: 'Henüz WeChat eklenmedi',
-      emptyDesc:
-        'Tencent resmi OpenClaw eklentisi ile QR kodunu tarayarak kişisel WeChat hesabınızı bağlayın ve WeChat mesajlarını almaya ve işlemeye başlayın.',
       addNow: 'Şimdi ekle',
       configTitle: 'WeChat yapılandır',
       howToConnect: 'Nasıl bağlanır',
-      tipsIntro:
-        'Kişisel WeChat hesabınızı Tencent resmi OpenClaw eklentisi ile QR kodu tarayarak bağlayın',
       stepsLabel: 'Adımlar',
-      step1:
-        'QR kodu oluştur seçeneğine tıklayın; OpenClaw içinde resmi WeChat eklentisi kurulur ve etkinleştirilir',
       step2: 'Aşağıdaki QR kodunu WeChat ile tarayın ve telefonunuzda bağlantıyı onaylayın',
       generateQRCode: 'QR kodu oluştur',
       generating: 'Oluşturuluyor…',
@@ -1791,38 +1743,24 @@ export default {
       qrExpired: 'Süresi doldu',
       loginSuccess: 'WeChat başarıyla bağlandı',
       assistantPromptTitle: 'Yardımcıyı bağla',
-      assistantPromptDesc:
-        'Bu kanal varsayılan olarak ana yardımcıya (main) bağlıdır ve mesajlar ana yardımcı tarafından işlenir. Başka bir yardımcı kullanmak istiyorsanız mevcut bir yardımcıyı bağlayabilir veya yeni bir yardımcı oluşturup bu WeChat kanalına otomatik olarak bağlayabilirsiniz.',
       useMainAssistant: 'Tamam (ana yardımcıyı kullan)',
       bindExistingAssistant: 'Mevcut yardımcıyı bağla',
       createAssistantManually: 'Yardımcı oluştur',
-      createAssistantHint:
-        'Yeni bir yardımcı oluştururken ad ve diğer bilgileri manuel olarak girmeniz gerekir. Oluşturulduktan sonra otomatik olarak bağlanır ve bağlantı yenilenir.',
-      missingChannelId:
-        'Kanal bilgisi alınamadı. Bu pencereyi kapatıp kanal listesini yenileyin ve tekrar deneyin.',
-      missingChannelIdHint:
-        'Kanal kimliği alınamadı. Bu pencereyi kapatın ve yardımcıyı kanal listesinden manuel olarak bağlayın.',
       channelNotFound: 'İlgili kanal bulunamadı. Yenileyip tekrar deneyin.',
-      pluginInstallTryLater:
-        'Resmi WeChat eklentisi arka planda kuruluyor veya etkinleştiriliyor. Lütfen daha sonra tekrar deneyin.',
-      editNotSupported:
-        'WeChat QR kod taramasıyla bağlandığı için burada düzenlenemez. Hesap değiştirmek için kanallar sayfasında bu kanalı silin ve tekrar tarayarak yeniden ekleyin.',
-      qrExpiredHint:
-        "QR kodu artık geçerli değil veya bekleme süresi doldu. Yenisini almak için aşağıda Yenile'ye dokunun.",
+      createAssistantHint: 'Yeni asistan oluştururken ad ve diğer bilgileri manuel olarak doldurmanız gerekir; başarıyla oluşturulduktan sonra otomatik olarak bağlanacak ve bağlantı yenilenecektir.',
+      emptyDesc: 'Tencent"in resmi OpenClaw eklentisiyle QR kod tarayarak kişisel WeChat"e bağlanın, WeChat mesajlarını almaya ve işlemeye başlayın.',
+      missingChannelId: 'Kanal bilgisi alınamadı, lütfen kapatıp kanal listesini yenileyip tekrar deneyin.',
+      missingChannelIdHint: 'Kanal ID"si alınamadı, lütfen bu pencereyi kapatıp kanal listesinden asistanı manuel olarak bağlayın.',
+      pluginInstallTryLater: 'Resmi WeChat eklentisi arka planda yükleniyor veya etkinleştiriliyor, lütfen daha sonra tekrar deneyin.',
+      qrExpiredHint: 'QR kodu süresi dolmuş veya zaman aşımına uğramış, lütfen aşağıdaki "Yenile"ye tıklayarak yeniden alın.',
+      step1: 'QR kodu oluşturmak için tıklayın, resmi WeChat eklentisi OpenClaw"da yüklenecek ve etkinleştirilecek',
+      tipsIntro: 'Tencent"in resmi OpenClaw eklentisiyle kişisel WeChat"e QR kod tarayarak bağlanın',
     },
     whatsapp: {
       emptyTitle: 'Henüz WhatsApp eklenmedi',
-      emptyDesc:
-        "OpenClaw yerleşik WhatsApp kanalıyla QR kodu tarayarak WhatsApp'a bağlanın (WhatsApp Web).",
       addNow: 'Şimdi ekle',
-      configTitle: "WhatsApp'ı yapılandır",
+      configTitle: 'WhatsApp"ı yapılandır',
       howToConnect: 'Nasıl bağlanılır',
-      step1:
-        "Aşağıdaki düğmeye dokunduktan sonra uygulama gerekirse OpenClaw'da yerleşik WhatsApp kanalını etkinleştirir.",
-      step2:
-        'Ardından uygulama arka planda QR ile oturum açma akışını çalıştırır; telefonunuzdaki WhatsApp ile tarayın.',
-      step3:
-        'Bağlandıktan sonra bu sayfada asistan bağlayın ve durumu yönetin; kanalı silmek oturumu kapatır ve bağları kaldırır.',
       configStepsLink: 'Resmi belgeler',
       generateQRCode: 'QR kodu oluştur',
       generating: 'Oluşturuluyor…',
@@ -1830,14 +1768,36 @@ export default {
       waitingForScan: 'Tarama bekleniyor…',
       refresh: 'Yenile',
       qrExpired: 'QR kodunun süresi doldu',
-      qrExpiredHint:
-        "QR kodunun süresi doldu veya bekleme zaman aşımına uğradı. Yenisini almak için aşağıda Yenile'ye dokunun.",
       loginSuccess: 'WhatsApp bağlandı',
-      pluginInstallTryLater:
-        'WhatsApp kanalı hâlâ etkinleştiriliyor veya hazır değil. Lütfen daha sonra tekrar deneyin.',
       channelNotFound: 'İlgili kanal bulunamadı. Yenileyip tekrar deneyin.',
-      editNotSupported:
-        'WhatsApp QR taramasıyla bağlanır ve burada düzenlenemez. Hesap değiştirmek için bu kanalı silip yeniden ekleyin.',
+      emptyDesc: 'OpenClaw yerleşik WhatsApp kanalıyla QR kod tarayarak WhatsApp"e bağlanın (WhatsApp Web).',
+      pluginInstallTryLater: 'WhatsApp kanalı etkinleştiriliyor veya henüz hazır değil, lütfen daha sonra tekrar deneyin.',
+      qrExpiredHint: 'QR kodu süresi dolmuş veya zaman aşımına uğramış, lütfen aşağıdaki "Yenile"ye tıklayarak yeniden alın.',
+      step1: 'Aşağıdaki düğmeye tıkladıktan sonra, uygulama önce OpenClaw"da yerleşik WhatsApp kanalını etkinleştirecektir (henüz etkinleştirilmemişse).',
+      step2: 'Ardından uygulama arka planda QR kod giriş akışını çalıştıracaktır; lütfen telefon WhatsApp ile QR kodu tarayın.',
+      step3: 'Giriş başarılı olduktan sonra bu sayfada asistanı bağlayabilir ve bağlantı durumunu yönetebilirsiniz; kanalı silmek girişi çıkaracak ve bağlamayı temizleyecektir.',
+    },
+    backToOverview: 'Kanala genel bakışa dön',
+    panel: {
+      add: 'Ekle',
+    },
+    platformBlurbs: {
+      default: 'Mesaj almak ve göndermek için bu platforma bağlanın.',
+      dingtalk: 'Stream modu aracılığıyla kararlı grup sohbeti ve özel mesaj etkileşimi sağlayan DingTalk kurumsal botuna bağlanın.',
+      feishu: 'Otomatik grup sohbeti ve özel mesaj etkileşimi sağlayan Feishu kurumsal uygulamasına bağlanın.',
+      qq: 'Grup sohbeti, kanal ve özel mesaj tüm senaryolarını kapsayan QQ resmi botuna bağlanın.',
+      wechat: 'QR kod tarayarak WeChat"e bağlanın, WeChat doğrudan bot sohbetine bağlanır.',
+      wecom: 'Bot ID ve Secret kullanarak WeCom resmi botuna bağlanın.',
+      whatsapp: 'QR kodu tarayarak WhatsApp"e bağlanın, küresel iş iletişimini hızla başlatın.',
+    },
+    platformCard: {
+      connect: 'Bağlan',
+    },
+    row: {
+      boundToAgent: '{name} ile bağlı',
+    },
+    supported: {
+      title: 'Desteklenen kanallar',
     },
   },
   scheduledTasks: {
@@ -1850,8 +1810,6 @@ export default {
     refresh: 'Yenile',
     edit: 'Görevi düzenle',
     empty: 'Henüz planlı görev yok',
-    emptyDescription:
-      'Yapay zeka iş akışlarını otomatikleştirmek için zamanlanmış görevler oluşturun. Görevler belirli zamanlarda mesaj gönderebilir, sorgular çalıştırabilir veya işlemler gerçekleştirebilir.',
     errorReason: 'Hata nedenini görüntüle',
     actionsMenu: 'Eylem menüsünü aç',
     total: 'Toplam görev',
@@ -1895,8 +1853,6 @@ export default {
       nameLabel: 'Görev adı',
       namePlaceholder: 'Örneğin: Sabah özeti',
       promptLabel: 'İstem',
-      promptPlaceholder:
-        'Yapay zekâ ne yapmalı? Örneğin: Bugünün haberleri ve hava durumu özeti ver.',
       agentLabel: 'Bağlı AI asistanı',
       selectAgent: 'Bir asistan seç',
       scheduleTitle: 'Zamanlamayı ayarla',
@@ -1920,6 +1876,7 @@ export default {
       enableNowTitle: 'Hemen etkinleştir',
       enableNowHint: 'Bu görevi oluşturur oluşturmaz başlat',
       submitting: 'Gönderiliyor...',
+      promptPlaceholder: 'AI ne yapmalı? Örneğin: Bana bugünkü haber ve hava durumu özetini gönder',
     },
     operationLog: {
       title: 'Islem gunlugu',
@@ -1969,11 +1926,9 @@ export default {
       selectTypeFirst: 'Lutfen once bir bildirim turu secin',
       selectChannel: 'Lutfen kanallari secin',
       emptyChannels: 'Mevcut bildirim turu icin kanal yok',
-      hintSelected:
-        'Birden fazla kanal secebilirsiniz. Sonuclar gorev tamamlandiktan sonra oraya gonderilir.',
-      hintUnselected:
-        'Once bir bildirim turu secin, sonra o platformdan bir veya daha fazla kanal secin.',
       channelFallback: 'Kanal {id}',
+      hintSelected: 'Çoklu seçim yapılabilir, görev tamamlandıktan sonra sonuçlar bu kanallar üzerinden gönderilecektir.',
+      hintUnselected: 'Önce bildirim türünü seçin, ardından ilgili platform kanallarından birden fazla kanal seçin.',
     },
     presets: {
       everyMinute: 'Her dakika',
@@ -2021,8 +1976,6 @@ export default {
       thinking: 'Düşünme',
       enabled: 'Görevi etkinleştir',
       expiresAt: 'Son kullanma tarihi',
-      expiredHint:
-        'Bu gorevin suresi doldu ve yeniden calismayacak. Devam ettirmek icin son kullanma zamanini gelecekte bir tarihe tasiyin.',
       scheduleType: 'Plan türü',
       schedulePreset: 'Ön ayar',
       scheduleCustom: 'Özel zaman',
@@ -2049,14 +2002,16 @@ export default {
       calendarTitle: '{year} / {month}',
       yearOption: '{year}',
       monthOption: '{month}',
+      expiredHint: 'Bu görevin süresi dolmuş, artık yürütülmeyecek. Yürütmeyi sürdürmek için lütfen bitiş süresini geleceğe değiştirin.',
     },
   },
   openclawGateway: {
     banner: {
       starting: 'The gateway is starting. Please try again in a moment.',
       upgrading: 'OpenClaw runtime is upgrading. Please try again in a moment.',
-      channels: '网关未运行，未启用网关时无法管理消息频道',
-      scheduledTasks: '网关未运行，未启用网关时无法管理定时任务',
+      channels: 'Ağ geçidi çalışmıyor, ağ geçidi etkinleştirilmediğinde mesaj kanalları yönetilemez',
+      scheduledTasks: 'Ağ geçidi çalışmıyor, ağ geçidi etkinleştirilmediğinde zamanlanmış görevler yönetilemez',
+      notInstalled: 'OpenClaw çalışma zamanı algılanmadı.「Ayarlar → Genel」veya「OpenClaw Manager」bölümünden çalışma zamanını yükleyin.',
     },
   },
   openclawCron: {
@@ -2070,8 +2025,6 @@ export default {
     confirmDelete: 'Silmeyi onayla',
     refresh: 'Yenile',
     empty: 'Planli gorev yok',
-    emptyDescription:
-      'Olusturulduktan sonra gorevler yapilandirilan zamanda otomatik olarak calisir.',
     enabled: 'Etkin',
     disabled: 'Duraklatıldı',
     runNow: 'Şimdi çalıştır',
@@ -2124,8 +2077,6 @@ export default {
       timezone: 'Saat dilimi',
       systemTimezone: 'Sistem varsayilani',
       exact: 'Kesin yurutme',
-      exactHint:
-        'Yapilandirilan ana mumkun oldugunca yakin zamanlamak icin OpenClaw tam modunu etkinlestirin.',
       enableNowTitle: 'Hemen etkinleştir',
       enableNowHint: 'Bu görevi oluşturur oluşturmaz başlat',
       message: 'Mesaj',
@@ -2150,8 +2101,6 @@ export default {
       deliveryTargetId: 'Hedef kimligi',
       deliveryTargetIdPlaceholder: 'Bir gorusme veya kullanici kimligi girin',
       deliveryTargetHintTitle: 'Varsayilan hedef',
-      deliveryTargetFixedHint:
-        'Secilen asistan ve kanal turu icin son teslim edilen hedef kimligi otomatik doldurulur; yine de bunu elle degistirebilirsiniz.',
       deliveryTargetModes: {
         lastActive: 'Son aktif hedef',
         targetId: 'Hedef kimligini girin',
@@ -2168,50 +2117,52 @@ export default {
       deleteAfterRun: 'Calistiktan sonra sil',
       keepAfterRun: 'Calistiktan sonra tut',
       enabled: 'Görevi etkinleştir',
+      exactHint: 'OpenClaw exact modunu etkinleştir, ayarlanan zamanda tetiklemeye çalış',
     },
     history: {
-      conversationPreparing: '正在准备历史会话，请稍后...',
-      delivery: '投递状态',
+      conversationPreparing: 'Geçmiş oturum hazırlanıyor, lütfen bekleyin...',
+      delivery: 'Teslim durumu',
       deliveryStatus: {
-        delivered: '已投递',
-        failed: '投递失败',
-        not_delivered: '未投递',
-        pending: '待投递',
-        success: '投递成功',
+        delivered: 'Teslim edildi',
+        failed: 'Teslim başarısız',
+        not_delivered: 'Teslim edilmedi',
+        pending: 'Teslim bekliyor',
+        success: 'Teslim başarılı',
       },
-      detailErrorReason: '失败原因',
-      detailLoadFailed: '加载运行明细失败',
-      detailLoadFailedDescription: '未能获取这次运行的对话明细，请检查 OpenClaw 运行状态后重试。',
-      detailLoadFailedReason: '请确认 OpenClaw Gateway 已启动，并稍后重试。',
-      detailLoading: '正在加载对话明细...',
-      duration: '耗时',
-      empty: '暂无运行历史',
-      error: '错误信息',
-      model: '模型',
-      provider: '提供商',
-      retryLoadDetail: '重试加载',
-      runAt: '运行时间',
-      selectRun: '请选择一次运行记录',
-      summary: '运行摘要',
-      title: '运行历史',
-      waitingTriggeredRun: '任务已触发，正在等待 OpenClaw 写入新的运行记录...',
+      detailErrorReason: 'Başarısızlık nedeni',
+      detailLoadFailed: 'Çalıştırma ayrıntıları yüklenemedi',
+      detailLoadFailedDescription: 'Bu çalıştırmanın sohbet ayrıntıları alınamadı, lütfen OpenClaw çalışma durumunu kontrol edip tekrar deneyin.',
+      detailLoadFailedReason: 'Lütfen OpenClaw Gateway"in başlatıldığını doğrulayın ve daha sonra tekrar deneyin.',
+      detailLoading: 'Sohbet ayrıntıları yükleniyor...',
+      duration: 'Süre',
+      empty: 'Henüz çalıştırma geçmişi yok',
+      error: 'Hata bilgisi',
+      model: 'Model',
+      provider: 'Sağlayıcı',
+      retryLoadDetail: 'Yüklemeyi yeniden dene',
+      runAt: 'Çalışma zamanı',
+      selectRun: 'Lütfen bir çalıştırma kaydı seçin',
+      summary: 'Çalışma özeti',
+      title: 'Çalışma geçmişi',
+      waitingTriggeredRun: 'Görev tetiklendi, OpenClaw"un yeni çalıştırma kaydı yazması bekleniyor...',
     },
-    runNowQueued: '任务已开始执行，请稍后在历史中查看结果',
+    runNowQueued: 'Görev yürütmeye başladı, lütfen sonuçları geçmişte görün',
     schedule: {
-      atPrefix: '指定时间',
-      daily: '每天 {time}',
-      everyPrefix: '每隔',
-      monthly: '每月 {day} 号 {time}',
+      atPrefix: 'Belirli zaman',
+      daily: 'Her gün {time}',
+      everyPrefix: 'Her',
+      monthly: 'Her ay {day}. günü {time}',
       weekdays: {
-        friday: '周五',
-        monday: '周一',
-        saturday: '周六',
-        sunday: '周日',
-        thursday: '周四',
-        tuesday: '周二',
-        wednesday: '周三',
+        friday: 'Cuma',
+        monday: 'Pazartesi',
+        saturday: 'Cumartesi',
+        sunday: 'Pazar',
+        thursday: 'Perşembe',
+        tuesday: 'Salı',
+        wednesday: 'Çarşamba',
       },
-      weekly: '每周 {weekday} {time}',
+      weekly: 'Her {weekday} {time}',
     },
+    emptyDescription: 'Oluşturulduktan sonra sistem, ayarlanan zamanda görevi otomatik olarak yürütecektir.',
   },
 }

@@ -754,7 +754,21 @@ func (m *Manager) reconcileLocked(restart bool) error {
 			m.app.Logger.Warn("openclaw: no bundled runtime during upgrade, skipping",
 				"error", err)
 		}
-		return fail("resolveBundledRuntime", err, "", 0)
+		// Distinguish: runtime not found vs manifest/binary invalid.
+		// Emit PhaseNotInstalled so the UI can guide the user to install instead of showing an error.
+		if IsOpenClawRuntimeAvailable() {
+			// Some candidate exists but was invalid — treat as a real error.
+			return fail("resolveBundledRuntime", err, "", 0)
+		}
+		// No runtime at all — guide user to install rather than auto-installing.
+		m.app.Logger.Info("openclaw: no openclaw runtime found, prompting user to install",
+			"error", err)
+		m.broadcastStatus(RuntimeStatus{
+			Phase:      PhaseNotInstalled,
+			Message:    "OpenClaw runtime not installed",
+			GatewayURL: gatewayURL(cfg.GatewayPort),
+		})
+		return fmt.Errorf("openclaw runtime not found: %w", err)
 	}
 
 	if patched, err := applyBundledRuntimeHotfixes(bundle); err != nil {
