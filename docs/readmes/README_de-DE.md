@@ -27,7 +27,9 @@
   <a href="README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-Erhalten Sie in 5 Minuten einen persönlichen KI-Agenten wie OpenClaw. Sandbox-gesichert, mit einem ultrakleinen 30MB-Installer für macOS & Windows (Installation in 1 Minute). Verbindet sich mit WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu und anderen Messaging-Apps. Integrierter Skill-Markt, Wissensbasis, Speicher, MCP, geplante Aufgaben. Entwickelt in Go: schnell und ressourcenschonend.
+ChatClaw ist eine Open-Source-Lokale Wissensbasis und OpenClaw-Grafik-Desktop-Assistent-Anwendung.
+Keine Programmierung erforderlich — mit einem Klick auf Ihrem lokalen PC bereitstellen. Verbinden Sie sich mit WeChat, DingTalk, WeCom, QQ, Feishu, WhatsApp und anderen Mainstream-Messaging-Apps.
+Senden Sie Befehle und lassen Sie KI Aufgaben für Sie erledigen. Integrierte OpenClaw 5000+ Skill-Bibliothek, mit Unterstützung für IMA-ähnliches lokales Wissensbasis-Management.
 
 ## Vorschau
 

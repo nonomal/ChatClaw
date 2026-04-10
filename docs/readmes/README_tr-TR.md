@@ -27,7 +27,9 @@
   <a href="README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-5 dakikada OpenClaw benzeri kişisel AI ajanı edinin. Sandbox güvenliği ile, macOS ve Windows için ultra küçük 30MB yükleyici (1 dakikada kurulum). WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu ve diğer mesajlaşma uygulamalarına bağlanır. Yerleşik Yetenek Pazarı, Bilgi Tabanı, Hafıza, MCP, Planlı Görevler. Go ile geliştirildi: hızlı ve düşük kaynak kullanımı.
+ChatClaw açık kaynaklı bir yerel bilgi tabanı ve OpenClaw grafik masaüstü asistan uygulamasıdır.
+Programlama gerektirmez — tek tıklamayla yerel bilgisayarınıza dağıtın. WeChat, DingTalk, WeCom, QQ, Feishu, WhatsApp ve diğer ana mesajlaşma uygulamalarına bağlanın.
+Komut gönderin ve AI'ın sizin için görevleri yerine getirmesine izin verin. Entegre 5000'den fazla beceri kitaplığı ve IMA tarzı yerel bilgi tabanı yönetimi desteği.
 
 ## Önizlemeler
 

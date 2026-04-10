@@ -27,7 +27,9 @@
   <a href="README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-Obtenez un agent AI personnel comme OpenClaw en 5 minutes. Sécurisé par Sandbox, avec un installateur ultra-petit de 30 Mo pour macOS et Windows (installation en 1 minute). Se connecte à WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu et autres applications de messagerie. Marché de compétences intégré, Base de Connaissances, Mémoire, MCP, Tâches Planifiées. Développé en Go : rapide et faible utilisation des ressources.
+ChatClaw est une application d'assistant de bureau graphique OpenClaw et de base de connaissances locale open source.
+Aucune programmation requise — déployez sur votre ordinateur local en un clic. Connectez-vous à WeChat, DingTalk, WeCom, QQ, Feishu, WhatsApp et autres applications de messagerie grand public.
+Envoyez des commandes et laissez l'IA exécuter des tâches pour vous. Bibliothèque de compétences intégrée OpenClaw 5000+, avec support de gestion de base de connaissances locale de type IMA.
 
 ## Aperçus
 

@@ -27,9 +27,13 @@
   <a href="./README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-Get OpenClaw-like knowledge base personal AI agent in 5 mins. Sandbox-secured, with an ultra-small 30MB installer for macOS & Windows (install in 1 min). Connects to WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu & other messaging apps. Built-in Skill Market, Knowledge Base, Memory, MCP, Scheduled Tasks. Developed in Go: fast & low resource usage.
+ChatClaw is an open-source local knowledge base and OpenClaw graphical desktop assistant application.
+No coding required — deploy to your local computer with one click. Connect to WeChat, DingTalk, WeChat Work, QQ, Feishu, WhatsApp and other mainstream messaging apps.
+Send commands and let AI execute tasks for you. Built-in OpenClaw 5000+ skill library, with support for IMA-like local knowledge base management.
 
- 5分钟拥有类 OpenClaw 本地知识库个人AI智能体,沙箱安全防护,支持macOS/Windows 30M 极小安装包,1 分钟安装。连接WhatsApp、Telegram、Slack、Discord、Gmail、钉钉、企业微信、QQ、飞书等主流通讯应用，内置技能市场、IMA开源版本地知识库平替、记忆、MCP、计划任务等核心功能。Go语言开发，运行快、占资源少。
+ChatClaw是一款开源的本地知识库、OpenClaw图形化桌面管家应用
+无需编程，一键部署至本地电脑。可连接 微信、 钉钉、企业微信、QQ、飞书，WhatsApp等主流通讯应用，
+发送指令即可让 AI 帮你执行任务。内置 OpenClaw 5000+ 技能库，并支持类 ima 的本地知识库管理
  
 
 <p align="center">

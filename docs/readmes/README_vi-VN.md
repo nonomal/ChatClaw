@@ -27,7 +27,9 @@
   <a href="README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-Nhận AI cá nhân như OpenClaw trong 5 phút. Bảo mật Sandbox, với trình cài đặt cực nhỏ 30MB cho macOS và Windows (cài đặt trong 1 phút). Kết nối với WhatsApp, Telegram, Slack, Discord, Gmail, DingTalk, WeChat Work, QQ, Feishu và các ứng dụng nhắn tin khác. Thị trường Kỹ năng tích hợp, Cơ sở Tri thức, Bộ nhớ, MCP, Nhiệm vụ Định kỳ. Được phát triển bằng Go: nhanh và sử dụng ít tài nguyên.
+ChatClaw là ứng dụng trợ lý desktop đồ họa mã nguồn mở và cơ sở tri thức cục bộ.
+Không cần lập trình — triển khai lên máy tính cục bộ chỉ với một lần nhấp. Kết nối với WeChat, DingTalk, WeCom, QQ, Feishu, WhatsApp và các ứng dụng nhắn tin phổ biến.
+Gửi lệnh để AI thực hiện tác vụ cho bạn. Thư viện kỹ năng tích hợp hơn 5000+, hỗ trợ quản lý cơ sở tri thức cục bộ kiểu IMA.
 
 ## Xem trước
 

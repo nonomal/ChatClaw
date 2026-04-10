@@ -36,6 +36,30 @@ description: Update README and docs/readmes from Word docx (English and Chinese)
 - **`README_en.md`**：英文内容 + `en` 图片，数量和顺序以英文 docx 为准。
 - **其他语言**（zh-TW、ja-JP、ko-KR 等 15 种）：翻译文字，图片路径固定使用 `../../images/previews/en/`，章节数量和顺序与英文版保持一致，**不要**引入中文版才有的额外章节或图片。
 
+### ④ 文档中的换行必须对应保留
+
+> ⚠️ **不要**将文档中的多行段落合并为一行输出！
+>
+> docx 中一个段落在 XML 中可能被拆分为多个 `<w:br/>` 换行或多个 `<w:p>` 连续段落，生成 Markdown 时必须忠实还原：
+> - `<w:br/>` 换行符 → Markdown 中的 `  `（两个空格）+ 换行
+> - 文档中独立的空行 → Markdown 中保留一个空行
+> - 段落内的软换行（如标题与描述文字间的换行）→ 保留 `  \n` 格式
+>
+> 示例（错误的合并输出）：
+> ```markdown
+> <!-- ❌ BAD：将多行合并为一行，失去原文排版 -->
+> ChatClaw是一款开源的本地知识库、OpenClaw图形化桌面管家应用无需编程，一键部署至本地电脑。
+> ```
+> 示例（正确的保留换行）：
+> ```markdown
+> <!-- ✅ GOOD：忠实保留文档换行 -->
+> ChatClaw是一款开源的本地知识库、OpenClaw图形化桌面管家应用
+> 无需编程，一键部署至本地电脑。可连接 微信、 钉钉、企业微信、QQ、飞书，WhatsApp等主流通讯应用，
+> 发送指令即可让 AI 帮你执行任务。内置 OpenClaw 5000+ 技能库，并支持类 ima 的本地知识库管理
+> ```
+>
+> 在提取文本时，按 docx XML 中 `<w:p>` 的自然顺序拼接，保持与原文档一致的段落结构和换行位置。
+
 ## Step 1: 提取图片（按文档 rId 顺序）
 
 ### 方法概述
@@ -209,3 +233,4 @@ extract_by_doc_order('readme-中文-V3.docx', 'images/previews/zh-CN/')
 - [ ] `docs/readmes/README_zh-CN.md` 用中文内容 + `../../images/previews/zh-CN/`。
 - [ ] 所有其他语言 README 的 Previews 区块已翻译，图片路径固定 `../../images/previews/en/`，章节数量和顺序与英文版一致。
 - [ ] 图片引用后有空行，不与下一个 `##` 标题粘连。
+- [ ] 文档中段落内的换行已忠实还原（`<w:br/>` → `  \n`），没有合并为单行。

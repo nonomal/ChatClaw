@@ -27,7 +27,9 @@
   <a href="README_vi-VN.md">Tiếng Việt</a>
 </p>
 
-OpenClawのような個人AIエージェントを5分で入手。サンドボックスセキュリティ付き、macOS＆Windows用の超小型30MBインストーラー（1分でインストール）。WhatsApp、Telegram、Slack、Discord、Gmail、DingTalk、WeChat Work、QQ、Feishuなどのメッセージングアプリに接続。組み込みスキルマーケット、ナレッジベース、メモリ、MCP、スケジュールタスク。Goで開発：高速でリソース使用量が少ない。
+ChatClawはオープンソースのローカルナレッジベースとOpenClawグラフicalデスクトップアシスタントアプリケーションです。
+プログラミング不要でワンクリックによりローカルPCにデプロイ可能。微信、 釘钉、企業微信、QQ、飛書、WhatsAppなどの主流通信アプリに接続でき、
+コマンドを送信するだけでAIにタスクを実行してもらえます。内置 OpenClaw 5000+ スキルライブラリを持ち、imaに似たローカルナレッジベース管理もサポートしています。
 
 ## プレビュー
 
