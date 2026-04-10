@@ -49,11 +49,11 @@ const allMenuItems: MenuItem[] = [
     guiOnly: true,
   },
   { id: 'tools', labelKey: 'settings.menu.tools', icon: ToolsIcon, guiOnly: true },
-  {
-    id: 'runtimeEnvironmentTest',
-    labelKey: 'settings.menu.runtimeEnvironmentTest',
-    icon: GeneralSettingsIcon,
-  },
+  // {
+  //   id: 'runtimeEnvironment',
+  //   labelKey: 'settings.menu.runtimeEnvironment',
+  //   icon: GeneralSettingsIcon,
+  // },
   { id: 'about', labelKey: 'settings.menu.about', icon: AboutIcon },
 ]
 
@@ -64,9 +64,9 @@ const menuItems = computed(() =>
     if (appStore.currentSystem === 'openclaw' && item.id === 'mcp') {
       return false
     }
-    if (item.id === 'runtimeEnvironmentTest' && !props.showRuntimeEnvironmentTestMenu) {
-      return false
-    }
+    // if (item.id === 'runtimeEnvironment' && !props.showRuntimeEnvironmentTestMenu) {
+    //   return false
+    // }
     return true
   })
 )
