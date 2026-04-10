@@ -234,6 +234,13 @@ const allTopNavItems: NavItem[] = [
     guiOnly: true,
     systems: ['openclaw'],
   },
+  {
+    key: 'openclaw-runtime-environment',
+    labelKey: 'settings.menu.runtimeEnvironment',
+    icon: IconSettings,
+    guiOnly: true,
+    systems: ['openclaw'],
+  },
 ]
 
 const topNavItems = computed(() =>
