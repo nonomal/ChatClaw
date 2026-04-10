@@ -754,12 +754,11 @@ export default {
 
 
       loginReminder: {
-        title: "Chat Claw",
         subtitle: "ChatWiki アカウントを連携すると、クレジットを付与してすぐに体験できます",
         footer: "ChatWiki は ChatClaw クライアントのクラウド版です",
         loginNow: "今すぐログイン",
         loginLater: "あとで",
-      },
+      },
     },
     tools: {
       tray: {
