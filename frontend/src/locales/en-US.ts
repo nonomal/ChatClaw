@@ -491,6 +491,7 @@ export default {
       install: 'Install',
       installing: 'Installing...',
       installed: 'Installed',
+      added: 'Added',
       uninstall: 'Uninstall',
       uninstallConfirm: 'Are you sure you want to uninstall this skill?',
       noSkills: 'No skills installed',

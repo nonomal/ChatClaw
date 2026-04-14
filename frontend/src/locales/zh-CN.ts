@@ -492,6 +492,7 @@ export default {
       install: '安装',
       installing: '安装中...',
       installed: '已安装',
+      added: '已添加',
       uninstall: '卸载',
       uninstallConfirm: '确定要卸载此技能吗？',
       noSkills: '暂无技能',

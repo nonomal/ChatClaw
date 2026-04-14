@@ -12,6 +12,7 @@ import {
   Trash2,
   Grid2X2,
   Package,
+  Shield,
 } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -569,7 +570,7 @@ onMounted(async () => {
             class="group flex cursor-pointer flex-col rounded-2xl border border-[#d9d9d9] bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:bg-card"
             @click="openDetail(skill)"
           >
-            <!-- 顶行：icon + 名称 + 描述 -->
+            <!-- 顶行：icon + 名称 + skill_name + 分类 -->
             <div class="mb-3 flex items-start gap-3">
               <div
                 v-if="skill.iconUrl"
@@ -586,12 +587,16 @@ onMounted(async () => {
               </div>
               <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-medium leading-snug text-[#171717] dark:text-foreground">{{ skill.name || skill.skillName }}</p>
-                <p class="mt-0.5 truncate text-xs leading-4 text-[#737373]">{{ skill.description }}</p>
+                <p class="mt-0.5 truncate text-xs leading-4 text-[#737373]">{{ skill.skillName }}</p>
+                <span
+                  v-if="skill.categoryName"
+                  class="mt-1 inline-block rounded bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
+                >{{ skill.categoryName }}</span>
               </div>
             </div>
 
-            <!-- 分隔线 -->
-            <div class="mb-3 h-px bg-neutral-200" />
+            <!-- 介绍 -->
+            <p class="mb-3 line-clamp-2 min-h-8 text-xs leading-4 text-[#737373]">{{ skill.description }}</p>
 
             <!-- 底行：来源 + 安装状态 -->
             <div class="flex items-center justify-between">
@@ -700,71 +705,110 @@ onMounted(async () => {
     </div>
 
     <Dialog :open="detailOpen" @update:open="(v) => !v && (detailOpen = false)">
-      <DialogContent class="max-h-[80vh] max-w-2xl overflow-hidden p-0">
-        <DialogHeader class="p-4 pb-0">
-          <DialogTitle class="flex items-center gap-2">
+      <DialogContent class="flex max-h-[80vh] max-w-xl flex-col overflow-hidden p-0">
+        <div class="relative flex flex-col gap-2 px-4 pt-4">
+          <button
+            class="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
+            @click="detailOpen = false"
+          >
+            <svg class="size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          <!-- icon + name + skill_name -->
+          <div class="flex flex-col items-center gap-2">
             <div
-              v-if="detailSkill?.iconUrl"
-              class="size-8 overflow-hidden rounded-lg"
+              v-if="detailMeta?.iconUrl"
+              class="size-[62px] overflow-hidden rounded-lg"
             >
-              <img :src="detailSkill.iconUrl" :alt="detailTitle" class="h-full w-full object-cover" />
+              <img :src="detailMeta.iconUrl" :alt="detailTitle" class="h-full w-full object-cover" />
             </div>
             <div
               v-else
-              class="flex size-8 items-center justify-center rounded-lg"
+              class="flex size-[62px] items-center justify-center rounded-lg"
               style="background: #fef2f2"
             >
-              <Package class="size-5" style="color: #ef4444" />
+              <Package class="size-8" style="color: #ef4444" />
             </div>
-            {{ detailTitle }}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div class="flex max-h-[calc(80vh-80px)] flex-col overflow-y-auto p-4 pt-2">
-          <div class="mb-3 flex flex-wrap items-center gap-2">
-            <Badge v-if="detailSkill?.source" variant="outline">
-              {{ sourceLabel(detailSkill.source) }}
-            </Badge>
+            <span class="text-base font-semibold text-[#171717] dark:text-foreground">{{ detailTitle }}</span>
+            <span class="text-sm text-[#404040]">{{ detailMeta?.skillName }}</span>
             <Badge
-              v-if="detailIsInstalled"
-              class="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+              v-if="detailMeta?.categoryName"
+              variant="outline"
+              class="mt-0.5"
             >
-              {{ t('settings.skills.installed') }}
+              {{ detailMeta.categoryName }}
             </Badge>
           </div>
+        </div>
 
-          <p v-if="detailDescription" class="mb-4 text-sm leading-relaxed text-muted-foreground">
-            {{ detailDescription }}
-          </p>
+        <div class="flex flex-1 flex-col overflow-y-auto px-6 pb-4">
+          <!-- 分隔线 -->
+          <div class="mb-3 h-px bg-neutral-200" />
 
+          <!-- 技能介绍 -->
+          <div class="mb-2 flex items-center gap-2">
+            <svg class="size-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="text-sm font-semibold text-[#171717]">技能介绍</span>
+          </div>
+          <p class="mb-3 text-sm leading-5 text-[#404040]">{{ detailMeta?.description }}</p>
+
+          <!-- 分隔线 -->
+          <div class="mb-3 h-px bg-neutral-300" />
+
+          <!-- 怎么使用？ -->
+          <div class="mb-3 flex items-center gap-2">
+            <svg class="size-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span class="text-sm font-semibold text-[#171717]">怎么使用？</span>
+          </div>
           <div
             v-if="detailMeta?.instructions"
-            class="mb-4 rounded-xl bg-muted/50 p-3 text-sm text-foreground"
+            class="mb-4 rounded-xl bg-neutral-100 p-4 text-sm dark:bg-neutral-800"
           >
             <MarkdownRenderer :content="detailMeta.instructions" />
           </div>
 
-          <div class="mt-4 flex items-center justify-between border-t pt-3">
-            <div />
-            <div class="flex items-center gap-2">
+          <!-- 按钮行 -->
+          <div class="mt-auto flex flex-col items-center gap-2">
+            <div class="flex w-full items-center gap-2">
+              <!-- 已安装：灰色禁用按钮 -->
               <button
                 v-if="detailIsInstalled"
-                class="inline-flex items-center gap-1.5 rounded-md bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20"
-                @click="detailSkill && confirmUninstall(detailSkill.skillName)"
+                class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-[#fafafa] opacity-50"
+                disabled
               >
-                <Trash2 class="size-3" />
-                {{ t('settings.skills.uninstall') }}
+                {{ t('settings.skills.added') }}
               </button>
+              <!-- 未安装：安装按钮 -->
               <button
                 v-else-if="detailSkill"
-                class="inline-flex items-center gap-1.5 rounded-md bg-foreground px-4 py-1.5 text-xs font-medium text-background transition-opacity hover:opacity-80"
+                class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-[#fafafa] transition-opacity hover:opacity-80"
                 :disabled="installingSet.has(detailSkill.skillName)"
                 @click="openInstallDialog(detailSkill)"
               >
-                <Loader2 v-if="installingSet.has(detailSkill.skillName)" class="size-3 animate-spin" />
-                <Plus v-else class="size-3" />
-                {{ t('settings.skills.install') }}
+                <Loader2 v-if="installingSet.has(detailSkill.skillName)" class="size-4 animate-spin" />
+                <Plus v-else class="size-4" />
+                {{ installingSet.has(detailSkill.skillName) ? t('settings.skills.installing') : t('settings.skills.install') }}
               </button>
+              <!-- 删除按钮 -->
+              <button
+                v-if="detailIsInstalled"
+                class="flex size-9 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white shadow-sm hover:bg-neutral-100 dark:bg-neutral-900 dark:border-neutral-700"
+                @click="detailSkill && confirmUninstall(detailSkill.skillName)"
+              >
+                <Trash2 class="size-4 text-neutral-600 dark:text-neutral-400" />
+              </button>
+            </div>
+
+            <!-- 安全提示 -->
+            <div class="flex items-center gap-2 text-sm text-[#737373]">
+              <Shield class="size-4 shrink-0" />
+              <span>已通过安全与合规验证，无恶意代码或数据泄露风险。</span>
             </div>
           </div>
         </div>
