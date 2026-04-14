@@ -25,6 +25,7 @@ export type NavModule =
   | 'document'
   | 'skills'
   | 'openclaw-skills'
+  | 'skillmarket'
   | 'channels'
   | 'openclaw-channels'
   | 'tools'
@@ -113,6 +114,7 @@ const moduleLabels: Record<NavModule, string> = {
   document: 'nav.document',
   skills: 'nav.skills',
   'openclaw-skills': 'nav.openclawSkills',
+  skillmarket: 'nav.skillmarket',
   channels: 'nav.channels',
   'openclaw-channels': 'nav.channels',
   tools: 'nav.tools',
@@ -135,6 +137,7 @@ const singleTabModules: NavModule[] = [
   'settings',
   'skills',
   'openclaw-skills',
+  'skillmarket',
   'channels',
   'openclaw-channels',
   'tools',
