@@ -250,11 +250,12 @@ func (s *Service) ListCategories(ctx context.Context, locale string) ([]SkillCat
 }
 
 type ListSkillsParams struct {
-	CategoryID *int64 `json:"categoryId,omitempty"`
-	Name       string `json:"name,omitempty"`
-	Locale     string `json:"locale,omitempty"`
-	Page       int    `json:"page,omitempty"`
-	PageSize   int    `json:"pageSize,omitempty"`
+	CategoryID *int64            `json:"categoryId,omitempty"`
+	Name       string            `json:"name,omitempty"`
+	Locale     string            `json:"locale,omitempty"`
+	Page       int               `json:"page,omitempty"`
+	PageSize   int               `json:"pageSize,omitempty"`
+	Scope      InstallTargetScope `json:"scope,omitempty"`
 }
 
 func (s *Service) ListSkills(ctx context.Context, params ListSkillsParams) ([]Skill, int64, error) {
@@ -291,9 +292,19 @@ func (s *Service) ListSkills(ctx context.Context, params ListSkillsParams) ([]Sk
 	}
 
 	total := int64(len(resp.Data))
-	for i := range resp.Data {
-		if s.IsSkillInstalledInAny(resp.Data[i].SkillName) {
-			resp.Data[i].IsBuiltin = true
+
+	// Check installed status based on current scope
+	if params.Scope != "" {
+		st, err := s.getTargetStateForScope(params.Scope)
+		if err == nil {
+			s.refreshInstalledCacheForScope(params.Scope, st)
+			st.mu.RLock()
+			for i := range resp.Data {
+				if st.installed[resp.Data[i].SkillName] {
+					resp.Data[i].IsBuiltin = true
+				}
+			}
+			st.mu.RUnlock()
 		}
 	}
 
@@ -753,14 +764,21 @@ func (s *Service) validateSkillDir(name, installRoot string) (string, error) {
 }
 
 func (s *Service) refreshInstalledCacheForScope(scope InstallTargetScope, st *targetState) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	s.scanSkillDirsUnlocked(st)
+
+	// For openclaw-shared, also scan skills.load.extraDirs from openclaw.json
+	if scope == ScopeOpenClawShared {
+		s.appendExtraDirsInstalled(st)
+	}
+}
+
+func (s *Service) scanSkillDirsUnlocked(st *targetState) {
 	entries, err := os.ReadDir(st.root)
 	if err != nil {
 		return
 	}
-
-	st.mu.Lock()
-	defer st.mu.Unlock()
-
 	nowInstalled := make(map[string]bool)
 	for _, entry := range entries {
 		if entry.IsDir() && isValidSkillDir(filepath.Join(st.root, entry.Name())) {
@@ -770,20 +788,93 @@ func (s *Service) refreshInstalledCacheForScope(scope InstallTargetScope, st *ta
 	st.installed = nowInstalled
 }
 
-func (s *Service) refreshInstalledCacheForScopeUnlocked(scope InstallTargetScope, st *targetState) {
-	entries, err := os.ReadDir(st.root)
+func (s *Service) appendExtraDirsInstalled(st *targetState) {
+	ocRoot, err := define.OpenClawDataRootDir()
 	if err != nil {
 		return
 	}
-	st.mu.Lock()
-	defer st.mu.Unlock()
-	nowInstalled := make(map[string]bool)
-	for _, entry := range entries {
-		if entry.IsDir() && isValidSkillDir(filepath.Join(st.root, entry.Name())) {
-			nowInstalled[entry.Name()] = true
+	for _, dir := range readOpenClawExtraDirs(filepath.Join(ocRoot, "openclaw.json")) {
+		abs := expandExtraDirPath(dir)
+		if abs == "" || abs == st.root {
+			continue
+		}
+		entries, err := os.ReadDir(abs)
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() && isValidSkillDir(filepath.Join(abs, entry.Name())) {
+				st.installed[entry.Name()] = true
+			}
 		}
 	}
-	st.installed = nowInstalled
+}
+
+// openclawConfigSnip mirrors the shape in openclaw/skills for skills.load.extraDirs
+type openclawConfigSnip struct {
+	Skills *struct {
+		Load *struct {
+			ExtraDirs []string `json:"extraDirs"`
+		} `json:"load"`
+	} `json:"skills"`
+}
+
+func readOpenClawExtraDirs(configPath string) []string {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil
+	}
+	var snip openclawConfigSnip
+	if err := json.Unmarshal(data, &snip); err != nil {
+		return nil
+	}
+	if snip.Skills == nil || snip.Skills.Load == nil {
+		return nil
+	}
+	return snip.Skills.Load.ExtraDirs
+}
+
+// expandExtraDirPath handles ~, {runtimeRoot}, and absolute paths for extraDirs
+func expandExtraDirPath(p string) string {
+	p = strings.TrimSpace(p)
+	if p == "" {
+		return ""
+	}
+	// {runtimeRoot} → exe parent directory (app install dir)
+	if strings.HasPrefix(p, "{runtimeRoot}") {
+		execPath, err := os.Executable()
+		if err != nil || strings.TrimSpace(execPath) == "" {
+			return ""
+		}
+		rtRoot := filepath.Dir(execPath)
+		rest := strings.TrimPrefix(p, "{runtimeRoot}")
+		if rest == "" || rest == "/" {
+			return rtRoot
+		}
+		rest = strings.TrimPrefix(rest, "/")
+		return filepath.Join(rtRoot, rest)
+	}
+	// ~
+	home, herr := os.UserHomeDir()
+	if p == "~" {
+		if herr != nil {
+			return ""
+		}
+		return home
+	}
+	if strings.HasPrefix(p, "~/") {
+		if herr != nil {
+			return ""
+		}
+		return filepath.Clean(filepath.Join(home, strings.TrimPrefix(p, "~/")))
+	}
+	if filepath.IsAbs(p) {
+		return filepath.Clean(p)
+	}
+	if herr != nil {
+		return filepath.Clean(p)
+	}
+	return filepath.Clean(filepath.Join(home, p))
 }
 
 func isValidSkillDir(dir string) bool {

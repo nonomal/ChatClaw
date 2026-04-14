@@ -3,6 +3,7 @@ package openclawskills
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,6 +25,8 @@ type OpenClawSkill struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Version     string `json:"version"`
+	// Icon is the emoji/icon for gateway-sourced skills (e.g. "📊" from SKILL.md frontmatter).
+	Icon string `json:"icon"`
 	// Permission summarizes declared access (SKILL.md or gateway metadata).
 	Permission string `json:"permission"`
 	// Scope is optional frontmatter scope when present on disk.
@@ -446,6 +449,7 @@ func gatewayMapToSkill(m map[string]any) OpenClawSkill {
 		Name:        firstString(m, "name", "title", "label"),
 		Description: firstString(m, "description", "desc", "summary"),
 		Version:     firstString(m, "version"),
+		Icon:        firstString(m, "icon", "emoji"),
 		AgentID:     firstString(m, "agentId", "agent_id"),
 	}
 	loc := strings.ToLower(firstString(m, "location", "layer", "source"))
@@ -461,7 +465,11 @@ func gatewayMapToSkill(m map[string]any) OpenClawSkill {
 			sk.Location = "shared"
 		}
 	}
-	if v, ok := m["eligible"].(bool); ok {
+	// enabled is explicitly toggled by the user in config or UI (true = on, false = off, default = true).
+	if v, ok := m["enabled"].(bool); ok {
+		sk.Eligible = &v
+	} else if v, ok := m["eligible"].(bool); ok {
+		// Fallback to eligible for backward compatibility.
 		sk.Eligible = &v
 	}
 	sk.IneligibleReason = firstString(m, "reason", "ineligibleReason", "blockedReason", "ineligible", "gateReason")
@@ -527,12 +535,21 @@ func (s *OpenClawSkillsService) listFromDisk() []OpenClawSkill {
 		out = append(out, scanSkillsUnder(bundled, "shared", "", "", "bundled", agentNames)...)
 	}
 
-	for _, dir := range readSkillExtraDirs(filepath.Join(root, "openclaw.json")) {
-		abs := expandPath(dir)
-		if abs == "" {
-			continue
+	extraDirs := readSkillExtraDirs(filepath.Join(root, "openclaw.json"))
+	if len(extraDirs) > 0 {
+		for _, dir := range extraDirs {
+			abs, err := expandPath(dir)
+			if err != nil || abs == "" {
+				continue
+			}
+			out = append(out, scanSkillsUnder(abs, "shared", "", "", "extra", agentNames)...)
 		}
-		out = append(out, scanSkillsUnder(abs, "shared", "", "", "extra", agentNames)...)
+	} else {
+		// Default extraSkills/ at runtime root (exe directory, e.g. C:\soft\ChatClaw)
+		if rtRoot, err := resolveRuntimeRoot(); err == nil {
+			defaultExtra := filepath.Join(rtRoot, "extraSkills")
+			out = append(out, scanSkillsUnder(defaultExtra, "shared", "", "", "extra", agentNames)...)
+		}
 	}
 
 	matches, _ := filepath.Glob(filepath.Join(root, "workspace-*"))
@@ -570,31 +587,57 @@ func readSkillExtraDirs(configPath string) []string {
 	return snip.Skills.Load.ExtraDirs
 }
 
-func expandPath(p string) string {
+// resolveRuntimeRoot returns the directory containing the running executable (app install dir),
+// e.g. C:\soft\ChatClaw. This is the root for bundled rt/, build/, extraSkills/.
+func resolveRuntimeRoot() (string, error) {
+	execPath, err := os.Executable()
+	if err != nil || strings.TrimSpace(execPath) == "" {
+		return "", fmt.Errorf("cannot resolve executable path")
+	}
+	return filepath.Dir(execPath), nil
+}
+
+func expandPath(p string) (string, error) {
 	p = strings.TrimSpace(p)
 	if p == "" {
-		return ""
+		return "", nil
 	}
+
+	// Handle {runtimeRoot} placeholder — resolves to the app's install directory
+	// (exe parent dir, e.g. C:\soft\ChatClaw), which contains rt/, build/, extraSkills/
+	if strings.HasPrefix(p, "{runtimeRoot}") {
+		rtRoot, err := resolveRuntimeRoot()
+		if err != nil {
+			return "", err
+		}
+		rest := strings.TrimPrefix(p, "{runtimeRoot}")
+		if rest == "" || rest == "/" {
+			return rtRoot, nil
+		}
+		rest = strings.TrimPrefix(rest, "/")
+		return filepath.Join(rtRoot, rest), nil
+	}
+
 	home, herr := os.UserHomeDir()
 	if p == "~" {
 		if herr != nil {
-			return ""
+			return "", herr
 		}
-		return home
+		return home, nil
 	}
 	if strings.HasPrefix(p, "~/") {
 		if herr != nil {
-			return ""
+			return "", herr
 		}
-		return filepath.Clean(filepath.Join(home, strings.TrimPrefix(p, "~/")))
+		return filepath.Clean(filepath.Join(home, strings.TrimPrefix(p, "~/"))), nil
 	}
 	if filepath.IsAbs(p) {
-		return filepath.Clean(p)
+		return filepath.Clean(p), nil
 	}
 	if herr != nil {
-		return filepath.Clean(p)
+		return filepath.Clean(p), nil
 	}
-	return filepath.Clean(filepath.Join(home, p))
+	return filepath.Clean(filepath.Join(home, p)), nil
 }
 
 // ReadSkillMarkdown returns SKILL.md content for the given skill root.
@@ -662,6 +705,30 @@ func (s *OpenClawSkillsService) ReadSkillFile(skillRoot, filePath string) (strin
 	return string(data), nil
 }
 
+// EnableSkill enables a gateway skill (calls skills.enable RPC). agentID can be empty for default scope.
+func (s *OpenClawSkillsService) EnableSkill(ctx context.Context, skillSlug, agentID string) error {
+	if s.mgr == nil || !s.mgr.IsReady() {
+		return errors.New("gateway not connected")
+	}
+	params := map[string]any{"skillKey": skillSlug}
+	if strings.TrimSpace(agentID) != "" {
+		params["agentId"] = strings.TrimSpace(agentID)
+	}
+	return s.mgr.Request(ctx, "skills.enable", params, nil)
+}
+
+// DisableSkill disables a gateway skill (calls skills.disable RPC). agentID can be empty for default scope.
+func (s *OpenClawSkillsService) DisableSkill(ctx context.Context, skillSlug, agentID string) error {
+	if s.mgr == nil || !s.mgr.IsReady() {
+		return errors.New("gateway not connected")
+	}
+	params := map[string]any{"skillKey": skillSlug}
+	if strings.TrimSpace(agentID) != "" {
+		params["agentId"] = strings.TrimSpace(agentID)
+	}
+	return s.mgr.Request(ctx, "skills.disable", params, nil)
+}
+
 func (s *OpenClawSkillsService) mustBeAllowedSkillRoot(path string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
@@ -696,9 +763,20 @@ func (s *OpenClawSkillsService) allowedSkillRoots() ([]string, error) {
 		roots = append(roots, b)
 	}
 	if oc, err := define.OpenClawDataRootDir(); err == nil {
-		for _, dir := range readSkillExtraDirs(filepath.Join(oc, "openclaw.json")) {
-			if abs := expandPath(dir); abs != "" {
+		configPath := filepath.Join(oc, "openclaw.json")
+		extraDirs := readSkillExtraDirs(configPath)
+		if len(extraDirs) > 0 {
+			for _, dir := range extraDirs {
+				abs, err := expandPath(dir)
+				if err != nil || abs == "" {
+					continue
+				}
 				roots = append(roots, abs)
+			}
+		} else {
+			// Default extraSkills/ at runtime root (exe directory)
+			if rtRoot, err := resolveRuntimeRoot(); err == nil {
+				roots = append(roots, filepath.Join(rtRoot, "extraSkills"))
 			}
 		}
 	}
@@ -744,6 +822,7 @@ func scanSkillsUnder(
 			Name:        meta.Name,
 			Description: meta.Description,
 			Version:     meta.Version,
+			Icon:        meta.Icon,
 			Permission:  meta.PermissionSummary(),
 			Scope:       meta.Scope,
 			Location:    location,
@@ -764,6 +843,7 @@ type openClawSkillMeta struct {
 	Name        string      `yaml:"name"`
 	Description string      `yaml:"description"`
 	Version     string      `yaml:"version"`
+	Icon        string      `yaml:"icon"`
 	Permission  string      `yaml:"permission"`
 	Permissions interface{} `yaml:"permissions"`
 	Scope       string      `yaml:"scope"`
@@ -821,6 +901,114 @@ func sortSkillFiles(files []SkillFileInfo) {
 			}
 		}
 	}
+}
+
+// GetDisabledSkillSlugs reads openclaw.json and returns a map of disabled skill slugs.
+// A skill is considered disabled if skills.entries.<slug>.enabled is explicitly false.
+// Skills not present in entries are considered enabled by default.
+func (s *OpenClawSkillsService) GetDisabledSkillSlugs() (map[string]bool, error) {
+	root, err := define.OpenClawDataRootDir()
+	if err != nil {
+		return nil, err
+	}
+	_ = define.EnsureDataLayout()
+	configPath := filepath.Join(root, "openclaw.json")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, err
+	}
+	skillsRaw, ok := raw["skills"].(map[string]any)
+	if !ok {
+		return nil, nil
+	}
+	entries, ok := skillsRaw["entries"].(map[string]any)
+	if !ok {
+		return nil, nil
+	}
+	disabled := make(map[string]bool)
+	for slug, v := range entries {
+		entry, ok := v.(map[string]any)
+		if !ok {
+			continue
+		}
+		if enabled, ok := entry["enabled"].(bool); ok && !enabled {
+			disabled[slug] = true
+		}
+	}
+	return disabled, nil
+}
+
+// SetSkillEnabled reads openclaw.json, sets or clears skills.entries.<slug>.enabled,
+// and writes the file back. This mirrors `openclaw config set skills.entries.<slug>.enabled <val>`.
+func (s *OpenClawSkillsService) SetSkillEnabled(slug string, enabled bool) error {
+	if strings.TrimSpace(slug) == "" {
+		return errors.New("slug cannot be empty")
+	}
+	root, err := define.OpenClawDataRootDir()
+	if err != nil {
+		return err
+	}
+	_ = define.EnsureDataLayout()
+	configPath := filepath.Join(root, "openclaw.json")
+
+	// Read existing content or start fresh.
+	var raw map[string]any
+	if data, err := os.ReadFile(configPath); err == nil && len(data) > 0 {
+		if err := json.Unmarshal(data, &raw); err != nil {
+			return fmt.Errorf("parse openclaw.json: %w", err)
+		}
+	} else {
+		raw = make(map[string]any)
+	}
+
+	if raw["skills"] == nil {
+		raw["skills"] = make(map[string]any)
+	}
+	skillsRaw, ok := raw["skills"].(map[string]any)
+	if !ok {
+		raw["skills"] = make(map[string]any)
+		skillsRaw = raw["skills"].(map[string]any)
+	}
+	if skillsRaw["entries"] == nil {
+		skillsRaw["entries"] = make(map[string]any)
+	}
+	entries, ok := skillsRaw["entries"].(map[string]any)
+	if !ok {
+		skillsRaw["entries"] = make(map[string]any)
+		entries = skillsRaw["entries"].(map[string]any)
+	}
+
+	slug = strings.TrimSpace(slug)
+	if enabled {
+		// Remove the entry key when enabling (default is enabled).
+		delete(entries, slug)
+	} else {
+		if entries[slug] == nil {
+			entries[slug] = make(map[string]any)
+		}
+		entry, ok := entries[slug].(map[string]any)
+		if !ok {
+			entry = make(map[string]any)
+			entries[slug] = entry
+		}
+		entry["enabled"] = false
+	}
+
+	out, err := json.MarshalIndent(raw, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal openclaw.json: %w", err)
+	}
+	if err := os.WriteFile(configPath, out, 0o644); err != nil {
+		return fmt.Errorf("write openclaw.json: %w", err)
+	}
+	return nil
 }
 
 func skillFileLess(a, b string) int {

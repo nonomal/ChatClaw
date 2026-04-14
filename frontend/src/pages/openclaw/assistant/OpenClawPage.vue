@@ -1563,6 +1563,14 @@ onMounted(() => {
     })
   }
 
+  // Listen for sidebar expand event (e.g. from skill-market page)
+  const unsubscribeExpandSidebar = Events.On('openclaw:expand-sidebar', () => {
+    sidebarCollapsed.value = false
+  })
+  onUnmounted(() => {
+    unsubscribeExpandSidebar()
+  })
+
   // Snap mode event listeners
   if (isSnapMode.value) {
     // Listen for settings changes

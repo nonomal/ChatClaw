@@ -6,19 +6,28 @@ import {
   Search,
   Loader2,
   FolderOpen,
-  Plus,
   Check,
   Download,
   Trash2,
   Grid2X2,
   Package,
   Shield,
+  ChevronLeft,
+  FileText,
+  FileCode,
+  User,
+  Star,
+  SquareDashedMousePointer,
+  Plus,
 } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { toast } from '@/components/ui/toast'
+import { useToast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
+import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
@@ -38,29 +47,36 @@ import {
 import type {
   Skill,
   SkillCategory,
-  SkillDetail,
   InstallTargetConfig,
 } from '@bindings/chatclaw/internal/services/skillmarket'
 import { BrowserService } from '@bindings/chatclaw/internal/services/browser'
 import { OpenClawAgentsService, type OpenClawAgent } from '@bindings/chatclaw/internal/openclaw/agents'
+import { OpenClawSkillsService, type OpenClawSkill, type SkillFileInfo } from '@bindings/chatclaw/internal/openclaw/skills'
+import { useNavigationStore, useAppStore } from '@/stores'
+import { Events } from '@wailsio/runtime'
 
 const props = defineProps<{
   tabId: string
 }>()
 
 const { t, locale } = useI18n()
+const navigationStore = useNavigationStore()
+const appStore = useAppStore()
+const { toast: showToast } = useToast()
 
 type PageTab = 'installed' | 'browse'
 
-const activeTab = ref<PageTab>('browse')
+const activeTab = ref<PageTab>('installed')
 
 const agents = ref<OpenClawAgent[]>([])
 const selectedAgentId = ref<number | null>(null)
 const agentsLoading = ref(false)
 
 const installTargets = ref<InstallTargetConfig[]>([])
-const selectedScope = ref<InstallTargetScope>(InstallTargetScope.ScopeLocal)
+const selectedScope = ref<InstallTargetScope>(InstallTargetScope.ScopeOpenClawShared)
 const targetsLoading = ref(false)
+const sharedDir = ref('')
+const addDialogOpen = ref(false)
 
 const installDialogOpen = ref(false)
 const installDialogSkill = ref<Skill | null>(null)
@@ -89,9 +105,6 @@ async function loadInstallTargets() {
       locale.value
     )
     installTargets.value = scopes
-    if (scopes.length > 0 && scopes[0].available) {
-      selectedScope.value = scopes[0].scope
-    }
   } catch (error) {
     console.error('Failed to load install targets:', error)
   } finally {
@@ -102,6 +115,12 @@ async function loadInstallTargets() {
 // Reload targets when agent changes
 watch(selectedAgentId, () => {
   loadInstallTargets()
+  // Reset scope to openclaw-shared if current is agent-workspace
+  if (selectedScope.value.startsWith('agent-workspace:')) {
+    selectedScope.value = InstallTargetScope.ScopeOpenClawShared
+  }
+  loadInstalledSkills()
+  loadBrowseSkills(false)
 })
 
 const categories = ref<SkillCategory[]>([])
@@ -112,45 +131,159 @@ const browseLoading = ref(false)
 const browsePage = ref(1)
 const BROWSE_PAGE_SIZE = 24
 const selectedCategoryId = ref<number | null>(null)
+const browseListEl = ref<HTMLElement | null>(null)
 const searchQuery = ref('')
 const browseHasMore = computed(() => skills.value.length < totalCount.value)
 
-const installedNames = ref<string[]>([])
+// ==================== 已安装技能 (OpenClaw 技能) ====================
+const installedSkills = ref<OpenClawSkill[]>([])
 const installedLoading = ref(false)
-const installedPage = ref(1)
-const INSTALLED_PAGE_SIZE = 20
+const installedSearchQuery = ref('')
+const skillTogglePending = ref<Set<string>>(new Set())
 
-const paginatedInstalledNames = computed(() =>
-  installedNames.value.slice(0, installedPage.value * INSTALLED_PAGE_SIZE)
+async function toggleSkillEnabled(slug: string, currentEligible: boolean | null | undefined) {
+  if (skillTogglePending.value.has(slug)) return
+  skillTogglePending.value.add(slug)
+  try {
+    // Set eligible = !currentEligible (toggle), store to openclaw.json
+    const newEnabled = currentEligible !== true // if currently enabled (true/undefined) → disable; if disabled → enable
+    await OpenClawSkillsService.SetSkillEnabled(slug, newEnabled)
+
+    // Update local state immediately
+    const skill = installedSkills.value.find((s) => s.slug === slug)
+    if (skill) {
+      skill.eligible = newEnabled
+    }
+  } catch (err) {
+    toast.error(getErrorMessage(err) || t('settings.skillMarket.toggleFailed'))
+  } finally {
+    skillTogglePending.value.delete(slug)
+  }
+}
+
+// 基础搜索过滤
+const searchedInstalledSkills = computed(() => {
+  if (!installedSearchQuery.value.trim()) return installedSkills.value
+  const q = installedSearchQuery.value.trim().toLowerCase()
+  return installedSkills.value.filter(
+    (s) =>
+      s.slug.toLowerCase().includes(q) ||
+      (s.name && s.name.toLowerCase().includes(q)) ||
+      (s.description && s.description.toLowerCase().includes(q))
+  )
+})
+
+// 安装目录过滤
+const scopeFilteredInstalledSkills = computed(() => {
+  const isWorkspace = selectedScope.value.startsWith('agent-workspace:')
+  const targetAgentId = isWorkspace ? selectedScope.value.replace('agent-workspace:', '') : ''
+  return searchedInstalledSkills.value.filter((s) => {
+    if (isWorkspace) {
+      return s.location === 'workspace' && s.agentId === targetAgentId
+    }
+    return s.location === 'shared' && s.skillRoot
+  })
+})
+
+async function loadInstalledSkills() {
+  installedLoading.value = true
+  try {
+    const skills = await OpenClawSkillsService.ListSkills()
+
+    // Read disabled state from openclaw.json
+    let disabledMap: Record<string, boolean> = {}
+    try {
+      disabledMap = await OpenClawSkillsService.GetDisabledSkillSlugs() as Record<string, boolean> ?? {}
+    } catch {
+      // Gateway may not be ready; disabledMap stays empty (all enabled by default)
+    }
+
+    installedSkills.value = skills.map((skill) => ({
+      ...skill,
+      // eligible = !(disabled in openclaw.json). Undefined/null from gateway → treat as enabled.
+      eligible: disabledMap[skill.slug] === true ? false : true,
+    }))
+  } catch (error) {
+    console.error('Failed to load installed skills:', error)
+  } finally {
+    installedLoading.value = false
+  }
+}
+
+const installedDetailOpen = ref(false)
+const installedDetailSkill = ref<OpenClawSkill | null>(null)
+const installedDetailFiles = ref<SkillFileInfo[]>([])
+const installedDetailLoading = ref(false)
+let installedDetailLoadVersion = 0
+let installedFileLoadVersion = 0
+
+const installedDetailName = computed(() =>
+  installedDetailSkill.value?.name || installedDetailSkill.value?.slug || ''
+)
+const installedDetailDescription = computed(() =>
+  installedDetailSkill.value?.description || ''
+)
+const installedDetailVersion = computed(() =>
+  installedDetailSkill.value?.version || ''
+)
+const installedDetailIsBuiltIn = computed(() =>
+  installedDetailSkill.value?.dataSource === 'extra'
 )
 
-const installedHasMore = computed(
-  () => paginatedInstalledNames.value.length < installedNames.value.length
+const isBuiltInUninstall = computed(() =>
+  installedDetailIsBuiltIn.value || installedSkills.value.some(
+    (s) => (s.slug === uninstallTargetName.value || s.name === uninstallTargetName.value) && s.dataSource === 'extra'
+  )
 )
+
+async function showInstalledDetail(skill: OpenClawSkill) {
+  installedDetailSkill.value = skill
+  installedDetailFiles.value = []
+  selectedFilePath.value = ''
+  fileContent.value = ''
+  installedDetailLoading.value = true
+  installedDetailOpen.value = true
+
+  const version = ++installedDetailLoadVersion
+  try {
+    const files = await OpenClawSkillsService.ListSkillFiles(skill.skillRoot || skill.slug)
+    if (version !== installedDetailLoadVersion) return
+    installedDetailFiles.value = files
+    if (files.length > 0) {
+      await selectFile(files[0].path)
+    }
+  } catch {
+    if (version !== installedDetailLoadVersion) return
+  } finally {
+    if (version === installedDetailLoadVersion) {
+      installedDetailLoading.value = false
+    }
+  }
+}
+
+async function openInstalledSkillDir() {
+  if (installedDetailSkill.value?.skillRoot) {
+    const dir = installedDetailSkill.value.skillRoot.replace(/[/\\][^/\\]+$/, '')
+    await BrowserService.OpenDirectory(dir)
+  }
+}
+
+// ==================== 远程技能市场 ====================
 
 const detailOpen = ref(false)
 const detailSkill = ref<Skill | null>(null)
-const detailMeta = ref<SkillDetail | null>(null)
-const detailLoading = ref(false)
 const selectedFilePath = ref('')
 const fileContent = ref('')
 const fileLoading = ref(false)
-let detailLoadVersion = 0
 let fileLoadVersion = 0
 
 const detailTitle = computed(() => {
-  if (!detailMeta.value) return ''
-  return detailMeta.value.name || detailMeta.value.skillName || ''
-})
-
-const detailDescription = computed(() => {
-  if (!detailMeta.value) return ''
-  return detailMeta.value.description || ''
+  if (!detailSkill.value) return ''
+  return detailSkill.value.name || detailSkill.value.skillName || ''
 })
 
 const detailIsInstalled = computed(() => {
-  if (detailMeta.value?.isBuiltin) return true
-  return detailSkill.value ? installedNames.value.includes(detailSkill.value.skillName) : false
+  return detailSkill.value?.isBuiltin === true
 })
 
 const BINARY_EXTENSIONS = new Set([
@@ -202,6 +335,60 @@ function scopeLabel(scope: InstallTargetScope): string {
   return scope
 }
 
+const renderedFileContent = computed(() => {
+  if (!selectedFilePath.value || isBinaryFile(selectedFilePath.value)) return null
+  let content = fileContent.value
+  if (isMarkdownFile(selectedFilePath.value)) {
+    content = stripFrontmatter(content)
+  }
+  return content
+})
+
+const isSelectedFileMarkdown = computed(() => isMarkdownFile(selectedFilePath.value))
+
+function getCodeLanguage(path: string): string | null {
+  const ext = path.split('.').pop()?.toLowerCase()
+  const map: Record<string, string> = {
+    ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx',
+    py: 'python', rb: 'ruby', go: 'go', rs: 'rust', java: 'java',
+    c: 'c', cpp: 'cpp', cs: 'csharp', swift: 'swift', kt: 'kotlin',
+    sh: 'bash', bash: 'bash', zsh: 'bash', yaml: 'yaml', yml: 'yaml',
+    json: 'json', xml: 'xml', html: 'html', css: 'css', scss: 'scss',
+    sql: 'sql', md: 'markdown', mdx: 'markdown',
+  }
+  return ext ? (map[ext] ?? null) : null
+}
+
+const fileContentAsMarkdown = computed(() => {
+  if (!renderedFileContent.value) return ''
+  const lang = getCodeLanguage(selectedFilePath.value) || 'text'
+  return '```' + lang + '\n' + renderedFileContent.value + '\n```'
+})
+
+function setOpenClawShared() {
+  selectedScope.value = InstallTargetScope.ScopeOpenClawShared
+  loadInstalledSkills()
+  loadBrowseSkills(false)
+}
+
+function handleBrowseScroll(e: Event) {
+  const el = e.target as HTMLElement
+  const threshold = 80
+  if (browseHasMore.value && !browseLoading.value) {
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < threshold) {
+      void loadBrowseSkills(true)
+    }
+  }
+}
+
+function setAgentWorkspace() {
+  if (selectedAgentId.value) {
+    selectedScope.value = `agent-workspace:${selectedAgentId.value}` as InstallTargetScope
+    loadInstalledSkills()
+    loadBrowseSkills(false)
+  }
+}
+
 async function loadCategories() {
   try {
     categories.value = await SkillMarketService.ListCategories(locale.value)
@@ -224,7 +411,8 @@ async function loadBrowseSkills(append = false) {
       locale: locale.value,
       page: append ? browsePage.value + 1 : 1,
       pageSize: BROWSE_PAGE_SIZE,
-    })
+      scope: selectedScope.value,
+    } as any)
     if (append) {
       skills.value = [...skills.value, ...result[0]]
       browsePage.value++
@@ -239,36 +427,8 @@ async function loadBrowseSkills(append = false) {
   }
 }
 
-async function loadInstalledSkills() {
-  installedLoading.value = true
-  try {
-    installedNames.value = await SkillMarketService.GetInstalledSkillNames(selectedScope.value)
-    installedPage.value = 1
-  } catch (error) {
-    console.error('Failed to load installed skills:', error)
-  } finally {
-    installedLoading.value = false
-  }
-}
-
-async function loadDetail(skill: Skill) {
-  const version = ++detailLoadVersion
+function loadDetail(skill: Skill) {
   detailSkill.value = skill
-  detailMeta.value = null
-  selectedFilePath.value = ''
-  fileContent.value = ''
-  detailLoading.value = true
-  try {
-    const meta = await SkillMarketService.GetSkillDetail(skill.id, locale.value)
-    if (version !== detailLoadVersion) return
-    detailMeta.value = meta
-  } catch {
-    if (version !== detailLoadVersion) return
-  } finally {
-    if (version === detailLoadVersion) {
-      detailLoading.value = false
-    }
-  }
 }
 
 async function selectFile(path: string) {
@@ -281,8 +441,15 @@ async function selectFile(path: string) {
   const version = ++fileLoadVersion
   fileLoading.value = true
   try {
-    // Remote file preview not yet implemented
-    fileContent.value = `// ${t('settings.skillMarket.filePreviewNA')} // ${path}`
+    if (installedDetailOpen.value && installedDetailSkill.value?.skillRoot) {
+      // Local skill file
+      const content = await OpenClawSkillsService.ReadSkillFile(installedDetailSkill.value.skillRoot, path)
+      if (version !== fileLoadVersion) return
+      fileContent.value = content
+    } else {
+      // Remote file preview not yet implemented
+      fileContent.value = `// ${t('settings.skillMarket.filePreviewNA')} // ${path}`
+    }
   } catch {
     if (version !== fileLoadVersion) return
     fileContent.value = ''
@@ -304,9 +471,8 @@ async function handleRefresh() {
 async function handleSearch() {
   if (activeTab.value === 'browse') {
     await loadBrowseSkills(false)
-  } else {
-    installedPage.value = 1
   }
+  // installedSkills are already reactive, no reset needed
 }
 
 async function handleCategoryClick(categoryId: number | null) {
@@ -330,7 +496,7 @@ async function handleInstall() {
     toast.success(t('settings.skillMarket.installSuccess'))
     installDialogOpen.value = false
     installDialogSkill.value = null
-    await loadInstalledSkills()
+    await Promise.all([loadInstalledSkills(), loadBrowseSkills(false)])
     const idx = skills.value.findIndex((s) => s.id === skill.id)
     if (idx !== -1) skills.value[idx].isBuiltin = true
   } catch (error) {
@@ -341,14 +507,21 @@ async function handleInstall() {
 }
 
 const uninstallTargetName = ref<string | null>(null)
+const uninstallTargetScopeOverride = ref<InstallTargetScope | null>(null)
 
 async function handleUninstall(skillName: string) {
+  const scope = uninstallTargetScopeOverride.value ?? selectedScope.value
+  uninstallTargetScopeOverride.value = null
   try {
-    await SkillMarketService.UninstallSkill(skillName, selectedScope.value)
+    await SkillMarketService.UninstallSkill(skillName, scope)
     toast.success(t('settings.skillMarket.uninstallSuccess'))
-    installedNames.value = installedNames.value.filter((n) => n !== skillName)
-    const idx = skills.value.findIndex((s) => s.skillName === skillName)
-    if (idx !== -1) skills.value[idx].isBuiltin = false
+    installedSkills.value = installedSkills.value.filter((s) => s.slug !== skillName && s.name !== skillName)
+    skills.value.forEach((s) => {
+      if (s.skillName === skillName) s.isBuiltin = false
+    })
+    if (installedDetailSkill.value && (installedDetailSkill.value.slug === skillName || installedDetailSkill.value.name === skillName)) {
+      installedDetailOpen.value = false
+    }
     if (detailSkill.value?.skillName === skillName) {
       detailSkill.value = { ...detailSkill.value, isBuiltin: false }
     }
@@ -366,6 +539,19 @@ function openDetail(skill: Skill) {
 
 function confirmUninstall(skillName: string) {
   uninstallTargetName.value = skillName
+  // Find the correct scope for this skill from its dataSource/location/agentId
+  const skill = installedSkills.value.find((s) => s.slug === skillName || s.name === skillName)
+  if (skill) {
+    let targetScope: InstallTargetScope = selectedScope.value
+    if (skill.location === 'workspace' && skill.agentId) {
+      targetScope = (`agent-workspace:` + skill.agentId) as InstallTargetScope
+    } else if (skill.dataSource === 'managed' || skill.dataSource === 'bundled' || skill.dataSource === 'gateway') {
+      targetScope = 'openclaw-shared' as InstallTargetScope
+    }
+    uninstallTargetScopeOverride.value = targetScope
+  } else {
+    uninstallTargetScopeOverride.value = selectedScope.value
+  }
 }
 
 async function openInstallTargetDir() {
@@ -382,6 +568,79 @@ async function onScopeChange(scope: InstallTargetScope) {
   }
 }
 
+async function loadSharedDir() {
+  if (sharedDir.value) return
+  try {
+    sharedDir.value = await OpenClawSkillsService.GetManagedSkillsRoot()
+  } catch {
+    sharedDir.value = ''
+  }
+}
+
+async function handleAddSkill() {
+  addDialogOpen.value = true
+}
+
+async function handleCreateViaChat() {
+  addDialogOpen.value = false
+  const isWorkspace = selectedScope.value.startsWith('agent-workspace:')
+
+  // 无论共享目录还是 agent 工作目录，都跳转到任务助手并发提示词
+  await loadSharedDir()
+  const sharedDirPath = sharedDir.value || ''
+  navigationStore.navigateToModule('openclaw', appStore.currentSystem)
+
+  window.setTimeout(async () => {
+    let prompt = ''
+    if (isWorkspace) {
+      const agentId = selectedScope.value.replace('agent-workspace:', '')
+      const target = installTargets.value.find((t) => t.scope === selectedScope.value)
+      const agentName = target?.label || `#${agentId}`
+      const agentDir = target?.path || ''
+      prompt = t('settings.skillMarket.addSkillViaChatPrompt', {
+        agentId,
+        agentName,
+        dir: agentDir,
+      })
+    } else {
+      prompt = t('settings.skillMarket.addSkillViaChatPromptShared', { dir: sharedDirPath })
+    }
+    Events.Emit('text-selection:send-to-assistant', { text: prompt })
+    Events.Emit('openclaw:expand-sidebar')
+  }, 150)
+}
+
+async function handleOpenDirectory() {
+  addDialogOpen.value = false
+  const isWorkspace = selectedScope.value.startsWith('agent-workspace:')
+  if (!isWorkspace) {
+    await loadSharedDir()
+    const dir = sharedDir.value || ''
+    if (sharedDir.value) {
+      await BrowserService.OpenDirectory(sharedDir.value)
+    }
+    showToast({
+      title: t('settings.skillMarket.addSkillHint'),
+      description: dir
+        ? t('settings.skillMarket.addSkillHintDescShared', { dir })
+        : t('settings.skillMarket.addSkillHintDesc'),
+    })
+    return
+  }
+  const agentId = selectedScope.value.replace('agent-workspace:', '')
+  if (!agentId) return
+  const target = installTargets.value.find((t) => t.scope === selectedScope.value)
+  if (target?.path) {
+    await BrowserService.OpenDirectory(target.path)
+  }
+  showToast({
+    title: t('settings.skillMarket.addSkillHint'),
+    description: t('settings.skillMarket.addSkillHintDescAgent', {
+      dir: target?.path || '',
+    }),
+  })
+}
+
 function handleTabChange(tab: PageTab) {
   activeTab.value = tab
   if (tab === 'installed') {
@@ -389,12 +648,24 @@ function handleTabChange(tab: PageTab) {
   }
 }
 
+watch(selectedScope, () => {
+  if (activeTab.value === 'installed') {
+    loadInstalledSkills()
+  }
+})
+
+watch(activeTab, (tab) => {
+  if (tab === 'browse' && skills.value.length === 0) {
+    void loadBrowseSkills(false)
+  }
+})
+
 onMounted(async () => {
   await Promise.all([
     loadAgents(),
     loadInstallTargets(),
     loadCategories(),
-    loadBrowseSkills(false),
+    loadInstalledSkills(),
   ])
 })
 </script>
@@ -406,26 +677,24 @@ onMounted(async () => {
         <span class="text-sm font-medium text-foreground">{{ t('settings.skillMarket.listHeading') }}</span>
         <span class="text-xs text-muted-foreground">{{ t('settings.skillMarket.listSubheading') }}</span>
       </div>
-      <div class="flex items-center gap-2">
-        <button
-          class="inline-flex items-center gap-1.5 rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          @click="handleRefresh"
-        >
-          <RefreshCw class="size-3" />
-          {{ t('settings.skillMarket.refreshCta') }}
-        </button>
-        <button
-          class="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity hover:opacity-80"
-          @click="openInstallTargetDir"
-        >
-          <FolderOpen class="size-3" />
-          {{ t('settings.skillMarket.openDir') }}
-        </button>
-      </div>
     </div>
 
     <div class="flex shrink-0 items-center gap-3 border-b bg-muted/30 px-4 py-2">
-      <span class="text-xs text-muted-foreground">{{ t('settings.skillMarket.selectAgent') }}:</span>
+      <span class="text-xs text-muted-foreground">安装目录:</span>
+      <button
+        class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
+        :class="
+          selectedScope === InstallTargetScope.ScopeOpenClawShared
+            ? 'bg-foreground text-background'
+            : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
+        "
+        @click="setOpenClawShared"
+      >
+        <Package class="size-3" />
+        共享技能目录
+      </button>
+
+      <span class="ml-2 text-xs text-muted-foreground">agent:</span>
       <div v-if="agentsLoading" class="flex items-center gap-1 text-xs text-muted-foreground">
         <Loader2 class="size-3 animate-spin" />
         {{ t('settings.skillMarket.loadingAgents') }}
@@ -442,27 +711,41 @@ onMounted(async () => {
         </select>
       </div>
 
-      <span class="ml-2 text-xs text-muted-foreground">{{ t('settings.skillMarket.selectTarget') }}:</span>
-      <div v-if="targetsLoading" class="flex items-center gap-1 text-xs text-muted-foreground">
-        <Loader2 class="size-3 animate-spin" />
-      </div>
-      <div v-else class="flex items-center gap-1.5">
+      <button
+        class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
+        :class="
+          selectedScope.startsWith('agent-workspace:')
+            ? 'bg-foreground text-background'
+            : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
+        "
+        @click="setAgentWorkspace"
+        :disabled="!selectedAgentId"
+      >
+        <Package class="size-3" />
+        agent工作目录
+      </button>
+
+      <div class="ml-auto flex items-center gap-2">
         <button
-          v-for="tgt in installTargets"
-          :key="tgt.scope"
-          class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
-          :class="
-            tgt.scope === selectedScope
-              ? 'bg-foreground text-background'
-              : tgt.available
-                ? 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
-                : 'cursor-not-allowed bg-muted/50 text-muted-foreground/50'
-          "
-          :disabled="!tgt.available"
-          @click="tgt.available && onScopeChange(tgt.scope)"
+          class="inline-flex items-center gap-1.5 rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          @click="handleRefresh"
         >
-          <Package class="size-3" />
-          {{ scopeLabel(tgt.scope) }}
+          <RefreshCw class="size-3" />
+          {{ t('settings.skillMarket.refreshCta') }}
+        </button>
+        <button
+          class="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity hover:opacity-80"
+          @click="handleAddSkill"
+        >
+          <Plus class="size-3" />
+          添加技能
+        </button>
+        <button
+          class="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity hover:opacity-80"
+          @click="openInstallTargetDir"
+        >
+          <FolderOpen class="size-3" />
+          {{ t('settings.skillMarket.openDir') }}
         </button>
       </div>
     </div>
@@ -479,7 +762,7 @@ onMounted(async () => {
       >
         {{ t('settings.skillMarket.tabInstalled') }}
         <Badge variant="secondary" class="ml-0.5 px-1.5 py-0 text-[10px]">
-          {{ installedNames.length }}
+          {{ scopeFilteredInstalledSkills.length }}
         </Badge>
       </button>
       <button
@@ -501,10 +784,18 @@ onMounted(async () => {
         <div class="relative">
           <Search class="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
+            v-if="activeTab === 'browse'"
             v-model="searchQuery"
             :placeholder="t('settings.skillMarket.searchPlaceholder')"
             class="h-8 w-52 pl-8 text-xs"
             @keydown.enter="handleSearch"
+          />
+          <Input
+            v-else
+            v-model="installedSearchQuery"
+            placeholder="搜索技能..."
+            class="h-8 w-52 pl-8 text-xs"
+            @keydown.enter="void 0"
           />
         </div>
       </div>
@@ -540,7 +831,7 @@ onMounted(async () => {
         </button>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-4">
+      <div ref="browseListEl" class="flex-1 overflow-y-auto p-4" @scroll="handleBrowseScroll">
         <TooltipProvider :delay-duration="300">
           <div v-if="browseLoading && skills.length === 0" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <div
@@ -635,76 +926,105 @@ onMounted(async () => {
           </div>
         </div>
         </TooltipProvider>
-
-        <div v-if="browseHasMore" class="flex justify-center py-4">
-          <button
-            class="inline-flex cursor-pointer items-center gap-1 rounded-md bg-muted px-4 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            :disabled="browseLoading"
-            @click="loadBrowseSkills(true)"
-          >
-            <Loader2 v-if="browseLoading" class="size-3 animate-spin" />
-            {{ t('settings.skillMarket.loadMore') }}
-          </button>
-        </div>
       </div>
     </div>
 
-    <div v-else class="flex flex-1 flex-col overflow-hidden">
-      <div class="flex-1 overflow-y-auto p-4">
-        <div v-if="installedLoading && installedNames.length === 0" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <div
-            v-for="i in 8"
-            :key="i"
-            class="animate-pulse rounded-xl border bg-card p-4"
-          >
-            <div class="h-4 w-3/4 rounded bg-muted" />
-          </div>
+    <div v-else class="flex min-h-0 flex-1 flex-col">
+      <!-- Skill list -->
+      <div class="flex-1 overflow-auto px-4 pb-4">
+        <div
+          v-if="installedLoading"
+          class="flex items-center justify-center py-12"
+        >
+          <Loader2 class="size-5 animate-spin text-muted-foreground" />
         </div>
 
         <div
-          v-else-if="!installedLoading && installedNames.length === 0"
-          class="flex h-48 flex-col items-center justify-center gap-2"
+          v-else-if="scopeFilteredInstalledSkills.length === 0"
+          class="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground"
         >
-          <Package class="size-8 text-muted-foreground/50" />
-          <p class="text-sm text-muted-foreground">{{ t('settings.skillMarket.noSkills') }}</p>
+          <Package class="size-8 opacity-40" />
+          <span class="text-sm">{{ t('settings.skillMarket.noSkills') }}</span>
         </div>
 
-        <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <div
-            v-for="name in paginatedInstalledNames"
-            :key="name"
-            class="flex items-center justify-between rounded-xl border bg-card p-3 shadow-sm"
-          >
-            <div class="flex min-w-0 items-center gap-2">
-              <div
-                class="flex size-8 shrink-0 items-center justify-center rounded-lg"
-                style="background: #fef2f2"
-              >
-                <Package class="size-4" style="color: #ef4444" />
-              </div>
-              <span class="truncate text-sm text-foreground">{{ name }}</span>
-            </div>
-            <button
-              class="ml-2 shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-              @click="confirmUninstall(name)"
+        <div v-else>
+          <div class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
+            <div
+              v-for="skill in scopeFilteredInstalledSkills"
+              :key="skill.slug"
+              class="group relative flex cursor-pointer flex-col rounded-2xl border border-[#d9d9d9] bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-white/10 dark:bg-card"
+              @click="showInstalledDetail(skill)"
             >
-              <Trash2 class="size-3.5" />
-            </button>
-          </div>
-        </div>
+              <!-- Top row: icon + name + tag + description -->
+              <div class="mb-3 flex items-start gap-3">
+                <!-- Icon -->
+                <div
+                  class="flex size-14 shrink-0 items-center justify-center rounded-md"
+                  style="background: #fef2f2"
+                >
+                  <span v-if="skill.icon" class="text-xl">{{ skill.icon }}</span>
+                  <SquareDashedMousePointer v-else class="size-6" style="color: #ef4444" />
+                </div>
+                <!-- Name + tag + description -->
+                <div class="min-w-0 flex-1">
+                  <div class="mb-1 flex items-center gap-2">
+                    <span class="truncate text-sm font-medium leading-snug text-[#171717] dark:text-foreground">
+                      {{ skill.name || skill.slug }}
+                    </span>
+                    <span
+                      class="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
+                    >
+                      {{ skill.dataSource === 'extra' ? '内置' : (skill.location === 'workspace' ? '工作区' : skill.dataSource || skill.location) }}
+                    </span>
+                  </div>
+                  <p
+                    v-if="skill.description"
+                    class="line-clamp-2 min-h-[2lh] text-xs leading-4 text-neutral-500"
+                  >
+                    {{ skill.description }}
+                  </p>
+                  <div v-else class="min-h-[2lh]" />
+                </div>
+              </div>
 
-        <div v-if="installedHasMore" class="flex justify-center py-4">
-          <button
-            class="inline-flex cursor-pointer items-center gap-1 rounded-md bg-muted px-4 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            @click="installedPage++"
-          >
-            {{ t('settings.skillMarket.loadMore') }}
-          </button>
+              <!-- Divider -->
+              <div class="mb-3 h-px w-full rounded-sm bg-neutral-200" />
+
+              <!-- Bottom row: author/agent + toggle + settings -->
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-neutral-500">
+                  {{ skill.agentName || (skill.location === 'workspace' ? `Agent #${skill.agentId}` : 'OpenClaw') }}
+                </span>
+                <div class="flex items-center gap-2">
+                  <!-- Switch toggle -->
+                  <div class="flex items-center" :title="skill.eligible === false ? t('settings.skillMarket.enable') : t('settings.skillMarket.disable')">
+                    <Switch
+                      size="sm"
+                      :model-value="skill.eligible === true"
+                      :disabled="skill.eligible == null || skillTogglePending.has(skill.slug)"
+                      @click.stop
+                      @update:model-value="toggleSkillEnabled(skill.slug, skill.eligible)"
+                    />
+                  </div>
+
+                  <!-- Uninstall button -->
+                  <button
+                    class="flex size-6 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"
+                    :title="t('settings.skills.uninstall')"
+                    @click.stop="confirmUninstall(skill.slug)"
+                  >
+                    <Trash2 class="size-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <Dialog :open="detailOpen" @update:open="(v) => !v && (detailOpen = false)">
+    <!-- ==================== DETAIL OVERLAY (browse tab) ==================== -->
+    <Dialog :open="detailOpen && !installedDetailOpen" @update:open="(v) => !v && (detailOpen = false)">
       <DialogContent class="flex max-h-[80vh] max-w-xl flex-col overflow-hidden p-0">
         <div class="relative flex flex-col gap-2 px-4 pt-4">
           <button
@@ -716,13 +1036,12 @@ onMounted(async () => {
             </svg>
           </button>
 
-          <!-- icon + name + skill_name -->
           <div class="flex flex-col items-center gap-2">
             <div
-              v-if="detailMeta?.iconUrl"
+              v-if="detailSkill?.iconUrl"
               class="size-[62px] overflow-hidden rounded-lg"
             >
-              <img :src="detailMeta.iconUrl" :alt="detailTitle" class="h-full w-full object-cover" />
+              <img :src="detailSkill.iconUrl" :alt="detailTitle" class="h-full w-full object-cover" />
             </div>
             <div
               v-else
@@ -732,34 +1051,30 @@ onMounted(async () => {
               <Package class="size-8" style="color: #ef4444" />
             </div>
             <span class="text-base font-semibold text-[#171717] dark:text-foreground">{{ detailTitle }}</span>
-            <span class="text-sm text-[#404040]">{{ detailMeta?.skillName }}</span>
+            <span class="text-sm text-[#404040]">{{ detailSkill?.skillName }}</span>
             <Badge
-              v-if="detailMeta?.categoryName"
+              v-if="detailSkill?.categoryName"
               variant="outline"
               class="mt-0.5"
             >
-              {{ detailMeta.categoryName }}
+              {{ detailSkill.categoryName }}
             </Badge>
           </div>
         </div>
 
         <div class="flex flex-1 flex-col overflow-y-auto px-6 pb-4">
-          <!-- 分隔线 -->
           <div class="mb-3 h-px bg-neutral-200" />
 
-          <!-- 技能介绍 -->
           <div class="mb-2 flex items-center gap-2">
             <svg class="size-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span class="text-sm font-semibold text-[#171717]">技能介绍</span>
           </div>
-          <p class="mb-3 text-sm leading-5 text-[#404040]">{{ detailMeta?.description }}</p>
+          <p class="mb-3 text-sm leading-5 text-[#404040]">{{ detailSkill?.description }}</p>
 
-          <!-- 分隔线 -->
           <div class="mb-3 h-px bg-neutral-300" />
 
-          <!-- 怎么使用？ -->
           <div class="mb-3 flex items-center gap-2">
             <svg class="size-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -767,16 +1082,14 @@ onMounted(async () => {
             <span class="text-sm font-semibold text-[#171717]">怎么使用？</span>
           </div>
           <div
-            v-if="detailMeta?.instructions"
+            v-if="detailSkill?.instructions"
             class="mb-4 rounded-xl bg-neutral-100 p-4 text-sm dark:bg-neutral-800"
           >
-            <MarkdownRenderer :content="detailMeta.instructions" />
+            <MarkdownRenderer :content="detailSkill.instructions" />
           </div>
 
-          <!-- 按钮行 -->
           <div class="mt-auto flex flex-col items-center gap-2">
             <div class="flex w-full items-center gap-2">
-              <!-- 已安装：灰色禁用按钮 -->
               <button
                 v-if="detailIsInstalled"
                 class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-[#fafafa] opacity-50"
@@ -784,7 +1097,6 @@ onMounted(async () => {
               >
                 {{ t('settings.skills.added') }}
               </button>
-              <!-- 未安装：安装按钮 -->
               <button
                 v-else-if="detailSkill"
                 class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-[#fafafa] transition-opacity hover:opacity-80"
@@ -795,17 +1107,16 @@ onMounted(async () => {
                 <Plus v-else class="size-4" />
                 {{ installingSet.has(detailSkill.skillName) ? t('settings.skills.installing') : t('settings.skills.install') }}
               </button>
-              <!-- 删除按钮 -->
               <button
-                v-if="detailIsInstalled"
+                v-if="detailIsInstalled && !installedDetailIsBuiltIn"
                 class="flex size-9 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white shadow-sm hover:bg-neutral-100 dark:bg-neutral-900 dark:border-neutral-700"
+                :title="t('settings.skillMarket.builtInCannotUninstall')"
                 @click="detailSkill && confirmUninstall(detailSkill.skillName)"
               >
                 <Trash2 class="size-4 text-neutral-600 dark:text-neutral-400" />
               </button>
             </div>
 
-            <!-- 安全提示 -->
             <div class="flex items-center gap-2 text-sm text-[#737373]">
               <Shield class="size-4 shrink-0" />
               <span>已通过安全与合规验证，无恶意代码或数据泄露风险。</span>
@@ -815,17 +1126,129 @@ onMounted(async () => {
       </DialogContent>
     </Dialog>
 
-    <AlertDialog :open="!!uninstallTargetName" @update:open="(v) => !v && (uninstallTargetName = null)">
+    <!-- ==================== DETAIL OVERLAY (installed tab - SkillsPage style) ==================== -->
+    <div
+      v-if="installedDetailOpen"
+      class="absolute inset-0 z-50 flex flex-col overflow-hidden bg-background"
+    >
+      <!-- Row 1: back button -->
+      <div class="flex shrink-0 items-center border-b border-border px-4 py-2">
+        <button
+          class="inline-flex cursor-pointer items-center gap-1 rounded-md px-1 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          @click="installedDetailOpen = false"
+        >
+          <ChevronLeft class="size-4" />
+          {{ t('settings.skillMarket.tabInstalled') }}
+        </button>
+      </div>
+
+      <!-- Row 2: skill info + actions -->
+      <div class="flex shrink-0 items-start justify-between gap-4 border-b border-border px-4 py-3">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <span class="text-base font-semibold text-foreground">{{ installedDetailName }}</span>
+            <Badge
+              v-if="installedDetailSkill"
+              variant="secondary"
+              class="shrink-0 bg-muted px-1.5 py-0 text-[10px] text-muted-foreground"
+            >
+              {{ installedDetailSkill.dataSource === 'extra' ? '内置技能' : (installedDetailSkill.location === 'workspace' ? '工作区' : installedDetailSkill.dataSource || installedDetailSkill.location) }}
+            </Badge>
+          </div>
+          <p v-if="installedDetailDescription" class="mt-1 text-xs leading-relaxed text-muted-foreground">
+            {{ installedDetailDescription }}
+          </p>
+        </div>
+
+        <div class="flex shrink-0 flex-col items-end gap-2">
+          <span v-if="installedDetailVersion" class="text-xs text-muted-foreground">v{{ installedDetailVersion }}</span>
+
+          <div class="flex items-center gap-2">
+            <button
+              class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              @click="openInstalledSkillDir"
+            >
+              <FolderOpen class="size-3.5" />
+              {{ t('settings.skills.openDir') }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail body: file list + content -->
+      <div v-if="installedDetailLoading" class="flex flex-1 items-center justify-center">
+        <Loader2 class="size-5 animate-spin text-muted-foreground" />
+      </div>
+      <div v-else class="flex min-h-0 flex-1">
+        <!-- Left: file list -->
+        <aside class="flex w-56 shrink-0 flex-col overflow-auto border-r border-border bg-muted/30">
+          <div
+            v-for="file in installedDetailFiles"
+            :key="file.path"
+            :title="file.path + '  ' + formatFileSize(file.size)"
+            :class="
+              cn(
+                'flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-accent/50',
+                selectedFilePath === file.path && 'bg-accent text-foreground',
+                selectedFilePath !== file.path && 'text-muted-foreground'
+              )
+            "
+            @click="selectFile(file.path)"
+          >
+            <FileText v-if="isMarkdownFile(file.path)" class="size-3.5 shrink-0" />
+            <FileCode v-else class="size-3.5 shrink-0" />
+            <span class="min-w-0 flex-1 truncate">{{ file.path }}</span>
+            <span class="shrink-0 text-[10px] opacity-60">{{ formatFileSize(file.size) }}</span>
+          </div>
+          <div v-if="installedDetailFiles.length === 0" class="px-3 py-4 text-xs text-muted-foreground">
+            {{ t('settings.skills.noDetailContent') }}
+          </div>
+        </aside>
+
+        <!-- Right: file content -->
+        <main class="skill-file-viewer flex min-w-0 flex-1 flex-col overflow-auto">
+          <div v-if="fileLoading" class="flex flex-1 items-center justify-center">
+            <Loader2 class="size-5 animate-spin text-muted-foreground" />
+          </div>
+          <div
+            v-else-if="!selectedFilePath"
+            class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
+          >
+            {{ t('settings.skills.selectFile') }}
+          </div>
+          <div
+            v-else-if="isBinaryFile(selectedFilePath)"
+            class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
+          >
+            {{ t('settings.skills.binaryFile') }}
+          </div>
+          <div v-else-if="isSelectedFileMarkdown" class="p-4">
+            <MarkdownRenderer :content="renderedFileContent || ''" />
+          </div>
+          <div v-else>
+            <MarkdownRenderer :content="fileContentAsMarkdown" />
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <AlertDialog :open="!!uninstallTargetName" @update:open="(v) => !v && (uninstallTargetName = null) && (uninstallTargetScopeOverride = null)">
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{{ t('settings.skills.uninstall') }}</AlertDialogTitle>
+          <AlertDialogTitle>{{ isBuiltInUninstall ? t('settings.skillMarket.builtInCannotUninstall') : t('settings.skills.uninstall') }}</AlertDialogTitle>
           <AlertDialogDescription>
-            {{ t('settings.skillMarket.deleteConfirm') }} "{{ uninstallTargetName }}"
+            <template v-if="isBuiltInUninstall">
+              {{ t('settings.skillMarket.builtInUninstallHint') }}
+            </template>
+            <template v-else>
+              {{ t('settings.skillMarket.deleteConfirm') }} "{{ uninstallTargetName }}"
+            </template>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{{ t('common.cancel') }}</AlertDialogCancel>
           <AlertDialogAction
+            v-if="!isBuiltInUninstall"
             class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             @click="uninstallTargetName && handleUninstall(uninstallTargetName)"
           >
@@ -886,6 +1309,56 @@ onMounted(async () => {
             {{ t('settings.skills.install') }}
           </button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog :open="addDialogOpen" @update:open="(v) => (addDialogOpen = v)">
+      <DialogContent size="lg">
+        <DialogHeader>
+          <DialogTitle>{{ t('settings.skillMarket.addSkillDialogTitle') }}</DialogTitle>
+        </DialogHeader>
+
+        <div class="grid gap-3 py-2">
+          <button
+            type="button"
+            class="flex w-full items-start gap-3 rounded-xl border border-border bg-background p-4 text-left transition-colors hover:bg-accent/30"
+            @click="handleCreateViaChat"
+          >
+            <div
+              class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+            >
+              <Plus class="size-4" />
+            </div>
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-foreground">
+                {{ t('settings.skillMarket.addSkillViaChatTitle') }}
+              </div>
+              <div class="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {{ t('settings.skillMarket.addSkillViaChatDesc') }}
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            class="flex w-full items-start gap-3 rounded-xl border border-border bg-background p-4 text-left transition-colors hover:bg-accent/30"
+            @click="handleOpenDirectory"
+          >
+            <div
+              class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+            >
+              <FolderOpen class="size-4" />
+            </div>
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-foreground">
+                {{ t('settings.skillMarket.addSkillChoosePackageTitle') }}
+              </div>
+              <div class="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {{ t('settings.skillMarket.addSkillChoosePackageDesc') }}
+              </div>
+            </div>
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   </div>
