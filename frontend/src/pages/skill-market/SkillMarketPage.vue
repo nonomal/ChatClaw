@@ -925,6 +925,10 @@ onMounted(async () => {
             </div>
           </div>
         </div>
+
+        <div v-if="browseLoading && skills.length > 0" class="flex items-center justify-center py-6">
+          <Loader2 class="size-5 animate-spin text-muted-foreground" />
+        </div>
         </TooltipProvider>
       </div>
     </div>

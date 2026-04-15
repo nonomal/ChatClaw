@@ -285,13 +285,17 @@ func (s *Service) ListSkills(ctx context.Context, params ListSkillsParams) ([]Sk
 	}
 
 	var resp struct {
-		Data []Skill `json:"data"`
+		Data struct {
+			Items []Skill `json:"items"`
+			Total int64  `json:"total"`
+		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, 0, fmt.Errorf("parse skills response: %w", err)
 	}
 
-	total := int64(len(resp.Data))
+	total := resp.Data.Total
+	skills := resp.Data.Items
 
 	// Check installed status based on current scope
 	if params.Scope != "" {
@@ -299,16 +303,16 @@ func (s *Service) ListSkills(ctx context.Context, params ListSkillsParams) ([]Sk
 		if err == nil {
 			s.refreshInstalledCacheForScope(params.Scope, st)
 			st.mu.RLock()
-			for i := range resp.Data {
-				if st.installed[resp.Data[i].SkillName] {
-					resp.Data[i].IsBuiltin = true
+			for i := range skills {
+				if st.installed[skills[i].SkillName] {
+					skills[i].IsBuiltin = true
 				}
 			}
 			st.mu.RUnlock()
 		}
 	}
 
-	return resp.Data, total, nil
+	return skills, total, nil
 }
 
 func (s *Service) GetSkillDetail(ctx context.Context, id int64, locale string) (*SkillDetail, error) {
