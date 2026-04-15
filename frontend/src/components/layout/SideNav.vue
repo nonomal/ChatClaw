@@ -198,6 +198,7 @@ const allTopNavItems: NavItem[] = [
     key: 'skills',
     labelKey: 'nav.skills',
     icon: IconSkills,
+    systems: ['chatclaw'],
     systemModuleMap: {
       openclaw: 'openclaw-skills',
     },
