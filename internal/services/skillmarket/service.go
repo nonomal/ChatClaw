@@ -498,11 +498,16 @@ func (s *Service) UninstallSkill(ctx context.Context, skillName string, scope In
 }
 
 func (s *Service) installFromClawhub(ctx context.Context, skill Skill, st *targetState) error {
-	const baseURL = "https://clawhub.ai/api/v1"
+	const (
+		primaryBase = "https://clawhub.ai/api/v1"
+		mirrorBase  = "https://cn.clawhub-mirror.com/api/v1"
+	)
 	slug := skill.SkillName
 
+	// Determine which base URL to use; if primary times out, fall back to mirror.
+	baseURL := s.clawhubBaseURLWithFallback(ctx, primaryBase, mirrorBase)
 	metaURL := fmt.Sprintf("%s/skills/%s", baseURL, url.PathEscape(slug))
-	body, err := s.httpGet(ctx, metaURL)
+	body, err := s.httpGetWithTimeout(ctx, metaURL, 10*time.Second)
 	if err != nil {
 		return fmt.Errorf("fetch clawhub skill metadata: %w", err)
 	}
@@ -544,11 +549,21 @@ func (s *Service) installFromClawhub(ctx context.Context, skill Skill, st *targe
 	}()
 
 	for _, f := range files {
+		// Try primary first with short timeout; on timeout, switch to mirror for the rest.
 		fileURL := fmt.Sprintf("%s/skills/%s/file?path=%s&version=%s",
 			baseURL, url.PathEscape(slug), url.QueryEscape(f.Path), url.QueryEscape(version))
-		content, dlErr := s.httpGet(ctx, fileURL)
+		content, dlErr := s.httpGetWithTimeout(ctx, fileURL, 10*time.Second)
 		if dlErr != nil {
-			return fmt.Errorf("download %s: %w", f.Path, dlErr)
+			// If primary timed out, retry once with mirror.
+			if isTimeoutErr(dlErr) && baseURL == primaryBase {
+				mirrorURL := fmt.Sprintf("%s/skills/%s/file?path=%s&version=%s",
+					mirrorBase, url.PathEscape(slug), url.QueryEscape(f.Path), url.QueryEscape(version))
+				content, dlErr = s.httpGetWithTimeout(ctx, mirrorURL, 15*time.Second)
+				baseURL = mirrorBase // remember we switched
+			}
+			if dlErr != nil {
+				return fmt.Errorf("download %s: %w", f.Path, dlErr)
+			}
 		}
 
 		filePath, pathErr := resolvePathUnderBase(stagingDir, f.Path)
@@ -586,6 +601,32 @@ func (s *Service) installFromClawhub(ctx context.Context, skill Skill, st *targe
 	st.installed[skill.SkillName] = true
 	st.mu.Unlock()
 	return nil
+}
+
+// clawhubBaseURLWithFallback probes primary with a short timeout.
+// Returns primaryBase on success, otherwise falls back to mirrorBase.
+func (s *Service) clawhubBaseURLWithFallback(ctx context.Context, primaryBase, mirrorBase string) string {
+	const probeTimeout = 8 * time.Second
+	probeURL := fmt.Sprintf("%s/skills/clawhub-probe", primaryBase)
+	if _, err := s.httpGetWithTimeout(ctx, probeURL, probeTimeout); err == nil {
+		return primaryBase
+	}
+	// Primary unreachable or timed out; use mirror.
+	return mirrorBase
+}
+
+// isTimeoutErr reports whether err is likely a context timeout.
+func isTimeoutErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "context deadline exceeded") ||
+		strings.Contains(err.Error(), "context canceled") ||
+		strings.Contains(err.Error(), "timeout") ||
+		strings.Contains(err.Error(), "i/o timeout") ||
+		strings.Contains(err.Error(), "Handshake did not verify") ||
+		strings.Contains(err.Error(), "connection refused") ||
+		strings.Contains(err.Error(), "no such host")
 }
 
 func (s *Service) installFromSkillhub(ctx context.Context, skill Skill, st *targetState) error {
@@ -733,6 +774,10 @@ func (s *Service) ListOpenClawSkills(ctx context.Context) ([]OpenClawSkillInfo, 
 }
 
 func (s *Service) httpGet(ctx context.Context, rawURL string) ([]byte, error) {
+	return s.httpGetWithTimeout(ctx, rawURL, 0)
+}
+
+func (s *Service) httpGetWithTimeout(ctx context.Context, rawURL string, extraTimeout time.Duration) ([]byte, error) {
 	const maxRetries = 5
 	backoff := 2 * time.Second
 
@@ -743,7 +788,14 @@ func (s *Service) httpGet(ctx context.Context, rawURL string) ([]byte, error) {
 			backoff = min(backoff*2, 60*time.Second)
 		}
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+		reqCtx := ctx
+		if extraTimeout > 0 {
+			var cancel context.CancelFunc
+			reqCtx, cancel = context.WithTimeout(ctx, extraTimeout)
+			defer cancel()
+		}
+
+		req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, rawURL, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -751,7 +803,10 @@ func (s *Service) httpGet(ctx context.Context, rawURL string) ([]byte, error) {
 
 		resp, err := s.httpClient.Do(req)
 		if err != nil {
-			continue
+			if attempt < maxRetries {
+				continue
+			}
+			return nil, err
 		}
 
 		if resp.StatusCode == http.StatusTooManyRequests {
@@ -770,7 +825,18 @@ func (s *Service) httpGet(ctx context.Context, rawURL string) ([]byte, error) {
 }
 
 func (s *Service) downloadFile(ctx context.Context, srcURL, destPath string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, srcURL, nil)
+	return s.downloadFileWithTimeout(ctx, srcURL, destPath, 0)
+}
+
+func (s *Service) downloadFileWithTimeout(ctx context.Context, srcURL, destPath string, extraTimeout time.Duration) error {
+	reqCtx := ctx
+	if extraTimeout > 0 {
+		var cancel context.CancelFunc
+		reqCtx, cancel = context.WithTimeout(ctx, extraTimeout)
+		defer cancel()
+	}
+
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, srcURL, nil)
 	if err != nil {
 		return err
 	}
