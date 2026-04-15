@@ -464,7 +464,7 @@ func (s *Service) InstallSkill(ctx context.Context, skill Skill, scope InstallTa
 		return fmt.Errorf("install target not available: %s", scope)
 	}
 
-	switch skill.Source {
+	switch strings.ToLower(skill.Source) {
 	case "clawhub":
 		return s.installFromClawhub(ctx, skill, st)
 	case "skillhub":

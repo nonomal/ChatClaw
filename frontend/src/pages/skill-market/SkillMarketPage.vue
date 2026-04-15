@@ -180,14 +180,30 @@ const searchedInstalledSkills = computed(() => {
   )
 })
 
+// 当前选中目标的工作目录路径（用于 skillRoot 前缀匹配）
+const currentTargetPath = computed(() => {
+  const target = installTargets.value.find((t) => t.scope === selectedScope.value)
+  return target?.path ?? ''
+})
+
 // 安装目录过滤
 const scopeFilteredInstalledSkills = computed(() => {
   const isWorkspace = selectedScope.value.startsWith('agent-workspace:')
-  const targetAgentId = isWorkspace ? selectedScope.value.replace('agent-workspace:', '') : ''
+  const targetPath = currentTargetPath.value
   return searchedInstalledSkills.value.filter((s) => {
     if (isWorkspace) {
-      return s.location === 'workspace' && s.agentId === targetAgentId
+      // Agent 工作目录：skillRoot 必须以目标路径为前缀，排除 workspace- 子目录
+      if (!s.skillRoot || !s.skillRoot.startsWith(targetPath)) return false
+      // 排除嵌套在 workspace- 子目录中的技能（说明是从其他 agent 的 workspace 复制的）
+      const rel = s.skillRoot.slice(targetPath.length).replace(/^[/\\]/, '')
+      if (rel.includes('/') || rel.includes('\\')) {
+        const first = rel.split(/[/\\]/)[0]
+        if (first.startsWith('workspace-')) return false
+      }
+      return true
     }
+    // 共享目录：排除所有 skillRoot 中含 workspace- 路径的技能
+    if (s.skillRoot && /[/\\]workspace-[^/\\]+[/\\]/.test(s.skillRoot)) return false
     return s.location === 'shared' && s.skillRoot
   })
 })
