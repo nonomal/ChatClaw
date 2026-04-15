@@ -26,7 +26,7 @@ const (
 	DotDir       = ".clawhub"
 	OriginFile   = "origin.json"
 
-	DefaultRegistry = "https://clawhub.ai"
+	DefaultRegistry = "https://cn.clawhub-mirror.com" //官网：https://clawhub.ai
 
 	RouteSearch   = "/api/v1/search"
 	RouteResolve  = "/api/v1/resolve"
