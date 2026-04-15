@@ -76,6 +76,9 @@ wails3 task build:server
 wails3 task run:server
 ```
 
+## 额外技能包
+将额外的技能skill打包成extraSkills.zip放到，build\extraSkills\extraSkills.zip，方便打包
+
 ## Windows 打包
 
 ```bash

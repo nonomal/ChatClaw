@@ -203,6 +203,12 @@ const allTopNavItems: NavItem[] = [
     },
   },
   {
+    key: 'skillmarket',
+    labelKey: 'nav.skillmarket',
+    icon: IconSkills,
+    systems: ['openclaw'],
+  },
+  {
     key: 'channels',
     labelKey: 'nav.channels',
     icon: IconChannels,

@@ -148,6 +148,17 @@ Section
         DetailPrint "OpenClaw runtime extracted."
    !endif
 
+   !ifdef ARG_EXTRASKILLS
+        CreateDirectory "$INSTDIR\extraSkills"
+        SetOutPath "$INSTDIR\extraSkills"
+        File "${ARG_EXTRASKILLS}"
+
+        DetailPrint "Extracting extraSkills (may take a few seconds, please wait)..."
+        nsExec::ExecToStack 'tar -xf "$INSTDIR\extraSkills\extraSkills.zip" -C "$INSTDIR\extraSkills"'
+        Delete "$INSTDIR\extraSkills\extraSkills.zip"
+        DetailPrint "extraSkills extracted."
+   !endif
+
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
 
@@ -180,6 +191,7 @@ Section "uninstall"
     ; Delete subtrees that don't contain uninstall.exe (rd /s /q is faster than PowerShell Remove-Item).
     nsExec::ExecToLog 'cmd /s /c "if exist "$INSTDIR\rt" rd /s /q "$INSTDIR\rt""'
     nsExec::ExecToLog 'cmd /s /c "if exist "$INSTDIR\build" rd /s /q "$INSTDIR\build""'
+    nsExec::ExecToLog 'cmd /s /c "if exist "$INSTDIR\extraSkills" rd /s /q "$INSTDIR\extraSkills""'
     Delete "$INSTDIR\${PRODUCT_EXECUTABLE}"
 
     DetailPrint "Cleaning up..."
