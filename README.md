@@ -292,38 +292,16 @@ ChatClaw_D2/
 ### Changelog
 To view the complete update log, please click👉️👉️[UpdateLog.md](./UpdateLog.md)
 
-### 2026/04/10
-1. **OpenClaw Gateway Startup Enhancements**: Implemented a new heartbeat mechanism for the Gateway offline banner to ensure responsiveness to backend status changes. Added detailed startup steps in the runtime manager for better tracking of the gateway's initialization process.
-2. **Toast Duration Customization**: Introduced `TOAST_DURATION_HINT` for longer informational messages and updated toast functionality to accept custom durations.
-3. **Default Configuration for New Users**: Added default configuration generation for new users to prevent startup errors when first launching the application.
-4. **Default Mode for First Launch**: Enhanced first-launch experience with ChatClaw mode as the default entry point and runtime environment automatically opened.
-5. **OpenClaw Auto-Start**: Implemented auto-start functionality in OpenClaw settings, allowing users to enable or disable automatic startup of the gateway with UI toggle and backend process management.
-6. **Channel Auto-Close on Connection Failure**: Added automatic channel closure when connection fails to improve reliability and user feedback.
-7. **Localization Updates**: Updated localization files for English, Japanese, Korean, Simplified Chinese, and Traditional Chinese to include new messages related to the gateway startup process.
-8. **README Multi-Language Enhancement**: Revised readme-from-docx skill documentation and updated README files across multiple languages with improved clarity and structure.
-9. **i18n Rule Refactor**: Removed double quotes locale rule and introduced single quotes locale rule for consistent string escaping in TypeScript files.
-10. **Style & UI Refinements**: Various text adjustments, component extraction, and UI polish improvements.
+### 2026/04/15
+1. **Skill Market Page (Major Feature)**: Complete Skill Market page implementation with fallback mechanism for Clawhub API requests, enhanced skill filtering logic for agent workspaces, loading indicators and hints for agent workspace selection, improved skill loading experience with updated response structure, refined skill tab labels, and skill status display with 'added' label.
+2. **CLI Tools for Skill Management**: Added `clawhub` and `skillhub` command-line tools for skill management and search functionality, with default registry URL fix for Clawhub.
+3. **NSIS Build System Refactor**: Refactored NSIS build process using PowerShell scripts, simplified build parameters, and enhanced extra skills handling for improved Windows installer builds.
+4. **Sidebar Navigation Enhancement**: Added 'chatclaw' system to skills navigation item in SideNav for improved navigation.
+5. **Development Documentation**: Updated development documentation and build configurations.
 
-### 2026/04/09
-1. **OpenClaw Auto-Start Feature**: Implemented auto-start feature in OpenClaw settings, allowing users to enable or disable automatic startup of the gateway with improved process management on Windows.
-2. **Gateway Status Race Condition Fix**: Introduced a 4-second delay before checking the gateway port after process exit to prevent race conditions during the gateway restart process.
-3. **Gateway Restart Logic Refinement**: Replaced gateway restart logic with explicit stop and start commands using ExecCLI for improved control over the gateway lifecycle.
-4. **Channel Integration Optimizations**: Enhanced Feishu (Lark) channel integration with improved message hook functionality; completed DingTalk agent and channel integration; optimized WeChat channel features.
-5. **Build System Enhancement**: Enhanced Taskfile for Windows build with `SHOW_CMD` variable to control console window visibility during development and production builds.
-6. **README Updates**: Updated README files with improved clarity and structure; introduced new `README_en.md` for English documentation with enhanced AI feature descriptions.
-7. **UI/UX Improvements**: Channel display optimization; login popup style refinements; various text adjustments.
-8. **Code Cleanup**: Removed nil checks for openclawManager in restart method for simplified logic; updated logging and comments for better clarity.
+### 2026/04/14
+1. **Skill Market Page (Initial Release)**: Introduced Skill Market page and related services for centralized skill discovery, browsing, and management within the application.
+2. **Skill Management CLI**: Added `clawhub` and `skillhub` command-line tools for skill management and search functionality.
 
-### 2026/04/08
-1. **OpenClaw In-Memory Models Cache**: Implemented in-memory models cache for improved efficiency in model registration and synchronization. The cache is populated from openclaw.json at startup and refreshed during config sync.
-2. **OpenClaw Real-Time Status Updates**: Enhanced real-time status updates by subscribing to backend events for gateway state and runtime status, replacing the previous polling mechanism for immediate frontend updates.
-3. **OpenClaw Gateway Polling & Restart Logic**: Implemented polling mechanism for gateway status after restart to ensure accurate state detection; simplified gateway restart logic by removing redundant port status checks and enhancing error handling.
-4. **OpenClaw Readiness Diagnostics**: Added DebugIsReadyState method for enhanced diagnostics of gateway readiness; refactored to simplify readiness checks relying on the gateway's connection status.
-5. **OpenClaw Upgrade Enhancement**: Added upgrade cancellation and continuation features; updated runtime upgrade logic to use a candidate staging directory for improved reliability.
-6. **OpenClaw Staged Installation**: Integrated OpenClaw runtime management with system mode synchronization, auto-start based on sidebar mode, and bundled binaries support from the full installer.
-7. **Gateway Doctor Auto-Trigger**: Implemented auto-trigger for doctor diagnostics on consecutive WebSocket failures with UI updates and enhanced authentication support.
-8. **ChatWiki Model Enhancements**: Implemented cleanup for corrupted chatwiki model entries; enhanced model catalog item parsing with numeric ID detection and improved model ID resolution.
-9. **UI/UX Improvements**: Gateway style updates; fixed floating window login issue; ChatWiki model switch now disabled when not logged in; assistant session switch shows latest messages; batch operation button display optimization; knowledge base card English word wrap support; icon replacement with SVG.
-10. **Localization Updates**: Updated 'updatesAvailableToast' message across multiple languages; multi-language README support enhancements.
 
 
