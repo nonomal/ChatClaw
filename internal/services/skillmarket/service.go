@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -52,11 +53,11 @@ func ParseOpenClawAgentID(scope InstallTargetScope) (string, bool) {
 }
 
 type InstallTargetConfig struct {
-	Scope             InstallTargetScope `json:"scope"`
-	Path              string            `json:"path"`
-	Label             string            `json:"label"`
-	Available         bool              `json:"available"`
-	OpenClawAgentID  string            `json:"openClawAgentId,omitempty"`
+	Scope           InstallTargetScope `json:"scope"`
+	Path            string             `json:"path"`
+	Label           string             `json:"label"`
+	Available       bool               `json:"available"`
+	OpenClawAgentID string             `json:"openClawAgentId,omitempty"`
 }
 
 type Service struct {
@@ -173,7 +174,6 @@ func (s *Service) getTargetStateForScope(scope InstallTargetScope) (*targetState
 	return st, nil
 }
 
-
 func (s *Service) ListAvailableTargets(agentID *int64, locale string) ([]InstallTargetConfig, error) {
 	if agentID != nil && *agentID > 0 {
 		return s.listTargetsForAgent(*agentID)
@@ -219,11 +219,11 @@ func (s *Service) listTargetsForAgent(agentID int64) ([]InstallTargetConfig, err
 	}
 	configs := []InstallTargetConfig{
 		{
-			Scope:             AgentWorkspaceScope(openClawAgentID),
-			Path:              st.root,
-			Label:             fmt.Sprintf("%s 工作目录", agent.Name),
-			Available:         true,
-			OpenClawAgentID:  openClawAgentID,
+			Scope:           AgentWorkspaceScope(openClawAgentID),
+			Path:            st.root,
+			Label:           fmt.Sprintf("%s 工作目录", agent.Name),
+			Available:       true,
+			OpenClawAgentID: openClawAgentID,
 		},
 		{
 			Scope:     ScopeOpenClawShared,
@@ -304,11 +304,11 @@ func (s *Service) ListCategories(ctx context.Context, locale string) ([]SkillCat
 }
 
 type ListSkillsParams struct {
-	CategoryID *int64            `json:"categoryId,omitempty"`
-	Name       string            `json:"name,omitempty"`
-	Locale     string            `json:"locale,omitempty"`
-	Page       int               `json:"page,omitempty"`
-	PageSize   int               `json:"pageSize,omitempty"`
+	CategoryID *int64             `json:"categoryId,omitempty"`
+	Name       string             `json:"name,omitempty"`
+	Locale     string             `json:"locale,omitempty"`
+	Page       int                `json:"page,omitempty"`
+	PageSize   int                `json:"pageSize,omitempty"`
 	Scope      InstallTargetScope `json:"scope,omitempty"`
 }
 
@@ -341,7 +341,7 @@ func (s *Service) ListSkills(ctx context.Context, params ListSkillsParams) ([]Sk
 	var resp struct {
 		Data struct {
 			Items []Skill `json:"items"`
-			Total int64  `json:"total"`
+			Total int64   `json:"total"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
@@ -504,22 +504,22 @@ func (s *Service) installFromClawhub(ctx context.Context, skill Skill, st *targe
 	)
 	slug := skill.SkillName
 
-	// Determine which base URL to use; if primary times out, fall back to mirror.
-	baseURL := s.clawhubBaseURLWithFallback(ctx, primaryBase, mirrorBase)
-	metaURL := fmt.Sprintf("%s/skills/%s", baseURL, url.PathEscape(slug))
-	body, err := s.httpGetWithTimeout(ctx, metaURL, 10*time.Second)
-	if err != nil {
-		return fmt.Errorf("fetch clawhub skill metadata: %w", err)
-	}
-
 	var metaResp struct {
 		LatestVersion *struct {
 			Version string `json:"version"`
-			Files   []struct {
-				Path string `json:"path"`
-				Size int64  `json:"size"`
-			} `json:"files"`
 		} `json:"latestVersion"`
+	}
+
+	baseURL := s.clawhubBaseURLWithFallback(ctx, primaryBase, mirrorBase)
+	body, err := s.fetchClawhubSkillMeta(ctx, baseURL, slug)
+	if err != nil && baseURL == primaryBase {
+		body, err = s.fetchClawhubSkillMeta(ctx, mirrorBase, slug)
+		if err == nil {
+			baseURL = mirrorBase
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("fetch clawhub skill metadata: %w", err)
 	}
 	if err := json.Unmarshal(body, &metaResp); err != nil {
 		return fmt.Errorf("parse clawhub meta: %w", err)
@@ -529,60 +529,51 @@ func (s *Service) installFromClawhub(ctx context.Context, skill Skill, st *targe
 		return fmt.Errorf("cannot resolve version for %s", slug)
 	}
 	version := metaResp.LatestVersion.Version
-	files := metaResp.LatestVersion.Files
 
-	skillsBaseDir, err := filepath.Abs(st.root)
+	if err := s.installClawhubZip(ctx, slug, version, st, baseURL); err != nil {
+		if baseURL == primaryBase {
+			if mirrorErr := s.installClawhubZip(ctx, slug, version, st, mirrorBase); mirrorErr == nil {
+				return nil
+			}
+		}
+		return err
+	}
+	return nil
+}
+
+func (s *Service) fetchClawhubSkillMeta(ctx context.Context, baseURL, slug string) ([]byte, error) {
+	metaURL := fmt.Sprintf("%s/skills/%s", baseURL, url.PathEscape(slug))
+	return s.httpGetWithTimeout(ctx, metaURL, 10*time.Second)
+}
+
+func (s *Service) installClawhubZip(ctx context.Context, slug, version string, st *targetState, baseURL string) error {
+	params := url.Values{}
+	params.Set("slug", slug)
+	params.Set("version", version)
+	zipURL := fmt.Sprintf("%s/download?%s", baseURL, params.Encode())
+
+	tmpDir, err := os.MkdirTemp("", "clawhub-*")
 	if err != nil {
-		return fmt.Errorf("resolve skills directory: %w", err)
+		return fmt.Errorf("create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	zipPath := filepath.Join(tmpDir, slug+".zip")
+	if err := s.downloadFileWithTimeout(ctx, zipURL, zipPath, 20*time.Second); err != nil {
+		return fmt.Errorf("download clawhub zip: %w", err)
 	}
 
-	stagingPrefix := ".install-" + sanitizePathPart(slug) + "-"
-	stagingDir, err := os.MkdirTemp(skillsBaseDir, stagingPrefix)
-	if err != nil {
-		return fmt.Errorf("create staging directory: %w", err)
+	stageDir := filepath.Join(tmpDir, "stage")
+	if err := extractZip(zipPath, stageDir); err != nil {
+		return fmt.Errorf("extract clawhub zip: %w", err)
 	}
-	cleanupStaging := true
-	defer func() {
-		if cleanupStaging {
-			_ = os.RemoveAll(stagingDir)
-		}
-	}()
-
-	for _, f := range files {
-		// Try primary first with short timeout; on timeout, switch to mirror for the rest.
-		fileURL := fmt.Sprintf("%s/skills/%s/file?path=%s&version=%s",
-			baseURL, url.PathEscape(slug), url.QueryEscape(f.Path), url.QueryEscape(version))
-		content, dlErr := s.httpGetWithTimeout(ctx, fileURL, 10*time.Second)
-		if dlErr != nil {
-			// If primary timed out, retry once with mirror.
-			if isTimeoutErr(dlErr) && baseURL == primaryBase {
-				mirrorURL := fmt.Sprintf("%s/skills/%s/file?path=%s&version=%s",
-					mirrorBase, url.PathEscape(slug), url.QueryEscape(f.Path), url.QueryEscape(version))
-				content, dlErr = s.httpGetWithTimeout(ctx, mirrorURL, 15*time.Second)
-				baseURL = mirrorBase // remember we switched
-			}
-			if dlErr != nil {
-				return fmt.Errorf("download %s: %w", f.Path, dlErr)
-			}
-		}
-
-		filePath, pathErr := resolvePathUnderBase(stagingDir, f.Path)
-		if pathErr != nil {
-			return fmt.Errorf("invalid path %q: %w", f.Path, pathErr)
-		}
-		if dir := filepath.Dir(filePath); dir != stagingDir {
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return fmt.Errorf("create directory for %s: %w", f.Path, err)
-			}
-		}
-		if err := os.WriteFile(filePath, content, 0o644); err != nil {
-			return fmt.Errorf("write %s: %w", f.Path, err)
-		}
+	if !isValidSkillDir(stageDir) {
+		return fmt.Errorf("downloaded clawhub zip for %s did not contain a valid skill", slug)
 	}
 
 	targetDir := filepath.Join(st.root, slug)
 	if _, statErr := os.Stat(targetDir); statErr == nil {
-		backupDir := filepath.Join(skillsBaseDir,
+		backupDir := filepath.Join(st.root,
 			fmt.Sprintf(".backup-%s-%d", sanitizePathPart(slug), time.Now().UnixNano()))
 		if err := os.Rename(targetDir, backupDir); err != nil {
 			return fmt.Errorf("backup existing: %w", err)
@@ -592,13 +583,12 @@ func (s *Service) installFromClawhub(ctx context.Context, skill Skill, st *targe
 		}()
 	}
 
-	if err := os.Rename(stagingDir, targetDir); err != nil {
+	if err := os.Rename(stageDir, targetDir); err != nil {
 		return fmt.Errorf("activate skill: %w", err)
 	}
-	cleanupStaging = false
 
 	st.mu.Lock()
-	st.installed[skill.SkillName] = true
+	st.installed[slug] = true
 	st.mu.Unlock()
 	return nil
 }
@@ -1090,41 +1080,29 @@ func extractZip(zipPath, targetDir string) error {
 	}
 	defer zipReader.Close()
 
-	for _, f := range zipReader.File {
-		name := filepath.FromSlash(f.Name)
-		if filepath.IsAbs(name) || strings.Contains(name, "..") {
-			return fmt.Errorf("unsafe zip path: %s", f.Name)
-		}
+	if err := os.RemoveAll(targetDir); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
 	}
-
-	var commonPrefix string
-	for _, f := range zipReader.File {
-		name := filepath.ToSlash(filepath.Clean(f.Name))
-		parts := strings.Split(name, "/")
-		if len(parts) <= 1 {
-			continue
-		}
-		prefix := strings.Join(parts[:len(parts)-1], "/")
-		if commonPrefix == "" || strings.HasPrefix(prefix, commonPrefix+"/") {
-			commonPrefix = prefix
-		}
-	}
-
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
 		return fmt.Errorf("create target dir: %w", err)
 	}
 
 	for _, f := range zipReader.File {
 		name := filepath.FromSlash(f.Name)
-		if commonPrefix != "" && strings.HasPrefix(name, commonPrefix+"/") {
-			name = strings.TrimPrefix(name, commonPrefix+"/")
-		}
-		if name == "" || strings.HasSuffix(name, "/") {
-			continue
+		if filepath.IsAbs(name) || strings.Contains(name, "..") {
+			return fmt.Errorf("unsafe zip path: %s", f.Name)
 		}
 
 		dstPath := filepath.Join(targetDir, name)
-		os.MkdirAll(filepath.Dir(dstPath), 0o755)
+		if f.FileInfo().IsDir() {
+			if err := os.MkdirAll(dstPath, 0o755); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
+			return err
+		}
 
 		src, err := f.Open()
 		if err != nil {
