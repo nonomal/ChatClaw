@@ -147,14 +147,13 @@ tasks:
       - wails3 generate webview2bootstrapper -dir "{{.ROOT_DIR}}/build/windows/nsis"
       - |
         {{if eq OS "windows"}}
-        makensis \
-          -DARG_WAILS_{{.ARG_FLAG}}_BINARY="{{.ROOT_DIR}}\{{.BIN_DIR}}\{{.APP_NAME}}.exe" \
-          {{if eq .BUNDLE_OPENCLAW "true"}}-DARG_OPENCLAW_RUNTIME="{{.ROOT_DIR}}\build\openclaw-runtime\windows-{{.ARCH}}.zip" -DARG_OPENCLAW_RUNTIME_TARGET="windows-{{.ARCH}}" -DBUNDLE_OPENCLAW=1{{end}} \
-          project.nsi
+        powershell -Command "if (Test-Path '{{.ROOT_DIR}}\build\extraSkills\extraSkills.zip') { $env:EXTRASKILLS='{{.ROOT_DIR}}\build\extraSkills\extraSkills.zip' }; makensis -DARG_WAILS_{{.ARG_FLAG}}_BINARY='{{.ROOT_DIR}}\{{.BIN_DIR}}\{{.APP_NAME}}.exe' {{if eq .BUNDLE_OPENCLAW "true"}}-DARG_OPENCLAW_RUNTIME='{{.ROOT_DIR}}\build\openclaw-runtime\windows-{{.ARCH}}.zip' -DARG_OPENCLAW_RUNTIME_TARGET='windows-{{.ARCH}}' -DBUNDLE_OPENCLAW=1{{end}} {{if .EXTRASKILLS}}-DARG_EXTRASKILLS='{{.EXTRASKILLS}}'{{end}} project.nsi" && powershell -Command "Remove-Item Env:EXTRASKILLS -ErrorAction SilentlyContinue"
         {{else}}
+        test -f {{.ROOT_DIR}}/build/extraSkills/extraSkills.zip && EXTRASKILLS={{.ROOT_DIR}}/build/extraSkills/extraSkills.zip || EXTRASKILLS=
         makensis \
           -DARG_WAILS_{{.ARG_FLAG}}_BINARY="{{.ROOT_DIR}}/{{.BIN_DIR}}/{{.APP_NAME}}.exe" \
           {{if eq .BUNDLE_OPENCLAW "true"}}-DARG_OPENCLAW_RUNTIME="{{.ROOT_DIR}}/build/openclaw-runtime/windows-{{.ARCH}}.zip" -DARG_OPENCLAW_RUNTIME_TARGET="windows-{{.ARCH}}" -DBUNDLE_OPENCLAW=1{{end}} \
+          ${EXTRASKILLS:+-DARG_EXTRASKILLS="$EXTRASKILLS"} \
           project.nsi
         {{end}}
     vars:
