@@ -624,7 +624,9 @@ export default {
       addSkillViaChatTitle: '通过对话创建',
       addSkillViaChatDesc: '与 AI 对话，让它帮你设计技能名称、描述和实现方案。',
       addSkillChoosePackageTitle: '选择技能包',
-      addSkillChoosePackageDesc: '在打开的共享技能目录中创建文件夹并添加 SKILL.md。',
+      addSkillChoosePackageDesc: '从本地文件选择一个 .zip 格式的技能包并导入。',
+      agentWorkspaceDirLoading: '加载目录...',
+      agentWorkspaceDirHint: '请先选择一个 Agent',
     },
     mcp: {
       title: 'MCP',

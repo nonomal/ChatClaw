@@ -968,6 +968,8 @@ export default {
       title: '技能市场',
       uninstallFailed: '卸载失败',
       uninstallSuccess: '卸载成功',
+      agentWorkspaceDirLoading: '디렉토리 로딩 중...',
+      agentWorkspaceDirHint: '먼저 Agent를 선택하세요',
     },
   },
   assistant: {

@@ -626,6 +626,8 @@ export default {
       addSkillViaChatDesc: 'Chat with AI to design the skill name, description, and implementation.',
       addSkillChoosePackageTitle: 'Choose Skill Package',
       addSkillChoosePackageDesc: 'Create a folder in the shared skills directory and add SKILL.md.',
+      agentWorkspaceDirLoading: 'Loading directory...',
+      agentWorkspaceDirHint: 'Please select an Agent first',
     },
     openclawCron: {
       title: 'Scheduled Tasks',

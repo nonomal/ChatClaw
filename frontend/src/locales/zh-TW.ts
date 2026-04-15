@@ -924,6 +924,8 @@ export default {
       title: '技能市场',
       uninstallFailed: '卸载失败',
       uninstallSuccess: '卸载成功',
+      agentWorkspaceDirLoading: '載入目錄...',
+      agentWorkspaceDirHint: '請先選擇一個 Agent',
     },
   },
   assistant: {

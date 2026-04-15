@@ -127,6 +127,91 @@ func (s *OpenClawSkillsService) ListSkills() ([]OpenClawSkill, error) {
 	return mergeGatewayAndDisk(nil, disk), nil
 }
 
+// ListSkillsDebug returns all skills found on disk along with the directories that were scanned.
+// Useful for diagnosing why a skill does not appear in the list.
+func (s *OpenClawSkillsService) ListSkillsDebug() (skills []OpenClawSkill, scannedDirs []string, err error) {
+	root, rootErr := define.OpenClawDataRootDir()
+	if rootErr != nil {
+		return nil, nil, rootErr
+	}
+	_ = define.EnsureDataLayout()
+
+	agentNames := map[string]string{}
+	if s.agents != nil {
+		if list, listErr := s.agents.ListAgents(); listErr == nil {
+			for _, a := range list {
+				agentNames[strings.ToLower(strings.TrimSpace(a.OpenClawAgentID))] = strings.TrimSpace(a.Name)
+			}
+		}
+	}
+
+	// Collect all scanned directories and skills
+	scanDir := func(baseDir string) {
+		scannedDirs = append(scannedDirs, baseDir)
+		entries, readErr := os.ReadDir(baseDir)
+		if readErr != nil {
+			return
+		}
+		for _, e := range entries {
+			if !e.IsDir() || strings.HasPrefix(e.Name(), ".") {
+				continue
+			}
+			skillRoot := filepath.Join(baseDir, e.Name())
+			skillMd := filepath.Join(skillRoot, "SKILL.md")
+			if _, statErr := os.Stat(skillMd); statErr != nil {
+				continue
+			}
+			raw, readErr := os.ReadFile(skillMd)
+			if readErr != nil {
+				continue
+			}
+			meta := parseOpenClawSkillFrontmatter(string(raw))
+			sk := OpenClawSkill{
+				Slug:        e.Name(),
+				Name:        meta.Name,
+				Description: meta.Description,
+				Version:     meta.Version,
+				Icon:        meta.Icon,
+				Permission:  meta.PermissionSummary(),
+				Scope:       meta.Scope,
+				SkillRoot:   skillRoot,
+			}
+			if sk.Name == "" {
+				sk.Name = sk.Slug
+			}
+			skills = append(skills, sk)
+		}
+	}
+
+	scanDir(filepath.Join(root, "skills"))
+
+	if bundled, err := openclawruntime.BundledSkillsDir(); err == nil {
+		scanDir(bundled)
+	}
+
+	extraDirs := readSkillExtraDirs(filepath.Join(root, "openclaw.json"))
+	if len(extraDirs) > 0 {
+		for _, dir := range extraDirs {
+			abs, err := expandPath(dir)
+			if err != nil || abs == "" {
+				continue
+			}
+			scanDir(abs)
+		}
+	} else {
+		if rtRoot, err := resolveRuntimeRoot(); err == nil {
+			scanDir(filepath.Join(rtRoot, "extraSkills"))
+		}
+	}
+
+	matches, _ := filepath.Glob(filepath.Join(root, "workspace-*"))
+	for _, ws := range matches {
+		scanDir(filepath.Join(ws, "skills"))
+	}
+
+	return skills, scannedDirs, nil
+}
+
 func (s *OpenClawSkillsService) collectFromGateway(ctx context.Context) []OpenClawSkill {
 	raw, err := s.mgr.SkillsStatus(ctx, "")
 	if err != nil {
@@ -515,9 +600,11 @@ func metadataToPermissionString(v any) string {
 func (s *OpenClawSkillsService) listFromDisk() []OpenClawSkill {
 	root, err := define.OpenClawDataRootDir()
 	if err != nil {
+		fmt.Printf("[openclaw/skills] listFromDisk: OpenClawDataRootDir error: %v\n", err)
 		return nil
 	}
 	_ = define.EnsureDataLayout()
+	fmt.Printf("[openclaw/skills] listFromDisk: root=%s\n", root)
 
 	agentNames := map[string]string{}
 	if s.agents != nil {
@@ -525,42 +612,52 @@ func (s *OpenClawSkillsService) listFromDisk() []OpenClawSkill {
 			for _, a := range list {
 				agentNames[strings.ToLower(strings.TrimSpace(a.OpenClawAgentID))] = strings.TrimSpace(a.Name)
 			}
+			fmt.Printf("[openclaw/skills] listFromDisk: agents=%v\n", agentNames)
 		}
 	}
 
 	var out []OpenClawSkill
-	out = append(out, scanSkillsUnder(filepath.Join(root, "skills"), "shared", "", "", "managed", agentNames)...)
+	sharedRoot := filepath.Join(root, "skills")
+	fmt.Printf("[openclaw/skills] listFromDisk: scanning shared root=%s\n", sharedRoot)
+	out = append(out, scanSkillsUnder(sharedRoot, "shared", "", "", "managed", agentNames)...)
 
 	if bundled, err := openclawruntime.BundledSkillsDir(); err == nil {
+		fmt.Printf("[openclaw/skills] listFromDisk: scanning bundled=%s\n", bundled)
 		out = append(out, scanSkillsUnder(bundled, "shared", "", "", "bundled", agentNames)...)
 	}
 
 	extraDirs := readSkillExtraDirs(filepath.Join(root, "openclaw.json"))
+	fmt.Printf("[openclaw/skills] listFromDisk: extraDirs from config=%v\n", extraDirs)
 	if len(extraDirs) > 0 {
 		for _, dir := range extraDirs {
 			abs, err := expandPath(dir)
 			if err != nil || abs == "" {
+				fmt.Printf("[openclaw/skills] listFromDisk: extraDir=%s skipped (expand error or empty)\n", dir)
 				continue
 			}
+			fmt.Printf("[openclaw/skills] listFromDisk: scanning extraDir=%s (resolved=%s)\n", dir, abs)
 			out = append(out, scanSkillsUnder(abs, "shared", "", "", "extra", agentNames)...)
 		}
 	} else {
-		// Default extraSkills/ at runtime root (exe directory, e.g. C:\soft\ChatClaw)
 		if rtRoot, err := resolveRuntimeRoot(); err == nil {
 			defaultExtra := filepath.Join(rtRoot, "extraSkills")
+			fmt.Printf("[openclaw/skills] listFromDisk: scanning default extraSkills=%s\n", defaultExtra)
 			out = append(out, scanSkillsUnder(defaultExtra, "shared", "", "", "extra", agentNames)...)
 		}
 	}
 
 	matches, _ := filepath.Glob(filepath.Join(root, "workspace-*"))
+	fmt.Printf("[openclaw/skills] listFromDisk: found workspace dirs=%v\n", matches)
 	for _, ws := range matches {
-		base := filepath.Base(ws)
-		agentID := strings.TrimSpace(strings.TrimPrefix(base, "workspace-"))
-		key := strings.ToLower(agentID)
-		agentName := agentNames[key]
-		out = append(out, scanSkillsUnder(filepath.Join(ws, "skills"), "workspace", agentID, agentName, "workspace", agentNames)...)
+		wsSkillsDir := filepath.Join(ws, "skills")
+		fmt.Printf("[openclaw/skills] listFromDisk: scanning workspace skills dir=%s\n", wsSkillsDir)
+		out = append(out, scanSkillsUnder(wsSkillsDir, "workspace", strings.TrimPrefix(filepath.Base(ws), "workspace-"), agentNames[strings.ToLower(strings.TrimPrefix(filepath.Base(ws), "workspace-"))], "workspace", agentNames)...)
 	}
 
+	fmt.Printf("[openclaw/skills] listFromDisk: total=%d skills\n", len(out))
+	for _, sk := range out {
+		fmt.Printf("  skill: slug=%s location=%s dataSource=%s agentId=%s skillRoot=%s\n", sk.Slug, sk.Location, sk.DataSource, sk.AgentID, sk.SkillRoot)
+	}
 	return out
 }
 

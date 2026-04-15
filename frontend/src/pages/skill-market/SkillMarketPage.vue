@@ -78,6 +78,13 @@ const targetsLoading = ref(false)
 const sharedDir = ref('')
 const addDialogOpen = ref(false)
 
+const agentWorkspaceTarget = computed(() => {
+  if (!selectedAgentId.value) return null
+  // Always show the agent workspace target when an agent is selected,
+  // regardless of the current scope (shared or agent-workspace).
+  return installTargets.value.find((t) => t.openClawAgentId) ?? null
+})
+
 const installDialogOpen = ref(false)
 const installDialogSkill = ref<Skill | null>(null)
 const installDialogLoading = ref(false)
@@ -189,6 +196,7 @@ async function loadInstalledSkills() {
   installedLoading.value = true
   try {
     const skills = await OpenClawSkillsService.ListSkills()
+    console.log('[SkillMarket] loadInstalledSkills =>', skills.length, 'skills:', skills.map((s) => ({ slug: s.slug, location: s.location, skillRoot: s.skillRoot, agentId: s.agentId, dataSource: s.dataSource })))
 
     // Read disabled state from openclaw.json
     let disabledMap: Record<string, boolean> = {}
@@ -381,12 +389,24 @@ function handleBrowseScroll(e: Event) {
   }
 }
 
-function setAgentWorkspace() {
-  if (selectedAgentId.value) {
-    selectedScope.value = `agent-workspace:${selectedAgentId.value}` as InstallTargetScope
-    loadInstalledSkills()
-    loadBrowseSkills(false)
+async function setAgentWorkspace() {
+  if (!selectedAgentId.value) return
+  // If targets are still loading, wait for them so we can read the correct openClawAgentId.
+  if (targetsLoading.value) {
+    await new Promise<void>((resolve) => {
+      const stop = watch(targetsLoading, (loading) => {
+        if (!loading) {
+          stop()
+          resolve()
+        }
+      })
+    })
   }
+  const target = installTargets.value.find((t) => t.openClawAgentId)
+  if (!target) return
+  selectedScope.value = `agent-workspace:${target.openClawAgentId}` as InstallTargetScope
+  loadInstalledSkills()
+  loadBrowseSkills(false)
 }
 
 async function loadCategories() {
@@ -556,8 +576,12 @@ function confirmUninstall(skillName: string) {
 
 async function openInstallTargetDir() {
   const target = installTargets.value.find((t) => t.scope === selectedScope.value)
+  console.log('[SkillMarket] openInstallTargetDir: selectedScope=', selectedScope.value, 'target=', target)
   if (target?.path) {
+    console.log('[SkillMarket] openInstallTargetDir: calling BrowserService.OpenDirectory with path=', target.path)
     await BrowserService.OpenDirectory(target.path)
+  } else {
+    console.warn('[SkillMarket] openInstallTargetDir: no target found for scope', selectedScope.value)
   }
 }
 
@@ -711,19 +735,38 @@ onMounted(async () => {
         </select>
       </div>
 
-      <button
-        class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
-        :class="
-          selectedScope.startsWith('agent-workspace:')
-            ? 'bg-foreground text-background'
-            : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
-        "
-        @click="setAgentWorkspace"
-        :disabled="!selectedAgentId"
-      >
-        <Package class="size-3" />
-        agent工作目录
-      </button>
+      <TooltipProvider :delay-duration="300">
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <button
+              class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
+              :class="
+                selectedScope.startsWith('agent-workspace:')
+                  ? 'bg-foreground text-background'
+                  : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
+              "
+              @click="setAgentWorkspace"
+              :disabled="!selectedAgentId"
+            >
+              <Package class="size-3" />
+              agent工作目录
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" :side-offset="4">
+            <p class="max-w-xs break-all text-xs">
+              <template v-if="agentWorkspaceTarget?.path">
+                {{ agentWorkspaceTarget.path }}
+              </template>
+              <template v-else-if="selectedAgentId">
+                {{ t('settings.skillMarket.agentWorkspaceDirLoading') }}
+              </template>
+              <template v-else>
+                {{ t('settings.skillMarket.agentWorkspaceDirHint') }}
+              </template>
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       <div class="ml-auto flex items-center gap-2">
         <button

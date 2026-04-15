@@ -925,6 +925,8 @@ export default {
       title: '技能市场',
       uninstallFailed: '卸载失败',
       uninstallSuccess: '卸载成功',
+      agentWorkspaceDirLoading: 'ディレクトリを読み込み中...',
+      agentWorkspaceDirHint: 'まず Agent を選択してください',
     },
   },
   assistant: {

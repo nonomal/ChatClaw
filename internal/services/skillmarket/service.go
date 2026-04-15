@@ -89,11 +89,65 @@ func (s *Service) resolveOpenClawSharedRoot() string {
 	return filepath.Join(root, "skills")
 }
 
+// parseOpenClawAgentsJSON reads and parses the agents section from openclaw.json.
+func parseOpenClawAgentsJSON() map[string]string {
+	root, err := define.OpenClawDataRootDir()
+	if err != nil {
+		return nil
+	}
+	data, err := os.ReadFile(filepath.Join(root, "openclaw.json"))
+	if err != nil {
+		return nil
+	}
+	var raw struct {
+		Agents struct {
+			List []struct {
+				ID        string `json:"id"`
+				Workspace string `json:"workspace"`
+			} `json:"list"`
+		} `json:"agents"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil
+	}
+	result := make(map[string]string)
+	for _, a := range raw.Agents.List {
+		id := strings.TrimSpace(a.ID)
+		if id != "" {
+			result[id] = strings.TrimRight(strings.TrimSpace(a.Workspace), "/\\")
+		}
+	}
+	return result
+}
+
 // resolveAgentWorkspaceRoot returns the skills directory for a specific OpenClaw agent.
-// Format: <openclaw_root>/workspace-<openClawAgentID>/skills
+// Uses the workspace path from openclaw.json (e.g. C:\...workspace-main) and appends /skills.
+// Falls back to <openclaw_root>/workspace-<openClawAgentID>/skills for compatibility.
 func (s *Service) resolveAgentWorkspaceRoot(openClawAgentID string) string {
+	agents := parseOpenClawAgentsJSON()
+	if agents != nil {
+		if ws, ok := agents[openClawAgentID]; ok && ws != "" {
+			return filepath.Join(ws, "skills")
+		}
+	}
 	root, _ := define.OpenClawDataRootDir()
 	return filepath.Join(root, fmt.Sprintf("workspace-%s", openClawAgentID), "skills")
+}
+
+// agentWorkspaceRoots returns all agent workspace root directories from openclaw.json.
+// These are used to exclude agent workspaces from extraDirs scanning in openclaw-shared scope.
+func agentWorkspaceRoots() map[string]bool {
+	agents := parseOpenClawAgentsJSON()
+	if agents == nil {
+		return nil
+	}
+	result := make(map[string]bool)
+	for _, ws := range agents {
+		if ws != "" {
+			result[ws] = true
+		}
+	}
+	return result
 }
 
 func (s *Service) getTargetStateForScope(scope InstallTargetScope) (*targetState, error) {
@@ -792,14 +846,42 @@ func (s *Service) scanSkillDirsUnlocked(st *targetState) {
 	st.installed = nowInstalled
 }
 
+// isInsideAgentWorkspace checks if the given path is inside any agent workspace directory.
+// It checks both the workspace root (e.g. workspace-main/) and the workspace/skills subdirectory
+// so that extraDirs pointing directly to workspace-main/skills are also excluded.
+func isInsideAgentWorkspace(abs string, wsRoots map[string]bool) bool {
+	if wsRoots == nil || abs == "" {
+		return false
+	}
+	abs = filepath.Clean(abs)
+	if wsRoots[abs] {
+		return true
+	}
+	// Also check the /skills subdirectory of each workspace root
+	for wsRoot := range wsRoots {
+		skillsDir := filepath.Join(wsRoot, "skills")
+		if abs == skillsDir || strings.HasPrefix(abs, skillsDir+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Service) appendExtraDirsInstalled(st *targetState) {
 	ocRoot, err := define.OpenClawDataRootDir()
 	if err != nil {
 		return
 	}
+	// Exclude agent workspace directories from extraDirs scan
+	wsRoots := agentWorkspaceRoots()
+
 	for _, dir := range readOpenClawExtraDirs(filepath.Join(ocRoot, "openclaw.json")) {
 		abs := expandExtraDirPath(dir)
 		if abs == "" || abs == st.root {
+			continue
+		}
+		// Skip if this directory is inside an agent workspace (root or /skills subdirectory)
+		if isInsideAgentWorkspace(abs, wsRoots) {
 			continue
 		}
 		entries, err := os.ReadDir(abs)
