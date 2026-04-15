@@ -1,5 +1,16 @@
 ## Changelog
 
+### 2026/04/15
+1. **Skill Market Page (Major Feature)**: Complete Skill Market page implementation with fallback mechanism for Clawhub API requests, enhanced skill filtering logic for agent workspaces, loading indicators and hints for agent workspace selection, improved skill loading experience with updated response structure, refined skill tab labels, and skill status display with 'added' label.
+2. **CLI Tools for Skill Management**: Added `clawhub` and `skillhub` command-line tools for skill management and search functionality, with default registry URL fix for Clawhub.
+3. **NSIS Build System Refactor**: Refactored NSIS build process using PowerShell scripts, simplified build parameters, and enhanced extra skills handling for improved Windows installer builds.
+4. **Sidebar Navigation Enhancement**: Added 'chatclaw' system to skills navigation item in SideNav for improved navigation.
+5. **Development Documentation**: Updated development documentation and build configurations.
+
+### 2026/04/14
+1. **Skill Market Page (Initial Release)**: Introduced Skill Market page and related services for centralized skill discovery, browsing, and management within the application.
+2. **Skill Management CLI**: Added `clawhub` and `skillhub` command-line tools for skill management and search functionality.
+
 ### 2026/04/10
 1. **OpenClaw Gateway Startup Enhancements**: Implemented a new heartbeat mechanism for the Gateway offline banner to ensure responsiveness to backend status changes. Added detailed startup steps in the runtime manager for better tracking of the gateway's initialization process.
 2. **Toast Duration Customization**: Introduced `TOAST_DURATION_HINT` for longer informational messages and updated toast functionality to accept custom durations.
