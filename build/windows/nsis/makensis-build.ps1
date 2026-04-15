@@ -5,8 +5,7 @@ param(
     [string]$ProjectRoot,
     [string]$BinDir,
     [string]$AppName,
-    [string]$BundleOpenClaw,
-    [string]$ExtraSkills
+    [string]$BundleOpenClaw
 )
 
 $makensisArgs = @(
@@ -20,8 +19,9 @@ if ($BundleOpenClaw -eq "true") {
     $makensisArgs += "-DBUNDLE_OPENCLAW=1"
 }
 
-if (-not [string]::IsNullOrEmpty($ExtraSkills)) {
-    $makensisArgs += "-DARG_EXTRASKILLS=$ExtraSkills"
+$extraSkillsZip = Join-Path $ProjectRoot "build\extraSkills\extraSkills.zip"
+if (Test-Path $extraSkillsZip) {
+    $makensisArgs += "-DARG_EXTRASKILLS=$extraSkillsZip"
 }
 
 $nsisDir = Join-Path $ProjectRoot "build\windows\nsis"
