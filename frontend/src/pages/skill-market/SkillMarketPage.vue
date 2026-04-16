@@ -68,9 +68,9 @@ const addDialogOpen = ref(false)
 
 const agentWorkspaceTarget = computed(() => {
   if (!selectedAgentId.value) return null
-  // Always show the agent workspace target when an agent is selected,
-  // regardless of the current scope (shared or agent-workspace).
-  return installTargets.value.find((t) => t.openClawAgentId) ?? null
+  const agent = agents.value.find((a) => a.id === selectedAgentId.value)
+  if (!agent) return null
+  return installTargets.value.find((t) => t.openClawAgentId === agent.openclaw_agent_id) ?? null
 })
 
 const installDialogOpen = ref(false)
@@ -362,29 +362,20 @@ const searchedInstalledSkills = computed(() => {
 
 // 当前选中目标的工作目录路径（用于 skillRoot 前缀匹配）
 const currentTargetPath = computed(() => {
+  if (selectedScope.value.startsWith('agent-workspace:')) {
+    return agentWorkspaceTarget.value?.path ?? ''
+  }
   const target = installTargets.value.find((t) => t.scope === selectedScope.value)
   return target?.path ?? ''
 })
 
 // 安装目录过滤
 const scopeFilteredInstalledSkills = computed(() => {
-  const isWorkspace = selectedScope.value.startsWith('agent-workspace:')
-  const targetPath = currentTargetPath.value
+  const scope = selectedScope.value
   return searchedInstalledSkills.value.filter((s) => {
-    if (isWorkspace) {
-      // Agent 工作目录：skillRoot 必须以目标路径为前缀，排除 workspace- 子目录
-      if (!s.skillRoot || !s.skillRoot.startsWith(targetPath)) return false
-      // 排除嵌套在 workspace- 子目录中的技能（说明是从其他 agent 的 workspace 复制的）
-      const rel = s.skillRoot.slice(targetPath.length).replace(/^[/\\]/, '')
-      if (rel.includes('/') || rel.includes('\\')) {
-        const first = rel.split(/[/\\]/)[0]
-        if (first.startsWith('workspace-')) return false
-      }
-      return true
-    }
-    // 共享目录：排除所有 skillRoot 中含 workspace- 路径的技能
-    if (s.skillRoot && /[/\\]workspace-[^/\\]+[/\\]/.test(s.skillRoot)) return false
-    return s.location === 'shared' && s.skillRoot
+    const installedPath = s.scopeRoots?.[scope]
+    if (!installedPath) return false
+    return true
   })
 })
 

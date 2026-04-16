@@ -43,8 +43,13 @@ type OpenClawSkill struct {
 	AgentID string `json:"agentId"`
 	// AgentName is the ChatClaw display name when known.
 	AgentName string `json:"agentName"`
-	// SkillRoot is the absolute path to the skill directory when discovered on disk (for file preview).
+	// SkillRoot is the primary (preferred) absolute path to the skill directory.
+	// Prefer ScopeRoots for precise lookup by scope; SkillRoot is kept for backward compat.
 	SkillRoot string `json:"skillRoot"`
+	// ScopeRoots maps scope string -> skill root directory path.
+	// Key examples: "openclaw-shared", "local", "agent-workspace:main".
+	// This lets callers (especially UI) know exactly where a skill is installed per scope.
+	ScopeRoots map[string]string `json:"scopeRoots"`
 	// Installations lists every on-disk copy (workspace-*/skills, managed, bundled, extraDirs) for this slug.
 	Installations []SkillInstallation `json:"installations,omitempty"`
 }
@@ -381,6 +386,17 @@ func pickPrimarySkillRoot(disk []OpenClawSkill) string {
 	return ""
 }
 
+// scopeKeyForDiskRow returns the scope key used in ScopeRoots map.
+// Shared layer (managed/bundled/extra) → "openclaw-shared"
+// Workspace layer → "agent-workspace:<agentID>"
+func scopeKeyForDiskRow(d OpenClawSkill) string {
+	if d.Location == "workspace" && strings.TrimSpace(d.AgentID) != "" {
+		return "agent-workspace:" + d.AgentID
+	}
+	// managed, bundled, extra, gateway (no agent) → shared
+	return "openclaw-shared"
+}
+
 func mergeGatewayAndDisk(api []OpenClawSkill, disk []OpenClawSkill) []OpenClawSkill {
 	bySlugDisk := map[string][]OpenClawSkill{}
 	for _, d := range disk {
@@ -427,8 +443,15 @@ func buildMergedSkillRow(slug string, gw OpenClawSkill, hasGW bool, dlist []Open
 	switch {
 	case hasGW:
 		row = gw
+		// Ensure ScopeRoots is non-nil so we can assign to it below
+		if row.ScopeRoots == nil {
+			row.ScopeRoots = make(map[string]string)
+		}
 	case len(dlist) > 0:
 		row = dlist[0]
+		if row.ScopeRoots == nil {
+			row.ScopeRoots = make(map[string]string)
+		}
 	default:
 		return OpenClawSkill{}
 	}
@@ -440,10 +463,18 @@ func buildMergedSkillRow(slug string, gw OpenClawSkill, hasGW bool, dlist []Open
 	if strings.TrimSpace(row.Name) == "" {
 		row.Name = row.Slug
 	}
+	// Build ScopeRoots map and Installations from disk results.
+	// shared layer (managed/bundled/extra) → key "openclaw-shared"
+	// workspace layer → key "agent-workspace:<agentID>"
+	scopeRoots := make(map[string]string)
 	var inst []SkillInstallation
 	for _, d := range dlist {
 		if strings.TrimSpace(d.SkillRoot) == "" {
 			continue
+		}
+		scope := scopeKeyForDiskRow(d)
+		if scope != "" {
+			scopeRoots[scope] = d.SkillRoot
 		}
 		inst = append(inst, SkillInstallation{
 			OpenClawAgentID: d.AgentID,
@@ -462,6 +493,7 @@ func buildMergedSkillRow(slug string, gw OpenClawSkill, hasGW bool, dlist []Open
 	})
 	row.Installations = inst
 	row.SkillRoot = pickPrimarySkillRoot(dlist)
+	row.ScopeRoots = scopeRoots
 	if hasGW {
 		for _, d := range dlist {
 			if strings.TrimSpace(row.Description) == "" && strings.TrimSpace(d.Description) != "" {
