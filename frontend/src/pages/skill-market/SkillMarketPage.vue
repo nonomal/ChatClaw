@@ -36,9 +36,10 @@ import {
   type Skill,
   type SkillCategory,
   type InstallTargetConfig,
+  type AgentWithTargets,
 } from '@bindings/chatclaw/internal/services/skillmarket'
 import { BrowserService } from '@bindings/chatclaw/internal/services/browser'
-import { OpenClawAgentsService, type OpenClawAgent } from '@bindings/chatclaw/internal/openclaw/agents'
+import { type OpenClawAgent } from '@bindings/chatclaw/internal/openclaw/agents'
 import { OpenClawSkillsService, type OpenClawSkill, type SkillFileInfo } from '@bindings/chatclaw/internal/openclaw/skills'
 import { useNavigationStore, useAppStore } from '@/stores'
 import { Events } from '@wailsio/runtime'
@@ -77,61 +78,45 @@ const installDialogOpen = ref(false)
 const installDialogSkill = ref<Skill | null>(null)
 const installDialogLoading = ref(false)
 
-async function loadAgents() {
+async function loadAgentsWithTargets() {
   agentsLoading.value = true
-  try {
-    const list = await OpenClawAgentsService.ListAgents()
-    agents.value = list
-    if (list.length > 0 && selectedAgentId.value === null) {
-      selectedAgentId.value = list[0].id
-    }
-  } catch (error) {
-    console.error('Failed to load agents:', error)
-  } finally {
-    agentsLoading.value = false
-  }
-}
-
-async function loadInstallTargets() {
   targetsLoading.value = true
   try {
-    const scopes = await SkillMarketService.ListAvailableTargets(
-      selectedAgentId.value,
-      locale.value
-    )
-    installTargets.value = scopes
+    const [agentTargets, sharedTargets] = await SkillMarketService.ListAgentsWithTargets(locale.value)
+    // Set agents
+    agents.value = agentTargets.map((at) => at.agent)
+    // Build installTargets: each agent's targets + shared targets
+    const targets: InstallTargetConfig[] = []
+    for (const at of agentTargets) {
+      targets.push(...at.targets)
+    }
+    for (const st of sharedTargets) {
+      if (!targets.some((t) => t.scope === st.scope)) {
+        targets.push(st)
+      }
+    }
+    installTargets.value = targets
+    // Select first agent if none selected
+    if (agents.value.length > 0 && selectedAgentId.value === null) {
+      selectedAgentId.value = agents.value[0].id
+    }
   } catch (error) {
-    console.error('Failed to load install targets:', error)
+    console.error('Failed to load agents with targets:', error)
   } finally {
+    agentsLoading.value = false
     targetsLoading.value = false
   }
 }
 
 // Reload targets when agent changes
 watch(selectedAgentId, async (newAgentId, oldAgentId) => {
-  loadInstallTargets()
-  // If previously on agent workspace, migrate to the new agent's workspace
-  if (oldAgentId !== null && selectedScope.value.startsWith('agent-workspace:')) {
-    // Wait for loadInstallTargets to finish so installTargets is up to date
-    if (targetsLoading.value) {
-      await new Promise<void>((resolve) => {
-        const stop = watch(targetsLoading, (loading) => {
-          if (!loading) {
-            stop()
-            resolve()
-          }
-        })
-      })
-    }
-    // Check if the new agent already has a workspace target (it should, since we just loaded)
-    // openClawAgentId is string (from Go backend), selectedAgentId is number
-    const workspaceTarget = installTargets.value.find((t) => t.openClawAgentId === String(newAgentId))
-    if (workspaceTarget) {
-      selectedScope.value = `agent-workspace:${newAgentId}` as InstallTargetScope
-    } else {
-      // Fallback: new agent has no workspace, go to shared
-      selectedScope.value = InstallTargetScope.ScopeOpenClawShared
-    }
+  if (oldAgentId === null) return // 初始加载由 onMounted 统一处理
+  // 共享模式下切 agent：installTargets 包含所有 agent 的 targets，不需要重载
+  if (!selectedScope.value.startsWith('agent-workspace:')) return
+  // 迁移 scope 到新 agent（用 openClawAgentID 字符串，不是数字 ID）
+  const agent = agents.value.find((a) => a.id === newAgentId)
+  if (agent) {
+    selectedScope.value = `agent-workspace:${agent.openclaw_agent_id}` as InstallTargetScope
   }
   loadInstalledSkills()
   loadBrowseSkills(false)
@@ -578,18 +563,9 @@ function handleBrowseScroll(e: Event) {
 
 async function setAgentWorkspace() {
   if (!selectedAgentId.value) return
-  // If targets are still loading, wait for them so we can read the correct openClawAgentId.
-  if (targetsLoading.value) {
-    await new Promise<void>((resolve) => {
-      const stop = watch(targetsLoading, (loading) => {
-        if (!loading) {
-          stop()
-          resolve()
-        }
-      })
-    })
-  }
-  const target = installTargets.value.find((t) => t.openClawAgentId)
+  const agent = agents.value.find((a) => a.id === selectedAgentId.value)
+  if (!agent) return
+  const target = installTargets.value.find((t) => t.openClawAgentId === agent.openclaw_agent_id)
   if (!target) return
   selectedScope.value = `agent-workspace:${target.openClawAgentId}` as InstallTargetScope
   loadInstalledSkills()
@@ -906,8 +882,7 @@ onMounted(async () => {
   })
 
   await Promise.all([
-    loadAgents(),
-    loadInstallTargets(),
+    loadAgentsWithTargets(),
     loadCategories(),
     loadInstalledSkills(),
     loadCachedSkills(),
