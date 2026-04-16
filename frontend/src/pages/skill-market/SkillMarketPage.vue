@@ -31,23 +31,11 @@ import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import {
   Service as SkillMarketService,
   InstallTargetScope,
-} from '@bindings/chatclaw/internal/services/skillmarket'
-import type {
-  Skill,
-  SkillCategory,
-  InstallTargetConfig,
+  type Skill,
+  type SkillCategory,
+  type InstallTargetConfig,
 } from '@bindings/chatclaw/internal/services/skillmarket'
 import { BrowserService } from '@bindings/chatclaw/internal/services/browser'
 import { OpenClawAgentsService, type OpenClawAgent } from '@bindings/chatclaw/internal/openclaw/agents'
@@ -544,27 +532,46 @@ async function handleInstall() {
 
 const uninstallTargetName = ref<string | null>(null)
 const uninstallTargetScopeOverride = ref<InstallTargetScope | null>(null)
+const uninstallingSkillName = ref<string | null>(null)
+const uninstallDialogOpen = ref(false)
+
+function closeUninstallDialog() {
+  uninstallTargetName.value = null
+  uninstallTargetScopeOverride.value = null
+  uninstallDialogOpen.value = false
+}
+
+async function handleConfirmUninstall() {
+  const skillName = uninstallTargetName.value
+  if (!skillName || uninstallingSkillName.value) return
+  await handleUninstall(skillName)
+}
 
 async function handleUninstall(skillName: string) {
+  if (uninstallingSkillName.value) return
   const scope = uninstallTargetScopeOverride.value ?? selectedScope.value
-  uninstallTargetScopeOverride.value = null
+  uninstallingSkillName.value = skillName
   try {
     await SkillMarketService.UninstallSkill(skillName, scope)
     toast.success(t('settings.skillMarket.uninstallSuccess'))
-    installedSkills.value = installedSkills.value.filter((s) => s.slug !== skillName && s.name !== skillName)
-    skills.value.forEach((s) => {
-      if (s.skillName === skillName) s.isBuiltin = false
-    })
     if (installedDetailSkill.value && (installedDetailSkill.value.slug === skillName || installedDetailSkill.value.name === skillName)) {
       installedDetailOpen.value = false
     }
     if (detailSkill.value?.skillName === skillName) {
       detailSkill.value = { ...detailSkill.value, isBuiltin: false }
+      detailOpen.value = false
     }
+    await Promise.all([
+      loadCategories(),
+      loadInstalledSkills(),
+      loadBrowseSkills(false),
+    ])
   } catch (error) {
     toast.error(getErrorMessage(error) || t('settings.skillMarket.uninstallFailed'))
   } finally {
-    uninstallTargetName.value = null
+    uninstallingSkillName.value = null
+    // 卸载完成后关闭弹窗
+    closeUninstallDialog()
   }
 }
 
@@ -575,6 +582,7 @@ function openDetail(skill: Skill) {
 
 function confirmUninstall(skillName: string) {
   uninstallTargetName.value = skillName
+  uninstallDialogOpen.value = true
   // Find the correct scope for this skill from its dataSource/location/agentId
   const skill = installedSkills.value.find((s) => s.slug === skillName || s.name === skillName)
   if (skill) {
@@ -744,7 +752,6 @@ onMounted(async () => {
           v-model="selectedAgentId"
           class="rounded-md border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         >
-          <option :value="null">{{ t('settings.skillMarket.agentNone') }}</option>
           <option v-for="agent in agents" :key="agent.id" :value="agent.id">
             {{ agent.name }}
           </option>
@@ -1074,9 +1081,11 @@ onMounted(async () => {
                   <button
                     class="flex size-6 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"
                     :title="t('settings.skills.uninstall')"
+                    :disabled="uninstallingSkillName === skill.slug || uninstallingSkillName === skill.name"
                     @click.stop="confirmUninstall(skill.slug)"
                   >
-                    <Trash2 class="size-4" />
+                    <Loader2 v-if="uninstallingSkillName === skill.slug || uninstallingSkillName === skill.name" class="size-4 animate-spin" />
+                    <Trash2 v-else class="size-4" />
                   </button>
                 </div>
               </div>
@@ -1295,31 +1304,38 @@ onMounted(async () => {
       </div>
     </div>
 
-    <AlertDialog :open="!!uninstallTargetName" @update:open="(v) => !v && (uninstallTargetName = null) && (uninstallTargetScopeOverride = null)">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{{ isBuiltInUninstall ? t('settings.skillMarket.builtInCannotUninstall') : t('settings.skills.uninstall') }}</AlertDialogTitle>
-          <AlertDialogDescription>
-            <template v-if="isBuiltInUninstall">
-              {{ t('settings.skillMarket.builtInUninstallHint') }}
-            </template>
-            <template v-else>
-              {{ t('settings.skillMarket.deleteConfirm') }} "{{ uninstallTargetName }}"
-            </template>
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{{ t('common.cancel') }}</AlertDialogCancel>
-          <AlertDialogAction
-            v-if="!isBuiltInUninstall"
-            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            @click="uninstallTargetName && handleUninstall(uninstallTargetName)"
+    <Dialog :open="uninstallDialogOpen" @update:open="(v) => !v && !uninstallingSkillName && closeUninstallDialog()">
+      <DialogContent class="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{{ isBuiltInUninstall ? t('settings.skillMarket.builtInCannotUninstall') : t('settings.skills.uninstall') }}</DialogTitle>
+        </DialogHeader>
+        <div class="py-2">
+          <template v-if="isBuiltInUninstall">
+            <p class="text-sm text-muted-foreground">{{ t('settings.skillMarket.builtInUninstallHint') }}</p>
+          </template>
+          <template v-else>
+            <p class="text-sm text-muted-foreground">{{ t('settings.skillMarket.deleteConfirm') }} "{{ uninstallTargetName }}"</p>
+          </template>
+        </div>
+        <DialogFooter v-if="!isBuiltInUninstall">
+          <button
+            class="inline-flex items-center gap-1.5 rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            :disabled="!!uninstallingSkillName"
+            @click="closeUninstallDialog"
           >
-            {{ t('settings.skills.uninstall') }}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+            {{ t('common.cancel') }}
+          </button>
+          <button
+            class="inline-flex items-center gap-1.5 rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground transition-opacity hover:opacity-80"
+            :disabled="!!uninstallingSkillName"
+            @click="handleConfirmUninstall"
+          >
+            <Loader2 v-if="uninstallingSkillName" class="size-3 animate-spin" />
+            {{ uninstallingSkillName ? `${t('settings.skills.uninstall')}...` : t('settings.skills.uninstall') }}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     <Dialog :open="installDialogOpen" @update:open="(v) => !v && (installDialogOpen = false)">
       <DialogContent class="max-w-md">

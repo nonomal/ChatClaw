@@ -265,6 +265,19 @@ func (s *OpenClawAgentsService) ResolveLocalIDByOpenClawAgentID(openclawAgentID 
 	return id, nil
 }
 
+// GetAgentByOpenClawID looks up an agent by its OpenClaw agent ID string (e.g. "main", "ngsu8xs1").
+// This is a convenience wrapper around ResolveLocalIDByOpenClawAgentID + GetAgent.
+func (s *OpenClawAgentsService) GetAgentByOpenClawID(openClawAgentID string) (*OpenClawAgent, error) {
+	localID, err := s.ResolveLocalIDByOpenClawAgentID(openClawAgentID)
+	if err != nil {
+		return nil, err
+	}
+	if localID <= 0 {
+		return nil, errs.New("error.agent_not_found")
+	}
+	return s.GetAgent(localID)
+}
+
 func (s *OpenClawAgentsService) CreateAgent(input CreateOpenClawAgentInput) (*OpenClawAgent, error) {
 	name := strings.TrimSpace(input.Name)
 	if name == "" {

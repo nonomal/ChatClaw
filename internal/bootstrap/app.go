@@ -294,7 +294,7 @@ func NewApp(opts Options) (app *application.App, cleanup func(), err error) {
 	skillsService := skills.NewSkillsService(app)
 	app.RegisterService(application.NewService(skillsService))
 	// 注册 SkillMarket 服务（远程技能库）
-	skillmarketService := skillmarket.NewService(app, agentsService)
+	skillmarketService := skillmarket.NewService(app, openClawAgentsService)
 	app.RegisterService(application.NewService(skillmarketService))
 	// 注册 MCP 服务
 	app.RegisterService(application.NewService(mcp.NewMCPService(app)))
