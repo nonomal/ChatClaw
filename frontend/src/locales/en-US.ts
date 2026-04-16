@@ -1074,6 +1074,7 @@ export default {
       cancel: 'Cancel',
       create: 'Create',
       save: 'Save',
+      confirm: 'Confirm',
       settings: 'Agent Settings',
     },
     placeholders: {
@@ -1274,6 +1275,8 @@ export default {
         defaultModel: 'Default Model',
         defaultModelHint: 'Current default model for this agent',
         noDefaultModel: 'Not set',
+        setDefaultModelTitle: 'Set Default Model',
+        setDefaultModelDesc: 'Agent "{name}" has no default model. Please select one to continue.',
         clear: 'Clear',
         change: 'Change',
         temperature: 'Temperature',

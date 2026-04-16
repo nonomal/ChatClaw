@@ -2,8 +2,6 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { EmojiPicker } from '@/components/ui/emoji-picker'
 import { ProviderIcon } from '@/components/ui/provider-icon'
 import {
   Dialog,
@@ -24,29 +22,25 @@ import {
   ProvidersService,
   type ProviderWithModels,
 } from '@bindings/chatclaw/internal/services/providers'
+import type { OpenClawAgent } from '@bindings/chatclaw/internal/openclaw/agents'
 
-export interface CreateAgentData {
-  name: string
-  icon: string
-  identityEmoji: string
+export interface SetDefaultModelResult {
   defaultLlMProviderId: string
   defaultLlMModelId: string
 }
 
 const props = defineProps<{
   open: boolean
+  agent: OpenClawAgent | null
   loading?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  create: [data: CreateAgentData]
+  confirm: [data: SetDefaultModelResult]
 }>()
 
 const { t } = useI18n()
-
-const name = ref('')
-const identityEmoji = ref('')
 
 const providersWithModels = ref<ProviderWithModels[]>([])
 const modelProviderId = ref('')
@@ -55,8 +49,7 @@ const modelName = ref('')
 const modelKey = ref('')
 
 const hasDefaultModel = computed(() => modelProviderId.value !== '' && modelId.value !== '')
-
-const isValid = computed(() => name.value.trim() !== '' && hasDefaultModel.value)
+const isValid = computed(() => hasDefaultModel.value)
 
 const loadModels = async () => {
   try {
@@ -129,8 +122,6 @@ watch(
   () => props.open,
   (open) => {
     if (!open) return
-    name.value = ''
-    identityEmoji.value = ''
     modelProviderId.value = ''
     modelId.value = ''
     modelName.value = ''
@@ -141,12 +132,9 @@ watch(
 
 const handleClose = () => emit('update:open', false)
 
-const handleCreate = () => {
+const handleConfirm = () => {
   if (!isValid.value || props.loading) return
-  emit('create', {
-    name: name.value.trim(),
-    icon: '',
-    identityEmoji: identityEmoji.value,
+  emit('confirm', {
     defaultLlMProviderId: modelProviderId.value,
     defaultLlMModelId: modelId.value,
   })
@@ -157,21 +145,13 @@ const handleCreate = () => {
   <Dialog :open="open" @update:open="handleClose">
     <DialogContent size="lg">
       <DialogHeader>
-        <DialogTitle>{{ t('assistant.create.title') }}</DialogTitle>
+        <DialogTitle>{{ t('assistant.settings.model.setDefaultModelTitle') }}</DialogTitle>
       </DialogHeader>
 
       <div class="flex flex-col gap-4 py-4">
-        <div class="flex flex-col gap-1.5">
-          <label class="text-sm font-medium text-foreground">
-            {{ t('assistant.fields.name') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <Input
-            v-model="name"
-            :placeholder="t('assistant.fields.namePlaceholder')"
-            maxlength="100"
-          />
-        </div>
+        <p class="text-sm text-muted-foreground">
+          {{ t('assistant.settings.model.setDefaultModelDesc', { name: agent?.name ?? '' }) }}
+        </p>
 
         <div class="flex flex-col gap-1.5">
           <label class="text-sm font-medium text-foreground">
@@ -237,21 +217,14 @@ const handleCreate = () => {
             {{ t('assistant.settings.model.defaultModelHint') }}
           </p>
         </div>
-
-        <div class="flex flex-col gap-1.5">
-          <label class="text-sm font-medium text-foreground">
-            {{ t('assistant.fields.identityEmoji') }}
-          </label>
-          <EmojiPicker v-model="identityEmoji" />
-        </div>
       </div>
 
       <DialogFooter>
         <Button variant="outline" :disabled="loading" @click="handleClose">
           {{ t('assistant.actions.cancel') }}
         </Button>
-        <Button :disabled="!isValid || loading" @click="handleCreate">
-          {{ t('assistant.actions.create') }}
+        <Button :disabled="!isValid || loading" @click="handleConfirm">
+          {{ t('assistant.actions.confirm') }}
         </Button>
       </DialogFooter>
     </DialogContent>
