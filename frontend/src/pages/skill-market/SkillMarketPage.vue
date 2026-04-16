@@ -744,7 +744,6 @@ onMounted(async () => {
           v-model="selectedAgentId"
           class="rounded-md border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         >
-          <option :value="null">{{ t('settings.skillMarket.agentNone') }}</option>
           <option v-for="agent in agents" :key="agent.id" :value="agent.id">
             {{ agent.name }}
           </option>
