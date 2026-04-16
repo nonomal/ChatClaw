@@ -3,6 +3,7 @@ package skillmarket
 import (
 	"context"
 	"log"
+	"strings"
 
 	openclawskills "chatclaw/internal/openclaw/skills"
 )
@@ -140,6 +141,11 @@ type InstalledSkillView struct {
 	DisplayName        string `json:"displayName"`
 	DisplayDescription string `json:"displayDescription"`
 	DisplayIconURL    string `json:"displayIconUrl,omitempty"`
+
+	// ScopeRoots maps scope string -> skill root directory path.
+	// Key examples: "openclaw-shared", "local", "agent-workspace:main".
+	// 用于前端"我的技能"中打开目录和读取文件时定位到当前 scope 对应的目录。
+	ScopeRoots map[string]string `json:"scopeRoots"`
 }
 
 // MergeInstalledSkill 合并本地技能与缓存元数据
@@ -192,6 +198,15 @@ func (s *Service) MergeInstalledSkill(local *openclawskills.OpenClawSkill, local
 	}
 
 	view.DisplayIconURL = view.RemoteIconURL
+
+	// Build ScopeRoots: local SkillRoot 对应哪个 scope
+	scope := "openclaw-shared"
+	if local.Location == "workspace" && strings.TrimSpace(local.AgentID) != "" {
+		scope = "agent-workspace:" + local.AgentID
+	}
+	if strings.TrimSpace(local.SkillRoot) != "" {
+		view.ScopeRoots = map[string]string{scope: local.SkillRoot}
+	}
 
 	return view, nil
 }

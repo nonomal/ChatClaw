@@ -426,7 +426,8 @@ async function showInstalledDetail(skill: OpenClawSkill) {
 
   const version = ++installedDetailLoadVersion
   try {
-    const files = await OpenClawSkillsService.ListSkillFiles(skill.skillRoot || skill.slug)
+    const skillRoot = skill.scopeRoots?.[selectedScope.value] || skill.slug
+    const files = await OpenClawSkillsService.ListSkillFiles(skillRoot)
     if (version !== installedDetailLoadVersion) return
     installedDetailFiles.value = files
     if (files.length > 0) {
@@ -442,8 +443,9 @@ async function showInstalledDetail(skill: OpenClawSkill) {
 }
 
 async function openInstalledSkillDir() {
-  if (installedDetailSkill.value?.skillRoot) {
-    const dir = installedDetailSkill.value.skillRoot.replace(/[/\\][^/\\]+$/, '')
+  const skillRoot = installedDetailSkill.value?.scopeRoots?.[selectedScope.value]
+  if (skillRoot) {
+    const dir = skillRoot.replace(/[/\\][^/\\]+$/, '')
     await BrowserService.OpenDirectory(dir)
   }
 }
@@ -624,9 +626,10 @@ async function selectFile(path: string) {
   const version = ++fileLoadVersion
   fileLoading.value = true
   try {
-    if (installedDetailOpen.value && installedDetailSkill.value?.skillRoot) {
+    const skillRoot = installedDetailOpen.value && installedDetailSkill.value?.scopeRoots?.[selectedScope.value]
+    if (skillRoot) {
       // Local skill file
-      const content = await OpenClawSkillsService.ReadSkillFile(installedDetailSkill.value.skillRoot, path)
+      const content = await OpenClawSkillsService.ReadSkillFile(skillRoot, path)
       if (version !== fileLoadVersion) return
       fileContent.value = content
     } else {
