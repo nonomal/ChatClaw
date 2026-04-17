@@ -49,7 +49,7 @@ func NewAgentService(
 }
 
 // OnAgentCreated is called directly after a new agent is inserted in DB.
-// Calls agents.create RPC only; no config sync needed because the RPC creates the agent entry.
+// Calls agents.create RPC, then config.patch to sync the agent list (including model).
 func (s *AgentService) OnAgentCreated(agent openclawagents.OpenClawAgent) {
 	if !s.manager.IsReady() {
 		return
@@ -62,6 +62,9 @@ func (s *AgentService) OnAgentCreated(agent openclawagents.OpenClawAgent) {
 	}
 	if err := ensureLongTermMemoryFile(s.resolveAgentWorkspace(agent)); err != nil {
 		s.app.Logger.Warn("openclaw: ensure MEMORY.md after create failed", "error", err)
+	}
+	if err := s.configSvc.Sync(ctx); err != nil {
+		s.app.Logger.Warn("openclaw: config sync after create failed", "error", err)
 	}
 }
 
