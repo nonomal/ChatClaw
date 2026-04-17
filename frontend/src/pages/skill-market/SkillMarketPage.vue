@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   RefreshCw,
@@ -36,9 +36,10 @@ import {
   type Skill,
   type SkillCategory,
   type InstallTargetConfig,
+  type AgentWithTargets,
 } from '@bindings/chatclaw/internal/services/skillmarket'
 import { BrowserService } from '@bindings/chatclaw/internal/services/browser'
-import { OpenClawAgentsService, type OpenClawAgent } from '@bindings/chatclaw/internal/openclaw/agents'
+import { type OpenClawAgent } from '@bindings/chatclaw/internal/openclaw/agents'
 import { OpenClawSkillsService, type OpenClawSkill, type SkillFileInfo } from '@bindings/chatclaw/internal/openclaw/skills'
 import { useNavigationStore, useAppStore } from '@/stores'
 import { Events } from '@wailsio/runtime'
@@ -68,51 +69,54 @@ const addDialogOpen = ref(false)
 
 const agentWorkspaceTarget = computed(() => {
   if (!selectedAgentId.value) return null
-  // Always show the agent workspace target when an agent is selected,
-  // regardless of the current scope (shared or agent-workspace).
-  return installTargets.value.find((t) => t.openClawAgentId) ?? null
+  const agent = agents.value.find((a) => a.id === selectedAgentId.value)
+  if (!agent) return null
+  return installTargets.value.find((t) => t.openClawAgentId === agent.openclaw_agent_id) ?? null
 })
 
 const installDialogOpen = ref(false)
 const installDialogSkill = ref<Skill | null>(null)
 const installDialogLoading = ref(false)
 
-async function loadAgents() {
+async function loadAgentsWithTargets() {
   agentsLoading.value = true
-  try {
-    const list = await OpenClawAgentsService.ListAgents()
-    agents.value = list
-    if (list.length > 0 && selectedAgentId.value === null) {
-      selectedAgentId.value = list[0].id
-    }
-  } catch (error) {
-    console.error('Failed to load agents:', error)
-  } finally {
-    agentsLoading.value = false
-  }
-}
-
-async function loadInstallTargets() {
   targetsLoading.value = true
   try {
-    const scopes = await SkillMarketService.ListAvailableTargets(
-      selectedAgentId.value,
-      locale.value
-    )
-    installTargets.value = scopes
+    const [agentTargets, sharedTargets] = await SkillMarketService.ListAgentsWithTargets(locale.value)
+    // Set agents
+    agents.value = agentTargets.map((at) => at.agent)
+    // Build installTargets: each agent's targets + shared targets
+    const targets: InstallTargetConfig[] = []
+    for (const at of agentTargets) {
+      targets.push(...at.targets)
+    }
+    for (const st of sharedTargets) {
+      if (!targets.some((t) => t.scope === st.scope)) {
+        targets.push(st)
+      }
+    }
+    installTargets.value = targets
+    // Select first agent if none selected
+    if (agents.value.length > 0 && selectedAgentId.value === null) {
+      selectedAgentId.value = agents.value[0].id
+    }
   } catch (error) {
-    console.error('Failed to load install targets:', error)
+    console.error('Failed to load agents with targets:', error)
   } finally {
+    agentsLoading.value = false
     targetsLoading.value = false
   }
 }
 
 // Reload targets when agent changes
-watch(selectedAgentId, () => {
-  loadInstallTargets()
-  // Reset scope to openclaw-shared if current is agent-workspace
-  if (selectedScope.value.startsWith('agent-workspace:')) {
-    selectedScope.value = InstallTargetScope.ScopeOpenClawShared
+watch(selectedAgentId, async (newAgentId, oldAgentId) => {
+  if (oldAgentId === null) return // 初始加载由 onMounted 统一处理
+  // 共享模式下切 agent：installTargets 包含所有 agent 的 targets，不需要重载
+  if (!selectedScope.value.startsWith('agent-workspace:')) return
+  // 迁移 scope 到新 agent（用 openClawAgentID 字符串，不是数字 ID）
+  const agent = agents.value.find((a) => a.id === newAgentId)
+  if (agent) {
+    selectedScope.value = `agent-workspace:${agent.openclaw_agent_id}` as InstallTargetScope
   }
   loadInstalledSkills()
   loadBrowseSkills(false)
@@ -135,6 +139,179 @@ const installedSkills = ref<OpenClawSkill[]>([])
 const installedLoading = ref(false)
 const installedSearchQuery = ref('')
 const skillTogglePending = ref<Set<string>>(new Set())
+
+// 缓存技能数据映射（用于补齐我的技能展示）
+const cachedSkillsMap = ref<Record<string, {
+  id: number
+  skillName: string
+  name?: string
+  description?: string
+  instructions?: string
+  iconUrl?: string
+  categoryId: number | null
+  categoryName?: string
+  source?: string
+  isEnabled: boolean
+}>>({})
+const cachedSkillsLoading = ref(false)
+
+let unsubscribeSyncCompleted: (() => void) | undefined
+let unsubscribeSyncFailed: (() => void) | undefined
+
+// 加载缓存技能数据
+async function loadCachedSkills() {
+  cachedSkillsLoading.value = true
+  try {
+    // 先尝试获取本地已有缓存（不需要后端）
+    let cached = await SkillMarketService.ListCachedSkills(null, locale.value)
+    if (cached.length > 0) {
+      const map: Record<string, {
+        id: number
+        skillName: string
+        name?: string
+        description?: string
+        instructions?: string
+        iconUrl?: string
+        categoryId: number | null
+        categoryName?: string
+        source?: string
+        isEnabled: boolean
+      }> = {}
+      for (const s of cached) {
+        map[s.skillName] = s
+      }
+      cachedSkillsMap.value = map
+      console.log('[SkillMarket] loaded from local cache =>', cached.length, 'cached skills')
+    }
+
+    // 尝试同步（静默失败，不影响已有缓存）
+    try {
+      await SkillMarketService.CheckAndSyncSkillMarket(locale.value)
+      // 同步后重新获取最新缓存（等待事件通知更新页面）
+      cached = await SkillMarketService.ListCachedSkills(null, locale.value)
+      if (cached.length > 0) {
+        const map: Record<string, any> = {}
+        for (const s of cached) {
+          map[s.skillName] = s
+        }
+        cachedSkillsMap.value = map
+        console.log('[SkillMarket] synced and reloaded =>', cached.length, 'cached skills')
+      }
+    } catch (syncError) {
+      // 同步失败，但已有本地缓存，所以不用管
+      console.warn('[SkillMarket] CheckAndSyncSkillMarket failed, using local cache:', syncError)
+    }
+  } catch (error) {
+    console.error('[SkillMarket] loadCachedSkills failed:', error)
+  } finally {
+    cachedSkillsLoading.value = false
+  }
+}
+
+// 重新加载缓存（由同步完成事件触发）
+async function reloadCachedSkills() {
+  try {
+    const cached = await SkillMarketService.ListCachedSkills(null, locale.value)
+    if (cached.length > 0) {
+      const map: Record<string, any> = {}
+      for (const s of cached) {
+        map[s.skillName] = s
+      }
+      cachedSkillsMap.value = map
+      console.log('[SkillMarket] sync completed, reloaded =>', cached.length, 'cached skills')
+    }
+  } catch (error) {
+    console.error('[SkillMarket] reloadCachedSkills failed:', error)
+  }
+}
+
+// 获取技能的缓存元数据
+function getCachedSkillMeta(slug: string) {
+  return cachedSkillsMap.value[slug] || null
+}
+
+// 合并后的技能展示名称
+function getDisplayName(skill: OpenClawSkill): string {
+  const cached = getCachedSkillMeta(skill.slug)
+  if (cached?.name) return cached.name
+  if (skill.name) return skill.name
+  return skill.slug
+}
+
+// 合并后的技能描述
+function getDisplayDescription(skill: OpenClawSkill): string {
+  const cached = getCachedSkillMeta(skill.slug)
+  if (cached?.description) return cached.description
+  return skill.description || ''
+}
+
+// 合并后的技能图标 URL
+function getDisplayIconUrl(skill: OpenClawSkill): string | undefined {
+  const cached = getCachedSkillMeta(skill.slug)
+  return cached?.iconUrl
+}
+
+// 合并后的技能名（slug）
+function getDisplaySkillName(skill: OpenClawSkill): string {
+  const cached = getCachedSkillMeta(skill.slug)
+  return cached?.skillName || skill.slug
+}
+
+// 合并后的分类名称
+function getDisplayCategoryName(skill: OpenClawSkill): string {
+  const cached = getCachedSkillMeta(skill.slug)
+  return cached?.categoryName || ''
+}
+
+// 是否命中缓存
+function hasCachedMeta(slug: string): boolean {
+  const cached = getCachedSkillMeta(slug)
+  return !!(cached && cached.name)
+}
+
+// 处理已安装技能卡片的点击
+function handleInstalledSkillClick(skill: OpenClawSkill) {
+  const cached = getCachedSkillMeta(skill.slug)
+  // 如果命中缓存，弹出介绍弹窗
+  if (cached && cached.name) {
+    showCachedIntroDialog(skill, cached)
+  } else {
+    // 未命中缓存，直接进入本地详情
+    showInstalledDetail(skill)
+  }
+}
+
+// 缓存介绍弹窗状态
+const cachedIntroOpen = ref(false)
+const cachedIntroSkill = ref<OpenClawSkill | null>(null)
+const cachedIntroData = ref<{
+  name: string
+  description: string
+  instructions: string
+  iconUrl: string
+  categoryName: string
+} | null>(null)
+
+// 显示缓存介绍弹窗
+function showCachedIntroDialog(skill: OpenClawSkill, cached: any) {
+  cachedIntroSkill.value = skill
+  cachedIntroData.value = {
+    name: cached.name || skill.name || skill.slug,
+    description: cached.description || '',
+    instructions: cached.instructions || '',
+    iconUrl: cached.iconUrl || '',
+    categoryName: cached.categoryName || '',
+  }
+  cachedIntroOpen.value = true
+}
+
+// 关闭介绍弹窗并进入本地详情
+function handleViewDetail() {
+  cachedIntroOpen.value = false
+  if (cachedIntroSkill.value) {
+    showInstalledDetail(cachedIntroSkill.value)
+  }
+}
 
 async function toggleSkillEnabled(slug: string, currentEligible: boolean | null | undefined) {
   if (skillTogglePending.value.has(slug)) return
@@ -170,29 +347,20 @@ const searchedInstalledSkills = computed(() => {
 
 // 当前选中目标的工作目录路径（用于 skillRoot 前缀匹配）
 const currentTargetPath = computed(() => {
+  if (selectedScope.value.startsWith('agent-workspace:')) {
+    return agentWorkspaceTarget.value?.path ?? ''
+  }
   const target = installTargets.value.find((t) => t.scope === selectedScope.value)
   return target?.path ?? ''
 })
 
 // 安装目录过滤
 const scopeFilteredInstalledSkills = computed(() => {
-  const isWorkspace = selectedScope.value.startsWith('agent-workspace:')
-  const targetPath = currentTargetPath.value
+  const scope = selectedScope.value
   return searchedInstalledSkills.value.filter((s) => {
-    if (isWorkspace) {
-      // Agent 工作目录：skillRoot 必须以目标路径为前缀，排除 workspace- 子目录
-      if (!s.skillRoot || !s.skillRoot.startsWith(targetPath)) return false
-      // 排除嵌套在 workspace- 子目录中的技能（说明是从其他 agent 的 workspace 复制的）
-      const rel = s.skillRoot.slice(targetPath.length).replace(/^[/\\]/, '')
-      if (rel.includes('/') || rel.includes('\\')) {
-        const first = rel.split(/[/\\]/)[0]
-        if (first.startsWith('workspace-')) return false
-      }
-      return true
-    }
-    // 共享目录：排除所有 skillRoot 中含 workspace- 路径的技能
-    if (s.skillRoot && /[/\\]workspace-[^/\\]+[/\\]/.test(s.skillRoot)) return false
-    return s.location === 'shared' && s.skillRoot
+    const installedPath = s.scopeRoots?.[scope]
+    if (!installedPath) return false
+    return true
   })
 })
 
@@ -258,7 +426,8 @@ async function showInstalledDetail(skill: OpenClawSkill) {
 
   const version = ++installedDetailLoadVersion
   try {
-    const files = await OpenClawSkillsService.ListSkillFiles(skill.skillRoot || skill.slug)
+    const skillRoot = skill.scopeRoots?.[selectedScope.value] || skill.slug
+    const files = await OpenClawSkillsService.ListSkillFiles(skillRoot)
     if (version !== installedDetailLoadVersion) return
     installedDetailFiles.value = files
     if (files.length > 0) {
@@ -274,8 +443,9 @@ async function showInstalledDetail(skill: OpenClawSkill) {
 }
 
 async function openInstalledSkillDir() {
-  if (installedDetailSkill.value?.skillRoot) {
-    const dir = installedDetailSkill.value.skillRoot.replace(/[/\\][^/\\]+$/, '')
+  const skillRoot = installedDetailSkill.value?.scopeRoots?.[selectedScope.value]
+  if (skillRoot) {
+    const dir = skillRoot.replace(/[/\\][^/\\]+$/, '')
     await BrowserService.OpenDirectory(dir)
   }
 }
@@ -395,18 +565,9 @@ function handleBrowseScroll(e: Event) {
 
 async function setAgentWorkspace() {
   if (!selectedAgentId.value) return
-  // If targets are still loading, wait for them so we can read the correct openClawAgentId.
-  if (targetsLoading.value) {
-    await new Promise<void>((resolve) => {
-      const stop = watch(targetsLoading, (loading) => {
-        if (!loading) {
-          stop()
-          resolve()
-        }
-      })
-    })
-  }
-  const target = installTargets.value.find((t) => t.openClawAgentId)
+  const agent = agents.value.find((a) => a.id === selectedAgentId.value)
+  if (!agent) return
+  const target = installTargets.value.find((t) => t.openClawAgentId === agent.openclaw_agent_id)
   if (!target) return
   selectedScope.value = `agent-workspace:${target.openClawAgentId}` as InstallTargetScope
   loadInstalledSkills()
@@ -465,9 +626,10 @@ async function selectFile(path: string) {
   const version = ++fileLoadVersion
   fileLoading.value = true
   try {
-    if (installedDetailOpen.value && installedDetailSkill.value?.skillRoot) {
+    const skillRoot = installedDetailOpen.value && installedDetailSkill.value?.scopeRoots?.[selectedScope.value]
+    if (skillRoot) {
       // Local skill file
-      const content = await OpenClawSkillsService.ReadSkillFile(installedDetailSkill.value.skillRoot, path)
+      const content = await OpenClawSkillsService.ReadSkillFile(skillRoot, path)
       if (version !== fileLoadVersion) return
       fileContent.value = content
     } else {
@@ -709,21 +871,44 @@ watch(activeTab, (tab) => {
 })
 
 onMounted(async () => {
+  // 监听技能市场同步完成事件，收到后重新加载缓存并渲染
+  unsubscribeSyncCompleted = Events.On('skillmarket:sync-completed', () => {
+    console.log('[SkillMarket] received sync-completed event, reloading cached skills...')
+    void reloadCachedSkills()
+  })
+  unsubscribeSyncFailed = Events.On('skillmarket:sync-failed', (event: any) => {
+    console.error('[SkillMarket] sync-failed event:', event)
+    showToast({
+      title: '技能市场同步失败',
+      description: (event as any)?.errorMessage || '无法连接到后端服务',
+    })
+  })
+
   await Promise.all([
-    loadAgents(),
-    loadInstallTargets(),
+    loadAgentsWithTargets(),
     loadCategories(),
     loadInstalledSkills(),
+    loadCachedSkills(),
   ])
+})
+
+onUnmounted(() => {
+  unsubscribeSyncCompleted?.()
+  unsubscribeSyncFailed?.()
 })
 </script>
 
 <template>
-  <div class="flex h-full flex-col bg-background">
-    <div class="flex shrink-0 items-center justify-between border-b px-4 py-3">
-      <div class="flex flex-col">
-        <span class="text-sm font-medium text-foreground">{{ t('settings.skillMarket.listHeading') }}</span>
-        <span class="text-xs text-muted-foreground">{{ t('settings.skillMarket.listSubheading') }}</span>
+  <div class="flex h-full flex-col bg-[#fafafa] dark:bg-background">
+    <!-- Page Header -->
+    <div class="flex h-20 shrink-0 items-center justify-between px-6">
+      <div class="flex flex-col gap-1">
+        <h1 class="text-base font-semibold text-[#262626] dark:text-foreground">
+          {{ t('settings.skillMarket.listHeading') }}
+        </h1>
+        <p class="text-sm text-[#737373] dark:text-muted-foreground">
+          {{ t('settings.skillMarket.listSubheading') }}
+        </p>
       </div>
     </div>
 
@@ -897,9 +1082,9 @@ onMounted(async () => {
         </button>
       </div>
 
-      <div ref="browseListEl" class="flex-1 overflow-y-auto p-4" @scroll="handleBrowseScroll">
+      <div ref="browseListEl" class="flex-1 overflow-y-auto px-6 pb-6" @scroll="handleBrowseScroll">
         <TooltipProvider :delay-duration="300">
-          <div v-if="browseLoading && skills.length === 0" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div v-if="browseLoading && skills.length === 0" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <div
             v-for="i in 8"
             :key="i"
@@ -955,6 +1140,9 @@ onMounted(async () => {
             <!-- 介绍 -->
             <p class="mb-3 line-clamp-2 min-h-8 text-xs leading-4 text-[#737373]">{{ skill.description }}</p>
 
+            <!-- 分隔线 -->
+            <div class="mb-3 h-px w-full rounded-sm bg-neutral-200" />
+
             <!-- 底行：来源 + 安装状态 -->
             <div class="flex items-center justify-between">
               <span class="text-xs text-[#737373]">{{ sourceLabel(skill.source) }}</span>
@@ -1001,7 +1189,7 @@ onMounted(async () => {
 
     <div v-else class="flex min-h-0 flex-1 flex-col">
       <!-- Skill list -->
-      <div class="flex-1 overflow-auto px-4 pb-4">
+      <div class="flex-1 overflow-auto px-6 pb-6">
         <div
           v-if="installedLoading"
           class="flex items-center justify-center py-12"
@@ -1018,52 +1206,57 @@ onMounted(async () => {
         </div>
 
         <div v-else>
-          <div class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <div
               v-for="skill in scopeFilteredInstalledSkills"
               :key="skill.slug"
               class="group relative flex cursor-pointer flex-col rounded-2xl border border-[#d9d9d9] bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-white/10 dark:bg-card"
-              @click="showInstalledDetail(skill)"
+              @click="handleInstalledSkillClick(skill)"
             >
-              <!-- Top row: icon + name + tag + description -->
+              <!-- 顶行：icon + 名称 + skillName + 分类 -->
               <div class="mb-3 flex items-start gap-3">
                 <!-- Icon -->
                 <div
+                  v-if="getDisplayIconUrl(skill)"
+                  class="size-14 shrink-0 overflow-hidden rounded-md"
+                >
+                  <img :src="getDisplayIconUrl(skill)" :alt="getDisplayName(skill)" class="h-full w-full object-cover" />
+                </div>
+                <div
+                  v-else
                   class="flex size-14 shrink-0 items-center justify-center rounded-md"
                   style="background: #fef2f2"
                 >
                   <span v-if="skill.icon" class="text-xl">{{ skill.icon }}</span>
                   <SquareDashedMousePointer v-else class="size-6" style="color: #ef4444" />
                 </div>
-                <!-- Name + tag + description -->
+                <!-- 名称 + skillName + 分类 -->
                 <div class="min-w-0 flex-1">
-                  <div class="mb-1 flex items-center gap-2">
-                    <span class="truncate text-sm font-medium leading-snug text-[#171717] dark:text-foreground">
-                      {{ skill.name || skill.slug }}
-                    </span>
-                    <span
-                      class="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
-                    >
-                      {{ skill.dataSource === 'extra' ? '内置' : (skill.location === 'workspace' ? '工作区' : skill.dataSource || skill.location) }}
-                    </span>
-                  </div>
-                  <p
-                    v-if="skill.description"
-                    class="line-clamp-2 min-h-[2lh] text-xs leading-4 text-neutral-500"
-                  >
-                    {{ skill.description }}
-                  </p>
-                  <div v-else class="min-h-[2lh]" />
+                  <p class="truncate text-sm font-medium leading-snug text-[#171717] dark:text-foreground">{{ getDisplayName(skill) }}</p>
+                  <p class="mt-0.5 truncate text-xs leading-4 text-[#737373]">{{ getDisplaySkillName(skill) }}</p>
+                  <span
+                    v-if="getDisplayCategoryName(skill)"
+                    class="mt-1 inline-block rounded bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
+                  >{{ getDisplayCategoryName(skill) }}</span>
                 </div>
               </div>
 
-              <!-- Divider -->
+              <!-- 介绍 -->
+              <p
+                v-if="getDisplayDescription(skill)"
+                class="mb-3 line-clamp-2 min-h-8 text-xs leading-4 text-[#737373]"
+              >
+                {{ getDisplayDescription(skill) }}
+              </p>
+              <div v-else class="mb-3 min-h-8" />
+
+              <!-- 分隔线 -->
               <div class="mb-3 h-px w-full rounded-sm bg-neutral-200" />
 
-              <!-- Bottom row: author/agent + toggle + settings -->
+              <!-- 底行：来源 + Switch + 卸载 -->
               <div class="flex items-center justify-between">
-                <span class="text-xs text-neutral-500">
-                  {{ skill.agentName || (skill.location === 'workspace' ? `Agent #${skill.agentId}` : 'OpenClaw') }}
+                <span class="text-xs text-[#737373]">
+                  {{ hasCachedMeta(skill.slug) ? sourceLabel(getCachedSkillMeta(skill.slug)?.source || 'chatclaw') : (skill.agentName || (skill.location === 'workspace' ? `Agent #${skill.agentId}` : 'OpenClaw')) }}
                 </span>
                 <div class="flex items-center gap-2">
                   <!-- Switch toggle -->
@@ -1186,6 +1379,90 @@ onMounted(async () => {
                 @click="detailSkill && confirmUninstall(detailSkill.skillName)"
               >
                 <Trash2 class="size-4 text-neutral-600 dark:text-neutral-400" />
+              </button>
+            </div>
+
+            <div class="flex items-center gap-2 text-sm text-[#737373]">
+              <Shield class="size-4 shrink-0" />
+              <span>已通过安全与合规验证，无恶意代码或数据泄露风险。</span>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <!-- ==================== CACHED SKILL INTRO DIALOG (installed tab) ==================== -->
+    <Dialog :open="cachedIntroOpen" @update:open="(v) => !v && (cachedIntroOpen = false)">
+      <DialogContent class="flex max-h-[80vh] max-w-xl flex-col overflow-hidden p-0">
+        <div class="relative flex flex-col gap-2 px-4 pt-4">
+          <button
+            class="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
+            @click="cachedIntroOpen = false"
+          >
+            <svg class="size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          <div class="flex flex-col items-center gap-2">
+            <div
+              v-if="cachedIntroData?.iconUrl"
+              class="size-[62px] overflow-hidden rounded-lg"
+            >
+              <img :src="cachedIntroData.iconUrl" :alt="cachedIntroData.name" class="h-full w-full object-cover" />
+            </div>
+            <div
+              v-else
+              class="flex size-[62px] items-center justify-center rounded-lg"
+              style="background: #fef2f2"
+            >
+              <Package class="size-8" style="color: #ef4444" />
+            </div>
+            <span class="text-base font-semibold text-[#171717] dark:text-foreground">{{ cachedIntroData?.name }}</span>
+            <span class="text-sm text-[#404040]">{{ cachedIntroSkill?.slug }}</span>
+            <Badge
+              v-if="cachedIntroData?.categoryName"
+              variant="outline"
+              class="mt-0.5"
+            >
+              {{ cachedIntroData.categoryName }}
+            </Badge>
+          </div>
+        </div>
+
+        <div class="flex flex-1 flex-col overflow-y-auto px-6 pb-4">
+          <div class="mb-3 h-px bg-neutral-200" />
+
+          <div class="mb-2 flex items-center gap-2">
+            <svg class="size-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="text-sm font-semibold text-[#171717]">技能介绍</span>
+          </div>
+          <p class="mb-3 text-sm leading-5 text-[#404040]">{{ cachedIntroData?.description }}</p>
+
+          <div class="mb-3 h-px bg-neutral-300" />
+
+          <div class="mb-3 flex items-center gap-2">
+            <svg class="size-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span class="text-sm font-semibold text-[#171717]">怎么使用？</span>
+          </div>
+          <div
+            v-if="cachedIntroData?.instructions"
+            class="mb-4 rounded-xl bg-neutral-100 p-4 text-sm dark:bg-neutral-800"
+          >
+            <MarkdownRenderer :content="cachedIntroData.instructions" />
+          </div>
+
+          <div class="mt-auto flex flex-col items-center gap-2">
+            <div class="flex w-full items-center gap-2">
+              <button
+                class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-[#fafafa] transition-opacity hover:opacity-80"
+                @click="handleViewDetail"
+              >
+                查看详情
               </button>
             </div>
 

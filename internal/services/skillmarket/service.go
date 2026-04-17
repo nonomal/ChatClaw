@@ -278,6 +278,60 @@ func (s *Service) listTargetsForAgent(agentID int64) ([]InstallTargetConfig, err
 	return configs, nil
 }
 
+type AgentWithTargets struct {
+	Agent   openclawagents.OpenClawAgent   `json:"agent"`
+	Targets []InstallTargetConfig          `json:"targets"`
+}
+
+// ListAgentsWithTargets returns all agents with their workspace targets and shared targets in one call.
+// This eliminates the race condition in the frontend when switching agents.
+func (s *Service) ListAgentsWithTargets(locale string) ([]AgentWithTargets, []InstallTargetConfig, error) {
+	agents, err := s.openclawAgents.ListAgents()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to list agents: %w", err)
+	}
+
+	sharedTargets, err := s.listGlobalTargets(locale)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var agentTargets []AgentWithTargets
+	for _, agent := range agents {
+		st, err := s.getTargetStateForScope(AgentWorkspaceScope(agent.OpenClawAgentID))
+		if err != nil {
+			continue
+		}
+		// Ensure dir exists
+		_ = os.MkdirAll(st.root, 0o755)
+
+		openClawSharedTarget := InstallTargetConfig{
+			Scope:     ScopeOpenClawShared,
+			Path:      s.resolveOpenClawSharedRoot(),
+			Label:     "OpenClaw 共享技能",
+			Available: true,
+		}
+		_ = os.MkdirAll(openClawSharedTarget.Path, 0o755)
+
+		at := AgentWithTargets{
+			Agent: agent,
+			Targets: []InstallTargetConfig{
+				{
+					Scope:           AgentWorkspaceScope(agent.OpenClawAgentID),
+					Path:            st.root,
+					Label:           fmt.Sprintf("%s 工作目录", agent.Name),
+					Available:       true,
+					OpenClawAgentID: agent.OpenClawAgentID,
+				},
+				openClawSharedTarget,
+			},
+		}
+		agentTargets = append(agentTargets, at)
+	}
+
+	return agentTargets, sharedTargets, nil
+}
+
 func (s *Service) getTargetState(scope InstallTargetScope) (*targetState, error) {
 	return s.getTargetStateForScope(scope)
 }
@@ -1251,4 +1305,24 @@ func extractZip(zipPath, targetDir string) error {
 		}
 	}
 	return nil
+}
+
+// GetTotalSkillCount returns the total number of skills from the remote skill market (not affected by filters/pagination).
+func (s *Service) GetTotalSkillCount(ctx context.Context, locale string) (int64, error) {
+	baseURL := strings.TrimSuffix(define.ServerURL, "/")
+	reqURL := fmt.Sprintf("%s/skill/list?locale=%s&pageSize=1", baseURL, url.QueryEscape(locale))
+	body, err := s.httpGet(ctx, reqURL)
+	if err != nil {
+		return 0, err
+	}
+
+	var resp struct {
+		Data struct {
+			Total int64 `json:"total"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return 0, fmt.Errorf("parse total count response: %w", err)
+	}
+	return resp.Data.Total, nil
 }

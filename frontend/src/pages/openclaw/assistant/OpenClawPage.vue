@@ -13,6 +13,7 @@ import CreateAgentDialog, { type CreateAgentData } from './components/CreateAgen
 import AgentSettingsDialog from './components/AgentSettingsDialog.vue'
 import AgentChannelsDialog from './components/AgentChannelsDialog.vue'
 import RenameConversationDialog from './components/RenameConversationDialog.vue'
+import SetDefaultModelDialog from './components/SetDefaultModelDialog.vue'
 import ChatMessageList from './components/ChatMessageList.vue'
 import AgentSidebar from './components/AgentSidebar.vue'
 import ChatInputArea from './components/ChatInputArea.vue'
@@ -29,6 +30,7 @@ import {
   CreateConversationInput,
   UpdateConversationInput,
 } from '@bindings/chatclaw/internal/services/conversations'
+import { OpenClawAgentsService } from '@bindings/chatclaw/internal/openclaw/agents'
 import { SnapService } from '@bindings/chatclaw/internal/services/windows'
 import { TextSelectionService } from '@bindings/chatclaw/internal/services/textselection'
 import { LibraryService, type Library } from '@bindings/chatclaw/internal/services/library'
@@ -164,6 +166,8 @@ const channelsOpen = ref(false)
 const channelsAgent = ref<OpenClawAgent | null>(null)
 const settingsInitialTab = ref<string>('')
 const sidebarCollapsed = ref(false)
+const setDefaultModelOpen = ref(false)
+const setDefaultModelAgent = ref<OpenClawAgent | null>(null)
 /** dialogue_id from SSE per team conversation id, for next request */
 const teamDialogueIdByConversation = ref<Record<number, string>>({})
 let teamAssistantMessageCounter = -1000000
@@ -473,6 +477,51 @@ const handleDeleted = (id: number) => {
     sourceTabId: props.tabId,
     action: 'deleted',
   })
+}
+
+const handleSetDefaultModel = async (data: { defaultLlMProviderId: string; defaultLlMModelId: string }) => {
+  if (!setDefaultModelAgent.value) return
+  try {
+    const updated = await OpenClawAgentsService.UpdateAgent(setDefaultModelAgent.value.id, {
+      name: null,
+      icon: null,
+      default_llm_provider_id: data.defaultLlMProviderId,
+      default_llm_model_id: data.defaultLlMModelId,
+      enable_llm_temperature: null,
+      enable_llm_top_p: null,
+      enable_llm_max_tokens: null,
+      llm_temperature: null,
+      llm_top_p: null,
+      llm_max_context_count: null,
+      llm_max_tokens: null,
+      retrieval_match_threshold: null,
+      retrieval_top_k: null,
+      sandbox_mode: null,
+      sandbox_network: null,
+      work_dir: null,
+      mcp_enabled: null,
+      mcp_server_ids: null,
+      mcp_server_enabled_ids: null,
+      identity_emoji: null,
+      identity_theme: null,
+      group_chat_mention_patterns: null,
+      tools_profile: null,
+      tools_allow: null,
+      tools_deny: null,
+      heartbeat_every: null,
+      params_temperature: null,
+      params_max_tokens: null,
+    })
+    if (updated) {
+      updateAgent(updated)
+      selectDefaultModel(updated, activeConversation.value)
+      toast.success(t('assistant.toasts.updated'))
+    }
+  } catch (error: unknown) {
+    toast.error(getErrorMessage(error) || t('assistant.errors.updateFailed'))
+  } finally {
+    setDefaultModelOpen.value = false
+  }
 }
 
 const handleNewConversation = async () => {
@@ -1260,6 +1309,16 @@ watch(activeAgentId, async (newAgentId, oldAgentId) => {
   if (!isEmbeddedMode.value) {
     updateCurrentTab()
   }
+
+  // Check if agent needs default model set
+  if (newAgentId && oldAgentId !== undefined) {
+    const agent = agents.value.find((a) => a.id === newAgentId)
+    if (agent && !agent.default_llm_provider_id && !agent.default_llm_model_id) {
+      setDefaultModelAgent.value = agent
+      setDefaultModelOpen.value = true
+    }
+  }
+
   if (newAgentId && oldAgentId !== undefined) {
     const isRealSwitch = oldAgentId !== null && oldAgentId !== newAgentId
     await loadConversations(newAgentId, {
@@ -2170,6 +2229,11 @@ onUnmounted(() => {
       :initial-tab="settingsInitialTab"
       @updated="handleUpdated"
       @deleted="handleDeleted"
+    />
+    <SetDefaultModelDialog
+      v-model:open="setDefaultModelOpen"
+      :agent="setDefaultModelAgent"
+      @confirm="handleSetDefaultModel"
     />
 
     <RenameConversationDialog

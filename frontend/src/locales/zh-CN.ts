@@ -980,6 +980,7 @@ export default {
       cancel: '取消',
       create: '创建',
       save: '保存',
+      confirm: '确认',
       settings: '助手设置',
     },
     placeholders: {
@@ -1180,6 +1181,8 @@ export default {
         defaultModel: '默认模型',
         defaultModelHint: '当前助手默认模型',
         noDefaultModel: '未设置',
+        setDefaultModelTitle: '设置默认模型',
+        setDefaultModelDesc: '助手「{name}」未设置默认模型，请选择一个模型以继续使用。',
         clear: '清空',
         change: '修改',
         temperature: '模型温度',

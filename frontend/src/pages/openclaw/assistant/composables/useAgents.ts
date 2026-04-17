@@ -34,13 +34,21 @@ export function useAgents() {
     }
   }
 
-  const createAgent = async (data: { name: string; icon: string; identityEmoji?: string }) => {
+  const createAgent = async (data: {
+    name: string
+    icon: string
+    identityEmoji?: string
+    defaultLlMProviderId?: string
+    defaultLlMModelId?: string
+  }) => {
     loading.value = true
     try {
       const created = await OpenClawAgentsService.CreateAgent({
         name: data.name,
         icon: data.icon,
         identity_emoji: data.identityEmoji ?? '',
+        default_llm_provider_id: data.defaultLlMProviderId ?? '',
+        default_llm_model_id: data.defaultLlMModelId ?? '',
       })
       if (!created) {
         throw new Error(t('assistant.errors.createFailed'))
