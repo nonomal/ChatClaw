@@ -592,6 +592,7 @@ export default {
       targetAgentWorkspace: 'Agent 工作目录',
       installTitle: '选择安装目标',
       installDescription: '选择要将技能安装到的目录',
+      installConfirmDescription: '确定将 {skill} 安装到 {target} 吗？',
       tabInstalled: '我的技能',
       tabBrowse: '技能库',
       searchPlaceholder: '搜索技能...',

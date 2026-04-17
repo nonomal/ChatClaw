@@ -139,12 +139,35 @@ func remoteMaxAtAfter(a, b string) bool {
 	if b == "" {
 		return false
 	}
-	ta, err1 := time.Parse(time.RFC3339, a)
-	tb, err2 := time.Parse(time.RFC3339, b)
+	ta, err1 := parseFlexibleTime(a)
+	tb, err2 := parseFlexibleTime(b)
 	if err1 != nil || err2 != nil {
-		return a > b
+		return strings.TrimSpace(a) < strings.TrimSpace(b)
 	}
 	return ta.Before(tb)
+}
+
+func parseFlexibleTime(value string) (time.Time, error) {
+	value = strings.TrimSpace(value)
+	layouts := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02 15:04:05.999999999",
+		"2006-01-02 15:04:05",
+	}
+
+	var lastErr error
+	for _, layout := range layouts {
+		t, err := time.Parse(layout, value)
+		if err == nil {
+			return t, nil
+		}
+		lastErr = err
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("unsupported time format: %q", value)
+	}
+	return time.Time{}, lastErr
 }
 
 // getLocalSkillsMaxUpdatedAt 获取本地技能最大更新时间
