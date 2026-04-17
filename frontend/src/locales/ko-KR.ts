@@ -945,6 +945,7 @@ export default {
       targetAgentWorkspace: 'Agent 작업 디렉터리',
       installTitle: '설치 대상 선택',
       installDescription: '스킬을 설치할 디렉터리를 선택하세요',
+      installConfirmDescription: '{skill}을(를) {target}에 설치할까요?',
       tabInstalled: '내 스킬',
       tabBrowse: '스킬 라이브러리',
       searchPlaceholder: '스킬 검색...',

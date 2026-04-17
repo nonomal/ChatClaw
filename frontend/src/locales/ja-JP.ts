@@ -902,6 +902,7 @@ export default {
       targetAgentWorkspace: 'Agent ワークディレクトリ',
       installTitle: 'インストール先を選択',
       installDescription: 'スキルをインストールするディレクトリを選択',
+      installConfirmDescription: '{skill} を {target} にインストールしますか？',
       tabInstalled: 'マイスキル',
       tabBrowse: 'スキルライブラリ',
       searchPlaceholder: 'スキルを検索...',

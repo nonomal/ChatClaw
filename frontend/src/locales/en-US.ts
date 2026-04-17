@@ -594,6 +594,7 @@ export default {
       targetAgentWorkspace: 'Agent Workspace',
       installTitle: 'Select Install Target',
       installDescription: 'Choose where to install the skill',
+      installConfirmDescription: 'Install {skill} to {target}?',
       tabInstalled: 'My Skills',
       tabBrowse: 'Skill Library',
       searchPlaceholder: 'Search skills...',
