@@ -118,21 +118,21 @@ watch(selectedAgentId, async (newAgentId, oldAgentId) => {
   if (agent) {
     selectedScope.value = `agent-workspace:${agent.openclaw_agent_id}` as InstallTargetScope
   }
-  loadInstalledSkills()
-  loadBrowseSkills(false)
+  await loadInstalledSkills()
+  await loadBrowseSkills(false)
 })
 
 const categories = ref<SkillCategory[]>([])
 const skills = ref<Skill[]>([])
 const totalCount = ref(0)
+const browseLibraryCount = ref(0)
 const totalSkillCount = computed(() => categories.value.reduce((sum, cat) => sum + (cat.skillCount || 0), 0))
 const browseLoading = ref(false)
-const browsePage = ref(1)
-const BROWSE_PAGE_SIZE = 24
 const selectedCategoryId = ref<number | null>(null)
 const browseListEl = ref<HTMLElement | null>(null)
 const searchQuery = ref('')
-const browseHasMore = computed(() => skills.value.length < totalCount.value)
+const browseHasMore = computed(() => false)
+const cachedBrowseSkills = ref<Skill[]>([])
 
 // ==================== 已安装技能 (OpenClaw 技能) ====================
 const installedSkills = ref<OpenClawSkill[]>([])
@@ -158,29 +158,74 @@ const cachedSkillsLoading = ref(false)
 let unsubscribeSyncCompleted: (() => void) | undefined
 let unsubscribeSyncFailed: (() => void) | undefined
 
+function updateCachedSkillsMap(cached: Skill[]) {
+  const map: Record<string, {
+    id: number
+    skillName: string
+    name?: string
+    description?: string
+    instructions?: string
+    iconUrl?: string
+    categoryId: number | null
+    categoryName?: string
+    source?: string
+    isEnabled: boolean
+  }> = {}
+  for (const s of cached) {
+    map[s.skillName] = s
+  }
+  cachedSkillsMap.value = map
+}
+
+function buildCategoriesFromCache(categoryList: SkillCategory[], cached: Skill[]): SkillCategory[] {
+  const countMap = new Map<number, number>()
+  const missingCategories = new Map<number, SkillCategory>()
+
+  for (const skill of cached) {
+    if (skill.categoryId == null) continue
+    countMap.set(skill.categoryId, (countMap.get(skill.categoryId) || 0) + 1)
+    if (!missingCategories.has(skill.categoryId)) {
+      missingCategories.set(skill.categoryId, {
+        id: skill.categoryId,
+        name: skill.categoryName || '',
+        nameLocal: skill.categoryName || '',
+        nameI18n: undefined,
+        sortOrder: 0,
+        skillCount: 0,
+        createdAt: '',
+        updatedAt: '',
+      })
+    }
+  }
+
+  const merged = categoryList.map((cat) => ({
+    ...cat,
+    skillCount: countMap.get(cat.id) || 0,
+  }))
+
+  for (const [categoryId, category] of missingCategories) {
+    if (!merged.some((cat) => cat.id === categoryId)) {
+      category.skillCount = countMap.get(categoryId) || 0
+      merged.push(category)
+    }
+  }
+
+  return merged.sort((a, b) => {
+    if ((a.sortOrder || 0) !== (b.sortOrder || 0)) return (a.sortOrder || 0) - (b.sortOrder || 0)
+    return a.id - b.id
+  })
+}
+
 // 加载缓存技能数据
 async function loadCachedSkills() {
   cachedSkillsLoading.value = true
   try {
     // 先尝试获取本地已有缓存（不需要后端）
     let cached = await SkillMarketService.ListCachedSkills(null, locale.value)
+    cachedBrowseSkills.value = cached
+    browseLibraryCount.value = cached.length
+    updateCachedSkillsMap(cached)
     if (cached.length > 0) {
-      const map: Record<string, {
-        id: number
-        skillName: string
-        name?: string
-        description?: string
-        instructions?: string
-        iconUrl?: string
-        categoryId: number | null
-        categoryName?: string
-        source?: string
-        isEnabled: boolean
-      }> = {}
-      for (const s of cached) {
-        map[s.skillName] = s
-      }
-      cachedSkillsMap.value = map
       console.log('[SkillMarket] loaded from local cache =>', cached.length, 'cached skills')
     }
 
@@ -189,12 +234,10 @@ async function loadCachedSkills() {
       await SkillMarketService.CheckAndSyncSkillMarket(locale.value)
       // 同步后重新获取最新缓存（等待事件通知更新页面）
       cached = await SkillMarketService.ListCachedSkills(null, locale.value)
+      cachedBrowseSkills.value = cached
+      browseLibraryCount.value = cached.length
+      updateCachedSkillsMap(cached)
       if (cached.length > 0) {
-        const map: Record<string, any> = {}
-        for (const s of cached) {
-          map[s.skillName] = s
-        }
-        cachedSkillsMap.value = map
         console.log('[SkillMarket] synced and reloaded =>', cached.length, 'cached skills')
       }
     } catch (syncError) {
@@ -212,13 +255,15 @@ async function loadCachedSkills() {
 async function reloadCachedSkills() {
   try {
     const cached = await SkillMarketService.ListCachedSkills(null, locale.value)
+    cachedBrowseSkills.value = cached
+    browseLibraryCount.value = cached.length
+    updateCachedSkillsMap(cached)
     if (cached.length > 0) {
-      const map: Record<string, any> = {}
-      for (const s of cached) {
-        map[s.skillName] = s
-      }
-      cachedSkillsMap.value = map
       console.log('[SkillMarket] sync completed, reloaded =>', cached.length, 'cached skills')
+    }
+    await loadCategories()
+    if (activeTab.value === 'browse') {
+      await loadBrowseSkills(false)
     }
   } catch (error) {
     console.error('[SkillMarket] reloadCachedSkills failed:', error)
@@ -547,10 +592,10 @@ const fileContentAsMarkdown = computed(() => {
   return '```' + lang + '\n' + renderedFileContent.value + '\n```'
 })
 
-function setOpenClawShared() {
+async function setOpenClawShared() {
   selectedScope.value = InstallTargetScope.ScopeOpenClawShared
-  loadInstalledSkills()
-  loadBrowseSkills(false)
+  await loadInstalledSkills()
+  await loadBrowseSkills(false)
 }
 
 function handleBrowseScroll(e: Event) {
@@ -570,12 +615,26 @@ async function setAgentWorkspace() {
   const target = installTargets.value.find((t) => t.openClawAgentId === agent.openclaw_agent_id)
   if (!target) return
   selectedScope.value = `agent-workspace:${target.openClawAgentId}` as InstallTargetScope
-  loadInstalledSkills()
-  loadBrowseSkills(false)
+  await loadInstalledSkills()
+  await loadBrowseSkills(false)
 }
 
 async function loadCategories() {
   try {
+    let localSkills = cachedBrowseSkills.value
+    if (localSkills.length === 0) {
+      localSkills = await SkillMarketService.ListCachedSkills(null, locale.value)
+      cachedBrowseSkills.value = localSkills
+      browseLibraryCount.value = localSkills.length
+      updateCachedSkillsMap(localSkills)
+    }
+
+    const localCategories = await SkillMarketService.ListCachedCategories(locale.value)
+    if (localCategories.length > 0 || localSkills.length > 0) {
+      categories.value = buildCategoriesFromCache(localCategories, localSkills)
+      return
+    }
+
     categories.value = await SkillMarketService.ListCategories(locale.value)
   } catch (error) {
     console.error('Failed to load categories:', error)
@@ -587,24 +646,56 @@ async function loadBrowseSkills(append = false) {
   browseLoading.value = true
   if (!append) {
     skills.value = []
-    browsePage.value = 1
   }
   try {
+    let localSkills = cachedBrowseSkills.value
+    if (localSkills.length === 0) {
+      localSkills = await SkillMarketService.ListCachedSkills(null, locale.value)
+      cachedBrowseSkills.value = localSkills
+      browseLibraryCount.value = localSkills.length
+      updateCachedSkillsMap(localSkills)
+    }
+
+    if (localSkills.length > 0) {
+      const installedSet = new Set(
+        installedSkills.value
+          .filter((skill) => Boolean(skill.scopeRoots?.[selectedScope.value]))
+          .map((skill) => skill.slug)
+      )
+      const query = searchQuery.value.trim().toLowerCase()
+      const filtered = localSkills
+        .filter((skill) => {
+          if (selectedCategoryId.value != null && skill.categoryId !== selectedCategoryId.value) return false
+          if (!query) return true
+          const haystacks = [
+            skill.skillName,
+            skill.name,
+            skill.description,
+            skill.categoryName || '',
+          ]
+          return haystacks.some((value) => value?.toLowerCase().includes(query))
+        })
+        .map((skill) => ({
+          ...skill,
+          isBuiltin: installedSet.has(skill.skillName),
+        }))
+
+      totalCount.value = filtered.length
+      skills.value = filtered
+      return
+    }
+
     const result = await SkillMarketService.ListSkills({
       categoryId: selectedCategoryId.value ?? undefined,
       name: searchQuery.value.trim() || undefined,
       locale: locale.value,
-      page: append ? browsePage.value + 1 : 1,
-      pageSize: BROWSE_PAGE_SIZE,
+      page: 1,
+      pageSize: 9999,
       scope: selectedScope.value,
     } as any)
-    if (append) {
-      skills.value = [...skills.value, ...result[0]]
-      browsePage.value++
-    } else {
-      skills.value = result[0]
-    }
+    skills.value = result[0]
     totalCount.value = result[1]
+    browseLibraryCount.value = result[1]
   } catch (error) {
     toast.error(getErrorMessage(error) || t('settings.skillMarket.loadFailed'))
   } finally {
@@ -682,9 +773,8 @@ async function handleInstall() {
     toast.success(t('settings.skillMarket.installSuccess'))
     installDialogOpen.value = false
     installDialogSkill.value = null
-    await Promise.all([loadInstalledSkills(), loadBrowseSkills(false)])
-    const idx = skills.value.findIndex((s) => s.id === skill.id)
-    if (idx !== -1) skills.value[idx].isBuiltin = true
+    await loadInstalledSkills()
+    await loadBrowseSkills(false)
   } catch (error) {
     toast.error(getErrorMessage(error) || t('settings.skillMarket.installFailed'))
   } finally {
@@ -723,11 +813,8 @@ async function handleUninstall(skillName: string) {
       detailSkill.value = { ...detailSkill.value, isBuiltin: false }
       detailOpen.value = false
     }
-    await Promise.all([
-      loadCategories(),
-      loadInstalledSkills(),
-      loadBrowseSkills(false),
-    ])
+    await loadInstalledSkills()
+    await loadBrowseSkills(false)
   } catch (error) {
     toast.error(getErrorMessage(error) || t('settings.skillMarket.uninstallFailed'))
   } finally {
@@ -1027,7 +1114,7 @@ onUnmounted(() => {
       >
         {{ t('settings.skillMarket.tabBrowse') }}
         <Badge variant="secondary" class="ml-0.5 px-1.5 py-0 text-[10px]">
-          {{ totalCount }}
+          {{ browseLibraryCount }}
         </Badge>
       </button>
 
