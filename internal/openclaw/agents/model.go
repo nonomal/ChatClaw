@@ -68,6 +68,9 @@ type CreateOpenClawAgentInput struct {
 	Name          string `json:"name"`
 	Icon          string `json:"icon"`
 	IdentityEmoji string `json:"identity_emoji"`
+
+	DefaultLLMProviderID string `json:"default_llm_provider_id"`
+	DefaultLLMModelID    string `json:"default_llm_model_id"`
 }
 
 type UpdateOpenClawAgentInput struct {

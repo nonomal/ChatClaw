@@ -303,6 +303,19 @@ func (s *OpenClawAgentsService) CreateAgent(input CreateOpenClawAgentInput) (*Op
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
+	providerID := strings.TrimSpace(input.DefaultLLMProviderID)
+	modelID := strings.TrimSpace(input.DefaultLLMModelID)
+	if providerID != "" || modelID != "" {
+		if providerID == "" || modelID == "" {
+			return nil, errs.New("error.agent_default_llm_incomplete")
+		}
+		if err := ensureLLMModelExists(ctx, db, providerID, modelID); err != nil {
+			return nil, err
+		}
+		m.DefaultLLMProviderID = providerID
+		m.DefaultLLMModelID = modelID
+	}
+
 	if _, err := db.NewInsert().Model(m).Exec(ctx); err != nil {
 		return nil, errs.Wrap("error.agent_create_failed", err)
 	}
