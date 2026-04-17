@@ -2094,10 +2094,16 @@ func ensureOpenClawStateDir(bundle *bundledRuntime, defaultPort int, gatewayToke
 		return fmt.Errorf("create openclaw state dir: %w", err)
 	}
 	log := slog.Default()
+	// Resolve extraSkills dir once so it can be included in both the new-file baseline
+	// and the existing-file patch below.
+	extraSkillsDir := ""
+	if rtRoot, err := resolveRuntimeRootLocal(); err == nil {
+		extraSkillsDir = filepath.Join(rtRoot, "extraSkills")
+	}
 	// If openclaw.json does not exist, write a minimal baseline config so the gateway
-	// can start with a valid port, local mode, and token auth. This prevents the
-	// "no gateway url / no token" error loop for new users.
-	if err := ensureOpenClawDefaultConfig(bundle.ConfigPath, defaultPort, gatewayToken, log); err != nil {
+	// can start with a valid port, local mode, token auth, and skills.load.extraDirs.
+	// This prevents the "no gateway url / no token" error loop for new users.
+	if err := ensureOpenClawDefaultConfig(bundle.ConfigPath, defaultPort, gatewayToken, extraSkillsDir, log); err != nil {
 		log.Warn("openclaw: ensure default config failed", "error", err, "config", bundle.ConfigPath)
 	}
 	// Fix config version downgrade: if openclaw.json was written by a newer version,
@@ -2116,13 +2122,17 @@ func ensureOpenClawStateDir(bundle *bundledRuntime, defaultPort int, gatewayToke
 	if err := ensureGatewayAuthConfig(bundle.ConfigPath, defaultPort, gatewayToken, log); err != nil {
 		log.Warn("openclaw: ensure gateway auth config failed", "error", err, "config", bundle.ConfigPath)
 	}
+	// Ensure skills.load.extraDirs is present in openclaw.json.
+	if err := ensureSkillsExtraDirs(bundle.ConfigPath, extraSkillsDir, log); err != nil {
+		log.Warn("openclaw: ensure skills extra dirs failed", "error", err, "config", bundle.ConfigPath)
+	}
 	return nil
 }
 
 // ensureOpenClawDefaultConfig writes a minimal openclaw.json if the file does not exist yet.
 // This gives new users a working gateway config (port + local mode + token auth) on first start,
 // avoiding the "no gateway url / no token" error loop.
-func ensureOpenClawDefaultConfig(configPath string, defaultPort int, gatewayToken string, log *slog.Logger) error {
+func ensureOpenClawDefaultConfig(configPath string, defaultPort int, gatewayToken string, extraSkillsDir string, log *slog.Logger) error {
 	if _, statErr := os.Stat(configPath); statErr == nil {
 		// File already exists — nothing to do.
 		return nil
@@ -2139,6 +2149,15 @@ func ensureOpenClawDefaultConfig(configPath string, defaultPort int, gatewayToke
 				"token":  gatewayToken,
 			},
 		},
+	}
+
+	// Include extraSkills dir in the baseline config so new users get the full config.
+	if extraSkillsDir != "" {
+		cfg["skills"] = map[string]any{
+			"load": map[string]any{
+				"extraDirs": []any{extraSkillsDir},
+			},
+		}
 	}
 
 	out, err := json.MarshalIndent(cfg, "", "  ")
@@ -2344,6 +2363,82 @@ func ensureGatewayAuthConfig(configPath string, defaultPort int, gatewayToken st
 		"port", port,
 		"auth_mode", auth["mode"])
 	return nil
+}
+
+// ensureSkillsExtraDirs ensures openclaw.json has skills.load.extraDirs configured.
+// If skills.load.extraDirs is missing or empty, it is set to [extraSkillsDir].
+// If it exists but does not contain extraSkillsDir, that path is appended.
+// extraSkillsDir should be the resolved absolute path (e.g. C:\soft\ChatClaw\extraSkills).
+func ensureSkillsExtraDirs(configPath string, extraSkillsDir string, log *slog.Logger) error {
+	if extraSkillsDir == "" {
+		return nil
+	}
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read config: %w", err)
+	}
+
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return fmt.Errorf("parse config: %w", err)
+	}
+
+	// Navigate to skills.load.extraDirs, creating intermediate maps as needed.
+	if cfg["skills"] == nil {
+		cfg["skills"] = make(map[string]any)
+	}
+	skillsRaw, _ := cfg["skills"].(map[string]any)
+	if skillsRaw == nil {
+		skillsRaw = make(map[string]any)
+		cfg["skills"] = skillsRaw
+	}
+	if skillsRaw["load"] == nil {
+		skillsRaw["load"] = make(map[string]any)
+	}
+	load, _ := skillsRaw["load"].(map[string]any)
+	if load == nil {
+		load = make(map[string]any)
+		skillsRaw["load"] = load
+	}
+
+	extraDirsVal, ok := load["extraDirs"].([]any)
+	if !ok || len(extraDirsVal) == 0 {
+		// Empty or absent: set to the default single entry.
+		load["extraDirs"] = []any{extraSkillsDir}
+		out, _ := json.MarshalIndent(cfg, "", "  ")
+		os.WriteFile(configPath, out, 0o644)
+		log.Info("openclaw: set skills.load.extraDirs",
+			"extraDirs", []string{extraSkillsDir}, "config", configPath)
+		return nil
+	}
+
+	// Check if the expected directory is already in the list.
+	for _, v := range extraDirsVal {
+		if s, ok := v.(string); ok && s == extraSkillsDir {
+			return nil // already present
+		}
+	}
+
+	// Not present: append it.
+	extraDirsVal = append(extraDirsVal, extraSkillsDir)
+	load["extraDirs"] = extraDirsVal
+	out, _ := json.MarshalIndent(cfg, "", "  ")
+	os.WriteFile(configPath, out, 0o644)
+	log.Info("openclaw: appended extraSkills to skills.load.extraDirs",
+		"extraDirs", extraDirsVal, "config", configPath)
+	return nil
+}
+
+// resolveRuntimeRootLocal returns the directory containing the running executable.
+func resolveRuntimeRootLocal() (string, error) {
+	execPath, err := os.Executable()
+	if err != nil || strings.TrimSpace(execPath) == "" {
+		return "", fmt.Errorf("cannot resolve executable path")
+	}
+	return filepath.Dir(execPath), nil
 }
 
 // isVersionNewerOrEqual returns true if v1 >= v2 (semver comparison).
