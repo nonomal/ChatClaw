@@ -367,6 +367,9 @@ func (s *AgentService) createAgent(ctx context.Context, agent openclawagents.Ope
 		"name":      agent.OpenClawAgentID,
 		"workspace": workspace,
 	}
+	if agent.DefaultLLMProviderID != "" && agent.DefaultLLMModelID != "" {
+		params["model"] = agent.DefaultLLMProviderID + "/" + agent.DefaultLLMModelID
+	}
 	// Pass identity (emoji/theme) for OpenClaw console UI display.
 	identity := map[string]any{}
 	if agent.IdentityEmoji != "" {
