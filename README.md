@@ -292,16 +292,20 @@ ChatClaw_D2/
 ### Changelog
 To view the complete update log, please click👉️👉️[UpdateLog.md](./UpdateLog.md)
 
-### 2026/04/15
-1. **Skill Market Page (Major Feature)**: Complete Skill Market page implementation with fallback mechanism for Clawhub API requests, enhanced skill filtering logic for agent workspaces, loading indicators and hints for agent workspace selection, improved skill loading experience with updated response structure, refined skill tab labels, and skill status display with 'added' label.
-2. **CLI Tools for Skill Management**: Added `clawhub` and `skillhub` command-line tools for skill management and search functionality, with default registry URL fix for Clawhub.
-3. **NSIS Build System Refactor**: Refactored NSIS build process using PowerShell scripts, simplified build parameters, and enhanced extra skills handling for improved Windows installer builds.
-4. **Sidebar Navigation Enhancement**: Added 'chatclaw' system to skills navigation item in SideNav for improved navigation.
-5. **Development Documentation**: Updated development documentation and build configurations.
+### 2026/04/17
+1. **Skill Market Page Refactor (Major)**: Complete overhaul of `SkillMarketPage.vue` including enhanced skill loading and caching mechanisms, introduced `cachedBrowseSkills` and `browseLibraryCount` for improved performance, refactored load logic for agents and install targets with `loadAgentsWithTargets`, and improved category handling built from cached skills.
+2. **Skill Market Caching & Synchronization**: Implemented a full caching and synchronization system for skill data including new database migration tables, `cache.go` and `sync.go` service modules with background sync logic, `parseFlexibleTime` function for robust multi-format time comparison, and enhanced `ScopeRoots` mapping for accurate skill file operations across agent workspaces.
+3. **Skill Market Scope Support**: Enhanced skill file handling with scope-aware logic using `ScopeRoots`, refined skill filtering based on selected agent workspace scope, and updated service layer to list agents along with workspace and shared targets.
+4. **Default Model Selection**: Added `SetDefaultModelDialog` component for setting agent default LLM provider and model, introduced `DefaultLLMProviderID` and `DefaultLLMModelID` fields in agent creation, and added corresponding localization strings in English and Chinese.
+5. **OpenClaw Agent Synchronization**: Enhanced agent synchronization with reconciliation during Gateway connection, improved `AgentService` to ensure agents match database state, added `ensureSkillsExtraDirs` for `extraDirs` configuration management, and fixed agent creation to trigger config sync after RPC.
+6. **Install Confirmation i18n**: Added `installConfirmDescription` translation key across all supported languages (en-US, ja-JP, ko-KR, zh-CN, zh-TW) with updated SkillMarketPage integration.
+7. **SyncService Time Comparison**: Replaced direct time parsing with `parseFlexibleTime` for handling multiple time formats with improved robustness and whitespace trimming.
 
-### 2026/04/14
-1. **Skill Market Page (Initial Release)**: Introduced Skill Market page and related services for centralized skill discovery, browsing, and management within the application.
-2. **Skill Management CLI**: Added `clawhub` and `skillhub` command-line tools for skill management and search functionality.
+### 2026/04/16
+1. **Skill Market Uninstall Confirmation**: Added dialog-based uninstall confirmation to prevent accidental removals, replaced `AlertDialog` with `Dialog` component for consistent UI, and updated state management to prevent concurrent uninstall actions.
+2. **Skill Market Agent Selection Refactor**: Simplified agent selection dropdown by removing 'None' option, switched to `OpenClawAgentsService` for better integration, added method to retrieve agents by OpenClaw ID, and improved agent workspace directory resolution.
+3. **Style Updates**: Applied `chatclaw` system styling to the skills navigation item in SideNav.
+4. **Clawhub Registry Fix**: Updated default Clawhub registry URL from `https://clawhub.ai` to `https://cn.clawhub-mirror.com` for improved regional accessibility.
 
 
 
