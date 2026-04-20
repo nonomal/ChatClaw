@@ -143,11 +143,41 @@ export function useModelSelection() {
       }
     }
 
+    const defaultUseModelKey = getFirstDefaultUseModelKey(
+      providersWithModels.value,
+      chatwikiAvailability.value
+    )
+    if (defaultUseModelKey) {
+      selectedModelKey.value = defaultUseModelKey
+      return
+    }
+
     selectedModelKey.value = getFirstSelectableModelKey(
       providersWithModels.value,
       'llm',
       chatwikiAvailability.value
     )
+  }
+
+  const getFirstDefaultUseModelKey = (
+    providers: ProviderWithModels[],
+    status: 'available' | 'unbound' | 'non_cloud'
+  ): string => {
+    for (const pw of providers) {
+      const providerId = pw.provider.provider_id
+      if (!pw.provider.enabled) continue
+      if (providerId === 'chatwiki' && status !== 'available') continue
+      for (const group of pw.model_groups) {
+        if (group.type !== 'llm') continue
+        const model = group.models.find(
+          (m) => m.enabled !== false && String(m.default_use_model ?? '0') === '1'
+        )
+        if (model) {
+          return `${providerId}::${model.model_id}`
+        }
+      }
+    }
+    return ''
   }
 
   const parseSelectedModelKey = (key: string): { providerId: string; modelId: string } | null => {

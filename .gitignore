@@ -13,3 +13,4 @@ frontend/bindings/**/*
 think_docs/
 build/openclaw-runtime/
 .cursor/settings.json
+.gocache/

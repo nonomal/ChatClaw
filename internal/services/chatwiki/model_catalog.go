@@ -21,6 +21,7 @@ type ModelCatalogItem struct {
 	Name                   string   `json:"name"`
 	Type                   string   `json:"type"`
 	Enabled                bool     `json:"enabled"`
+	DefaultUseModel        string   `json:"default_use_model"`
 	SortOrder              int      `json:"sort_order"`
 	Capabilities           []string `json:"capabilities"`
 	ModelSupplier          string   `json:"model_supplier"`
@@ -432,6 +433,10 @@ func parseModelCatalogItem(item map[string]any, keyHint string) (ModelCatalogIte
 		"region_scope", "regionScope", "scope", "region", "area_scope", "areaScope",
 	))
 	price := strings.TrimSpace(firstNonEmptyString(item, "price", "model_price", "modelPrice"))
+	defaultUseModel := firstNonEmptyString(item, "default_use_model", "defaultUseModel")
+	if defaultUseModel != "1" {
+		defaultUseModel = "0"
+	}
 
 	if modelSupplier == "" || uniModelName == "" {
 		supplier, uni := splitModelDisplayName(name)
@@ -491,6 +496,7 @@ func parseModelCatalogItem(item map[string]any, keyHint string) (ModelCatalogIte
 		Name:                   name,
 		Type:                   modelType,
 		Enabled:                parseFlexibleBool(item, true, "enabled", "status", "switch_status", "chat_claw_switch_status"),
+		DefaultUseModel:        defaultUseModel,
 		SortOrder:              firstInt(item, "sort_order", "sortOrder", "order", "idx", "index"),
 		Capabilities:           capabilities,
 		ModelSupplier:          modelSupplier,
@@ -613,25 +619,27 @@ func appendCapability(capabilities []string, capability string) []string {
 type syncedModelRow struct {
 	bun.BaseModel `bun:"table:models"`
 
-	ID           int64     `bun:"id,pk,autoincrement"`
-	ProviderID   string    `bun:"provider_id,notnull"`
-	ModelID      string    `bun:"model_id,notnull"`
-	Name         string    `bun:"name,notnull"`
-	Type         string    `bun:"type,notnull"`
-	Capabilities string    `bun:"capabilities,notnull"`
-	IsBuiltin    bool      `bun:"is_builtin,notnull"`
-	Enabled      bool      `bun:"enabled,notnull"`
-	SortOrder    int       `bun:"sort_order,notnull"`
-	CreatedAt    time.Time `bun:"created_at,notnull"`
-	UpdatedAt    time.Time `bun:"updated_at,notnull"`
+	ID              int64     `bun:"id,pk,autoincrement"`
+	ProviderID      string    `bun:"provider_id,notnull"`
+	ModelID         string    `bun:"model_id,notnull"`
+	Name            string    `bun:"name,notnull"`
+	Type            string    `bun:"type,notnull"`
+	Capabilities    string    `bun:"capabilities,notnull"`
+	DefaultUseModel string    `bun:"default_use_model,notnull"`
+	IsBuiltin       bool      `bun:"is_builtin,notnull"`
+	Enabled         bool      `bun:"enabled,notnull"`
+	SortOrder       int       `bun:"sort_order,notnull"`
+	CreatedAt       time.Time `bun:"created_at,notnull"`
+	UpdatedAt       time.Time `bun:"updated_at,notnull"`
 }
 
 type syncedCatalogModel struct {
-	ModelID      string
-	Name         string
-	Type         string
-	Capabilities string
-	SortOrder    int
+	ModelID         string
+	Name            string
+	Type            string
+	Capabilities    string
+	DefaultUseModel string
+	SortOrder       int
 }
 
 func syncModelCatalogToLocalDB(catalog *ModelCatalog) error {
@@ -688,6 +696,7 @@ func syncModelCatalogToDB(ctx context.Context, db *bun.DB, providerID string, ca
 				needsUpdate := strings.TrimSpace(existingRow.Name) != item.Name ||
 					strings.TrimSpace(strings.ToLower(existingRow.Type)) != item.Type ||
 					existingRow.Capabilities != item.Capabilities ||
+					normalizeDefaultUseModel(existingRow.DefaultUseModel) != item.DefaultUseModel ||
 					existingRow.SortOrder != item.SortOrder ||
 					!existingRow.Enabled ||
 					!existingRow.IsBuiltin
@@ -701,6 +710,7 @@ func syncModelCatalogToDB(ctx context.Context, db *bun.DB, providerID string, ca
 					Set("name = ?", item.Name).
 					Set("type = ?", item.Type).
 					Set("capabilities = ?", item.Capabilities).
+					Set("default_use_model = ?", item.DefaultUseModel).
 					Set("sort_order = ?", item.SortOrder).
 					Set("enabled = ?", true).
 					Set("is_builtin = ?", true).
@@ -712,14 +722,15 @@ func syncModelCatalogToDB(ctx context.Context, db *bun.DB, providerID string, ca
 			}
 
 			toInsert = append(toInsert, syncedModelRow{
-				ProviderID:   providerID,
-				ModelID:      item.ModelID,
-				Name:         item.Name,
-				Type:         item.Type,
-				Capabilities: item.Capabilities,
-				IsBuiltin:    true,
-				Enabled:      true,
-				SortOrder:    item.SortOrder,
+				ProviderID:      providerID,
+				ModelID:         item.ModelID,
+				Name:            item.Name,
+				Type:            item.Type,
+				Capabilities:    item.Capabilities,
+				DefaultUseModel: item.DefaultUseModel,
+				IsBuiltin:       true,
+				Enabled:         true,
+				SortOrder:       item.SortOrder,
 			})
 		}
 
@@ -790,11 +801,12 @@ func flattenCatalogModelsForSync(catalog *ModelCatalog) []syncedCatalogModel {
 			perTypeOrder[modelType] = sortOrder + 1
 
 			out = append(out, syncedCatalogModel{
-				ModelID:      modelID,
-				Name:         modelID,
-				Type:         modelType,
-				Capabilities: marshalCapabilities(item.Capabilities),
-				SortOrder:    sortOrder,
+				ModelID:         modelID,
+				Name:            modelID,
+				Type:            modelType,
+				Capabilities:    marshalCapabilities(item.Capabilities),
+				DefaultUseModel: normalizeDefaultUseModel(item.DefaultUseModel),
+				SortOrder:       sortOrder,
 			})
 		}
 	}
@@ -811,6 +823,13 @@ func normalizeCatalogModelType(modelType string) string {
 	default:
 		return "llm"
 	}
+}
+
+func normalizeDefaultUseModel(raw string) string {
+	if strings.TrimSpace(raw) == "1" {
+		return "1"
+	}
+	return "0"
 }
 
 func marshalCapabilities(capabilities []string) string {
