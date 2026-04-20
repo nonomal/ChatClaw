@@ -12,3 +12,4 @@ frontend/bindings/**/*
 .DS_Store
 think_docs/
 build/openclaw-runtime/
+.cursor/settings.json
