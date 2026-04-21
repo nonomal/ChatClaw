@@ -274,6 +274,12 @@ func GetModelCatalogForSync() (*ModelCatalog, error) {
 var RefreshChatWikiModelCatalog func() error
 
 func (s *ChatWikiService) fetchModelCatalog(source modelCatalogSource) (*ModelCatalog, error) {
+	// Compatibility check for legacy data: if bound with open-source version but provider is enabled,
+	// disable it first to ensure model list doesn't show ChatWiki models for open-source bindings.
+	if source.Bound && !source.Cloud {
+		ensureChatWikiProviderDisabledForOpenSource(s.app)
+	}
+
 	baseURL := normalizeManagementBaseURL(source.ServerURL)
 	modelURL := baseURL + "/manage/chatclaw/showModelConfigList"
 	statsURL := baseURL + "/manage/chatclaw/getIntegralStats"

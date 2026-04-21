@@ -746,6 +746,10 @@ export default {
       notLoggedInTitle: '尚未登入 ChatWiki',
       notLoggedInDesc: '登入後即可同步 ChatWiki Cloud 的模型清單與積分餘額。',
       loginNow: '立即登入',
+      openSourceVersionLogin: '開源版本登入',
+      openSourceVersionHint: '僅支援知識庫/應用同步',
+      cloudVersion: '雲端版',
+      openSourceVersion: '開源版',
       accountIdPrefix: '帳號 ID：',
       buyCredits: '購買積分',
       todayUse: '今日用量',
@@ -758,6 +762,7 @@ export default {
       modelBoundHint: '這裡會顯示 ChatWiki 目前帳號可用的模型設定清單。',
       modelUnboundHint: '登入後會依照目前綁定帳號載入可用模型清單。',
       modelLoginHint: '請先登入並綁定 ChatWiki 帳號，之後這裡會顯示最新的模型服務清單。',
+      openSourceLoginHint: '目前為開源版登入，僅支援知識庫/應用同步，不支援 ChatWiki 模型服務。',
       providerStatus: {
         unbound: '{label}（未登入）',
         nonCloud: '{label}（未登入）',

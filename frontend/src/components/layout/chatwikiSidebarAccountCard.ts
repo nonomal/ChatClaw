@@ -20,12 +20,21 @@ export type ChatwikiSidebarAccountCardState =
       action: 'login'
       accountLabel: ''
       creditsLabel: string
+      versionHint: ''
     }
   | {
-      mode: 'bound'
+      mode: 'open_source_bound'
+      action: 'openBindingSettings'
+      accountLabel: string
+      creditsLabel: string
+      versionHint: string
+    }
+  | {
+      mode: 'cloud_bound'
       action: 'openProviderSettings'
       accountLabel: string
       creditsLabel: string
+      versionHint: ''
     }
 
 function normalizeText(value?: string | null): string {
@@ -105,22 +114,34 @@ export function buildChatwikiSidebarAccountCardState(
   binding: ChatwikiSidebarBindingLike | null,
   catalog: ChatwikiSidebarCatalogLike | null
 ): ChatwikiSidebarAccountCardState {
-  if (!isChatwikiCloudBinding(binding)) {
+  if (!binding) {
     return {
       mode: 'login',
       action: 'login',
       accountLabel: '',
       creditsLabel: t('settings.chatwiki.loginNow'),
+      versionHint: '',
     }
   }
 
   const accountLabel =
     normalizeText(binding?.user_name) || normalizeText(binding?.user_id) || 'ChatWiki'
 
+  if (isChatwikiDevBinding(binding)) {
+    return {
+      mode: 'open_source_bound',
+      action: 'openBindingSettings',
+      accountLabel,
+      creditsLabel: t('settings.chatwiki.openSourceVersionLogin'),
+      versionHint: '',
+    }
+  }
+
   return {
-    mode: 'bound',
+    mode: 'cloud_bound',
     action: 'openProviderSettings',
     accountLabel,
     creditsLabel: formatCreditsLabel(extractStatValue(catalog, 'all_surplus')),
+    versionHint: '',
   }
 }

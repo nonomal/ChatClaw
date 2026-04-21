@@ -46,6 +46,12 @@ const settingsStore = useSettingsStore()
 
 /** ChatClaw-only: robots/libraries toggles are not used in OpenClaw mode */
 const showApplicationsAndKnowledgeCards = computed(() => appStore.currentSystem !== 'openclaw')
+const isOpenClawMode = computed(() => appStore.currentSystem === 'openclaw')
+const chatwikiDescription = computed(() =>
+  isOpenClawMode.value
+    ? t('settings.chatwiki.openclawDescription')
+    : t('settings.chatwiki.description')
+)
 
 const BINDING_TIMEOUT_SEC = 120
 /** Cloud URL loaded from backend on mount (respects dev/prod build config) */
@@ -106,6 +112,12 @@ const bindingExpired = computed(() => {
   if (!b || b.exp == null) return false
   const exp = Number(b.exp)
   return exp <= Math.floor(Date.now() / 1000)
+})
+/** The version to display for the current binding. Uses binding from backend as source of truth. */
+const bindingVersionLabel = computed(() => {
+  return currentBinding.value?.chatwiki_version === 'yun'
+    ? t('settings.chatwiki.cloudVersion')
+    : t('settings.chatwiki.openSourceVersion')
 })
 const showUnbindConfirm = ref(false)
 
@@ -379,6 +391,8 @@ function listenAuthCallback() {
     try {
       await saveBindingFromCallback(data)
       authUser.value = data
+      // Reload binding to get the authoritative version from backend
+      await loadBinding(true)
       await ProvidersService.GetProviderWithModels('chatwiki')
       await refreshBindingStateAndModelViews()
       view.value = 'success'
@@ -600,7 +614,7 @@ onUnmounted(() => {
             </div>
           </div>
           <p class="text-sm text-muted-foreground">
-            {{ t('settings.chatwiki.description') }}
+            {{ chatwikiDescription }}
           </p>
         </div>
 
@@ -631,8 +645,17 @@ onUnmounted(() => {
               >
                 {{ t('settings.chatwiki.bindingExpired') }}
               </span>
-              <span v-else class="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
-                {{ t('settings.chatwiki.bound') }}
+              <span
+                v-else-if="currentBinding.chatwiki_version === 'yun'"
+                class="rounded-md bg-blue-100 px-2 py-1 text-xs text-blue-700 dark:bg-blue-500/20 dark:text-blue-400"
+              >
+                {{ t('settings.chatwiki.cloudVersion') }}
+              </span>
+              <span
+                v-else
+                class="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground"
+              >
+                {{ t('settings.chatwiki.openSourceVersion') }}
               </span>
               <Button v-if="bindingExpired" size="sm" @click="startReauthBinding">
                 {{ t('settings.chatwiki.reauthBind') }}
@@ -797,7 +820,7 @@ onUnmounted(() => {
         {{ t('settings.chatwiki.title') }}
       </h1>
       <p class="text-sm text-muted-foreground">
-        {{ t('settings.chatwiki.description') }}
+        {{ chatwikiDescription }}
       </p>
     </div>
 
@@ -808,6 +831,7 @@ onUnmounted(() => {
           {{ t('settings.chatwiki.loginCloud') }}
         </Button>
         <button
+          v-if="!isOpenClawMode"
           type="button"
           class="text-left text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
           @click="showOpenSourceInputStep"
@@ -909,8 +933,11 @@ onUnmounted(() => {
             <p class="truncate text-xs text-muted-foreground">{{ authUser.user_id }}</p>
           </div>
         </div>
-        <span class="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
-          {{ t('settings.chatwiki.freeVersion') }}
+        <span
+          class="rounded-md px-2 py-1 text-xs"
+          :class="currentBinding?.chatwiki_version === 'yun' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' : 'bg-muted text-muted-foreground'"
+        >
+          {{ bindingVersionLabel }}
         </span>
       </div>
       <Button class="w-full" size="lg" :disabled="finishSuccessLoading" @click="finishSuccess">
@@ -920,6 +947,7 @@ onUnmounted(() => {
         }}
       </Button>
       <button
+        v-if="!isOpenClawMode"
         type="button"
         class="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
         @click="goToChoose"
