@@ -17,7 +17,11 @@ import {
   getLibraryList as getLibraryListCached,
   clearAll as clearChatwikiCache,
 } from '@/lib/chatwikiCache'
-import { buildChatWikiLoginUrl, openChatWikiCloudLogin } from '@/lib/chatwikiAuth'
+import {
+  buildChatWikiLoginUrl,
+  openChatWikiCloudLogin,
+  resolveChatWikiLoginSource,
+} from '@/lib/chatwikiAuth'
 import { notifyChatwikiBindingChanged } from '@/lib/chatwikiBindingState'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
@@ -463,8 +467,13 @@ async function handleGoToAuth() {
     return
   }
   isReauthFlow.value = false
-  pendingLoginSource.value = 'open-source'
   const base = openSourceUrl.value.trim().replace(/\/+$/, '')
+  const cloudBase =
+    cloudAuthUrl.value || (await ChatWikiService.GetCloudURL().catch(() => '')) || ''
+  if (cloudBase) {
+    cloudAuthUrl.value = cloudBase
+  }
+  pendingLoginSource.value = resolveChatWikiLoginSource(base, cloudBase)
   const authUrl = buildChatWikiLoginUrl(
     base,
     await BrowserService.GetLoginParams().catch(() => undefined)
