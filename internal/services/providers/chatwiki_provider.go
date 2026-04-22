@@ -36,17 +36,18 @@ func (s *ProvidersService) chatWikiCatalogItemsToModels(providerID string, items
 			continue
 		}
 		models = append(models, Model{
-			ID:            int64(idx + 1),
-			ProviderID:    providerID,
-			ModelID:       item.ModelID,
-			Name:          item.Name,
-			ModelSupplier: item.ModelSupplier,
-			UniModelName:  item.UniModelName,
-			Type:          item.Type,
-			Capabilities:  filterOpenClawCapabilities(item.Capabilities),
-			IsBuiltin:     true,
-			Enabled:       item.Enabled,
-			SortOrder:     item.SortOrder,
+			ID:              int64(idx + 1),
+			ProviderID:      providerID,
+			ModelID:         item.ModelID,
+			Name:            item.Name,
+			ModelSupplier:   item.ModelSupplier,
+			UniModelName:    item.UniModelName,
+			Type:            item.Type,
+			Capabilities:    filterOpenClawCapabilities(item.Capabilities),
+			DefaultUseModel: item.DefaultUseModel,
+			IsBuiltin:       true,
+			Enabled:         item.Enabled,
+			SortOrder:       item.SortOrder,
 		})
 	}
 	return models

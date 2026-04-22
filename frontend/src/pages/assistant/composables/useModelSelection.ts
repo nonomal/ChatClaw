@@ -32,6 +32,42 @@ export function useModelSelection() {
       chatwikiAvailability.value
     )
 
+  const logModelCatalogSnapshot = (providers: ProviderWithModels[]) => {
+    const llmModels = providers.flatMap((pw) =>
+      pw.model_groups
+        .filter((g) => g.type === 'llm')
+        .flatMap((g) =>
+          g.models.map((m) => ({
+            providerId: pw.provider.provider_id,
+            providerEnabled: pw.provider.enabled,
+            modelId: m.model_id,
+            modelName: m.name,
+            enabled: m.enabled !== false,
+            defaultUseModel: String(m.default_use_model ?? '0'),
+          }))
+        )
+    )
+
+    const preferred = llmModels.filter((m) => m.defaultUseModel === '1')
+
+    console.warn('[assistant][models] catalog:snapshot', {
+      chatwikiAvailability: chatwikiAvailability.value,
+      totalProviders: providers.length,
+      totalLlmModels: llmModels.length,
+      preferredCount: preferred.length,
+      preferredModels: preferred,
+      llmModels,
+    })
+  }
+
+  const logSelectionDecision = (reason: string, payload?: Record<string, unknown>) => {
+    console.warn('[assistant][models] selectDefaultModel', {
+      reason,
+      selectedModelKey: selectedModelKey.value,
+      ...payload,
+    })
+  }
+
   const providersWithModels = ref<ProviderWithModels[]>([])
   const selectedModelKey = ref('')
   const chatwikiAvailability = ref<'available' | 'unbound' | 'non_cloud'>('available')
@@ -123,6 +159,7 @@ export function useModelSelection() {
         return aFree ? 1 : -1
       })
       providersWithModels.value = ok
+      logModelCatalogSnapshot(ok)
       console.info('[assistant][models] loadModels:done', {
         successCount: ok.length,
         failedCount,
@@ -147,20 +184,38 @@ export function useModelSelection() {
   ) => {
     if (!activeAgent) {
       selectedModelKey.value = ''
+      logSelectionDecision('no-active-agent', {
+        activeConversationId: activeConversation?.id ?? null,
+      })
       return
     }
 
     // Prefer the active conversation's model if available.
     {
       const conv = activeConversation
-      if (conv?.llm_provider_id && conv?.llm_model_id) {
+      if (
+        conv?.agent_id === activeAgent.id &&
+        conv?.llm_provider_id &&
+        conv?.llm_model_id
+      ) {
         const key = `${conv.llm_provider_id}::${conv.llm_model_id}`
         if (
           isSelectionAvailable(providersWithModels.value, key, 'llm', chatwikiAvailability.value)
         ) {
           selectedModelKey.value = key
+          logSelectionDecision('conversation-model', {
+            conversationId: conv.id,
+            providerId: conv.llm_provider_id,
+            modelId: conv.llm_model_id,
+          })
           return
         }
+      } else if (conv?.id) {
+        logSelectionDecision('stale-conversation-ignored', {
+          conversationId: conv.id,
+          conversationAgentId: conv.agent_id,
+          activeAgentId: activeAgent.id,
+        })
       }
     }
 
@@ -172,8 +227,26 @@ export function useModelSelection() {
       const key = `${agentProviderId}::${agentModelId}`
       if (isSelectionAvailable(providersWithModels.value, key, 'llm', chatwikiAvailability.value)) {
         selectedModelKey.value = key
+        logSelectionDecision('agent-default-model', {
+          agentId: activeAgent.id,
+          providerId: agentProviderId,
+          modelId: agentModelId,
+        })
         return
       }
+    }
+
+    const defaultUseModelKey = getFirstDefaultUseModelKey(
+      providersWithModels.value,
+      chatwikiAvailability.value
+    )
+    if (defaultUseModelKey) {
+      selectedModelKey.value = defaultUseModelKey
+      logSelectionDecision('default_use_model', {
+        agentId: activeAgent.id,
+        defaultUseModelKey,
+      })
+      return
     }
 
     // Fall back to first available LLM model
@@ -182,6 +255,46 @@ export function useModelSelection() {
       'llm',
       chatwikiAvailability.value
     )
+    logSelectionDecision('first-selectable-model', {
+      agentId: activeAgent.id,
+      chatwikiAvailability: chatwikiAvailability.value,
+    })
+  }
+
+  const getFirstDefaultUseModelKey = (
+    providers: ProviderWithModels[],
+    status: 'available' | 'unbound' | 'non_cloud'
+  ): string => {
+    for (const pw of providers) {
+      const providerId = pw.provider.provider_id
+      if (!pw.provider.enabled) continue
+      if (providerId === 'chatwiki' && status !== 'available') continue
+      for (const group of pw.model_groups) {
+        if (group.type !== 'llm') continue
+        console.warn('[assistant][models] defaultUseModel:check-group', {
+          providerId,
+          modelIds: group.models.map((m) => m.model_id),
+          defaultFlags: group.models.map((m) => ({
+            modelId: m.model_id,
+            enabled: m.enabled !== false,
+            defaultUseModel: String(m.default_use_model ?? '0'),
+          })),
+        })
+        const model = group.models.find(
+          (m) => m.enabled !== false && String(m.default_use_model ?? '0') === '1'
+        )
+        if (model) {
+          console.warn('[assistant][models] defaultUseModel:hit', {
+            providerId,
+            modelId: model.model_id,
+            modelName: model.name,
+          })
+          return `${providerId}::${model.model_id}`
+        }
+      }
+    }
+    console.warn('[assistant][models] defaultUseModel:none')
+    return ''
   }
 
   const parseSelectedModelKey = (key: string): { providerId: string; modelId: string } | null => {
