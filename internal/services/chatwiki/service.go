@@ -423,19 +423,33 @@ func saveBindingWithDB(ctx context.Context, db bun.IDB, serverURL, token, ttl, e
 	})
 }
 
-func resolveChatWikiVersionFromLoginSource(loginSource string) string {
-	switch strings.TrimSpace(loginSource) {
-	case "cloud":
-		return "yun"
-	case "open-source":
-		return "dev"
-	default:
-		return "dev"
+func normalizeChatWikiComparableURL(rawURL string) string {
+	trimmed := strings.TrimSpace(rawURL)
+	if trimmed == "" {
+		return ""
 	}
+
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return strings.TrimRight(trimmed, "/")
+	}
+
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	parsed.Path = strings.TrimRight(parsed.Path, "/")
+
+	return strings.TrimRight(parsed.String(), "/")
 }
 
-// SaveBindingFromCallback persists a ChatWiki auth callback using the frontend login source
-// instead of trusting any upstream version field.
+func resolveChatWikiVersionFromServerURL(serverURL string) string {
+	if normalizeChatWikiComparableURL(serverURL) == normalizeChatWikiComparableURL(define.GetChatWikiCloudURL()) {
+		return "yun"
+	}
+	return "dev"
+}
+
+// SaveBindingFromCallback persists a ChatWiki auth callback using the callback serverURL
+// as the source of truth for deciding cloud vs open-source binding.
 func (s *ChatWikiService) SaveBindingFromCallback(serverURL, token, ttl, exp, userID, userName, loginSource string) error {
 	var app *application.App
 	if s != nil {
@@ -449,7 +463,7 @@ func (s *ChatWikiService) SaveBindingFromCallback(serverURL, token, ttl, exp, us
 		exp,
 		userID,
 		userName,
-		resolveChatWikiVersionFromLoginSource(loginSource),
+		resolveChatWikiVersionFromServerURL(serverURL),
 	)
 }
 

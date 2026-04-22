@@ -3,6 +3,7 @@ package chatwiki
 import (
 	"context"
 	"database/sql"
+	"os"
 	"testing"
 
 	"github.com/uptrace/bun"
@@ -387,5 +388,95 @@ func TestSaveBindingEmptyVersionDefaultsToDev(t *testing.T) {
 	// Provider should be disabled for empty/dev versions
 	if got := getProviderEnabled(t, db); got {
 		t.Fatal("provider should be disabled for empty/dev version")
+	}
+}
+
+func TestResolveChatWikiVersionFromServerURL(t *testing.T) {
+	originalCloudURL := os.Getenv("CHATWIKI_CLOUD_URL")
+	t.Cleanup(func() {
+		if originalCloudURL == "" {
+			_ = os.Unsetenv("CHATWIKI_CLOUD_URL")
+			return
+		}
+		_ = os.Setenv("CHATWIKI_CLOUD_URL", originalCloudURL)
+	})
+
+	if err := os.Setenv("CHATWIKI_CLOUD_URL", "http://dev7.zhima_chat_ai.applnk.cn"); err != nil {
+		t.Fatalf("Setenv CHATWIKI_CLOUD_URL: %v", err)
+	}
+
+	testCases := []struct {
+		name      string
+		serverURL string
+		want      string
+	}{
+		{
+			name:      "exact cloud url",
+			serverURL: "http://dev7.zhima_chat_ai.applnk.cn",
+			want:      "yun",
+		},
+		{
+			name:      "cloud url with trailing slash",
+			serverURL: "http://dev7.zhima_chat_ai.applnk.cn/",
+			want:      "yun",
+		},
+		{
+			name:      "non cloud url defaults to open source",
+			serverURL: "http://selfhosted.example.com/",
+			want:      "dev",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := resolveChatWikiVersionFromServerURL(tc.serverURL)
+			if got != tc.want {
+				t.Fatalf("resolveChatWikiVersionFromServerURL(%q) = %q, want %q", tc.serverURL, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSaveBindingFromCallbackUsesServerURLAsSourceOfTruth(t *testing.T) {
+	db := newTestBunDB(t)
+	setupTestTables(t, db)
+
+	origGetDB := getChatWikiServiceDB
+	getChatWikiServiceDB = func() *bun.DB { return db }
+	defer func() { getChatWikiServiceDB = origGetDB }()
+
+	originalCloudURL := os.Getenv("CHATWIKI_CLOUD_URL")
+	defer func() {
+		if originalCloudURL == "" {
+			_ = os.Unsetenv("CHATWIKI_CLOUD_URL")
+			return
+		}
+		_ = os.Setenv("CHATWIKI_CLOUD_URL", originalCloudURL)
+	}()
+	if err := os.Setenv("CHATWIKI_CLOUD_URL", "http://dev7.zhima_chat_ai.applnk.cn"); err != nil {
+		t.Fatalf("Setenv CHATWIKI_CLOUD_URL: %v", err)
+	}
+
+	svc := NewChatWikiService(nil)
+	err := svc.SaveBindingFromCallback(
+		"http://dev7.zhima_chat_ai.applnk.cn/",
+		"test-token",
+		"3600",
+		"9999999999",
+		"user123",
+		"Test User",
+		"open-source",
+	)
+	if err != nil {
+		t.Fatalf("SaveBindingFromCallback: %v", err)
+	}
+
+	version := getBindingVersion(t, db)
+	if version != "yun" {
+		t.Fatalf("binding version should resolve to 'yun' from callback server_url, got %q", version)
+	}
+
+	if got := getProviderEnabled(t, db); !got {
+		t.Fatal("provider should be enabled after callback resolves to cloud binding")
 	}
 }
