@@ -1,5 +1,22 @@
 ## Changelog
 
+### 2026/04/24
+1. **Multi-Language Localization Update**: Updated localization files for Arabic, Bengali, German, Spanish, French, Hindi, and Italian, including translations for app titles, common phrases, tool descriptions, and various UI elements.
+2. **WhatsApp Channel Hotfix**: Fixed WhatsApp channel initialization error configuration issue.
+3. **Skill Market Synchronization Enhancement**: Enhanced skill synchronization logic with remote metadata for improved skill data management.
+
+### 2026/04/22
+1. **ChatWiki Server URL Version Resolution**: Implemented server URL-based version resolution and enhanced binding logic for ChatWiki integration.
+2. **AGENTS.md Documentation**: Updated AGENTS.md with language conventions, Codex superpowers, archiving and iteration guidelines for comprehensive AI development guidelines.
+
+### 2026/04/21
+1. **ChatWiki UI Enhancements**: Enhanced account card and provider detail components for improved ChatWiki user experience.
+
+### 2026/04/20
+1. **Model Selection Logging**: Enhanced model selection logging and decision-making for better debugging and user feedback.
+2. **ChatWiki Default Model Support**: Added default use model support in ChatWiki integration.
+3. **OpenClaw Runtime Update**: Updated OpenClaw version to 2026.4.15 with adjusted development environment URLs.
+
 ### 2026/04/17
 1. **Skill Market Page Refactor (Major)**: Complete overhaul of `SkillMarketPage.vue` including enhanced skill loading and caching mechanisms, introduced `cachedBrowseSkills` and `browseLibraryCount` for improved performance, refactored load logic for agents and install targets with `loadAgentsWithTargets`, and improved category handling built from cached skills.
 2. **Skill Market Caching & Synchronization**: Implemented a full caching and synchronization system for skill data including new database migration tables, `cache.go` and `sync.go` service modules with background sync logic, `parseFlexibleTime` function for robust multi-format time comparison, and enhanced `ScopeRoots` mapping for accurate skill file operations across agent workspaces.
