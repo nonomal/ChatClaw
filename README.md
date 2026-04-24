@@ -292,20 +292,17 @@ ChatClaw_D2/
 ### Changelog
 To view the complete update log, please click👉️👉️[UpdateLog.md](./UpdateLog.md)
 
-### 2026/04/17
-1. **Skill Market Page Refactor (Major)**: Complete overhaul of `SkillMarketPage.vue` including enhanced skill loading and caching mechanisms, introduced `cachedBrowseSkills` and `browseLibraryCount` for improved performance, refactored load logic for agents and install targets with `loadAgentsWithTargets`, and improved category handling built from cached skills.
-2. **Skill Market Caching & Synchronization**: Implemented a full caching and synchronization system for skill data including new database migration tables, `cache.go` and `sync.go` service modules with background sync logic, `parseFlexibleTime` function for robust multi-format time comparison, and enhanced `ScopeRoots` mapping for accurate skill file operations across agent workspaces.
-3. **Skill Market Scope Support**: Enhanced skill file handling with scope-aware logic using `ScopeRoots`, refined skill filtering based on selected agent workspace scope, and updated service layer to list agents along with workspace and shared targets.
-4. **Default Model Selection**: Added `SetDefaultModelDialog` component for setting agent default LLM provider and model, introduced `DefaultLLMProviderID` and `DefaultLLMModelID` fields in agent creation, and added corresponding localization strings in English and Chinese.
-5. **OpenClaw Agent Synchronization**: Enhanced agent synchronization with reconciliation during Gateway connection, improved `AgentService` to ensure agents match database state, added `ensureSkillsExtraDirs` for `extraDirs` configuration management, and fixed agent creation to trigger config sync after RPC.
-6. **Install Confirmation i18n**: Added `installConfirmDescription` translation key across all supported languages (en-US, ja-JP, ko-KR, zh-CN, zh-TW) with updated SkillMarketPage integration.
-7. **SyncService Time Comparison**: Replaced direct time parsing with `parseFlexibleTime` for handling multiple time formats with improved robustness and whitespace trimming.
+### 2026/04/24
+1. **Multi-Language Localization Update**: Updated localization files for Arabic, Bengali, German, Spanish, French, Hindi, and Italian, including translations for app titles, common phrases, tool descriptions, and various UI elements.
+2. **WhatsApp Channel Hotfix**: Fixed WhatsApp channel initialization error configuration issue.
+3. **Skill Market Synchronization Enhancement**: Enhanced skill synchronization logic with remote metadata for improved skill data management.
 
-### 2026/04/16
-1. **Skill Market Uninstall Confirmation**: Added dialog-based uninstall confirmation to prevent accidental removals, replaced `AlertDialog` with `Dialog` component for consistent UI, and updated state management to prevent concurrent uninstall actions.
-2. **Skill Market Agent Selection Refactor**: Simplified agent selection dropdown by removing 'None' option, switched to `OpenClawAgentsService` for better integration, added method to retrieve agents by OpenClaw ID, and improved agent workspace directory resolution.
-3. **Style Updates**: Applied `chatclaw` system styling to the skills navigation item in SideNav.
-4. **Clawhub Registry Fix**: Updated default Clawhub registry URL from `https://clawhub.ai` to `https://cn.clawhub-mirror.com` for improved regional accessibility.
+### 2026/04/22
+1. **ChatWiki Server URL Version Resolution**: Implemented server URL-based version resolution and enhanced binding logic for ChatWiki integration.
+2. **AGENTS.md Documentation**: Updated AGENTS.md with language conventions, Codex superpowers, archiving and iteration guidelines for comprehensive AI development guidelines.
+
+### 2026/04/21
+1. **ChatWiki UI Enhancements**: Enhanced account card and provider detail components for improved ChatWiki user experience.
 
 
 
