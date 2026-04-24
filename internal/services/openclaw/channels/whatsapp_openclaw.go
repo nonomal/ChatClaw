@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -289,6 +290,186 @@ func whatsappManagedBindingAccountIDs(cfg map[string]any) []string {
 	return out
 }
 
+func whatsappConfiguredAccountIDs(channelCfg map[string]any) []string {
+	accounts := whatsappAccountConfigs(channelCfg)
+	if len(accounts) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(accounts))
+	out := make([]string, 0, len(accounts))
+	for key := range accounts {
+		accountID := strings.TrimSpace(key)
+		if accountID == "" {
+			continue
+		}
+		normalized := strings.ToLower(normalizeWhatsappAccountID(accountID))
+		if _, exists := seen[normalized]; exists {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		out = append(out, normalizeWhatsappAccountID(accountID))
+	}
+	sort.Strings(out)
+	return out
+}
+
+func normalizeWhatsappAccountIDSet(accountIDs []string) map[string]struct{} {
+	set := make(map[string]struct{}, len(accountIDs))
+	for _, accountID := range accountIDs {
+		accountID = strings.TrimSpace(accountID)
+		if accountID == "" {
+			continue
+		}
+		set[strings.ToLower(normalizeWhatsappAccountID(accountID))] = struct{}{}
+	}
+	return set
+}
+
+func keepWhatsappStartupExtraAccount(
+	channelCfg map[string]any,
+	localAccountIDs []string,
+	orphanAccountIDs []string,
+	orphanBindingAccountIDs []string,
+) string {
+	if len(localAccountIDs) > 0 {
+		return ""
+	}
+	if len(orphanBindingAccountIDs) > 0 {
+		return ""
+	}
+	if len(orphanAccountIDs) != 1 {
+		return ""
+	}
+	accountID := normalizeWhatsappAccountID(orphanAccountIDs[0])
+	if !isWhatsappConfigEnabledForAccount(channelCfg, accountID) {
+		return ""
+	}
+	return accountID
+}
+
+func reconcileWhatsappStartupConfig(cfg map[string]any, localAccountIDs []string) (string, bool) {
+	channelCfg := whatsappChannelConfigFromRoot(cfg)
+	localSet := normalizeWhatsappAccountIDSet(localAccountIDs)
+
+	configuredAccountIDs := whatsappConfiguredAccountIDs(channelCfg)
+	orphanAccountIDs := make([]string, 0)
+	for _, accountID := range configuredAccountIDs {
+		if _, ok := localSet[strings.ToLower(normalizeWhatsappAccountID(accountID))]; ok {
+			continue
+		}
+		orphanAccountIDs = append(orphanAccountIDs, normalizeWhatsappAccountID(accountID))
+	}
+
+	bindingAccountIDs := whatsappManagedBindingAccountIDs(cfg)
+	orphanBindingAccountIDs := make([]string, 0)
+	for _, accountID := range bindingAccountIDs {
+		if _, ok := localSet[strings.ToLower(normalizeWhatsappAccountID(accountID))]; ok {
+			continue
+		}
+		orphanBindingAccountIDs = append(orphanBindingAccountIDs, normalizeWhatsappAccountID(accountID))
+	}
+
+	keepExtraAccountID := keepWhatsappStartupExtraAccount(
+		channelCfg,
+		localAccountIDs,
+		orphanAccountIDs,
+		orphanBindingAccountIDs,
+	)
+	keepSet := make(map[string]struct{}, len(localSet)+1)
+	for key := range localSet {
+		keepSet[key] = struct{}{}
+	}
+	if keepExtraAccountID != "" {
+		keepSet[strings.ToLower(keepExtraAccountID)] = struct{}{}
+	}
+
+	changed := false
+
+	bindings := configBindings(cfg)
+	if len(bindings) > 0 {
+		filteredBindings := make([]any, 0, len(bindings))
+		for _, raw := range bindings {
+			entry, _ := raw.(map[string]any)
+			if entry == nil {
+				filteredBindings = append(filteredBindings, raw)
+				continue
+			}
+			match, _ := entry["match"].(map[string]any)
+			if match == nil || strings.TrimSpace(fmt.Sprint(match["channel"])) != openClawWhatsappChannelID {
+				filteredBindings = append(filteredBindings, raw)
+				continue
+			}
+
+			accountID := strings.TrimSpace(fmt.Sprint(match["accountId"]))
+			if accountID == "" {
+				changed = true
+				continue
+			}
+			if _, ok := keepSet[strings.ToLower(normalizeWhatsappAccountID(accountID))]; !ok {
+				changed = true
+				continue
+			}
+			filteredBindings = append(filteredBindings, raw)
+		}
+
+		if len(filteredBindings) == 0 {
+			if len(bindings) > 0 {
+				delete(cfg, "bindings")
+				changed = true
+			}
+		} else if len(filteredBindings) != len(bindings) {
+			cfg["bindings"] = filteredBindings
+			changed = true
+		}
+	}
+
+	channelsCfg, _ := cfg["channels"].(map[string]any)
+	if channelsCfg == nil {
+		return keepExtraAccountID, changed
+	}
+	whatsappCfg, _ := channelsCfg[openClawWhatsappChannelID].(map[string]any)
+	if whatsappCfg == nil {
+		return keepExtraAccountID, changed
+	}
+
+	accounts := whatsappAccountConfigs(whatsappCfg)
+	if len(accounts) > 0 {
+		filteredAccounts := make(map[string]any, len(accounts))
+		for rawKey, rawEntry := range accounts {
+			accountID := strings.TrimSpace(rawKey)
+			if accountID == "" {
+				changed = true
+				continue
+			}
+			if _, ok := keepSet[strings.ToLower(normalizeWhatsappAccountID(accountID))]; !ok {
+				changed = true
+				continue
+			}
+			filteredAccounts[rawKey] = rawEntry
+		}
+		if len(filteredAccounts) == 0 {
+			delete(whatsappCfg, whatsappConfigKeyAccounts)
+		} else if len(filteredAccounts) != len(accounts) {
+			whatsappCfg[whatsappConfigKeyAccounts] = filteredAccounts
+		}
+	}
+
+	if shouldDeleteWhatsappChannelSection(whatsappCfg) {
+		delete(channelsCfg, openClawWhatsappChannelID)
+		if len(channelsCfg) == 0 {
+			delete(cfg, "channels")
+		} else {
+			cfg["channels"] = channelsCfg
+		}
+		return keepExtraAccountID, true
+	}
+
+	channelsCfg[openClawWhatsappChannelID] = whatsappCfg
+	cfg["channels"] = channelsCfg
+	return keepExtraAccountID, changed
+}
+
 func resolveWhatsappConfigBool(channelCfg map[string]any, accountCfg map[string]any, key string) (bool, bool) {
 	if accountCfg != nil {
 		if v, ok := accountCfg[key].(bool); ok {
@@ -335,6 +516,12 @@ type whatsappLoginSession struct {
 	accountID string
 }
 
+type whatsappLocalAccountState struct {
+	accountIDs          []string
+	hasVisibleChannel   bool
+	hasAmbiguousAccount bool
+}
+
 // WhatsappChannelPreparation reports whether the bundled WhatsApp channel is ready before QR login starts.
 type WhatsappChannelPreparation struct {
 	Ready          bool `json:"ready"`
@@ -354,27 +541,6 @@ type WhatsappLoginResult struct {
 	AccountID string `json:"account_id"`
 	Message   string `json:"message"`
 	ChannelID int64  `json:"channel_id"`
-}
-
-func (s *OpenClawChannelService) hasOpenClawWhatsappChannels() (bool, error) {
-	db, err := s.db()
-	if err != nil {
-		return false, err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	var count int
-	if err := db.NewSelect().
-		Model((*channelModel)(nil)).
-		ColumnExpr("COUNT(1)").
-		Where(openClawChannelVisibilitySQL).
-		Where("ch.platform = ?", channels.PlatformWhatsapp).
-		Scan(ctx, &count); err != nil {
-		return false, errs.Wrap("error.channel_list_failed", err)
-	}
-	return count > 0, nil
 }
 
 func reusableWhatsappDraftAccountID(extraConfig string) string {
@@ -411,22 +577,61 @@ func (s *OpenClawChannelService) resolvePendingWhatsappDraftAccountID(pending *c
 }
 
 func (s *OpenClawChannelService) resolveWhatsappStartupWarmupAccountID() (string, bool, error) {
-	if pending, err := s.findLatestPendingWhatsappDraftChannel(); err != nil {
+	var pendingAccountID string
+	pending, err := s.findLatestPendingWhatsappDraftChannel()
+	if err != nil {
 		return "", false, err
-	} else if pending != nil {
+	}
+	if pending != nil {
 		accountID, err := s.resolvePendingWhatsappDraftAccountID(pending)
 		if err != nil {
 			return "", false, err
 		}
-		return accountID, true, nil
+		pendingAccountID = normalizeWhatsappAccountID(accountID)
 	}
 
-	hasChannels, err := s.hasOpenClawWhatsappChannels()
+	localState, err := s.listWhatsappLocalAccountState()
 	if err != nil {
 		return "", false, err
 	}
-	if hasChannels {
+	localAccountIDs := append([]string(nil), localState.accountIDs...)
+	if pendingAccountID != "" {
+		found := false
+		for _, accountID := range localAccountIDs {
+			if strings.EqualFold(normalizeWhatsappAccountID(accountID), pendingAccountID) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			localAccountIDs = append(localAccountIDs, pendingAccountID)
+			sort.Strings(localAccountIDs)
+		}
+	}
+
+	reusableWarmupAccountID := ""
+	if !localState.hasAmbiguousAccount {
+		if cfg, configPath, loadErr := loadOpenClawJSONConfig(); loadErr == nil {
+			keptExtraAccountID, changed := reconcileWhatsappStartupConfig(cfg, localAccountIDs)
+			if changed {
+				if err := saveOpenClawJSONConfig(configPath, cfg); err != nil {
+					return "", false, err
+				}
+			}
+			reusableWarmupAccountID = keptExtraAccountID
+		} else if !errors.Is(loadErr, os.ErrNotExist) {
+			return "", false, loadErr
+		}
+	}
+
+	if pendingAccountID != "" {
+		return pendingAccountID, true, nil
+	}
+	if localState.hasVisibleChannel {
 		return "", false, nil
+	}
+	if reusableWarmupAccountID != "" {
+		return reusableWarmupAccountID, true, nil
 	}
 
 	accountID, err := s.nextWhatsappLoginAccountID()
@@ -434,6 +639,47 @@ func (s *OpenClawChannelService) resolveWhatsappStartupWarmupAccountID() (string
 		return "", false, err
 	}
 	return accountID, true, nil
+}
+
+func (s *OpenClawChannelService) listWhatsappLocalAccountState() (*whatsappLocalAccountState, error) {
+	db, err := s.db()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	extraConfigs := make([]string, 0)
+	if err := db.NewSelect().
+		Model((*channelModel)(nil)).
+		Column("extra_config").
+		Where(openClawChannelVisibilitySQL).
+		Where("platform = ?", channels.PlatformWhatsapp).
+		Scan(ctx, &extraConfigs); err != nil {
+		return nil, errs.Wrap("error.channel_list_failed", err)
+	}
+
+	state := &whatsappLocalAccountState{
+		hasVisibleChannel: len(extraConfigs) > 0,
+	}
+	seen := make(map[string]struct{}, len(extraConfigs))
+	for _, extraConfig := range extraConfigs {
+		accountID := strings.TrimSpace(extractWhatsappAccountID(extraConfig))
+		if accountID == "" {
+			state.hasAmbiguousAccount = true
+			continue
+		}
+		accountID = normalizeWhatsappAccountID(accountID)
+		key := strings.ToLower(accountID)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		state.accountIDs = append(state.accountIDs, accountID)
+	}
+	sort.Strings(state.accountIDs)
+	return state, nil
 }
 
 // PrepareWhatsappChannelOnAppStartup pre-warms the first WhatsApp account config
@@ -669,6 +915,7 @@ func (s *OpenClawChannelService) nextWhatsappLoginAccountID() (string, error) {
 	occupied := make([]string, 0)
 
 	if cfg, _, err := loadOpenClawJSONConfig(); err == nil {
+		occupied = append(occupied, whatsappConfiguredAccountIDs(whatsappChannelConfigFromRoot(cfg))...)
 		occupied = append(occupied, whatsappManagedBindingAccountIDs(cfg)...)
 	}
 
