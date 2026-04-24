@@ -1242,7 +1242,7 @@ export default {
         sandbox_off: '無効',
         sandbox_all: 'すべてのエージェント',
         groupChatMentionPatterns: 'グループチャットメンションパターン',
-        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
+        groupChatMentionPatternsPlaceholder: "'@'assistant, '@'bot",
         groupChatInsertPreset: 'プリセットを挿入',
         tools: 'ツール設定',
         toolsProfile: 'ツールプリセット',

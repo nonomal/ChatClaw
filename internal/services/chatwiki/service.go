@@ -450,6 +450,8 @@ func resolveChatWikiVersionFromServerURL(serverURL string) string {
 
 // SaveBindingFromCallback persists a ChatWiki auth callback using the callback serverURL
 // as the source of truth for deciding cloud vs open-source binding.
+// The binding is saved with the version derived from serverURL (not loginSource).
+// Frontend should call loadBinding(true) after this to get the authoritative version.
 func (s *ChatWikiService) SaveBindingFromCallback(serverURL, token, ttl, exp, userID, userName, loginSource string) error {
 	var app *application.App
 	if s != nil {

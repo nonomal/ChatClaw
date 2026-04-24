@@ -22,20 +22,21 @@ import (
 
 // CachedSkill 缓存技能模型
 type CachedSkill struct {
-	ID           int64  `bun:"id" json:"id"`
-	BackendID    int64  `bun:"backend_id" json:"backendId"`
-	SkillName    string `bun:"skill_name" json:"skillName"`
-	Locale       string `bun:"locale" json:"locale"`
-	Name         string `bun:"name" json:"name"`
-	Description  string `bun:"description" json:"description"`
-	Instructions string `bun:"instructions" json:"instructions"`
-	IconURL      string `bun:"icon_url" json:"iconUrl"`
-	CategoryID   *int64 `bun:"category_id" json:"categoryId"`
-	CategoryName string `bun:"category_name" json:"categoryName"`
-	Source       string `bun:"source" json:"source"`
-	IsEnabled    bool   `bun:"is_enabled" json:"isEnabled"`
-	UpdatedAt    string `bun:"updated_at" json:"updatedAt"`
-	SyncedAt     string `bun:"synced_at" json:"syncedAt"`
+	ID           int64   `bun:"id" json:"id"`
+	BackendID    int64   `bun:"backend_id" json:"backendId"`
+	SkillName    string  `bun:"skill_name" json:"skillName"`
+	Locale       string  `bun:"locale" json:"locale"`
+	Name         string  `bun:"name" json:"name"`
+	Description  string  `bun:"description" json:"description"`
+	Instructions string  `bun:"instructions" json:"instructions"`
+	IconURL      string  `bun:"icon_url" json:"iconUrl"`
+	CategoryID   *int64  `bun:"category_id" json:"categoryId"`
+	CategoryName string  `bun:"category_name" json:"categoryName"`
+	Source       string  `bun:"source" json:"source"`
+	IsEnabled    bool    `bun:"is_enabled" json:"isEnabled"`
+	UpdatedAt    string  `bun:"updated_at" json:"updatedAt"`
+	SyncedAt     string  `bun:"synced_at" json:"syncedAt"`
+	DeletedAt    *string `bun:"deleted_at" json:"deletedAt,omitempty"`
 }
 
 // CachedCategory 缓存分类模型
@@ -197,6 +198,26 @@ func (s *SyncService) checkCategoriesUpdate(ctx context.Context, locale string) 
 		return false, nil
 	}
 
+	// 检查本地分类数量是否与后端一致
+	localCount, err := s.countLocalCategories(ctx, locale)
+	if err != nil {
+		log.Printf("[skillmarket] checkCategoriesUpdate: countLocalCategories failed, skip sync (locale=%s): %v", locale, err)
+		return false, nil
+	}
+
+	// 获取后端分类数量
+	remoteCount, err := s.getRemoteCategoryCount(ctx, locale)
+	if err != nil {
+		log.Printf("[skillmarket] checkCategoriesUpdate: getRemoteCategoryCount failed, skip sync (locale=%s): %v", locale, err)
+		return false, nil
+	}
+
+	// 条数不一致时触发全量同步
+	if localCount != remoteCount {
+		log.Printf("[skillmarket] checkCategoriesUpdate: localCount=%d, remoteCount=%d, trigger full sync (locale=%s)", localCount, remoteCount, locale)
+		return true, s.fullSyncCategories(ctx, locale)
+	}
+
 	if remoteMaxAt == "" || !remoteMaxAtAfter(localMaxAt, remoteMaxAt) {
 		return false, nil
 	}
@@ -204,7 +225,25 @@ func (s *SyncService) checkCategoriesUpdate(ctx context.Context, locale string) 
 	return true, s.incrementalSyncCategories(ctx, locale, localMaxAt)
 }
 
-// remoteMaxAtAfter 比较两个 RFC3339 时间字符串，a 是否在 b 之前
+// getRemoteCategoryCount 获取后端分类数量
+func (s *SyncService) getRemoteCategoryCount(ctx context.Context, locale string) (int64, error) {
+	reqURL := fmt.Sprintf("%s/skill-category/list?locale=%s", s.serverURL, url.QueryEscape(locale))
+	body, err := s.httpGet(ctx, reqURL)
+	if err != nil {
+		return 0, err
+	}
+
+	var resp struct {
+		Data []struct {
+			ID int64 `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return 0, err
+	}
+	return int64(len(resp.Data)), nil
+}
+
 func remoteMaxAtAfter(a, b string) bool {
 	if a == "" {
 		return true
@@ -250,7 +289,7 @@ func (s *SyncService) getLocalSkillsMaxUpdatedAt(locale string) (string, error) 
 	}
 	err := s.getDB().NewSelect().
 		ColumnExpr("MAX(updated_at) as max_updated_at").
-		Where("locale = ?", locale).
+		Where("locale = ? AND deleted_at IS NULL", locale).
 		Table("skill_market_skills").
 		Scan(context.Background(), &row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -323,6 +362,22 @@ func (s *SyncService) getRemoteCategoriesMaxUpdatedAt(ctx context.Context) (stri
 	return resp.Data.MaxUpdatedAt, nil
 }
 
+// countLocalCategories 获取本地分类数量
+func (s *SyncService) countLocalCategories(ctx context.Context, locale string) (int64, error) {
+	var row struct {
+		TotalCount int64 `bun:"total_count"`
+	}
+	err := s.getDB().NewSelect().
+		Table("skill_market_categories").
+		ColumnExpr("COUNT(*) AS total_count").
+		Where("locale = ?", locale).
+		Scan(ctx, &row)
+	if err != nil {
+		return 0, err
+	}
+	return row.TotalCount, nil
+}
+
 // fullSyncSkills 全量同步技能
 func (s *SyncService) fullSyncSkills(ctx context.Context, locale string) error {
 	reqURL := fmt.Sprintf("%s/skill/list?page=1&pageSize=9999&locale=%s", s.serverURL, url.QueryEscape(locale))
@@ -336,17 +391,18 @@ func (s *SyncService) fullSyncSkills(ctx context.Context, locale string) error {
 	var resp struct {
 		Data struct {
 			Items []struct {
-				ID           int64  `json:"id"`
-				SkillName    string `json:"skillName"`
-				Name         string `json:"name"`
-				Description  string `json:"description"`
-				Instructions string `json:"instructions"`
-				IconURL      string `json:"iconUrl"`
-				CategoryID   *int64 `json:"categoryId"`
-				CategoryName string `json:"categoryName"`
-				Source       string `json:"source"`
-				IsEnabled    bool   `json:"isEnabled"`
-				UpdatedAt    string `json:"updatedAt"`
+				ID           int64   `json:"id"`
+				SkillName    string  `json:"skillName"`
+				Name         string  `json:"name"`
+				Description  string  `json:"description"`
+				Instructions string  `json:"instructions"`
+				IconURL      string  `json:"iconUrl"`
+				CategoryID   *int64  `json:"categoryId"`
+				CategoryName string  `json:"categoryName"`
+				Source       string  `json:"source"`
+				IsEnabled    bool    `json:"isEnabled"`
+				UpdatedAt    string  `json:"updatedAt"`
+				DeletedAt    *string `json:"deletedAt,omitempty"`
 			} `json:"items"`
 		} `json:"data"`
 	}
@@ -383,10 +439,11 @@ func (s *SyncService) fullSyncSkills(ctx context.Context, locale string) error {
 			IsEnabled:    item.IsEnabled,
 			UpdatedAt:    item.UpdatedAt,
 			SyncedAt:     now,
+			DeletedAt:    item.DeletedAt,
 		}
 		_, err = s.getDB().ExecContext(ctx, `
-			INSERT INTO skill_market_skills (skill_name, locale, name, description, instructions, icon_url, category_id, category_name, source, is_enabled, updated_at, synced_at, backend_id)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			INSERT INTO skill_market_skills (skill_name, locale, name, description, instructions, icon_url, category_id, category_name, source, is_enabled, updated_at, synced_at, backend_id, deleted_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(skill_name, locale) DO UPDATE SET
 				backend_id = excluded.backend_id,
 				name = excluded.name,
@@ -398,8 +455,9 @@ func (s *SyncService) fullSyncSkills(ctx context.Context, locale string) error {
 				source = excluded.source,
 				is_enabled = excluded.is_enabled,
 				updated_at = excluded.updated_at,
-				synced_at = excluded.synced_at
-		`, skill.SkillName, skill.Locale, skill.Name, skill.Description, skill.Instructions, skill.IconURL, skill.CategoryID, skill.CategoryName, skill.Source, skill.IsEnabled, skill.UpdatedAt, skill.SyncedAt, skill.BackendID)
+				synced_at = excluded.synced_at,
+				deleted_at = excluded.deleted_at
+		`, skill.SkillName, skill.Locale, skill.Name, skill.Description, skill.Instructions, skill.IconURL, skill.CategoryID, skill.CategoryName, skill.Source, skill.IsEnabled, skill.UpdatedAt, skill.SyncedAt, skill.BackendID, skill.DeletedAt)
 		if err != nil {
 			return fmt.Errorf("insert skill %s: %w", item.SkillName, err)
 		}
@@ -418,7 +476,7 @@ func (s *SyncService) countLocalSkills(ctx context.Context, locale string) (int6
 	err := s.getDB().NewSelect().
 		Table("skill_market_skills").
 		ColumnExpr("COUNT(*) AS total_count").
-		Where("locale = ?", locale).
+		Where("locale = ? AND deleted_at IS NULL", locale).
 		Scan(ctx, &row)
 	if err != nil {
 		return 0, err
@@ -444,7 +502,8 @@ func (s *SyncService) ensureSkillCountConsistency(ctx context.Context, locale st
 		}
 		debugInfo.LocalCountAfter = localCount
 	}
-	if localCount >= remoteTotalCount {
+	// 条数一致时不需要同步
+	if localCount == remoteTotalCount {
 		return false, nil
 	}
 
@@ -465,14 +524,14 @@ func (s *SyncService) ensureSkillCountConsistency(ctx context.Context, locale st
 	if debugInfo != nil {
 		debugInfo.LocalCountAfter = localCount
 	}
-	if localCount >= remoteTotalCount {
+	if localCount == remoteTotalCount {
 		return true, nil
 	}
 
 	if debugInfo != nil {
 		debugInfo.RepairFullSyncCount++
 	}
-	log.Printf("[skillmarket] ensureSkillCountConsistency: localCount=%d still less than remoteTotalCount=%d after full sync, retry once (locale=%s)", localCount, remoteTotalCount, locale)
+	log.Printf("[skillmarket] ensureSkillCountConsistency: localCount=%d still != remoteTotalCount=%d after full sync, retry once (locale=%s)", localCount, remoteTotalCount, locale)
 	if err := s.fullSyncSkills(ctx, locale); err != nil {
 		return true, err
 	}
@@ -484,7 +543,7 @@ func (s *SyncService) ensureSkillCountConsistency(ctx context.Context, locale st
 	if debugInfo != nil {
 		debugInfo.LocalCountAfter = localCount
 	}
-	if localCount < remoteTotalCount {
+	if localCount != remoteTotalCount {
 		return true, fmt.Errorf("skill count mismatch after repair sync: local=%d remote=%d locale=%s", localCount, remoteTotalCount, locale)
 	}
 	return true, nil
@@ -500,17 +559,18 @@ func (s *SyncService) incrementalSyncSkills(ctx context.Context, locale string, 
 	var resp struct {
 		Data struct {
 			Items []struct {
-				ID           int64  `json:"id"`
-				SkillName    string `json:"skillName"`
-				Name         string `json:"name"`
-				Description  string `json:"description"`
-				Instructions string `json:"instructions"`
-				IconURL      string `json:"iconUrl"`
-				CategoryID   *int64 `json:"categoryId"`
-				CategoryName string `json:"categoryName"`
-				Source       string `json:"source"`
-				IsEnabled    bool   `json:"isEnabled"`
-				UpdatedAt    string `json:"updatedAt"`
+				ID           int64   `json:"id"`
+				SkillName    string  `json:"skillName"`
+				Name         string  `json:"name"`
+				Description  string  `json:"description"`
+				Instructions string  `json:"instructions"`
+				IconURL      string  `json:"iconUrl"`
+				CategoryID   *int64  `json:"categoryId"`
+				CategoryName string  `json:"categoryName"`
+				Source       string  `json:"source"`
+				IsEnabled    bool    `json:"isEnabled"`
+				UpdatedAt    string  `json:"updatedAt"`
+				DeletedAt    *string `json:"deletedAt,omitempty"`
 			} `json:"items"`
 		} `json:"data"`
 	}
@@ -527,48 +587,65 @@ func (s *SyncService) incrementalSyncSkills(ctx context.Context, locale string, 
 			maxUpdatedAt = item.UpdatedAt
 		}
 
-		if !item.IsEnabled {
-			// 删除本地记录（禁用技能）
-			_, _ = s.getDB().NewDelete().
+		// 检查是否被软删除（后端返回 deleted_at 不为空）
+		if item.DeletedAt != nil && *item.DeletedAt != "" {
+			// 软删除：设置 deleted_at 字段
+			_, _ = s.getDB().NewUpdate().
 				Table("skill_market_skills").
+				Set("deleted_at = ?", *item.DeletedAt).
+				Set("synced_at = ?", now).
 				Where("skill_name = ? AND locale = ?", item.SkillName, locale).
 				Exec(ctx)
-		} else {
-			// 更新或插入
-			skill := CachedSkill{
-				BackendID:    item.ID,
-				SkillName:    item.SkillName,
-				Locale:       locale,
-				Name:         item.Name,
-				Description:  item.Description,
-				Instructions: item.Instructions,
-				IconURL:      item.IconURL,
-				CategoryID:   item.CategoryID,
-				CategoryName: item.CategoryName,
-				Source:       item.Source,
-				IsEnabled:    item.IsEnabled,
-				UpdatedAt:    item.UpdatedAt,
-				SyncedAt:     now,
-			}
-			_, err = s.getDB().ExecContext(ctx, `
-				INSERT INTO skill_market_skills (skill_name, locale, name, description, instructions, icon_url, category_id, category_name, source, is_enabled, updated_at, synced_at, backend_id)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-				ON CONFLICT(skill_name, locale) DO UPDATE SET
-					backend_id = excluded.backend_id,
-					name = excluded.name,
-					description = excluded.description,
-					instructions = excluded.instructions,
-					icon_url = excluded.icon_url,
-					category_id = excluded.category_id,
-					category_name = excluded.category_name,
-					source = excluded.source,
-					is_enabled = excluded.is_enabled,
-					updated_at = excluded.updated_at,
-					synced_at = excluded.synced_at
-			`, skill.SkillName, skill.Locale, skill.Name, skill.Description, skill.Instructions, skill.IconURL, skill.CategoryID, skill.CategoryName, skill.Source, skill.IsEnabled, skill.UpdatedAt, skill.SyncedAt, skill.BackendID)
-			if err != nil {
-				return fmt.Errorf("upsert skill %s: %w", item.SkillName, err)
-			}
+			continue
+		}
+
+		// 如果被硬删除（is_enabled=false 且没有 deleted_at），也执行软删除
+		if !item.IsEnabled {
+			_, _ = s.getDB().NewUpdate().
+				Table("skill_market_skills").
+				Set("deleted_at = ?", now).
+				Set("synced_at = ?", now).
+				Where("skill_name = ? AND locale = ?", item.SkillName, locale).
+				Exec(ctx)
+			continue
+		}
+
+		// 更新或插入
+		skill := CachedSkill{
+			BackendID:    item.ID,
+			SkillName:    item.SkillName,
+			Locale:       locale,
+			Name:         item.Name,
+			Description:  item.Description,
+			Instructions: item.Instructions,
+			IconURL:      item.IconURL,
+			CategoryID:   item.CategoryID,
+			CategoryName: item.CategoryName,
+			Source:       item.Source,
+			IsEnabled:    item.IsEnabled,
+			UpdatedAt:    item.UpdatedAt,
+			SyncedAt:     now,
+			DeletedAt:    nil, // 恢复已删除的技能
+		}
+		_, err = s.getDB().ExecContext(ctx, `
+			INSERT INTO skill_market_skills (skill_name, locale, name, description, instructions, icon_url, category_id, category_name, source, is_enabled, updated_at, synced_at, backend_id, deleted_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(skill_name, locale) DO UPDATE SET
+				backend_id = excluded.backend_id,
+				name = excluded.name,
+				description = excluded.description,
+				instructions = excluded.instructions,
+				icon_url = excluded.icon_url,
+				category_id = excluded.category_id,
+				category_name = excluded.category_name,
+				source = excluded.source,
+				is_enabled = excluded.is_enabled,
+				updated_at = excluded.updated_at,
+				synced_at = excluded.synced_at,
+				deleted_at = excluded.deleted_at
+		`, skill.SkillName, skill.Locale, skill.Name, skill.Description, skill.Instructions, skill.IconURL, skill.CategoryID, skill.CategoryName, skill.Source, skill.IsEnabled, skill.UpdatedAt, skill.SyncedAt, skill.BackendID, skill.DeletedAt)
+		if err != nil {
+			return fmt.Errorf("upsert skill %s: %w", item.SkillName, err)
 		}
 	}
 
@@ -715,11 +792,11 @@ func (s *SyncService) upsertSyncMeta(ctx context.Context, key, value string) err
 	return err
 }
 
-// GetCachedSkills 获取缓存技能列表（只返回 is_enabled=true 的）
+// GetCachedSkills 获取缓存技能列表（只返回 is_enabled=true 且未删除的）
 func (s *SyncService) GetCachedSkills(ctx context.Context, categoryID *int64, locale string) ([]CachedSkill, error) {
 	query := s.getDB().NewSelect().
 		Table("skill_market_skills").
-		Where("locale = ? AND is_enabled = ?", locale, true).
+		Where("locale = ? AND is_enabled = ? AND deleted_at IS NULL", locale, true).
 		Order("id ASC")
 
 	if categoryID != nil && *categoryID > 0 {
@@ -753,7 +830,7 @@ func (s *SyncService) GetCachedSkillByName(ctx context.Context, skillName, local
 	var skill CachedSkill
 	err := s.getDB().NewSelect().
 		Table("skill_market_skills").
-		Where("skill_name = ? AND locale = ?", skillName, locale).
+		Where("skill_name = ? AND locale = ? AND deleted_at IS NULL", skillName, locale).
 		Scan(ctx, &skill)
 	if err != nil {
 		if err == sql.ErrNoRows {

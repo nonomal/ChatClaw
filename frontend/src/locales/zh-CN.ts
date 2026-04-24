@@ -1241,7 +1241,7 @@ export default {
         sandbox_all: '所有助手启用',
         sandboxModeHint: '沙箱可隔离命令执行环境，防止助手直接操作宿主系统',
         groupChatMentionPatterns: '群聊提及模式',
-        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
+        groupChatMentionPatternsPlaceholder: "'@'assistant, '@'bot",
         groupChatInsertPreset: '插入预设',
         groupChatMentionPatternsHint: '匹配消息中的提及模式以触发助手响应，多个用逗号分隔',
         tools: '工具配置',

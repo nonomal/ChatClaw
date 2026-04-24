@@ -1291,7 +1291,7 @@ export default {
         sandbox_off: '비활성화',
         sandbox_all: '모든 에이전트',
         groupChatMentionPatterns: '그룹 채팅 멘션 패턴',
-        groupChatMentionPatternsPlaceholder: '{"@"}어시스턴트, {"@"}봇',
+        groupChatMentionPatternsPlaceholder: "'@'어시스턴트, '@'봇",
         groupChatInsertPreset: '프리셋 삽입',
         tools: '도구 설정',
         toolsProfile: '도구 프리셋',

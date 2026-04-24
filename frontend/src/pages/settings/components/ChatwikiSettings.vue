@@ -397,6 +397,8 @@ function listenAuthCallback() {
       authUser.value = data
       // Reload binding to get the authoritative version from backend
       await loadBinding(true)
+      // Sync pendingLoginSource with authoritative version from backend
+      pendingLoginSource.value = currentBinding.value?.chatwiki_version === 'yun' ? 'cloud' : 'open-source'
       await ProvidersService.GetProviderWithModels('chatwiki')
       await refreshBindingStateAndModelViews()
       view.value = 'success'
@@ -432,7 +434,7 @@ async function handleLoginCloud() {
   listenAuthCallback()
 }
 
-async function saveBindingFromCallback(data: AuthCallbackData) {
+async function saveBindingFromCallback(data: AuthCallbackData): Promise<void> {
   const methodNames = [
     'chatclaw/internal/services/chatwiki.ChatWikiService.SaveBindingFromCallback',
     'ChatWikiService.SaveBindingFromCallback',

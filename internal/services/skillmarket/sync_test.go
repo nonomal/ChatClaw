@@ -202,6 +202,149 @@ func TestFullSyncSkipsPreExistingIdConflict(t *testing.T) {
 	}
 }
 
+func TestFullSyncSoftDeletesSkills(t *testing.T) {
+	t.Parallel()
+
+	db := newTestSkillMarketDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+
+	now := "2026-04-23T10:30:00+08:00"
+
+	// 预先插入两个技能
+	if _, err := db.Exec(
+		`INSERT INTO skill_market_skills (skill_name, locale, name, updated_at, synced_at) VALUES (?, ?, ?, ?, ?)`,
+		"alpha", "zh-CN", "Alpha", now, now,
+	); err != nil {
+		t.Fatalf("seed skill alpha: %v", err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO skill_market_skills (skill_name, locale, name, updated_at, synced_at) VALUES (?, ?, ?, ?, ?)`,
+		"beta", "zh-CN", "Beta", now, now,
+	); err != nil {
+		t.Fatalf("seed skill beta: %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": map[string]any{
+				"items": []map[string]any{
+					// 后端只返回 alpha，beta 已被删除
+					{
+						"id":           1,
+						"skillName":    "alpha",
+						"name":         "Alpha",
+						"description":  "alpha-desc",
+						"instructions": "alpha-instructions",
+						"iconUrl":      "https://example.com/a.png",
+						"categoryName": "General",
+						"source":       "chatclaw",
+						"isEnabled":    true,
+						"updatedAt":    now,
+					},
+				},
+				"total": 1,
+			},
+		})
+	}))
+	defer server.Close()
+
+	svc := &SyncService{
+		db:         db,
+		httpClient: &http.Client{Timeout: 2 * time.Second},
+		serverURL:  server.URL,
+	}
+
+	if err := svc.fullSyncSkills(context.Background(), "zh-CN"); err != nil {
+		t.Fatalf("fullSyncSkills returned error: %v", err)
+	}
+
+	// 验证：只有一条记录（beta 被清除了）
+	count, err := svc.countLocalSkills(context.Background(), "zh-CN")
+	if err != nil {
+		t.Fatalf("countLocalSkills returned error: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 local skill after fullSync (beta deleted), got %d", count)
+	}
+}
+
+func TestIncrementalSyncSoftDeletesSkills(t *testing.T) {
+	t.Parallel()
+
+	db := newTestSkillMarketDB(t)
+	t.Cleanup(func() { _ = db.Close() })
+
+	now := "2026-04-23T10:30:00+08:00"
+	old := "2026-04-23T09:00:00+08:00"
+	deletedAt := "2026-04-23T10:00:00+08:00"
+
+	// 预先插入一个技能
+	if _, err := db.Exec(
+		`INSERT INTO skill_market_skills (skill_name, locale, name, updated_at, synced_at) VALUES (?, ?, ?, ?, ?)`,
+		"beta", "zh-CN", "Beta", now, now,
+	); err != nil {
+		t.Fatalf("seed skill beta: %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": map[string]any{
+				"items": []map[string]any{
+					// 后端返回 beta 已被删除（deletedAt 不为空）
+					{
+						"id":           2,
+						"skillName":    "beta",
+						"name":         "Beta",
+						"description":  "beta-desc",
+						"instructions": "beta-instructions",
+						"iconUrl":      "https://example.com/b.png",
+						"categoryName": "General",
+						"source":       "chatclaw",
+						"isEnabled":    false,
+						"updatedAt":    deletedAt,
+						"deletedAt":    deletedAt,
+					},
+				},
+			},
+		})
+	}))
+	defer server.Close()
+
+	svc := &SyncService{
+		db:         db,
+		httpClient: &http.Client{Timeout: 2 * time.Second},
+		serverURL:  server.URL,
+	}
+
+	if err := svc.incrementalSyncSkills(context.Background(), "zh-CN", old); err != nil {
+		t.Fatalf("incrementalSyncSkills returned error: %v", err)
+	}
+
+	// 验证：技能被软删除，countLocalSkills 不包含它
+	count, err := svc.countLocalSkills(context.Background(), "zh-CN")
+	if err != nil {
+		t.Fatalf("countLocalSkills returned error: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected 0 local skills after soft delete, got %d", count)
+	}
+
+	// 验证：技能记录存在但有 deleted_at
+	var skill CachedSkill
+	err = db.NewSelect().
+		Table("skill_market_skills").
+		Where("skill_name = ? AND locale = ?", "beta", "zh-CN").
+		Scan(context.Background(), &skill)
+	if err != nil {
+		t.Fatalf("get skill: %v", err)
+	}
+	if skill.DeletedAt == nil || *skill.DeletedAt == "" {
+		t.Fatalf("expected deleted_at to be set, got nil")
+	}
+}
+
 func TestIncrementalSyncSkipsPreExistingIdConflict(t *testing.T) {
 	t.Parallel()
 
@@ -299,6 +442,7 @@ func newTestSkillMarketDB(t *testing.T) *bun.DB {
 			is_enabled INTEGER DEFAULT 1,
 			updated_at TEXT NOT NULL,
 			synced_at TEXT NOT NULL,
+			deleted_at TEXT,
 			UNIQUE(skill_name, locale)
 		);`,
 		`CREATE TABLE skill_market_sync_meta (

@@ -1138,7 +1138,7 @@ export default {
         sandbox_off: 'নিষ্ক্রিয়',
         sandbox_all: 'সকল এজেন্ট',
         groupChatMentionPatterns: 'গ্রুপ চ্যাট মেনশন প্যাটার্ন',
-        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
+        groupChatMentionPatternsPlaceholder: "'@'assistant, '@'bot",
         groupChatInsertPreset: 'প্রিসেট সন্নিবেশ করুন',
         tools: 'টুল কনফিগারেশন',
         toolsProfile: 'টুল প্রোফাইল',
