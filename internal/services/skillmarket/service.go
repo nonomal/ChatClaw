@@ -349,6 +349,7 @@ type SkillCategory struct {
 
 type Skill struct {
 	ID           int64  `json:"id"`
+	BackendID    int64  `json:"backendId"`
 	CategoryID   *int64 `json:"categoryId"`
 	CategoryName string `json:"categoryName,omitempty"`
 	IsBuiltin    bool   `json:"isBuiltin"`
@@ -870,7 +871,7 @@ func (s *Service) installFromSkillhub(ctx context.Context, skill Skill, st *targ
 }
 
 func (s *Service) installFromChatclaw(ctx context.Context, skill Skill, st *targetState) error {
-	downloadURL, err := s.GetSkillDownloadURL(ctx, skill.ID)
+	downloadURL, err := s.GetSkillDownloadURL(ctx, skill.BackendID)
 	if err != nil {
 		return fmt.Errorf("get download URL: %w", err)
 	}
@@ -881,7 +882,7 @@ func (s *Service) installFromChatclaw(ctx context.Context, skill Skill, st *targ
 	}
 	defer os.RemoveAll(tmpDir)
 
-	zipPath := filepath.Join(tmpDir, fmt.Sprintf("skill-%d.zip", skill.ID))
+	zipPath := filepath.Join(tmpDir, fmt.Sprintf("skill-%d.zip", skill.BackendID))
 	if err := s.downloadFile(ctx, downloadURL, zipPath); err != nil {
 		return fmt.Errorf("download skill zip: %w", err)
 	}

@@ -22,19 +22,20 @@ import (
 
 // CachedSkill 缓存技能模型
 type CachedSkill struct {
-	ID            int64  `bun:"id" json:"id"`
-	SkillName     string `bun:"skill_name" json:"skillName"`
-	Locale        string `bun:"locale" json:"locale"`
-	Name          string `bun:"name" json:"name"`
-	Description   string `bun:"description" json:"description"`
-	Instructions  string `bun:"instructions" json:"instructions"`
-	IconURL       string `bun:"icon_url" json:"iconUrl"`
-	CategoryID    *int64 `bun:"category_id" json:"categoryId"`
-	CategoryName  string `bun:"category_name" json:"categoryName"`
-	Source        string `bun:"source" json:"source"`
-	IsEnabled     bool   `bun:"is_enabled" json:"isEnabled"`
-	UpdatedAt     string `bun:"updated_at" json:"updatedAt"`
-	SyncedAt      string `bun:"synced_at" json:"syncedAt"`
+	ID           int64  `bun:"id" json:"id"`
+	BackendID    int64  `bun:"backend_id" json:"backendId"`
+	SkillName    string `bun:"skill_name" json:"skillName"`
+	Locale       string `bun:"locale" json:"locale"`
+	Name         string `bun:"name" json:"name"`
+	Description  string `bun:"description" json:"description"`
+	Instructions string `bun:"instructions" json:"instructions"`
+	IconURL      string `bun:"icon_url" json:"iconUrl"`
+	CategoryID   *int64 `bun:"category_id" json:"categoryId"`
+	CategoryName string `bun:"category_name" json:"categoryName"`
+	Source       string `bun:"source" json:"source"`
+	IsEnabled    bool   `bun:"is_enabled" json:"isEnabled"`
+	UpdatedAt    string `bun:"updated_at" json:"updatedAt"`
+	SyncedAt     string `bun:"synced_at" json:"syncedAt"`
 }
 
 // CachedCategory 缓存分类模型
@@ -53,6 +54,27 @@ type SyncService struct {
 	db         *bun.DB
 	httpClient *http.Client
 	serverURL  string
+	debugInfo  *SkillSyncDebugInfo
+}
+
+type remoteSkillSyncMeta struct {
+	MaxUpdatedAt string
+	TotalCount   int64
+}
+
+type SkillSyncDebugInfo struct {
+	Locale               string `json:"locale"`
+	Decision             string `json:"decision"`
+	LocalMaxUpdatedAt    string `json:"localMaxUpdatedAt"`
+	RemoteMaxUpdatedAt   string `json:"remoteMaxUpdatedAt"`
+	RemoteTotalCount     int64  `json:"remoteTotalCount"`
+	LocalCountBefore     int64  `json:"localCountBefore"`
+	LocalCountAfter      int64  `json:"localCountAfter"`
+	PerformedIncremental bool   `json:"performedIncremental"`
+	PerformedFullSync    bool   `json:"performedFullSync"`
+	TriggeredByCountFix  bool   `json:"triggeredByCountFix"`
+	RepairFullSyncCount  int    `json:"repairFullSyncCount"`
+	Updated              bool   `json:"updated"`
 }
 
 // NewSyncService 创建同步服务
@@ -67,6 +89,14 @@ func NewSyncService() *SyncService {
 // getDB returns the DB instance (avoids field/method name conflict)
 func (s *SyncService) getDB() *bun.DB {
 	return s.db
+}
+
+func (s *SyncService) LastSkillSyncDebugInfo() *SkillSyncDebugInfo {
+	if s.debugInfo == nil {
+		return nil
+	}
+	info := *s.debugInfo
+	return &info
 }
 
 // CheckAndSync 检查并同步，返回是否有更新
@@ -86,27 +116,70 @@ func (s *SyncService) CheckAndSync(ctx context.Context, locale string) (bool, er
 
 // checkSkillsUpdate 检查技能更新
 func (s *SyncService) checkSkillsUpdate(ctx context.Context, locale string) (bool, error) {
+	debugInfo := &SkillSyncDebugInfo{Locale: locale}
+	s.debugInfo = debugInfo
+
 	localMaxAt, err := s.getLocalSkillsMaxUpdatedAt(locale)
+	debugInfo.LocalMaxUpdatedAt = localMaxAt
 	if err != nil || localMaxAt == "" {
-		// 本地无数据，尝试全量同步（即使失败也不影响，因为本来就没数据）
+		debugInfo.Decision = "local-empty"
+		debugInfo.PerformedFullSync = true
+		debugInfo.Updated = true
 		log.Printf("[skillmarket] checkSkillsUpdate: local empty, performing full sync (locale=%s)", locale)
-		return true, s.fullSyncSkills(ctx, locale)
+		if fullSyncErr := s.fullSyncSkills(ctx, locale); fullSyncErr != nil {
+			return true, fullSyncErr
+		}
+		s.populateLocalCountAfter(ctx, locale, debugInfo)
+		return true, nil
 	}
 
-	// 本地有数据，对比后端时间来判断是否需要增量同步
-	remoteMaxAt, err := s.getRemoteSkillsMaxUpdatedAt(ctx)
+	localCountBefore, countErr := s.countLocalSkills(ctx, locale)
+	if countErr == nil {
+		debugInfo.LocalCountBefore = localCountBefore
+	}
+
+	remoteMeta, err := s.getRemoteSkillsSyncMeta(ctx)
 	if err != nil {
-		// 后端不可达，有本地数据则跳过同步（保留本地缓存）
+		debugInfo.Decision = "remote-unavailable"
+		debugInfo.LocalCountAfter = debugInfo.LocalCountBefore
 		log.Printf("[skillmarket] checkSkillsUpdate: remote unavailable, skip sync (locale=%s): %v", locale, err)
 		return false, nil
 	}
+	debugInfo.RemoteMaxUpdatedAt = remoteMeta.MaxUpdatedAt
+	debugInfo.RemoteTotalCount = remoteMeta.TotalCount
 
-	log.Printf("[skillmarket] checkSkillsUpdate: localMaxAt=%s, remoteMaxAt=%s (locale=%s)", localMaxAt, remoteMaxAt, locale)
-	if remoteMaxAt == "" || !remoteMaxAtAfter(localMaxAt, remoteMaxAt) {
-		return false, nil
+	log.Printf("[skillmarket] checkSkillsUpdate: localMaxAt=%s, remoteMaxAt=%s, remoteTotalCount=%d (locale=%s)", localMaxAt, remoteMeta.MaxUpdatedAt, remoteMeta.TotalCount, locale)
+	if remoteMeta.MaxUpdatedAt != "" && remoteMaxAtAfter(localMaxAt, remoteMeta.MaxUpdatedAt) {
+		debugInfo.Decision = "remote-newer"
+		debugInfo.PerformedIncremental = true
+		debugInfo.Updated = true
+		if err := s.incrementalSyncSkills(ctx, locale, localMaxAt); err != nil {
+			return true, err
+		}
+		updated, ensureErr := s.ensureSkillCountConsistency(ctx, locale, remoteMeta.TotalCount, debugInfo)
+		if !updated {
+			s.populateLocalCountAfter(ctx, locale, debugInfo)
+		}
+		return true, ensureErr
 	}
 
-	return true, s.incrementalSyncSkills(ctx, locale, localMaxAt)
+	debugInfo.Decision = "time-up-to-date"
+	updated, ensureErr := s.ensureSkillCountConsistency(ctx, locale, remoteMeta.TotalCount, debugInfo)
+	debugInfo.Updated = updated
+	if !updated {
+		s.populateLocalCountAfter(ctx, locale, debugInfo)
+	}
+	return updated, ensureErr
+}
+
+func (s *SyncService) populateLocalCountAfter(ctx context.Context, locale string, debugInfo *SkillSyncDebugInfo) {
+	if debugInfo == nil {
+		return
+	}
+	localCountAfter, err := s.countLocalSkills(ctx, locale)
+	if err == nil {
+		debugInfo.LocalCountAfter = localCountAfter
+	}
 }
 
 // checkCategoriesUpdate 检查分类更新
@@ -209,22 +282,26 @@ func (s *SyncService) getLocalCategoriesMaxUpdatedAt(locale string) (string, err
 }
 
 // getRemoteSkillsMaxUpdatedAt 获取后端技能最大更新时间
-func (s *SyncService) getRemoteSkillsMaxUpdatedAt(ctx context.Context) (string, error) {
+func (s *SyncService) getRemoteSkillsSyncMeta(ctx context.Context) (*remoteSkillSyncMeta, error) {
 	reqURL := fmt.Sprintf("%s/skill/max-updated-at", s.serverURL)
 	body, err := s.httpGet(ctx, reqURL)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var resp struct {
 		Data struct {
 			MaxUpdatedAt string `json:"maxUpdatedAt"`
+			TotalCount   int64  `json:"totalCount"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return "", fmt.Errorf("parse max-updated-at response: %w", err)
+		return nil, fmt.Errorf("parse max-updated-at response: %w", err)
 	}
-	return resp.Data.MaxUpdatedAt, nil
+	return &remoteSkillSyncMeta{
+		MaxUpdatedAt: resp.Data.MaxUpdatedAt,
+		TotalCount:   resp.Data.TotalCount,
+	}, nil
 }
 
 // getRemoteCategoriesMaxUpdatedAt 获取后端分类最大更新时间
@@ -248,7 +325,7 @@ func (s *SyncService) getRemoteCategoriesMaxUpdatedAt(ctx context.Context) (stri
 
 // fullSyncSkills 全量同步技能
 func (s *SyncService) fullSyncSkills(ctx context.Context, locale string) error {
-	reqURL := fmt.Sprintf("%s/skill/list?page=1&page_size=9999&locale=%s", s.serverURL, url.QueryEscape(locale))
+	reqURL := fmt.Sprintf("%s/skill/list?page=1&pageSize=9999&locale=%s", s.serverURL, url.QueryEscape(locale))
 	log.Printf("[skillmarket] fullSyncSkills: fetching %s", reqURL)
 	body, err := s.httpGet(ctx, reqURL)
 	if err != nil {
@@ -259,17 +336,17 @@ func (s *SyncService) fullSyncSkills(ctx context.Context, locale string) error {
 	var resp struct {
 		Data struct {
 			Items []struct {
-				ID            int64  `json:"id"`
-				SkillName     string `json:"skillName"`
-				Name          string `json:"name"`
-				Description   string `json:"description"`
-				Instructions  string `json:"instructions"`
-				IconURL       string `json:"iconUrl"`
-				CategoryID    *int64 `json:"categoryId"`
-				CategoryName  string `json:"categoryName"`
-				Source        string `json:"source"`
-				IsEnabled     bool   `json:"isEnabled"`
-				UpdatedAt     string `json:"updatedAt"`
+				ID           int64  `json:"id"`
+				SkillName    string `json:"skillName"`
+				Name         string `json:"name"`
+				Description  string `json:"description"`
+				Instructions string `json:"instructions"`
+				IconURL      string `json:"iconUrl"`
+				CategoryID   *int64 `json:"categoryId"`
+				CategoryName string `json:"categoryName"`
+				Source       string `json:"source"`
+				IsEnabled    bool   `json:"isEnabled"`
+				UpdatedAt    string `json:"updatedAt"`
 			} `json:"items"`
 		} `json:"data"`
 	}
@@ -293,12 +370,12 @@ func (s *SyncService) fullSyncSkills(ctx context.Context, locale string) error {
 	// 写入全部数据
 	for _, item := range resp.Data.Items {
 		skill := CachedSkill{
-			ID:           item.ID,
+			BackendID:    item.ID,
 			SkillName:    item.SkillName,
 			Locale:       locale,
 			Name:         item.Name,
 			Description:  item.Description,
-			Instructions:  item.Instructions,
+			Instructions: item.Instructions,
 			IconURL:      item.IconURL,
 			CategoryID:   item.CategoryID,
 			CategoryName: item.CategoryName,
@@ -308,9 +385,10 @@ func (s *SyncService) fullSyncSkills(ctx context.Context, locale string) error {
 			SyncedAt:     now,
 		}
 		_, err = s.getDB().ExecContext(ctx, `
-			INSERT INTO skill_market_skills (id, skill_name, locale, name, description, instructions, icon_url, category_id, category_name, source, is_enabled, updated_at, synced_at)
+			INSERT INTO skill_market_skills (skill_name, locale, name, description, instructions, icon_url, category_id, category_name, source, is_enabled, updated_at, synced_at, backend_id)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(skill_name, locale) DO UPDATE SET
+				backend_id = excluded.backend_id,
 				name = excluded.name,
 				description = excluded.description,
 				instructions = excluded.instructions,
@@ -321,7 +399,7 @@ func (s *SyncService) fullSyncSkills(ctx context.Context, locale string) error {
 				is_enabled = excluded.is_enabled,
 				updated_at = excluded.updated_at,
 				synced_at = excluded.synced_at
-		`, skill.ID, skill.SkillName, skill.Locale, skill.Name, skill.Description, skill.Instructions, skill.IconURL, skill.CategoryID, skill.CategoryName, skill.Source, skill.IsEnabled, skill.UpdatedAt, skill.SyncedAt)
+		`, skill.SkillName, skill.Locale, skill.Name, skill.Description, skill.Instructions, skill.IconURL, skill.CategoryID, skill.CategoryName, skill.Source, skill.IsEnabled, skill.UpdatedAt, skill.SyncedAt, skill.BackendID)
 		if err != nil {
 			return fmt.Errorf("insert skill %s: %w", item.SkillName, err)
 		}
@@ -333,6 +411,85 @@ func (s *SyncService) fullSyncSkills(ctx context.Context, locale string) error {
 }
 
 // incrementalSyncSkills 增量同步技能
+func (s *SyncService) countLocalSkills(ctx context.Context, locale string) (int64, error) {
+	var row struct {
+		TotalCount int64 `bun:"total_count"`
+	}
+	err := s.getDB().NewSelect().
+		Table("skill_market_skills").
+		ColumnExpr("COUNT(*) AS total_count").
+		Where("locale = ?", locale).
+		Scan(ctx, &row)
+	if err != nil {
+		return 0, err
+	}
+	return row.TotalCount, nil
+}
+
+func (s *SyncService) ensureSkillCountConsistency(ctx context.Context, locale string, remoteTotalCount int64, debugInfo *SkillSyncDebugInfo) (bool, error) {
+	if remoteTotalCount <= 0 {
+		if debugInfo != nil {
+			debugInfo.LocalCountAfter = debugInfo.LocalCountBefore
+		}
+		return false, nil
+	}
+
+	localCount, err := s.countLocalSkills(ctx, locale)
+	if err != nil {
+		return false, err
+	}
+	if debugInfo != nil {
+		if debugInfo.LocalCountBefore == 0 {
+			debugInfo.LocalCountBefore = localCount
+		}
+		debugInfo.LocalCountAfter = localCount
+	}
+	if localCount >= remoteTotalCount {
+		return false, nil
+	}
+
+	if debugInfo != nil {
+		debugInfo.TriggeredByCountFix = true
+		debugInfo.PerformedFullSync = true
+		debugInfo.RepairFullSyncCount++
+	}
+	log.Printf("[skillmarket] ensureSkillCountConsistency: localCount=%d, remoteTotalCount=%d, trigger full sync (locale=%s)", localCount, remoteTotalCount, locale)
+	if err := s.fullSyncSkills(ctx, locale); err != nil {
+		return true, err
+	}
+
+	localCount, err = s.countLocalSkills(ctx, locale)
+	if err != nil {
+		return true, err
+	}
+	if debugInfo != nil {
+		debugInfo.LocalCountAfter = localCount
+	}
+	if localCount >= remoteTotalCount {
+		return true, nil
+	}
+
+	if debugInfo != nil {
+		debugInfo.RepairFullSyncCount++
+	}
+	log.Printf("[skillmarket] ensureSkillCountConsistency: localCount=%d still less than remoteTotalCount=%d after full sync, retry once (locale=%s)", localCount, remoteTotalCount, locale)
+	if err := s.fullSyncSkills(ctx, locale); err != nil {
+		return true, err
+	}
+
+	localCount, err = s.countLocalSkills(ctx, locale)
+	if err != nil {
+		return true, err
+	}
+	if debugInfo != nil {
+		debugInfo.LocalCountAfter = localCount
+	}
+	if localCount < remoteTotalCount {
+		return true, fmt.Errorf("skill count mismatch after repair sync: local=%d remote=%d locale=%s", localCount, remoteTotalCount, locale)
+	}
+	return true, nil
+}
+
 func (s *SyncService) incrementalSyncSkills(ctx context.Context, locale string, after string) error {
 	reqURL := fmt.Sprintf("%s/skill/list?updated_after=%s&locale=%s", s.serverURL, url.QueryEscape(after), url.QueryEscape(locale))
 	body, err := s.httpGet(ctx, reqURL)
@@ -343,17 +500,17 @@ func (s *SyncService) incrementalSyncSkills(ctx context.Context, locale string, 
 	var resp struct {
 		Data struct {
 			Items []struct {
-				ID            int64  `json:"id"`
-				SkillName     string `json:"skillName"`
-				Name          string `json:"name"`
-				Description   string `json:"description"`
-				Instructions  string `json:"instructions"`
-				IconURL       string `json:"iconUrl"`
-				CategoryID    *int64 `json:"categoryId"`
-				CategoryName  string `json:"categoryName"`
-				Source        string `json:"source"`
-				IsEnabled     bool   `json:"isEnabled"`
-				UpdatedAt     string `json:"updatedAt"`
+				ID           int64  `json:"id"`
+				SkillName    string `json:"skillName"`
+				Name         string `json:"name"`
+				Description  string `json:"description"`
+				Instructions string `json:"instructions"`
+				IconURL      string `json:"iconUrl"`
+				CategoryID   *int64 `json:"categoryId"`
+				CategoryName string `json:"categoryName"`
+				Source       string `json:"source"`
+				IsEnabled    bool   `json:"isEnabled"`
+				UpdatedAt    string `json:"updatedAt"`
 			} `json:"items"`
 		} `json:"data"`
 	}
@@ -379,7 +536,7 @@ func (s *SyncService) incrementalSyncSkills(ctx context.Context, locale string, 
 		} else {
 			// 更新或插入
 			skill := CachedSkill{
-				ID:           item.ID,
+				BackendID:    item.ID,
 				SkillName:    item.SkillName,
 				Locale:       locale,
 				Name:         item.Name,
@@ -394,9 +551,10 @@ func (s *SyncService) incrementalSyncSkills(ctx context.Context, locale string, 
 				SyncedAt:     now,
 			}
 			_, err = s.getDB().ExecContext(ctx, `
-				INSERT INTO skill_market_skills (id, skill_name, locale, name, description, instructions, icon_url, category_id, category_name, source, is_enabled, updated_at, synced_at)
+				INSERT INTO skill_market_skills (skill_name, locale, name, description, instructions, icon_url, category_id, category_name, source, is_enabled, updated_at, synced_at, backend_id)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(skill_name, locale) DO UPDATE SET
+					backend_id = excluded.backend_id,
 					name = excluded.name,
 					description = excluded.description,
 					instructions = excluded.instructions,
@@ -407,7 +565,7 @@ func (s *SyncService) incrementalSyncSkills(ctx context.Context, locale string, 
 					is_enabled = excluded.is_enabled,
 					updated_at = excluded.updated_at,
 					synced_at = excluded.synced_at
-			`, skill.ID, skill.SkillName, skill.Locale, skill.Name, skill.Description, skill.Instructions, skill.IconURL, skill.CategoryID, skill.CategoryName, skill.Source, skill.IsEnabled, skill.UpdatedAt, skill.SyncedAt)
+			`, skill.SkillName, skill.Locale, skill.Name, skill.Description, skill.Instructions, skill.IconURL, skill.CategoryID, skill.CategoryName, skill.Source, skill.IsEnabled, skill.UpdatedAt, skill.SyncedAt, skill.BackendID)
 			if err != nil {
 				return fmt.Errorf("upsert skill %s: %w", item.SkillName, err)
 			}
