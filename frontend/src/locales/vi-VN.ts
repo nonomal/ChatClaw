@@ -1128,7 +1128,7 @@ export default {
         sandbox_off: 'Vô hiệu hóa',
         sandbox_all: 'Tất cả trợ lý',
         groupChatMentionPatterns: 'Mẫu nhắc trong nhóm',
-        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
+        groupChatMentionPatternsPlaceholder: "'@'assistant, '@'bot",
         groupChatInsertPreset: 'Chèn mẫu',
         tools: 'Cấu hình công cụ',
         toolsProfile: 'Hồ sơ công cụ',

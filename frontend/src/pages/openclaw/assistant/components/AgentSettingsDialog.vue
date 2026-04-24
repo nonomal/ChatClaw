@@ -907,9 +907,7 @@ const handleDelete = async () => {
                     <Input
                       v-model="groupChatMentionPatterns"
                       class="flex-1"
-                      :placeholder="
-                        t('assistant.settings.advanced.groupChatMentionPatternsPlaceholder')
-                      "
+                      placeholder="@assistant, @bot"
                     />
                     <Button
                       v-if="!groupChatMentionPatterns"

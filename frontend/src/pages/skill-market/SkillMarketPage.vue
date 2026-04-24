@@ -199,6 +199,7 @@ const cachedSkillsMap = ref<
   >
 >({})
 const cachedSkillsLoading = ref(false)
+const refreshLoading = ref(false)
 
 let unsubscribeSyncCompleted: (() => void) | undefined
 let unsubscribeSyncFailed: (() => void) | undefined
@@ -296,6 +297,15 @@ async function loadCachedSkills() {
     console.error('[SkillMarket] loadCachedSkills failed:', error)
   } finally {
     cachedSkillsLoading.value = false
+  }
+}
+
+async function syncSkillMarketCache() {
+  try {
+    await SkillMarketService.CheckAndSyncSkillMarket(locale.value)
+  } catch (error) {
+    // Keep the current cache visible when sync fails; the backend event already reports details.
+    console.warn('[SkillMarket] CheckAndSyncSkillMarket failed during refresh:', error)
   }
 }
 
@@ -858,10 +868,14 @@ async function selectFile(path: string) {
 }
 
 async function handleRefresh() {
-  if (activeTab.value === 'browse') {
-    await loadBrowseSkills(false)
-  } else {
-    await loadInstalledSkills()
+  if (refreshLoading.value) return
+
+  refreshLoading.value = true
+  try {
+    await syncSkillMarketCache()
+    await Promise.all([reloadCachedSkills(), loadInstalledSkills()])
+  } finally {
+    refreshLoading.value = false
   }
 }
 
@@ -1102,7 +1116,8 @@ watch(activeTab, (tab) => {
 
 onMounted(async () => {
   // 监听技能市场同步完成事件，收到后重新加载缓存并渲染
-  unsubscribeSyncCompleted = Events.On('skillmarket:sync-completed', () => {
+  unsubscribeSyncCompleted = Events.On('skillmarket:sync-completed', (event: any) => {
+    console.log('[SkillMarket] sync-completed:', event)
     console.log('[SkillMarket] received sync-completed event, reloading cached skills...')
     void reloadCachedSkills()
   })
@@ -1143,10 +1158,11 @@ onUnmounted(() => {
         <div class="flex flex-wrap items-center justify-end gap-2">
           <button
             type="button"
-            class="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-muted px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
+            class="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-muted px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/80 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="refreshLoading"
             @click="handleRefresh"
           >
-            <RefreshCw class="size-4 shrink-0" />
+            <RefreshCw :class="cn('size-4 shrink-0', refreshLoading && 'animate-spin')" />
             {{ t('settings.skillMarket.refreshCta') }}
           </button>
           <button

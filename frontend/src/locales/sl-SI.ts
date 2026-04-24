@@ -1138,7 +1138,7 @@ export default {
         sandbox_off: 'Onemogočeno',
         sandbox_all: 'Vsi agenti',
         groupChatMentionPatterns: 'Vzorci omemb v skupinskem klepetu',
-        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
+        groupChatMentionPatternsPlaceholder: "'@'assistant, '@'bot",
         groupChatInsertPreset: 'Vstavi predlogo',
         groupChatMentionPatternsHint: 'Vzorci za sprožitev odgovora agenta, ločeni z vejico',
         tools: 'Konfiguracija orodij',

@@ -1137,7 +1137,7 @@ export default {
         sandbox_off: 'Disattivato',
         sandbox_all: 'Tutti gli agenti',
         groupChatMentionPatterns: 'Pattern di menzione nel gruppo',
-        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
+        groupChatMentionPatternsPlaceholder: "'@'assistant, '@'bot",
         groupChatInsertPreset: 'Inserisci modello',
         tools: 'Configurazione strumenti',
         toolsProfile: 'Profilo strumenti',

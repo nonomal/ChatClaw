@@ -8,6 +8,30 @@ type BrowserServiceLike = {
   OpenURL: (url: string) => Promise<void>
 }
 
+function tryParseUrl(value: string): URL | null {
+  try {
+    return new URL(value.trim())
+  } catch {
+    return null
+  }
+}
+
+export function isSameChatWikiHost(candidateBase: string, cloudBase: string): boolean {
+  const candidateUrl = tryParseUrl(candidateBase)
+  const cloudUrl = tryParseUrl(cloudBase)
+
+  if (!candidateUrl || !cloudUrl) return false
+
+  return candidateUrl.hostname.toLowerCase() === cloudUrl.hostname.toLowerCase()
+}
+
+export function resolveChatWikiLoginSource(
+  candidateBase: string,
+  cloudBase: string
+): 'cloud' | 'open-source' {
+  return isSameChatWikiHost(candidateBase, cloudBase) ? 'cloud' : 'open-source'
+}
+
 export function buildChatWikiLoginUrl(base: string, params?: LoginParams): string {
   const normalizedBase = base.replace(/\/+$/, '')
   const path = `${normalizedBase}/#/chatclaw/login`

@@ -1138,7 +1138,7 @@ export default {
         sandbox_all: 'جميع المساعدين',
         sandboxModeHint: 'يعزل sandbox تنفيذ الأوامر لمنع المساعدين من تعديل النظام المضيف مباشرة',
         groupChatMentionPatterns: 'أنماط الإشارة في المجموعة',
-        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
+        groupChatMentionPatternsPlaceholder: "'@'assistant, '@'bot",
         groupChatInsertPreset: 'إدراج قالب',
         groupChatMentionPatternsHint: 'أنماط لتفعيل استجابة الوكيل، مفصولة بفواصل',
         tools: 'تكوين الأدوات',

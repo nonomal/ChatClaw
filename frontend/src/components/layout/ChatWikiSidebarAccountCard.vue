@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Events } from '@wailsio/runtime'
 import {
   ChatWikiService,
@@ -16,6 +17,8 @@ import {
   isChatwikiCloudBinding,
   shouldAutoRefreshChatwikiCredits,
 } from './chatwikiSidebarAccountCard'
+
+const { t } = useI18n()
 
 const settingsStore = useSettingsStore()
 const navigationStore = useNavigationStore()
@@ -68,6 +71,12 @@ function handleClick() {
     return
   }
 
+  if (cardState.value.action === 'openBindingSettings') {
+    settingsStore.setActiveMenu('chatwiki')
+    navigationStore.navigateToModule('settings')
+    return
+  }
+
   settingsStore.requestModelServiceProviderSelection('chatwiki')
   settingsStore.setActiveMenu('modelService')
   navigationStore.navigateToModule('settings')
@@ -108,12 +117,33 @@ onBeforeUnmount(() => {
       @keydown.enter.prevent="handleClick"
       @keydown.space.prevent="handleClick"
     >
-      <span v-if="cardState.mode === 'bound'" class="w-full truncate text-[11px] text-gray-400">
-        {{ cardState.accountLabel }}
-      </span>
-      <span class="text-[13px] font-bold text-blue-600">
-        {{ cardState.creditsLabel }}
-      </span>
+      <template v-if="cardState.mode === 'login'">
+        <span class="w-full truncate text-[11px] text-gray-400">
+          {{ t('settings.chatwiki.notBound') }}
+        </span>
+        <span class="text-[13px] font-bold text-blue-600">
+          {{ cardState.creditsLabel }}
+        </span>
+      </template>
+      <template v-else-if="cardState.mode === 'open_source_bound'">
+        <span class="w-full truncate text-[11px] text-gray-400">
+          {{ cardState.accountLabel }}
+        </span>
+        <span class="text-[13px] font-bold text-blue-600">
+          {{ cardState.creditsLabel }}
+        </span>
+        <span v-if="cardState.versionHint" class="w-full truncate text-[10px] text-gray-400">
+          {{ cardState.versionHint }}
+        </span>
+      </template>
+      <template v-else>
+        <span class="w-full truncate text-[11px] text-gray-400">
+          {{ cardState.accountLabel }}
+        </span>
+        <span class="text-[13px] font-bold text-blue-600">
+          {{ cardState.creditsLabel }}
+        </span>
+      </template>
     </div>
   </div>
 </template>

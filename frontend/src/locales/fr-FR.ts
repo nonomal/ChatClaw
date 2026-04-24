@@ -1140,7 +1140,7 @@ loginReminder: {
         sandbox_off: 'Désactivé',
         sandbox_all: 'Tous les agents',
         groupChatMentionPatterns: 'Modèles de mention de groupe',
-        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
+        groupChatMentionPatternsPlaceholder: "'@'assistant, '@'bot",
         groupChatInsertPreset: 'Insérer un modèle',
         tools: 'Configuration des outils',
         toolsProfile: 'Profil d"outils',

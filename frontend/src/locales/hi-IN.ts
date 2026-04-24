@@ -1145,7 +1145,7 @@ export default {
         sandbox_off: 'अक्षम',
         sandbox_all: 'सभी एजेंट',
         groupChatMentionPatterns: 'समूह चैट मेंशन पैटर्न',
-        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
+        groupChatMentionPatternsPlaceholder: "'@'assistant, '@'bot",
         groupChatInsertPreset: 'प्रीसेट डालें',
         tools: 'टूल कॉन्फ़िगरेशन',
         toolsProfile: 'टूल प्रोफ़ाइल',

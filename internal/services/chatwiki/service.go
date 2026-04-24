@@ -24,6 +24,9 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
+// getChatWikiServiceDB is injectable for testing.
+var getChatWikiServiceDB = sqlite.DB
+
 // Binding represents a ChatWiki binding record exposed to the frontend.
 type Binding struct {
 	ID              int64  `json:"id"`
@@ -277,7 +280,7 @@ func (s *ChatWikiService) GetBinding() (*Binding, error) {
 
 // SaveBinding creates or replaces the binding. Called from deeplink handler.
 func SaveBinding(app *application.App, serverURL, token, ttl, exp, userID, userName, chatWikiVersion string) error {
-	db := sqlite.DB()
+	db := getChatWikiServiceDB()
 	if db == nil {
 		return nil
 	}
@@ -287,6 +290,7 @@ func SaveBinding(app *application.App, serverURL, token, ttl, exp, userID, userN
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	chatWikiVersion = normalizeChatWikiVersion(chatWikiVersion)
 	err := saveBindingWithDB(ctx, db, serverURL, token, ttl, exp, userID, userName, chatWikiVersion)
 	if err != nil {
 		if app != nil {
@@ -294,9 +298,17 @@ func SaveBinding(app *application.App, serverURL, token, ttl, exp, userID, userN
 		}
 		return err
 	}
-	enableChatWikiProviderForModelService(ctx, db, app)
+
+	// Only enable ChatWiki provider for model service when cloud version is bound.
+	// Open-source version binding should explicitly disable the provider.
+	if chatWikiVersion == "yun" {
+		enableChatWikiProviderForModelService(ctx, db, app)
+	} else {
+		disableChatWikiProviderForModelService(ctx, db, app)
+	}
+
 	if app != nil {
-		app.Logger.Info("ChatWiki binding saved", "user_id", userID, "user_name", userName)
+		app.Logger.Info("ChatWiki binding saved", "user_id", userID, "user_name", userName, "chatwiki_version", chatWikiVersion)
 	}
 	return nil
 }
@@ -304,6 +316,9 @@ func SaveBinding(app *application.App, serverURL, token, ttl, exp, userID, userN
 // enableChatWikiProviderForModelService turns on the builtin chatwiki provider after a successful bind
 // so Model Service lists ChatWiki as enabled by default (builtin seed inserts it as disabled).
 func enableChatWikiProviderForModelService(ctx context.Context, db bun.IDB, app *application.App) {
+	if db == nil {
+		db = getChatWikiServiceDB()
+	}
 	_, err := db.NewUpdate().
 		Table("providers").
 		Where("provider_id = ?", "chatwiki").
@@ -318,6 +333,63 @@ func enableChatWikiProviderForModelService(ctx context.Context, db bun.IDB, app 
 	}
 	if app != nil {
 		app.Event.Emit("providers:config-changed", nil)
+	}
+}
+
+// disableChatWikiProviderForModelService turns off the builtin chatwiki provider when open-source version is bound.
+// This ensures that open-source bindings don't appear in the model service list.
+func disableChatWikiProviderForModelService(ctx context.Context, db bun.IDB, app *application.App) {
+	if db == nil {
+		db = getChatWikiServiceDB()
+	}
+	_, err := db.NewUpdate().
+		Table("providers").
+		Where("provider_id = ?", "chatwiki").
+		Set("enabled = ?", false).
+		Set("updated_at = ?", sqlite.NowUTC()).
+		Exec(ctx)
+	if err != nil {
+		if app != nil {
+			app.Logger.Warn("Failed to disable chatwiki provider for open-source binding", "error", err)
+		}
+		return
+	}
+	if app != nil {
+		app.Event.Emit("providers:config-changed", nil)
+	}
+}
+
+// ensureChatWikiProviderDisabledForOpenSource checks if provider is enabled when binding is open-source version,
+// and disables it if needed. This handles legacy data where provider might still be enabled.
+func ensureChatWikiProviderDisabledForOpenSource(app *application.App) {
+	db := getChatWikiServiceDB()
+	if db == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Check if provider is currently enabled
+	var enabled bool
+	err := db.NewSelect().
+		Table("providers").
+		Column("enabled").
+		Where("provider_id = ?", "chatwiki").
+		Scan(ctx, &enabled)
+	if err != nil {
+		if app != nil {
+			app.Logger.Warn("Failed to check chatwiki provider status", "error", err)
+		}
+		return
+	}
+
+	// Only disable if currently enabled
+	if enabled {
+		if app != nil {
+			app.Logger.Info("[chatwiki] Open-source binding detected, disabling chatwiki provider for compatibility")
+		}
+		disableChatWikiProviderForModelService(ctx, db, app)
 	}
 }
 
@@ -351,19 +423,35 @@ func saveBindingWithDB(ctx context.Context, db bun.IDB, serverURL, token, ttl, e
 	})
 }
 
-func resolveChatWikiVersionFromLoginSource(loginSource string) string {
-	switch strings.TrimSpace(loginSource) {
-	case "cloud":
-		return "yun"
-	case "open-source":
-		return "dev"
-	default:
-		return "dev"
+func normalizeChatWikiComparableURL(rawURL string) string {
+	trimmed := strings.TrimSpace(rawURL)
+	if trimmed == "" {
+		return ""
 	}
+
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return strings.TrimRight(trimmed, "/")
+	}
+
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	parsed.Path = strings.TrimRight(parsed.Path, "/")
+
+	return strings.TrimRight(parsed.String(), "/")
 }
 
-// SaveBindingFromCallback persists a ChatWiki auth callback using the frontend login source
-// instead of trusting any upstream version field.
+func resolveChatWikiVersionFromServerURL(serverURL string) string {
+	if normalizeChatWikiComparableURL(serverURL) == normalizeChatWikiComparableURL(define.GetChatWikiCloudURL()) {
+		return "yun"
+	}
+	return "dev"
+}
+
+// SaveBindingFromCallback persists a ChatWiki auth callback using the callback serverURL
+// as the source of truth for deciding cloud vs open-source binding.
+// The binding is saved with the version derived from serverURL (not loginSource).
+// Frontend should call loadBinding(true) after this to get the authoritative version.
 func (s *ChatWikiService) SaveBindingFromCallback(serverURL, token, ttl, exp, userID, userName, loginSource string) error {
 	var app *application.App
 	if s != nil {
@@ -377,7 +465,7 @@ func (s *ChatWikiService) SaveBindingFromCallback(serverURL, token, ttl, exp, us
 		exp,
 		userID,
 		userName,
-		resolveChatWikiVersionFromLoginSource(loginSource),
+		resolveChatWikiVersionFromServerURL(serverURL),
 	)
 }
 
@@ -432,7 +520,7 @@ func (s *ChatWikiService) TokenForceOffline() error {
 
 // DeleteBinding removes the current binding.
 func (s *ChatWikiService) DeleteBinding() error {
-	db := sqlite.DB()
+	db := getChatWikiServiceDB()
 	if db == nil {
 		return nil
 	}
@@ -442,6 +530,10 @@ func (s *ChatWikiService) DeleteBinding() error {
 	if _, err := db.NewDelete().Model((*bindingModel)(nil)).Where("1=1").Exec(ctx); err != nil {
 		return err
 	}
+
+	// Disable ChatWiki provider when unbinding to ensure model list is cleared
+	disableChatWikiProviderForModelService(ctx, db, s.app)
+
 	return clearSyncedModelCatalogFromDB(ctx, db, "chatwiki")
 }
 
@@ -1856,7 +1948,7 @@ func normalizeChatWikiVersion(version string) string {
 	if version == "" {
 		return "dev"
 	}
-	return version
+	return strings.ToLower(version)
 }
 
 func isChatWikiCloudBinding(binding *Binding) bool {

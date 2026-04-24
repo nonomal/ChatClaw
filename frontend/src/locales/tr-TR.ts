@@ -1136,7 +1136,7 @@ export default {
         sandbox_off: 'Devre dışı',
         sandbox_all: 'Tüm ajanlar',
         groupChatMentionPatterns: 'Grup Sohbet Bahsetme Kalıpları',
-        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
+        groupChatMentionPatternsPlaceholder: "'@'assistant, '@'bot",
         groupChatInsertPreset: 'Şablon ekle',
         tools: 'Araç Yapılandırması',
         toolsProfile: 'Araç Profili',

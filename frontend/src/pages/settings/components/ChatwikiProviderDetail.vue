@@ -37,6 +37,8 @@ import { formatChatwikiIntegralNumber } from '@/lib/chatwikiCreditsFormat'
 import {
   shouldShowChatwikiAccountCard,
   shouldShowChatwikiCreditsCard,
+  canUseChatwikiModelService,
+  isOpenSourceBinding,
 } from './chatwikiProviderDetailState'
 
 const props = defineProps<{
@@ -77,7 +79,7 @@ const collapsedGroups = ref<Record<string, boolean>>({})
 let autoRefreshTimer: ReturnType<typeof setInterval> | null = null
 let unsubscribeCatalogRefresh: (() => void) | null = null
 
-const isBound = computed(() => !!currentBinding.value && modelCatalog.value?.bound !== false)
+const isBound = computed(() => !!currentBinding.value)
 const showAccountCard = computed(() => {
   return isBound.value && shouldShowChatwikiAccountCard(currentBinding.value)
 })
@@ -88,8 +90,11 @@ const showDevLoginButton = computed(() => {
   return (
     showAccountCard.value &&
     !showCreditsCard.value &&
-    currentBinding.value?.chatwiki_version?.trim().toLowerCase() === 'dev'
+    isOpenSourceBinding(currentBinding.value)
   )
+})
+const canToggleProvider = computed(() => {
+  return canUseChatwikiModelService(currentBinding.value)
 })
 const todayUse = computed(() => extractStatValue(modelCatalog.value, 'today_use'))
 const allSurplus = computed(() => extractStatValue(modelCatalog.value, 'all_surplus'))
@@ -364,7 +369,7 @@ onBeforeUnmount(() => {
         </div>
         <Switch
           :model-value="localEnabled"
-          :disabled="savingToggle || !isBound"
+          :disabled="savingToggle || !canToggleProvider"
           @update:model-value="handleToggle"
         />
       </div>
@@ -407,8 +412,12 @@ onBeforeUnmount(() => {
               class="h-9 rounded-lg bg-[#2f67f6] px-3.5 text-sm font-medium text-white shadow-[0_4px_10px_rgba(47,103,246,0.2)] hover:bg-[#2558db]"
               @click="handleLoginNow"
             >
-              {{ t('settings.chatwiki.loginNow') }}
+              {{ t('settings.chatwiki.switchBinding') }}
             </Button>
+          </div>
+
+          <div v-if="showDevLoginButton" class="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+            {{ t('settings.chatwiki.openSourceLoginHint') }}
           </div>
 
           <div v-if="showCreditsCard" class="mt-6 grid gap-4 md:grid-cols-2">

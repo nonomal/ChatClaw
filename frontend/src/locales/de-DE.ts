@@ -1136,7 +1136,7 @@ export default {
         sandbox_off: 'Deaktiviert',
         sandbox_all: 'Alle Agenten',
         groupChatMentionPatterns: 'Gruppenchat-Erwähnungsmuster',
-        groupChatMentionPatternsPlaceholder: '{"@"}assistant, {"@"}bot',
+        groupChatMentionPatternsPlaceholder: "'@'assistant, '@'bot",
         groupChatInsertPreset: 'Vorlage einfügen',
         tools: 'Werkzeugkonfiguration',
         toolsProfile: 'Werkzeugprofil',

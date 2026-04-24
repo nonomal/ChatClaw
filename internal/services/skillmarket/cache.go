@@ -24,6 +24,7 @@ func (s *Service) ListCachedSkills(ctx context.Context, categoryID *int64, local
 	for _, skill := range skills {
 		result = append(result, Skill{
 			ID:           skill.ID,
+			BackendID:    skill.BackendID,
 			SkillName:    skill.SkillName,
 			Name:         skill.Name,
 			Description:  skill.Description,
@@ -68,18 +69,21 @@ func (s *Service) CheckAndSyncSkillMarket(ctx context.Context, locale string) (b
 	log.Printf("[skillmarket] CheckAndSyncSkillMarket called, locale=%s", locale)
 	syncSvc := NewSyncService()
 	updated, err := syncSvc.CheckAndSync(ctx, locale)
+	debugInfo := syncSvc.LastSkillSyncDebugInfo()
 
 	// 发送同步完成事件，通知前端刷新缓存数据
 	s.app.Event.Emit("skillmarket:sync-completed", map[string]any{
-		"locale":         locale,
-		"updated":        updated,
-		"error":          err != nil,
-		"errorMessage":   "",
+		"locale":       locale,
+		"updated":      updated,
+		"error":        err != nil,
+		"errorMessage": "",
+		"debugInfo":    debugInfo,
 	})
 	if err != nil {
 		s.app.Event.Emit("skillmarket:sync-failed", map[string]any{
 			"locale":       locale,
 			"errorMessage": err.Error(),
+			"debugInfo":    debugInfo,
 		})
 	}
 
@@ -99,6 +103,7 @@ func (s *Service) GetCachedSkillByName(ctx context.Context, skillName string, lo
 	}
 	result := Skill{
 		ID:           skill.ID,
+		BackendID:    skill.BackendID,
 		SkillName:    skill.SkillName,
 		Name:         skill.Name,
 		Description:  skill.Description,
@@ -129,18 +134,18 @@ type InstalledSkillView struct {
 	DataSource  string `json:"dataSource"`
 
 	// 缓存元数据
-	RemoteID            int64   `json:"remoteId,omitempty"`
-	RemoteSkillName    string  `json:"remoteSkillName,omitempty"`
-	RemoteName         string  `json:"remoteName,omitempty"`
-	RemoteDescription  string  `json:"remoteDescription,omitempty"`
-	RemoteIconURL      string  `json:"remoteIconUrl,omitempty"`
-	RemoteCategoryName string  `json:"remoteCategoryName,omitempty"`
-	HasRemoteMeta      bool    `json:"hasRemoteMeta"`
+	RemoteID           int64  `json:"remoteId,omitempty"`
+	RemoteSkillName    string `json:"remoteSkillName,omitempty"`
+	RemoteName         string `json:"remoteName,omitempty"`
+	RemoteDescription  string `json:"remoteDescription,omitempty"`
+	RemoteIconURL      string `json:"remoteIconUrl,omitempty"`
+	RemoteCategoryName string `json:"remoteCategoryName,omitempty"`
+	HasRemoteMeta      bool   `json:"hasRemoteMeta"`
 
 	// 展示字段（优先使用缓存，否则使用本地）
 	DisplayName        string `json:"displayName"`
 	DisplayDescription string `json:"displayDescription"`
-	DisplayIconURL    string `json:"displayIconUrl,omitempty"`
+	DisplayIconURL     string `json:"displayIconUrl,omitempty"`
 
 	// ScopeRoots maps scope string -> skill root directory path.
 	// Key examples: "openclaw-shared", "local", "agent-workspace:main".
