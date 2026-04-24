@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -116,10 +117,24 @@ func (g *Gateway) StartAll(ctx context.Context) {
 
 	for _, m := range models {
 		ch := m.toDTO()
+		if !shouldAutoConnectChannelOnStartup(ch) {
+			continue
+		}
 		if err := g.ConnectChannel(ctx, ch); err != nil {
 			g.logger.Warn("auto-connect channel failed", "channel_id", ch.ID, "error", err)
 		}
 	}
+}
+
+// shouldAutoConnectChannelOnStartup limits startup auto-connect to rows owned by the
+// shared adapter gateway. OpenClaw-managed rows persist their own connection state
+// and must not be passed through the generic adapter registry on app boot.
+func shouldAutoConnectChannelOnStartup(ch Channel) bool {
+	if ch.OpenClawScope {
+		return false
+	}
+	connType := strings.TrimSpace(ch.ConnectionType)
+	return connType == "" || connType == ConnTypeGateway
 }
 
 // StopAll disconnects all active channels.

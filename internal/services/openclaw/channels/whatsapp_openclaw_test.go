@@ -577,6 +577,161 @@ func TestWhatsappManagedBindingAccountIDs(t *testing.T) {
 	}
 }
 
+func TestWhatsappConfiguredAccountIDs(t *testing.T) {
+	channelCfg := map[string]any{
+		"accounts": map[string]any{
+			" whatsapp_b ": map[string]any{},
+			"":             map[string]any{},
+			"whatsapp_a":   map[string]any{},
+		},
+	}
+
+	got := whatsappConfiguredAccountIDs(channelCfg)
+	want := []string{"whatsapp_a", "whatsapp_b"}
+	if len(got) != len(want) {
+		t.Fatalf("whatsappConfiguredAccountIDs() len = %d, want %d (%v)", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("whatsappConfiguredAccountIDs()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestReconcileWhatsappStartupConfig(t *testing.T) {
+	t.Run("reuses a single valid startup draft when no local channels exist", func(t *testing.T) {
+		cfg := map[string]any{
+			"channels": map[string]any{
+				"whatsapp": map[string]any{
+					"enabled":      true,
+					"selfChatMode": true,
+					"accounts": map[string]any{
+						"whatsapp_draft1": map[string]any{
+							"enabled":      true,
+							"selfChatMode": true,
+						},
+					},
+				},
+			},
+		}
+
+		keepAccountID, changed := reconcileWhatsappStartupConfig(cfg, nil)
+		if keepAccountID != "whatsapp_draft1" {
+			t.Fatalf("keepAccountID = %q, want %q", keepAccountID, "whatsapp_draft1")
+		}
+		if changed {
+			t.Fatal("changed = true, want false")
+		}
+	})
+
+	t.Run("removes invalid orphan drafts when more than one startup config exists", func(t *testing.T) {
+		cfg := map[string]any{
+			"bindings": []any{
+				map[string]any{
+					"type":    "route",
+					"agentId": "agent-a",
+					"match": map[string]any{
+						"channel":   "whatsapp",
+						"accountId": "whatsapp_orphan1",
+					},
+				},
+			},
+			"channels": map[string]any{
+				"whatsapp": map[string]any{
+					"enabled":      true,
+					"selfChatMode": true,
+					"accounts": map[string]any{
+						"whatsapp_orphan1": map[string]any{
+							"enabled":      true,
+							"selfChatMode": true,
+						},
+						"whatsapp_orphan2": map[string]any{
+							"enabled":      true,
+							"selfChatMode": true,
+						},
+					},
+				},
+			},
+		}
+
+		keepAccountID, changed := reconcileWhatsappStartupConfig(cfg, nil)
+		if keepAccountID != "" {
+			t.Fatalf("keepAccountID = %q, want empty", keepAccountID)
+		}
+		if !changed {
+			t.Fatal("changed = false, want true")
+		}
+		if _, ok := cfg["bindings"]; ok {
+			t.Fatalf("bindings still present after cleanup: %#v", cfg["bindings"])
+		}
+		if _, ok := cfg["channels"]; ok {
+			t.Fatalf("channels still present after cleanup: %#v", cfg["channels"])
+		}
+	})
+
+	t.Run("keeps local whatsapp accounts while removing stray startup config", func(t *testing.T) {
+		cfg := map[string]any{
+			"bindings": []any{
+				map[string]any{
+					"type":    "route",
+					"agentId": "agent-local",
+					"match": map[string]any{
+						"channel":   "whatsapp",
+						"accountId": "whatsapp_live",
+					},
+				},
+				map[string]any{
+					"type":    "route",
+					"agentId": "agent-orphan",
+					"match": map[string]any{
+						"channel":   "whatsapp",
+						"accountId": "whatsapp_orphan",
+					},
+				},
+			},
+			"channels": map[string]any{
+				"whatsapp": map[string]any{
+					"enabled":      true,
+					"selfChatMode": true,
+					"accounts": map[string]any{
+						"whatsapp_live": map[string]any{
+							"enabled":      true,
+							"selfChatMode": true,
+						},
+						"whatsapp_orphan": map[string]any{
+							"enabled":      true,
+							"selfChatMode": true,
+						},
+					},
+				},
+			},
+		}
+
+		keepAccountID, changed := reconcileWhatsappStartupConfig(cfg, []string{"whatsapp_live"})
+		if keepAccountID != "" {
+			t.Fatalf("keepAccountID = %q, want empty", keepAccountID)
+		}
+		if !changed {
+			t.Fatal("changed = false, want true")
+		}
+
+		bindings := configBindings(cfg)
+		if len(bindings) != 1 {
+			t.Fatalf("bindings len = %d, want 1", len(bindings))
+		}
+		accounts := whatsappAccountConfigs(whatsappChannelConfigFromRoot(cfg))
+		if len(accounts) != 1 {
+			t.Fatalf("accounts len = %d, want 1", len(accounts))
+		}
+		if _, ok := accounts["whatsapp_live"]; !ok {
+			t.Fatalf("local account removed unexpectedly: %#v", accounts)
+		}
+		if _, ok := accounts["whatsapp_orphan"]; ok {
+			t.Fatalf("orphan account still present after cleanup: %#v", accounts)
+		}
+	})
+}
+
 func TestPurgeWhatsappChannelFromOpenClawJSON(t *testing.T) {
 	t.Run("removes matching binding and account while preserving siblings", func(t *testing.T) {
 		cfg := map[string]any{
